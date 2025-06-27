@@ -69,16 +69,15 @@ cat > package.json << 'EOF'
     "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
     "setup": "./scripts/setup.sh",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx,.svelte",
-    "format": "prettier --write ."
+    "lint": "biome lint --write --unsafe",
+    "format": "biome format --write"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "concurrently": "^8.2.0",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0",
-    "prettier": "^3.1.0",
-    "eslint": "^8.55.0"
+    "@biomejs/biome": "^2.0.0"
   }
 }
 EOF

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validateEnv, loadEnv, type EnvConfig } from './env';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { loadEnv, validateEnv } from './env';
 
 describe('Environment Configuration', () => {
   const originalEnv = process.env;
@@ -24,18 +24,16 @@ describe('Environment Configuration', () => {
         JWT_SECRET: 'test-secret-key-with-minimum-length',
         BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
         API_PORT: '4000',
-        NODE_ENV: 'test'
+        NODE_ENV: 'test',
       };
 
       const result = validateEnv();
-      
-      if (!result.success) {
-        console.error('Validation failed:', result.error.message);
-      }
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.DATABASE_URL).toBe('postgresql://postgres:password@localhost:5432/certquiz');
+        expect(result.data.DATABASE_URL).toBe(
+          'postgresql://postgres:password@localhost:5432/certquiz'
+        );
         expect(result.data.KEYCLOAK_URL).toBe('http://localhost:8080');
         expect(result.data.KEYCLOAK_REALM).toBe('certquiz');
         expect(result.data.JWT_SECRET).toBe('test-secret-key-with-minimum-length');
@@ -52,7 +50,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeDefined();
@@ -71,11 +69,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
-      if (!result.success) {
-        console.error('Validation failed:', result.error.message);
-      }
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.API_PORT).toBe(4000); // Default value
@@ -93,7 +87,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('DATABASE_URL');
@@ -110,7 +104,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('KEYCLOAK_URL');
@@ -128,7 +122,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('API_PORT');
@@ -145,7 +139,7 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('JWT_SECRET');
@@ -167,7 +161,7 @@ describe('Environment Configuration', () => {
       };
 
       const config = loadEnv();
-      
+
       expect(config.DATABASE_URL).toBe('postgresql://postgres:password@localhost:5432/certquiz');
       expect(config.API_PORT).toBe(5000);
       expect(config.NODE_ENV).toBe('production');

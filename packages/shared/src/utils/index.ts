@@ -1,9 +1,7 @@
 import type { ApiResponse } from '../types';
 
 // Result type for error handling
-export type Result<T, E = Error> = 
-  | { success: true; data: T }
-  | { success: false; error: E };
+export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
 // Create success result
 export function ok<T>(data: T): Result<T> {
@@ -114,12 +112,12 @@ export function apiError(code: string, message: string, details?: unknown): ApiR
 }
 
 // Debounce function
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   return (...args: Parameters<T>) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
@@ -127,17 +125,19 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      setTimeout(() => {
+        inThrottle = false;
+      }, limit);
     }
   };
 }
@@ -146,11 +146,11 @@ export function throttle<T extends (...args: any[]) => any>(
 export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
   if (obj instanceof Date) return new Date(obj.getTime()) as T;
-  if (obj instanceof Array) return obj.map(item => deepClone(item)) as T;
-  
+  if (Array.isArray(obj)) return obj.map((item) => deepClone(item)) as T;
+
   const cloned = {} as T;
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+    if (Object.hasOwn(obj, key)) {
       cloned[key] = deepClone(obj[key]);
     }
   }
@@ -173,7 +173,7 @@ export function paginate<T>(
   const items = array.slice(start, end);
   const total = array.length;
   const pages = Math.ceil(total / limit);
-  
+
   return { items, total, page, pages };
 }
 

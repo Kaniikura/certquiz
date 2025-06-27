@@ -17,8 +17,7 @@
       "Bash(concurrently:*)",
       
       // Code quality tools
-      "Bash(eslint:*)",
-      "Bash(prettier:*)",
+      "Bash(biome:*)",
       
       // SvelteKit specific
       "Bash(svelte:*)",

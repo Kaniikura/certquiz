@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createRedisClient, getRedisClient, closeRedisConnection } from '../config/redis';
 import type { RedisClientType } from 'redis';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { closeRedisConnection, createRedisClient, getRedisClient } from '../config/redis';
 
 describe('Redis Connection Integration', () => {
   let redis: RedisClientType;
@@ -25,8 +25,8 @@ describe('Redis Connection Integration', () => {
     });
 
     it('should use the correct Redis URL from environment', () => {
-      const expectedUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      
+      const _expectedUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
       // Dynamically check based on actual configuration
       if (process.env.REDIS_URL) {
         const url = new URL(process.env.REDIS_URL);
@@ -41,11 +41,11 @@ describe('Redis Connection Integration', () => {
 
     it('should persist data across operations', async () => {
       const key = 'integration:test:persist';
-      const value = 'test-value-' + Date.now();
+      const value = `test-value-${Date.now()}`;
 
       // Set value
       await redis.set(key, value);
-      
+
       // Get value
       const retrieved = await redis.get(key);
       expect(retrieved).toBe(value);
@@ -68,7 +68,7 @@ describe('Redis Connection Integration', () => {
       });
 
       const results = await Promise.all(operations);
-      
+
       results.forEach((value, i) => {
         expect(value).toBe(`value-${i}`);
       });
@@ -101,30 +101,30 @@ describe('Redis Connection Integration', () => {
 
     it('should handle expiration correctly', async () => {
       const key = 'test:expiring';
-      
+
       // Set with 1 second expiration
       await redis.setEx(key, 1, 'expires soon');
-      
+
       // Should exist immediately
       expect(await redis.exists(key)).toBe(1);
-      
+
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 1100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
       // Should be expired
       expect(await redis.exists(key)).toBe(0);
     });
 
     it('should support transactions', async () => {
       const multi = redis.multi();
-      
+
       multi.set('test:tx:1', 'value1');
       multi.set('test:tx:2', 'value2');
       multi.get('test:tx:1');
       multi.get('test:tx:2');
-      
+
       const results = await multi.exec();
-      
+
       // node-redis v4 returns array of results directly (not nested arrays)
       expect(results).toEqual(['OK', 'OK', 'value1', 'value2']);
 
@@ -137,7 +137,7 @@ describe('Redis Connection Integration', () => {
     it('should return the same instance when called multiple times', async () => {
       const instance1 = await getRedisClient();
       const instance2 = await getRedisClient();
-      
+
       expect(instance1).toBe(instance2);
     });
 
@@ -158,14 +158,14 @@ describe('Redis Connection Integration', () => {
     it('should report connection status and handle reconnection', async () => {
       expect(redis.isOpen).toBe(true);
       expect(redis.isReady).toBe(true);
-      
+
       // Test with separate client
       const testClient = createRedisClient();
       await testClient.connect();
-      
+
       const pong = await testClient.ping();
       expect(pong).toBe('PONG');
-      
+
       await testClient.quit();
     });
   });
@@ -173,14 +173,14 @@ describe('Redis Connection Integration', () => {
   describe('Performance', () => {
     it('should handle basic load and pipelining', async () => {
       const iterations = 10;
-      
+
       // Test basic operations
       const start = Date.now();
       for (let i = 0; i < iterations; i++) {
         await redis.set(`perf:test:${i}`, `value-${i}`);
       }
       const writeTime = Date.now() - start;
-      
+
       // Test pipelining
       const pipelineStart = Date.now();
       const pipeline = redis.multi();
@@ -206,12 +206,12 @@ describe('Redis Connection Integration', () => {
       const key = 'test:zset';
       await redis.zAdd(key, [
         { score: 1, value: 'one' },
-        { score: 2, value: 'two' }
+        { score: 2, value: 'two' },
       ]);
-      
+
       const range = await redis.zRange(key, 0, -1);
       expect(range).toEqual(['one', 'two']);
-      
+
       // Cleanup
       await redis.del(key);
     });
@@ -220,16 +220,16 @@ describe('Redis Connection Integration', () => {
   describe('Connection Resilience', () => {
     it('should handle connection before commands', async () => {
       const testClient = createRedisClient();
-      
+
       // Connect first (node-redis v4 requires connection before commands)
       await testClient.connect();
-      
+
       // Send command after connection
       await testClient.set('test:queue', 'queued-value');
-      
+
       const value = await testClient.get('test:queue');
       expect(value).toBe('queued-value');
-      
+
       // Cleanup
       await testClient.del('test:queue');
       await testClient.quit();
@@ -238,19 +238,19 @@ describe('Redis Connection Integration', () => {
     it('should maintain data integrity during reconnections', async () => {
       const key = 'test:integrity';
       const value = 'important-data';
-      
+
       // Set data
       await redis.set(key, value);
-      
+
       // Verify data exists
       expect(await redis.get(key)).toBe(value);
-      
+
       // Data should persist even if we create a new connection
       const newClient = createRedisClient();
       await newClient.connect();
-      
+
       expect(await newClient.get(key)).toBe(value);
-      
+
       // Cleanup
       await redis.del(key);
       await newClient.quit();
