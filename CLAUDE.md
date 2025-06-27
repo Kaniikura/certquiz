@@ -28,7 +28,7 @@ A web-based quiz application for technical certification exam preparation. Built
 ## Tech Stack
 
 - **Frontend**: SvelteKit + TypeScript + TailwindCSS
-- **Backend**: Bun + Elysia + Drizzle ORM
+- **Backend**: Bun + Hono + Drizzle ORM
 - **Database**: PostgreSQL 16 + Redis (caching)
 - **Auth**: KeyCloak
 - **Architecture**: Service Layer + Repository Pattern + Event Bus

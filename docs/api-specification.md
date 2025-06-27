@@ -2,7 +2,7 @@
 
 ## Overview
 
-RESTful API built with Elysia framework, featuring type-safe endpoints with Zod validation and JWT authentication via KeyCloak.
+RESTful API built with Hono framework, featuring type-safe endpoints with Zod validation and JWT authentication via KeyCloak.
 
 Base URL: `http://localhost:4000/api`
 

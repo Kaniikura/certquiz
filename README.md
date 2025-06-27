@@ -26,7 +26,7 @@ KeyCloak: http://localhost:8080
 
 - **Runtime**: [Bun](https://bun.sh) - Fast all-in-one JavaScript runtime
 - **Frontend**: [SvelteKit](https://kit.svelte.dev) + TypeScript + TailwindCSS
-- **Backend**: [Elysia](https://elysiajs.com) + [Drizzle ORM](https://orm.drizzle.team)
+- **Backend**: [Hono](https://hono.dev) + [Drizzle ORM](https://orm.drizzle.team)
 - **Database**: PostgreSQL 16
 - **Auth**: KeyCloak
 - **Testing**: Vitest
@@ -38,7 +38,7 @@ KeyCloak: http://localhost:8080
 cert-quiz/
 ├── apps/
 │   ├── web/          # SvelteKit frontend
-│   └── api/          # Elysia backend API
+│   └── api/          # Hono backend API
 ├── packages/
 │   ├── shared/       # Shared types & utilities
 │   └── typespec/     # API specifications
