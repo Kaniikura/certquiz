@@ -26,8 +26,17 @@ describe('Redis Connection Integration', () => {
 
     it('should use the correct Redis URL from environment', () => {
       const expectedUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      expect(redis.options.host).toBe('localhost');
-      expect(redis.options.port).toBe(6379);
+      
+      // Dynamically check based on actual configuration
+      if (process.env.REDIS_URL) {
+        const url = new URL(process.env.REDIS_URL);
+        expect(redis.options.host).toBe(url.hostname);
+        expect(redis.options.port).toBe(parseInt(url.port || '6379', 10));
+      } else {
+        // Fallback to defaults
+        expect(redis.options.host).toBe(process.env.REDIS_HOST || 'localhost');
+        expect(redis.options.port).toBe(parseInt(process.env.REDIS_PORT || '6379', 10));
+      }
     });
 
     it('should persist data across operations', async () => {

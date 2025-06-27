@@ -151,7 +151,6 @@ describe('Redis Configuration', () => {
         
         expect(config.host).toBeTypeOf('string');
         expect(config.host).toBeDefined();
-        expect(typeof config.host).toBe('string');
         expect((config.host as string).length).toBeGreaterThan(0);
         expect(config.port).toBeTypeOf('number');
         expect(config.port).toBeGreaterThan(0);
@@ -182,7 +181,7 @@ describe('Redis Configuration', () => {
         expect(typeof config.retryStrategy).toBe('function');
         
         // Should have some kind of logging (error or warning)
-        const hasLogs = freshLogger.logs.length > 0;
+        expect(freshLogger.logs.length).toBeGreaterThan(0);
         
         // At minimum, configuration should be valid and functional
         expect(config).toBeDefined();
@@ -203,14 +202,14 @@ describe('Redis Configuration', () => {
         
         // All configurations should result in valid config objects
         expect(config.host).toBeDefined();
-        expect(typeof config.host).toBe('string');
+        expect(config.host).toBeTypeOf('string');
         expect((config.host as string).length).toBeGreaterThan(0);
         expect(config.port).toBeDefined();
-        expect(typeof config.port).toBe('number');
+        expect(config.port).toBeTypeOf('number');
         expect(config.port).toBeGreaterThan(0);
         expect(config.port).toBeLessThanOrEqual(65535);
         expect(config.retryStrategy).toBeDefined();
-        expect(typeof config.retryStrategy).toBe('function');
+        expect(config.retryStrategy).toBeTypeOf('function');
       });
     });
   });
@@ -514,15 +513,19 @@ describe('Redis Configuration', () => {
       
       // Test exponential growth (accounting for jitter ±20%)
       const delays = [1, 2, 3, 4, 5].map(attempt => retryStrategy(attempt));
-      for (let i = 1; i < delays.length; i++) {
-        // Each delay should be roughly larger than previous (with 20% jitter tolerance)
-        const currentDelay = delays[i];
-        const previousDelay = delays[i - 1];
-        if (currentDelay !== null && previousDelay !== null) {
-          // With 20% jitter, we expect at least 1.2x growth on average
-          expect(currentDelay).toBeGreaterThan((previousDelay as number) * 1.2);
+      
+      // Verify each delay is within expected jitter range
+      delays.forEach((delay, index) => {
+        if (delay !== null) {
+          const attempt = index + 1;
+          const baseDelay = Math.min(Math.pow(2, attempt - 1) * 1000, 16000);
+          const minDelay = baseDelay * 0.8;
+          const maxDelay = baseDelay * 1.2;
+          
+          expect(delay).toBeGreaterThanOrEqual(minDelay);
+          expect(delay).toBeLessThanOrEqual(maxDelay);
         }
-      }
+      });
     });
 
     it('should handle various Redis URL formats correctly', () => {
