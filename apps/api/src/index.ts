@@ -7,12 +7,26 @@ import { healthRoutes } from './routes/health';
 import { env } from './config';
 import { getRedisClient } from './config/redis';
 import { createLogger } from './lib/logger';
+import type { RedisClientType } from 'redis';
 
 const app = new Hono<AppEnv>();
 
-// Initialize logger and Redis client
+// Initialize logger
 const appLogger = createLogger('server');
-const redis = getRedisClient();
+
+// Redis client will be initialized asynchronously
+let redisClient: RedisClientType | null = null;
+
+// Initialize Redis client asynchronously
+async function initializeRedis(): Promise<void> {
+  try {
+    redisClient = await getRedisClient();
+    appLogger.info('Redis client initialized successfully');
+  } catch (error) {
+    appLogger.error({ err: error }, 'Failed to initialize Redis client');
+    throw error;
+  }
+}
 
 // Global middleware
 app.use('*', logger());
@@ -23,7 +37,9 @@ app.use('*', cors({
 
 // Inject Redis client into context
 app.use('*', async (c, next) => {
-  c.set('redis', redis);
+  if (redisClient) {
+    c.set('redis', redisClient);
+  }
   await next();
 });
 
@@ -59,12 +75,22 @@ app.notFound((c) => {
 // Start server when run directly (not imported)
 if (import.meta.main) {
   const port = env.API_PORT || 4000;
-  appLogger.info({ port }, '🔥 Server starting');
+  
+  // Initialize Redis and start server
+  (async () => {
+    try {
+      await initializeRedis();
+      appLogger.info({ port }, '🔥 Server starting');
 
-  serve({
-    fetch: app.fetch,
-    port,
-  });
+      serve({
+        fetch: app.fetch,
+        port,
+      });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Failed to start server');
+      process.exit(1);
+    }
+  })();
 }
 
 export default app;

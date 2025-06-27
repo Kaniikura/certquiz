@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types/app';
-import type { Redis } from 'ioredis';
+import type { RedisClientType } from 'redis';
 import os from 'os';
 import { createLogger } from '../lib/logger';
 
@@ -124,7 +124,7 @@ export const healthRoutes = new Hono<AppEnv>()
     // Check Redis health with detailed diagnostics
     if (redis) {
       services.redis = await checkServiceHealth('redis', async () => {
-        const redisClient = redis as Redis;
+        const redisClient = redis as RedisClientType;
         
         // Ping to check basic connectivity
         const pingResult = await redisClient.ping();
@@ -217,7 +217,7 @@ export const healthRoutes = new Hono<AppEnv>()
     // Collect Redis metrics if available
     if (redis) {
       try {
-        const redisClient = redis as Redis;
+        const redisClient = redis as RedisClientType;
         const [clientInfo, memoryInfo, statsInfo] = await Promise.all([
           redisClient.info('clients'),
           redisClient.info('memory'),
