@@ -6,10 +6,12 @@ import type { AppEnv } from './types/app';
 import { healthRoutes } from './routes/health';
 import { env } from './config';
 import { getRedisClient } from './config/redis';
+import { createLogger } from './lib/logger';
 
 const app = new Hono<AppEnv>();
 
-// Initialize Redis client
+// Initialize logger and Redis client
+const appLogger = createLogger('server');
 const redis = getRedisClient();
 
 // Global middleware
@@ -27,7 +29,7 @@ app.use('*', async (c, next) => {
 
 // Error handling
 app.onError((err, c) => {
-  console.error('Application error:', err);
+  appLogger.error({ err, path: c.req.path, method: c.req.method }, 'Application error');
   return c.json(
     { 
       success: false, 
@@ -57,7 +59,7 @@ app.notFound((c) => {
 // Start server when run directly (not imported)
 if (import.meta.main) {
   const port = env.API_PORT || 4000;
-  console.log(`🔥 Server starting on port ${port}`);
+  appLogger.info({ port }, '🔥 Server starting');
 
   serve({
     fetch: app.fetch,
