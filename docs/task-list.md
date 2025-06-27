@@ -1,10 +1,10 @@
-# Implementation Task List - Phase 1
+# Implementation Task List - Phase 1 (Revised with Service Layer Architecture)
 
 ## Overview
 
-This document breaks down Phase 1 implementation into manageable tasks. Each task should be completed with tests before moving to the next.
+This document breaks down Phase 1 implementation into manageable tasks, incorporating the service layer architecture decisions. Each task should be completed with tests before moving to the next.
 
-**Phase 1 Goal**: Basic quiz functionality with authentication and admin features.
+**Phase 1 Goal**: Basic quiz functionality with authentication, admin features, and proper architecture foundations.
 
 ## Task Organization
 
@@ -12,11 +12,13 @@ This document breaks down Phase 1 implementation into manageable tasks. Each tas
 - 🟡 **High Priority**: Core functionality
 - 🟢 **Normal Priority**: Can be done in parallel
 - ⏱️ **Estimated Time**: Rough estimate for completion
+- ✅ **Completed**: Task finished
 
 ## 1. Project Setup Tasks 🔴
 
-### 1.1 Initialize Monorepo Structure
+### 1.1 Initialize Monorepo Structure ✅
 **Time**: 30 minutes
+**Status**: COMPLETED
 ```bash
 # Tasks:
 - Create directory structure as per ./project-setup.md
@@ -26,8 +28,9 @@ This document breaks down Phase 1 implementation into manageable tasks. Each tas
 - Test: `bun install` should work without errors
 ```
 
-### 1.2 Setup Docker Environment
+### 1.2 Setup Docker Environment ✅
 **Time**: 20 minutes
+**Status**: COMPLETED
 ```bash
 # Tasks:
 - Create docker-compose.yml
@@ -36,8 +39,9 @@ This document breaks down Phase 1 implementation into manageable tasks. Each tas
 - Test: `docker-compose up` should start both services
 ```
 
-### 1.3 Configure Environment Variables
+### 1.3 Configure Environment Variables ✅
 **Time**: 10 minutes
+**Status**: COMPLETED
 ```bash
 # Tasks:
 - Create .env.example with all required variables
@@ -46,350 +50,507 @@ This document breaks down Phase 1 implementation into manageable tasks. Each tas
 - Test: Environment variables accessible in code
 ```
 
-## 2. Database Setup Tasks 🔴
+### 1.4 Setup Redis for Caching 🔴
+**Time**: 30 minutes
+**NEW TASK**
+```bash
+# Tasks:
+- Add Redis to docker-compose.yml
+- Configure Redis connection settings
+- Add Redis environment variables
+- Test: Redis connection works
+```
 
-### 2.1 Setup Drizzle ORM
+## 2. Architecture Foundation Tasks 🔴
+
+### 2.1 Create Core Interfaces
+**Time**: 1 hour
+**NEW TASK**
+```typescript
+// Tasks:
+- Create repository interfaces (base, paginated)
+- Create service interfaces (base, context, result)
+- Create cache interface
+- Create event bus interface
+- Test: TypeScript compiles without errors
+```
+
+### 2.2 Implement Infrastructure Services
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Implement Redis cache service
+- Implement event bus (in-memory first, Redis pub/sub later)
+- Implement structured logger
+- Implement error classes
+- Test: Unit tests for each service
+```
+
+### 2.3 Setup Monitoring and Observability
+**Time**: 1 hour
+**NEW TASK**
+```typescript
+// Tasks:
+- Setup OpenTelemetry
+- Configure structured logging
+- Add request tracing
+- Add performance metrics
+- Test: Logs and traces are generated
+```
+
+## 3. Database Setup Tasks 🔴
+
+### 3.1 Setup Drizzle ORM
 **Time**: 30 minutes
 ```typescript
 // Tasks:
 - Install Drizzle dependencies
 - Create drizzle.config.ts
-- Setup database connection in src/db/index.ts
+- Setup database connection pool
+- Configure connection pooling
 - Test: Connection to PostgreSQL works
 ```
 
-### 2.2 Implement Core Schema
+### 3.2 Implement Core Schema
 **Time**: 1 hour
 ```typescript
 // Tasks:
-- Create schema.ts with users, questions, questionOptions tables
+- Create schema.ts with all tables from database-schema.md
 - Create relations.ts with table relationships
+- Add proper indexes
 - Generate initial migration
 - Test: `bun run db:generate` creates migration files
 ```
 
-### 2.3 Run Migrations and Seed Data
+### 3.3 Implement Base Repository
+**Time**: 1 hour
+**NEW TASK**
+```typescript
+// Tasks:
+- Create base repository class
+- Implement CRUD operations
+- Add pagination support
+- Add transaction support
+- Test: Base repository operations work
+```
+
+### 3.4 Implement Domain Repositories
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Create UserRepository
+- Create QuestionRepository
+- Create QuizRepository
+- Create ProgressRepository
+- Test: All repositories have integration tests
+```
+
+### 3.5 Run Migrations and Seed Data
 **Time**: 30 minutes
 ```typescript
 // Tasks:
 - Create migrate.ts script
 - Run migrations on database
-- Create seed.ts with sample questions
-- Test: Tables exist in database with sample data
+- Create comprehensive seed data
+- Add badges and initial questions
+- Test: Database populated with test data
 ```
 
-## 3. API Server Setup Tasks 🟡
+## 4. Service Layer Implementation 🟡
 
-### 3.1 Initialize Elysia Server
+### 4.1 Implement Authentication Service
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Create AuthService with KeyCloak integration
+- Implement login/logout logic
+- Add token validation with caching
+- Implement refresh token logic
+- Test: Authentication flow works end-to-end
+```
+
+### 4.2 Implement Question Service
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Create QuestionService
+- Implement question retrieval with caching
+- Add filtering and pagination
+- Implement admin operations
+- Test: All question operations tested
+```
+
+### 4.3 Implement Quiz Service
+**Time**: 3 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Create QuizService
+- Implement quiz session management
+- Add answer validation logic
+- Implement progress tracking
+- Emit domain events
+- Test: Complete quiz flow tested
+```
+
+### 4.4 Implement User Progress Service
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Create ProgressService
+- Implement badge unlock logic
+- Add statistics calculation
+- Handle progress events
+- Test: Progress tracking works correctly
+```
+
+## 5. API Layer Implementation 🟡
+
+### 5.1 Initialize Elysia Server
 **Time**: 30 minutes
 ```typescript
-// apps/api/src/index.ts
 // Tasks:
-- Setup basic Elysia server
-- Configure CORS
+- Setup basic Elysia server with proper structure
+- Configure CORS and security headers
 - Add health check endpoint
-- Setup error handling
+- Setup global error handling
 - Test: Server starts on port 4000
 ```
 
-### 3.2 Setup Authentication Middleware
+### 5.2 Implement Core Middleware
+**Time**: 1.5 hours
+```typescript
+// Tasks:
+- Create authentication middleware
+- Implement rate limiting (user and IP based)
+- Add request validation middleware
+- Implement request logging
+- Test: Middleware chain works correctly
+```
+
+### 5.3 Implement V1 API Routes
+**Time**: 3 hours
+```typescript
+// Tasks:
+- Create /api/v1/auth routes (thin layer)
+- Create /api/v1/questions routes
+- Create /api/v1/quiz routes
+- Create /api/v1/admin routes
+- Test: All endpoints return expected responses
+```
+
+### 5.4 Implement WebSocket Support
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Setup WebSocket server
+- Implement real-time quiz updates
+- Add progress notifications
+- Handle connection management
+- Test: WebSocket events work
+```
+
+## 6. Event System Implementation 🟢
+
+### 6.1 Define Domain Events
 **Time**: 1 hour
+**NEW TASK**
 ```typescript
-// apps/api/src/middleware/auth.ts
 // Tasks:
-- Create JWT validation middleware
-- Create user context decorator
-- Add role-based access control
-- Test: Protected routes require valid JWT
+- Create event type definitions
+- Define quiz events
+- Define user events
+- Define progress events
+- Test: Events are properly typed
 ```
 
-### 3.3 Implement Auth Endpoints
+### 6.2 Implement Event Handlers
 **Time**: 2 hours
-```typescript
-// apps/api/src/routes/auth.ts
-// Tasks:
-- POST /auth/login (mock KeyCloak for now)
-- POST /auth/refresh
-- GET /auth/me
-- Test: Can login and get user profile
-```
-
-## 4. Question Management Tasks 🟡
-
-### 4.1 Question Query Endpoints
-**Time**: 2 hours
-```typescript
-// apps/api/src/routes/questions.ts
-// Tasks:
-- GET /questions with pagination
-- GET /questions/:id
-- Add filtering by examType, category
-- Apply role-based filtering (guest vs premium)
-- Test: Returns questions with options
-```
-
-### 4.2 Question CRUD for Admin
-**Time**: 2 hours
+**NEW TASK**
 ```typescript
 // Tasks:
-- POST /questions (admin only)
-- PUT /questions/:id (admin only)
-- DELETE /questions/:id (soft delete)
-- Test: Admin can create/update questions
+- Create badge unlock handler
+- Create progress update handler
+- Create notification handler
+- Create audit log handler
+- Test: Handlers process events correctly
 ```
 
-### 4.3 Question Service Layer
-**Time**: 1 hour
-```typescript
-// apps/api/src/services/questions.ts
-// Tasks:
-- Extract business logic from routes
-- Add validation functions
-- Add question randomization logic
-- Test: Service functions work correctly
-```
+## 7. Frontend Foundation Tasks 🟢
 
-## 5. Quiz Session Tasks 🟡
-
-### 5.1 Session Management
-**Time**: 2 hours
-```typescript
-// apps/api/src/routes/quiz.ts
-// Tasks:
-- POST /quiz/start
-- POST /quiz/:sessionId/answer
-- GET /quiz/:sessionId/current
-- GET /quiz/:sessionId/results
-- Test: Complete quiz flow works
-```
-
-### 5.2 Progress Tracking
-**Time**: 1 hour
-```typescript
-// Tasks:
-- Update user progress after each answer
-- Calculate accuracy per category
-- Track study time
-- Test: Progress updates correctly
-```
-
-## 6. Frontend Foundation Tasks 🟢
-
-### 6.1 Setup SvelteKit Project
+### 7.1 Setup SvelteKit Project
 **Time**: 30 minutes
 ```bash
 # Tasks:
 - Initialize SvelteKit with TypeScript
 - Configure TailwindCSS
 - Setup routing structure
+- Configure API client
 - Test: Dev server starts, TailwindCSS works
 ```
 
-### 6.2 Create Layout Components
+### 7.2 Create Layout Components
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
 - Root layout with navigation
 - Dark/light theme toggle
 - Responsive mobile menu
+- Loading states
 - Test: Layout responsive on all screen sizes
 ```
 
-### 6.3 Setup API Client
+### 7.3 Setup State Management
 **Time**: 1 hour
+**REVISED TASK**
 ```typescript
-// apps/web/src/lib/api/client.ts
 // Tasks:
-- Create typed API client using shared types
-- Add authentication header injection
-- Add error handling
-- Test: Can make API calls from frontend
+- Create typed Svelte stores
+- Implement auth store with caching
+- Add quiz session store
+- Create progress store
+- Test: State management works correctly
 ```
 
-## 7. Core UI Implementation Tasks 🟢
+### 7.4 Implement API Client
+**Time**: 1.5 hours
+**REVISED TASK**
+```typescript
+// Tasks:
+- Create typed API client using shared types
+- Add automatic retry logic
+- Implement request/response interceptors
+- Add offline queue
+- Test: API calls work with proper error handling
+```
 
-### 7.1 Authentication Flow
+## 8. Core UI Implementation Tasks 🟢
+
+### 8.1 Authentication Flow
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
-- Login page
-- Registration page (if needed)
-- Auth state management (stores)
-- Protected route handling
-- Test: Can login and access protected pages
+- Login page with KeyCloak integration
+- Token refresh handling
+- Protected route guards
+- Logout functionality
+- Test: Complete auth flow works
 ```
 
-### 7.2 Quiz Interface
+### 8.2 Quiz Interface
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
-- Quiz start page (select question count)
-- Question display component
-- Answer selection (radio/checkbox)
-- Submit answer and show feedback
-- Results page
+- Quiz configuration page
+- Question display with images
+- Answer selection components
+- Real-time progress display
+- Results page with statistics
 - Test: Complete quiz flow in UI
 ```
 
-### 7.3 Question List Page
+### 8.3 Question Browser
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
-- Questions grid/list view
-- Pagination component
-- Filter by exam type and category
+- Question grid/list view
+- Advanced filtering
+- Pagination with caching
 - Search functionality
-- Test: Can browse and filter questions
+- Bookmark feature
+- Test: Browsing and filtering work smoothly
 ```
 
-## 8. Admin Interface Tasks 🟢
+## 9. Admin Interface Tasks 🟢
 
-### 8.1 Admin Dashboard
+### 9.1 Admin Dashboard
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
-- Admin layout
-- Navigation menu
-- Basic statistics display
-- Test: Admin can access dashboard
+- Admin layout and navigation
+- Statistics overview
+- Recent activity feed
+- System health indicators
+- Test: Dashboard displays real data
 ```
 
-### 8.2 Question Management UI
+### 9.2 Question Management
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
-- Question list with actions
-- Create question form
-- Edit question form
-- Markdown preview
-- Test: Admin can CRUD questions
+- Question CRUD interface
+- Rich text editor
+- Image upload
+- Bulk operations
+- Version history viewer
+- Test: All admin operations work
 ```
 
-### 8.3 Bulk Import
+### 9.3 User Management
 **Time**: 2 hours
+**NEW TASK**
 ```svelte
 <!-- Tasks: -->
-- CSV upload component
-- Import preview
-- Validation display
-- Test: Can import questions from CSV
+- User list with filters
+- Role management
+- Subscription management
+- Activity monitoring
+- Test: User management features work
 ```
 
-## 9. Testing Setup Tasks 🟡
+## 10. Testing & Quality Tasks 🟡
 
-### 9.1 Unit Test Configuration
+### 10.1 Unit Test Setup
 **Time**: 1 hour
 ```typescript
 // Tasks:
-- Setup Vitest for both apps
-- Configure test utilities
-- Add example tests
-- Test: `bun test` runs successfully
+- Configure Vitest for monorepo
+- Setup test utilities
+- Create test factories
+- Add coverage reporting
+- Test: `bun test` runs all tests
 ```
 
-### 9.2 API Integration Tests
-**Time**: 2 hours
+### 10.2 Integration Test Suite
+**Time**: 3 hours
 ```typescript
 // Tasks:
 - Setup test database
-- Test auth endpoints
-- Test question endpoints
-- Test quiz flow
-- Test: All API endpoints have tests
+- Test all service methods
+- Test repository operations
+- Test API endpoints
+- Test: Integration tests pass
 ```
 
-### 9.3 Component Tests
+### 10.3 E2E Test Suite
 **Time**: 2 hours
 ```typescript
 // Tasks:
-- Setup Testing Library
-- Test key components
-- Test form validation
-- Test: UI components have tests
+- Setup Playwright
+- Test authentication flow
+- Test complete quiz flow
+- Test admin operations
+- Test: E2E tests pass
 ```
 
-## 10. DevOps Tasks 🟢
+### 10.4 Performance Testing
+**Time**: 2 hours
+**NEW TASK**
+```typescript
+// Tasks:
+- Setup k6 for load testing
+- Test API endpoints under load
+- Measure response times
+- Identify bottlenecks
+- Test: Meets performance targets
+```
 
-### 10.1 CI/CD Pipeline
-**Time**: 1 hour
+## 11. DevOps & Deployment Tasks 🟢
+
+### 11.1 CI/CD Pipeline
+**Time**: 2 hours
 ```yaml
-# .github/workflows/ci.yml
 # Tasks:
 - Setup GitHub Actions
-- Run tests on PR
-- Type checking
-- Linting
-- Test: CI runs on push
+- Configure test matrix
+- Add build verification
+- Setup deployment stages
+- Test: CI runs on every push
 ```
 
-### 10.2 Dockerfile Creation
-**Time**: 1 hour
+### 11.2 Container Optimization
+**Time**: 2 hours
 ```dockerfile
 # Tasks:
-- Create Dockerfile for API
-- Create Dockerfile for Web
-- Optimize for production
-- Test: Containers build successfully
+- Create multi-stage Dockerfiles
+- Optimize image sizes
+- Add health checks
+- Configure for production
+- Test: Containers run efficiently
 ```
 
-### 10.3 K8s Manifests (Basic)
-**Time**: 1 hour
+### 11.3 Kubernetes Deployment
+**Time**: 2 hours
 ```yaml
 # Tasks:
-- Deployment for API
-- Deployment for Web
-- Services
-- Ingress
-- Test: Can deploy to local K8s
+- Create K8s manifests
+- Add ConfigMaps for config
+- Setup Secrets management
+- Configure autoscaling
+- Test: Deploys to local K8s
+```
+
+### 11.4 Monitoring Setup
+**Time**: 2 hours
+**NEW TASK**
+```yaml
+# Tasks:
+- Deploy Prometheus
+- Configure Grafana dashboards
+- Setup alerts
+- Add log aggregation
+- Test: Metrics and logs collected
 ```
 
 ## Task Dependencies
 
 ```mermaid
 graph TD
-    A[1. Project Setup] --> B[2. Database Setup]
-    B --> C[3. API Server Setup]
-    C --> D[4. Question Management]
-    C --> E[5. Quiz Session]
-    A --> F[6. Frontend Foundation]
-    F --> G[7. Core UI]
-    G --> H[8. Admin Interface]
-    C --> I[9. Testing Setup]
-    F --> I
-    All --> J[10. DevOps]
+    A[1. Project Setup] --> B[2. Architecture Foundation]
+    B --> C[3. Database Setup]
+    C --> D[4. Service Layer]
+    D --> E[5. API Layer]
+    E --> F[6. Event System]
+    
+    A --> G[7. Frontend Foundation]
+    G --> H[8. Core UI]
+    H --> I[9. Admin Interface]
+    
+    D --> J[10. Testing]
+    G --> J
+    
+    All --> K[11. DevOps]
 ```
 
 ## Definition of Done
 
 Each task is complete when:
-1. ✅ Code is implemented
-2. ✅ Tests are written and passing
+1. ✅ Code is implemented following architecture patterns
+2. ✅ Tests are written and passing (minimum 80% coverage)
 3. ✅ TypeScript has no errors
 4. ✅ Code follows project conventions
-5. ✅ Feature works end-to-end
+5. ✅ Performance targets are met
+6. ✅ Documentation is updated
+7. ✅ Feature works end-to-end
 
-## Daily Workflow
+## Revised Timeline
 
-1. Pick next task from list
-2. Write tests first (TDD)
-3. Implement feature
-4. Verify tests pass
-5. Test manually
-6. Commit with descriptive message
-7. Update task status
+- **Week 1**: Tasks 1-2 (Setup & Architecture Foundation)
+- **Week 2**: Tasks 3-4 (Database & Service Layer)
+- **Week 3**: Tasks 5-6 (API & Events)
+- **Week 4**: Tasks 7-8 (Frontend Implementation)
+- **Week 5**: Tasks 9-10 (Admin & Testing)
+- **Week 6**: Task 11 (DevOps & Deployment)
 
-## Estimated Timeline
+Total estimate: ~120-140 hours of development time (increased due to proper architecture)
 
-- **Week 1**: Tasks 1-3 (Setup & Foundation)
-- **Week 2**: Tasks 4-5 (Core API Features)
-- **Week 3**: Tasks 6-7 (Frontend Implementation)
-- **Week 4**: Tasks 8-10 (Admin & Polish)
+## Critical Path
 
-Total estimate: ~60-80 hours of development time
+The following tasks are on the critical path and block other work:
+1. Architecture Foundation (blocks everything)
+2. Database + Repositories (blocks services)
+3. Service Layer (blocks API routes)
+4. API Routes (blocks frontend integration)
 
-## Next Steps After Phase 1
+## Risk Mitigation
 
-Once all Phase 1 tasks are complete:
-1. Deploy to production K8s cluster
-2. User testing and feedback
-3. Plan Phase 2 features (community, gamification, payments)
+- **Performance Risk**: Implement caching early
+- **Complexity Risk**: Keep services focused and small
+- **Integration Risk**: Test service interactions thoroughly
+- **Scale Risk**: Design for horizontal scaling from start

@@ -11,6 +11,9 @@ This document defines coding conventions and best practices for the Cisco Quiz A
 3. **Small Functions**: Single responsibility, <20 lines preferred
 4. **Descriptive Names**: Self-documenting code
 5. **Test-Driven**: Write tests before implementation
+6. **Layered Architecture**: Strict separation of concerns
+7. **Dependency Injection**: Services receive dependencies via constructor
+8. **Event-Driven**: Use events for cross-cutting concerns
 
 ## TypeScript Standards
 
@@ -107,19 +110,28 @@ export type UserRole = 'guest' | 'user' | 'premium' | 'admin';
 
 ```
 src/
-├── routes/          # API endpoints
-│   ├── auth.ts     # One file per resource
-│   ├── questions.ts
-│   └── quiz.ts
-├── services/        # Business logic
+├── routes/          # API endpoints (thin HTTP layer)
+│   ├── v1/         # Versioned routes
+│   │   ├── auth.routes.ts
+│   │   └── quiz.routes.ts
+│   └── health.ts   # Health check
+├── services/        # Business logic layer
 │   ├── auth.service.ts
 │   └── quiz.service.ts
-├── db/             # Database related
+├── repositories/    # Data access layer
+│   ├── base.repository.ts
+│   └── user.repository.ts
+├── db/             # Database schema
 │   ├── schema.ts
-│   └── queries/    # Complex queries
-├── utils/          # Shared utilities
-├── types/          # Shared type definitions
-└── middleware/     # Express/Elysia middleware
+│   └── migrations/
+├── lib/            # Infrastructure
+│   ├── cache.ts
+│   └── event-bus.ts
+├── interfaces/     # TypeScript interfaces
+├── events/         # Domain events
+├── errors/         # Custom errors
+├── utils/          # Utilities
+└── middleware/     # HTTP middleware
 ```
 
 ### Import Order

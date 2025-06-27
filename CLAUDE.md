@@ -18,23 +18,32 @@ A web-based quiz application for Cisco certification exam preparation (CCNP, CCI
 3. Use Zod for runtime validation
 4. Database schema drives the application
 
+### 🏗️ Service Layer Architecture
+**Clean architecture with proper separation of concerns:**
+1. Thin HTTP routes layer (request/response only)
+2. Service layer for business logic
+3. Repository layer for data access
+4. Event-driven communication between services
+
 ## Tech Stack
 
 - **Frontend**: SvelteKit + TypeScript + TailwindCSS
 - **Backend**: Bun + Elysia + Drizzle ORM
-- **Database**: PostgreSQL 16
+- **Database**: PostgreSQL 16 + Redis (caching)
 - **Auth**: KeyCloak
+- **Architecture**: Service Layer + Repository Pattern + Event Bus
 - **Deployment**: Self-hosted K8s cluster
 
 ## Key Documentation
 
+- **Architecture Decisions**: @docs/adr/ - Architecture Decision Records (ADRs)
 - **Claude Instructions**: @.claude/instructions.md - Specific instructions for Claude Code
 - **Commit Convention**: @.claude/commit-convention.md - Git commit message guidelines
-- **Project Structure**: @docs/project-structure.md - Complete project organization and architecture
+- **Project Structure**: @docs/project-structure.md - Complete project organization with service layer
 - **Setup Guide**: @docs/project-setup.md - Complete environment setup instructions
 - **Database Schema**: @docs/database-schema.md - Drizzle ORM schemas and relations
 - **API Specification**: @docs/api-specification.md - All endpoint definitions
-- **Task List**: @docs/task-list.md - Phase 1 implementation tasks
+- **Task List**: @docs/task-list.md - Phase 1 implementation tasks (revised for new architecture)
 - **Coding Standards**: @docs/coding-standards.md - Development conventions
 
 ## Quick Start
@@ -79,15 +88,22 @@ bun test path/to/feature.test.ts
 # Improve code while keeping tests green
 ```
 
-## Current Phase: Phase 1
+## Current Status
 
-Building core functionality with TDD:
-- ✅ Basic quiz functionality (single/multiple choice)
-- ✅ User authentication via KeyCloak
-- ✅ Progress tracking
-- ✅ Admin question management
-- ⏳ Responsive UI
-- ⏳ Complete test coverage
+### Completed:
+- ✅ Project setup and monorepo structure
+- ✅ Docker environment (PostgreSQL + KeyCloak)
+- ✅ Environment configuration with validation
+- ✅ Architecture documentation (ADRs)
+
+### In Progress: Phase 1
+- 🔄 Service layer architecture implementation
+- 🔄 Repository pattern for data access
+- 🔄 Redis caching integration
+- 📋 Basic quiz functionality
+- 📋 User authentication via KeyCloak
+- 📋 Progress tracking and gamification
+- 📋 Admin interface
 
 See @docs/task-list.md for detailed implementation tasks.
 
@@ -115,11 +131,21 @@ See @docs/task-list.md for detailed implementation tasks.
 
 Required in `.env`:
 ```env
+# Database
 DATABASE_URL=postgresql://postgres:password@localhost:5432/cisco_quiz
+REDIS_URL=redis://localhost:6379
+
+# Authentication
 KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=cisco-quiz
 JWT_SECRET=<generate-secure-key>
+
+# External Services
 BMAC_WEBHOOK_SECRET=<from-buy-me-a-coffee>
+
+# Application
+API_PORT=4000
+NODE_ENV=development
 ```
 
 ## Testing Commands
@@ -153,12 +179,17 @@ bun run docker:up       # Start PostgreSQL & KeyCloak
 bun run docker:down     # Stop services
 ```
 
-## Architecture Decisions
+## Architecture Highlights
 
-1. **TDD Mandatory**: No features without tests
-2. **Schema-First**: TypeSpec → OpenAPI → Implementation
-3. **Type Safety**: Drizzle ORM for type-safe database queries
-4. **Monorepo**: Shared types between frontend/backend
+1. **Service Layer**: Clean separation of concerns (Routes → Services → Repositories)
+2. **Event-Driven**: Loosely coupled services communicate via events
+3. **Multi-Level Caching**: Redis for sessions, entities, queries, and computed data
+4. **Repository Pattern**: Database abstraction for easy testing and flexibility
+5. **TDD Mandatory**: No features without tests (80% coverage minimum)
+6. **Schema-First**: TypeSpec → OpenAPI → Implementation
+7. **Type Safety**: End-to-end type safety with TypeScript
+
+See @docs/adr/ for detailed architecture decisions.
 
 ## Important Notes
 

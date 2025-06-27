@@ -1,4 +1,4 @@
-# Updated Project Structure for Claude Code
+# Updated Project Structure with Service Layer Architecture
 
 ## Recommended Folder Structure
 
@@ -15,19 +15,76 @@ quiz-app/
 ├── apps/                       # Application packages
 │   ├── web/                    # SvelteKit frontend
 │   │   ├── src/
+│   │   │   ├── lib/
+│   │   │   │   ├── api/       # API client layer
+│   │   │   │   ├── stores/    # Svelte stores
+│   │   │   │   └── utils/
+│   │   │   ├── routes/
+│   │   │   └── app.html
 │   │   ├── static/
 │   │   ├── package.json
 │   │   └── svelte.config.js
 │   │
-│   └── api/                    # Elysia backend
+│   └── api/                    # Elysia backend (Service Layer Architecture)
 │       ├── src/
-│       │   ├── index.ts
-│       │   ├── routes/
-│       │   ├── services/
-│       │   ├── db/
+│       │   ├── index.ts        # Application entry point
+│       │   ├── config/         # Configuration management
+│       │   │   ├── index.ts
+│       │   │   ├── database.ts
+│       │   │   └── redis.ts
+│       │   ├── routes/         # HTTP route handlers (thin layer)
+│       │   │   ├── v1/         # Versioned API routes
+│       │   │   │   ├── auth.routes.ts
+│       │   │   │   ├── questions.routes.ts
+│       │   │   │   ├── quiz.routes.ts
+│       │   │   │   └── admin.routes.ts
+│       │   │   └── health.ts
+│       │   ├── services/       # Business logic layer
+│       │   │   ├── auth.service.ts
+│       │   │   ├── question.service.ts
+│       │   │   ├── quiz.service.ts
+│       │   │   ├── user.service.ts
+│       │   │   └── progress.service.ts
+│       │   ├── repositories/   # Data access layer
+│       │   │   ├── base.repository.ts
+│       │   │   ├── question.repository.ts
+│       │   │   ├── user.repository.ts
+│       │   │   ├── quiz.repository.ts
+│       │   │   └── progress.repository.ts
+│       │   ├── db/            # Database schema and migrations
 │       │   │   ├── schema.ts
-│       │   │   └── migrations/
-│       │   └── middleware/
+│       │   │   ├── relations.ts
+│       │   │   ├── migrations/
+│       │   │   ├── seeds/
+│       │   │   └── index.ts
+│       │   ├── lib/           # Infrastructure services
+│       │   │   ├── cache.ts   # Redis cache service
+│       │   │   ├── event-bus.ts # Event bus implementation
+│       │   │   ├── logger.ts  # Structured logging
+│       │   │   └── monitoring.ts # OpenTelemetry
+│       │   ├── middleware/    # Express/Elysia middleware
+│       │   │   ├── auth.middleware.ts
+│       │   │   ├── rate-limit.middleware.ts
+│       │   │   ├── validation.middleware.ts
+│       │   │   └── error.middleware.ts
+│       │   ├── interfaces/    # TypeScript interfaces
+│       │   │   ├── repository.ts
+│       │   │   ├── service.ts
+│       │   │   ├── cache.ts
+│       │   │   └── event-bus.ts
+│       │   ├── events/        # Domain events
+│       │   │   ├── quiz.events.ts
+│       │   │   ├── user.events.ts
+│       │   │   └── handlers/
+│       │   ├── errors/        # Custom error classes
+│       │   │   ├── app.error.ts
+│       │   │   ├── validation.error.ts
+│       │   │   └── auth.error.ts
+│       │   └── utils/         # Utility functions
+│       ├── tests/            # Test files
+│       │   ├── unit/
+│       │   ├── integration/
+│       │   └── fixtures/
 │       ├── package.json
 │       └── drizzle.config.ts
 │
@@ -48,7 +105,8 @@ quiz-app/
 │   ├── database-schema.md     # Complete schema documentation
 │   ├── api-specification.md   # API endpoint details
 │   ├── task-list.md          # Implementation tasks
-│   └── coding-standards.md    # Development conventions
+│   ├── coding-standards.md    # Development conventions
+│   └── architecture-decisions.md # Architecture documentation
 │
 ├── docker/                    # Container configurations
 │   ├── docker-compose.yml
@@ -96,16 +154,31 @@ quiz-app/
 - All detailed docs in `/docs` folder
 - CLAUDE.md references these with relative paths
 - Each doc has a specific purpose
+- Architecture decisions documented separately
 
-### 3. Source Code Structure
+### 3. Service Layer Architecture
+- **Routes**: Thin HTTP layer, handles requests/responses only
+- **Services**: Business logic, orchestrates operations
+- **Repositories**: Data access abstraction
+- **Events**: Decoupled communication between services
+
+### 4. Source Code Structure
 - Monorepo with Bun workspaces
 - Clear separation between apps and shared packages
 - Database schemas co-located with API
+- Versioned API routes (`/api/v1/`)
 
-### 4. Configuration Files
+### 5. Infrastructure Services
+- **Cache**: Redis integration for performance
+- **Event Bus**: For async operations and decoupling
+- **Logger**: Structured logging with trace IDs
+- **Monitoring**: OpenTelemetry integration
+
+### 6. Configuration Files
 - Root config files for monorepo setup
 - App-specific configs in their directories
 - Docker and K8s configs isolated
+- Environment-specific configurations
 
 ## File Creation Order
 
@@ -131,11 +204,12 @@ In CLAUDE.md, reference other files like:
 ```markdown
 ## Key Documentation
 
-- **Setup Guide**: [docs/PROJECT_SETUP.md](docs/PROJECT_SETUP.md)
-- **Database Schema**: [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
-- **API Specification**: [docs/API_SPECIFICATION.md](docs/API_SPECIFICATION.md)
-- **Task List**: [docs/TASK_LIST.md](docs/TASK_LIST.md)
-- **Coding Standards**: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
+- **Setup Guide**: [docs/project-setup.md](docs/project-setup.md)
+- **Database Schema**: [docs/database-schema.md](docs/database-schema.md)
+- **API Specification**: [docs/api-specification.md](docs/api-specification.md)
+- **Task List**: [docs/task-list.md](docs/task-list.md)
+- **Coding Standards**: [docs/coding-standards.md](docs/coding-standards.md)
+- **Architecture Decisions**: [docs/architecture-decisions.md](docs/architecture-decisions.md)
 ```
 
 This allows Claude Code to navigate to detailed documentation when needed while keeping the main CLAUDE.md concise.
