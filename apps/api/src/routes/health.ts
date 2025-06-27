@@ -187,7 +187,7 @@ export const healthRoutes = new Hono<AppEnv>()
     const overallStatus = allHealthy ? (hasWarnings ? 'degraded' : 'ok') : 'error';
     
     // Set appropriate status code
-    const statusCode = !allHealthy ? 503 : (hasWarnings ? 200 : 200);
+    const statusCode = allHealthy ? 200 : 503;
 
     return c.json({
       status: overallStatus,
