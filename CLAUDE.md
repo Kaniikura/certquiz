@@ -1,6 +1,6 @@
-# Cisco Quiz App
+# CertQuiz
 
-A web-based quiz application for Cisco certification exam preparation (CCNP, CCIE). Built with modern TypeScript stack emphasizing type safety and developer experience.
+A web-based quiz application for technical certification exam preparation. Built with modern TypeScript stack emphasizing type safety and developer experience. Supports multiple exam types including CCNA, CCNP ENCOR, CCNP ENARSI, and other technical certifications.
 
 ## Core Development Principles
 
@@ -132,12 +132,12 @@ See @docs/task-list.md for detailed implementation tasks.
 Required in `.env`:
 ```env
 # Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/cisco_quiz
+DATABASE_URL=postgresql://postgres:password@localhost:5432/certquiz
 REDIS_URL=redis://localhost:6379
 
 # Authentication
 KEYCLOAK_URL=http://localhost:8080
-KEYCLOAK_REALM=cisco-quiz
+KEYCLOAK_REALM=certquiz
 JWT_SECRET=<generate-secure-key>
 
 # External Services

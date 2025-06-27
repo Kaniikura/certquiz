@@ -2,7 +2,7 @@
 
 ## Overview
 
-Architecture decisions for the Cisco Quiz App are documented as Architecture Decision Records (ADRs) following industry best practices.
+Architecture decisions for CertQuiz are documented as Architecture Decision Records (ADRs) following industry best practices.
 
 ## 📁 ADR Location
 

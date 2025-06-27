@@ -1,6 +1,6 @@
-# Cisco Quiz App
+# CertQuiz
 
-A modern web application for Cisco certification exam preparation (CCNP, CCIE), built with TypeScript and emphasizing test-driven development.
+A modern web application for technical certification exam preparation, built with TypeScript and emphasizing test-driven development. Supports various technical certifications including networking, security, and cloud computing exams.
 
 ## 🚀 Quick Start
 
@@ -9,7 +9,7 @@ A modern web application for Cisco certification exam preparation (CCNP, CCIE), 
 
 # Clone and install
 git clone <repository-url>
-cd cisco-quiz-app
+cd cert-quiz
 bun install
 
 # Start services
@@ -35,7 +35,7 @@ KeyCloak: http://localhost:8080
 ## 📁 Project Structure
 
 ```
-cisco-quiz-app/
+cert-quiz/
 ├── apps/
 │   ├── web/          # SvelteKit frontend
 │   └── api/          # Elysia backend API
@@ -116,9 +116,9 @@ bun run docker:down      # Stop services
 
 Create `.env` file:
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/cisco_quiz
+DATABASE_URL=postgresql://postgres:password@localhost:5432/certquiz
 KEYCLOAK_URL=http://localhost:8080
-KEYCLOAK_REALM=cisco-quiz
+KEYCLOAK_REALM=certquiz
 JWT_SECRET=<generate-secure-key>
 BMAC_WEBHOOK_SECRET=<from-buy-me-a-coffee>
 ```

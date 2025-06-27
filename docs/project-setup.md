@@ -12,7 +12,7 @@
 ```bash
 # Clone and setup
 git clone <repository-url>
-cd quiz-app
+cd cert-quiz
 bun install
 bun run setup
 
@@ -30,8 +30,8 @@ cp .env.example .env
 
 # Edit .env with your values
 # Required variables:
-DATABASE_URL=postgresql://postgres:password@localhost:5432/cisco_quiz
-KEYCLOAK_REALM=cisco-quiz
+DATABASE_URL=postgresql://postgres:password@localhost:5432/certquiz
+KEYCLOAK_REALM=certquiz
 JWT_SECRET=generate-a-secure-random-string
 BMAC_WEBHOOK_SECRET=from-buy-me-a-coffee-dashboard
 ```
@@ -47,7 +47,7 @@ mkdir -p .claude docs scripts tests
 # Initialize workspaces
 cat > package.json << 'EOF'
 {
-  "name": "quiz-app",
+  "name": "cert-quiz",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
@@ -91,7 +91,7 @@ cd packages/shared
 
 cat > package.json << 'EOF'
 {
-  "name": "@cisco-quiz/shared",
+  "name": "@certquiz/shared",
   "version": "1.0.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -176,7 +176,7 @@ cd apps/api
 
 cat > package.json << 'EOF'
 {
-  "name": "@cisco-quiz/api",
+  "name": "@certquiz/api",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -194,7 +194,7 @@ cat > package.json << 'EOF'
     "drizzle-orm": "^0.29.0",
     "postgres": "^3.4.0",
     "zod": "^3.22.0",
-    "@cisco-quiz/shared": "workspace:*"
+    "@certquiz/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -222,7 +222,7 @@ const app = new Elysia()
   .use(swagger({
     documentation: {
       info: {
-        title: 'Cisco Quiz API',
+        title: 'CertQuiz API',
         version: '1.0.0'
       }
     }
@@ -266,7 +266,7 @@ bunx create-svelte@latest . --template=skeleton-ts --no-install
 
 cat > package.json << 'EOF'
 {
-  "name": "@cisco-quiz/web",
+  "name": "@certquiz/web",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -290,7 +290,7 @@ cat > package.json << 'EOF'
     "postcss": "^8.4.0"
   },
   "dependencies": {
-    "@cisco-quiz/shared": "workspace:*",
+    "@certquiz/shared": "workspace:*",
     "bits-ui": "^0.17.0",
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.0",
@@ -328,7 +328,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: cisco_quiz
+      POSTGRES_DB: certquiz
     ports:
       - "5432:5432"
     volumes:
@@ -378,7 +378,7 @@ cat > scripts/setup.sh << 'EOF'
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Cisco Quiz App setup..."
+echo "🚀 Starting CertQuiz setup..."
 
 # Check prerequisites
 command -v bun >/dev/null 2>&1 || { echo "❌ Bun is required but not installed."; exit 1; }
@@ -441,8 +441,8 @@ cat > tsconfig.json << 'EOF'
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "@cisco-quiz/shared": ["./packages/shared/src"],
-      "@cisco-quiz/shared/*": ["./packages/shared/src/*"]
+      "@certquiz/shared": ["./packages/shared/src"],
+      "@certquiz/shared/*": ["./packages/shared/src/*"]
     }
   },
   "include": ["apps/*/src/**/*", "packages/*/src/**/*"],

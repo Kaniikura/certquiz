@@ -14,7 +14,7 @@
 
 ## Project Context
 
-You are implementing a Cisco Quiz Application. The main context is in `/CLAUDE.md` at the project root. Always read that first.
+You are implementing CertQuiz - a technical certification quiz application. The main context is in `/CLAUDE.md` at the project root. Always read that first.
 
 ## Implementation Approach
 
@@ -40,7 +40,7 @@ You are implementing a Cisco Quiz Application. The main context is in `/CLAUDE.m
 ```typescript
 // Import order
 1. External packages
-2. Internal packages (@cisco-quiz/*)
+2. Internal packages (@certquiz/*)
 3. Relative imports
 4. Type imports
 ```

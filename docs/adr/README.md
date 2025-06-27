@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory contains Architecture Decision Records (ADRs) for the Cisco Quiz App project.
+This directory contains Architecture Decision Records (ADRs) for the CertQuiz project.
 
 ## What is an ADR?
 

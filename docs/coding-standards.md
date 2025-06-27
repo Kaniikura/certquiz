@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines coding conventions and best practices for the Cisco Quiz App project. All code should follow these standards to ensure consistency and maintainability.
+This document defines coding conventions and best practices for the CertQuiz project. All code should follow these standards to ensure consistency and maintainability.
 
 ## General Principles
 
@@ -267,7 +267,7 @@ ALTER TABLE questions DROP COLUMN is_premium;
 <!-- ✅ Good: Script-first approach -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Question } from '@cisco-quiz/shared/types';
+  import type { Question } from '@certquiz/shared/types';
   
   // Props
   export let question: Question;
@@ -310,7 +310,7 @@ ALTER TABLE questions DROP COLUMN is_premium;
 // ✅ Good: Typed stores
 // stores/auth.ts
 import { writable, derived } from 'svelte/store';
-import type { User } from '@cisco-quiz/shared/types';
+import type { User } from '@certquiz/shared/types';
 
 function createAuthStore() {
   const { subscribe, set, update } = writable<User | null>(null);
