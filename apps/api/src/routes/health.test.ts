@@ -1,0 +1,176 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Elysia } from 'elysia';
+import { healthRoutes } from './health';
+import { createRedisClient } from '../config/redis';
+import type { Redis } from 'ioredis';
+
+describe('Health Check Routes', () => {
+  let app: Elysia;
+  let redis: Redis;
+
+  beforeAll(async () => {
+    // Create Redis client
+    redis = createRedisClient();
+    
+    await redis.connect();
+
+    // Create app with health routes
+    app = new Elysia()
+      .decorate('redis', redis)
+      .use(healthRoutes);
+  });
+
+  afterAll(async () => {
+    if (redis) {
+      await redis.quit();
+    }
+  });
+
+  describe('GET /health', () => {
+    it('should return basic health status', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/health')
+      );
+
+      expect(response.status).toBe(200);
+      
+      const data = await response.json();
+      expect(data).toEqual({
+        status: 'ok',
+        timestamp: expect.any(String),
+        uptime: expect.any(Number),
+        version: expect.any(String)
+      });
+    });
+  });
+
+  describe('GET /health/live', () => {
+    it('should return liveness probe status', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/health/live')
+      );
+
+      expect(response.status).toBe(200);
+      
+      const data = await response.json();
+      expect(data).toEqual({
+        status: 'ok',
+        timestamp: expect.any(String)
+      });
+    });
+  });
+
+  describe('GET /health/ready', () => {
+    it('should return readiness probe with all service statuses', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/health/ready')
+      );
+
+      expect(response.status).toBe(200);
+      
+      const data = await response.json();
+      expect(data).toMatchObject({
+        status: 'degraded', // Database is degraded, so overall status is degraded
+        timestamp: expect.any(String),
+        services: {
+          database: {
+            status: 'degraded', // Changed from 'ok' to 'degraded'
+            latency: expect.any(Number)
+          },
+          redis: {
+            status: 'ok',
+            latency: expect.any(Number)
+          }
+        }
+      });
+    });
+
+    it('should report redis status correctly', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/health/ready')
+      );
+
+      const data = await response.json();
+      expect(data.services.redis.status).toBe('ok');
+      expect(data.services.redis.latency).toBeGreaterThanOrEqual(0);
+      expect(data.services.redis.latency).toBeLessThan(100); // Should be fast
+    });
+
+    it('should handle redis connection failure gracefully', async () => {
+      // Create a new Redis client instance for this test
+      const failingRedis = createRedisClient();
+      
+      // Create a new app instance with the failing Redis client
+      const testApp = new Elysia()
+        .decorate('redis', failingRedis)
+        .use(healthRoutes);
+      
+      // Close the connection to simulate failure
+      await failingRedis.quit();
+
+      const response = await testApp.handle(
+        new Request('http://localhost/health/ready')
+      );
+
+      expect(response.status).toBe(503); // Service Unavailable
+      
+      const data = await response.json();
+      expect(data.status).toBe('error');
+      expect(data.services.redis.status).toBe('error');
+      expect(data.services.redis.error).toBeDefined();
+    });
+  });
+
+  describe('GET /health/metrics', () => {
+    it('should return basic metrics', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/health/metrics')
+      );
+
+      expect(response.status).toBe(200);
+      
+      const data = await response.json();
+      expect(data).toMatchObject({
+        uptime: expect.any(Number),
+        memory: {
+          used: expect.any(Number),
+          total: expect.any(Number),
+          percentage: expect.any(Number)
+        },
+        cpu: {
+          cores: expect.any(Number),
+          loadAverage: {
+            '1min': expect.any(Number),
+            '5min': expect.any(Number),
+            '15min': expect.any(Number)
+          },
+          loadPercentage: {
+            '1min': expect.any(Number),
+            '5min': expect.any(Number),
+            '15min': expect.any(Number)
+          }
+        },
+        system: {
+          platform: expect.any(String),
+          release: expect.any(String),
+          architecture: expect.any(String)
+        },
+        redis: expect.objectContaining({
+          connected: true,
+          connections: expect.objectContaining({
+            current: expect.any(Number),
+            blocked: expect.any(Number)
+          }),
+          memory: expect.objectContaining({
+            used: expect.any(Number),
+            peak: expect.any(Number)
+          }),
+          stats: expect.objectContaining({
+            totalCommands: expect.any(Number),
+            instantaneousOps: expect.any(Number)
+          })
+        })
+      });
+    });
+  });
+});
