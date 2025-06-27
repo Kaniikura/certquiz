@@ -1,13 +1,13 @@
+import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { serve } from '@hono/node-server';
-import type { AppEnv } from './types/app';
-import { healthRoutes } from './routes/health';
+import type { RedisClientType } from 'redis';
 import { env } from './config';
 import { getRedisClient } from './config/redis';
 import { createLogger } from './lib/logger';
-import type { RedisClientType } from 'redis';
+import { healthRoutes } from './routes/health';
+import type { AppEnv } from './types/app';
 
 const app = new Hono<AppEnv>();
 

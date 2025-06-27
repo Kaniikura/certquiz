@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validateEnv, loadEnv } from './env';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { loadEnv, validateEnv } from './env';
 
 describe('Environment Configuration', () => {
   const originalEnv = process.env;
@@ -28,9 +28,6 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-
-      if (!result.success) {
-      }
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -72,9 +69,6 @@ describe('Environment Configuration', () => {
       };
 
       const result = validateEnv();
-
-      if (!result.success) {
-      }
 
       expect(result.success).toBe(true);
       if (result.success) {

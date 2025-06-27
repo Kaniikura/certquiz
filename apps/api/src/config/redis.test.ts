@@ -1,49 +1,47 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { RedisClientType } from 'redis';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TestLogger } from '../lib/logger';
 import { createTestLogger, findLogByLevel } from '../lib/logger';
 import { createRedisClient, getRedisConfig } from './redis';
 
 // Test configuration generator for property-based testing
-class RedisTestConfig {
-  static generateValidUrls(): string[] {
-    return [
-      'redis://localhost:6379',
-      'redis://user:pass@redis.example.com:6380/0',
-      'redis://:password@localhost:6379/1',
-      'redis://localhost:6379/2',
-      'redis://127.0.0.1:6379',
-      'redis://redis-server:6379/0',
-    ];
-  }
+function generateValidUrls(): string[] {
+  return [
+    'redis://localhost:6379',
+    'redis://user:pass@redis.example.com:6380/0',
+    'redis://:password@localhost:6379/1',
+    'redis://localhost:6379/2',
+    'redis://127.0.0.1:6379',
+    'redis://redis-server:6379/0',
+  ];
+}
 
-  static generateInvalidUrls(): string[] {
-    return [
-      'not-a-valid-url',
-      'redis://[invalid url]',
-      '   ',
-      '',
-      // Note: 'redis://' is actually a valid URL, so we don't include it here
-    ];
-  }
+function generateInvalidUrls(): string[] {
+  return [
+    'not-a-valid-url',
+    'redis://[invalid url]',
+    '   ',
+    '',
+    // Note: 'redis://' is actually a valid URL, so we don't include it here
+  ];
+}
 
-  static generateValidButNonRedisUrls(): string[] {
-    return [
-      'http://wrong-protocol.com',
-      'redis://localhost:99999', // invalid port range but valid URL
-      'redis://localhost:-1', // negative port but valid URL format
-    ];
-  }
+function _generateValidButNonRedisUrls(): string[] {
+  return [
+    'http://wrong-protocol.com',
+    'redis://localhost:99999', // invalid port range but valid URL
+    'redis://localhost:-1', // negative port but valid URL format
+  ];
+}
 
-  static generateEdgeCaseConfigs(): Array<{ env: Record<string, string>; description: string }> {
-    return [
-      { env: {}, description: 'empty environment' },
-      { env: { REDIS_URL: '' }, description: 'empty REDIS_URL' },
-      { env: { REDIS_URL: '   ' }, description: 'whitespace REDIS_URL' },
-      { env: { REDIS_URL: 'redis://localhost:6379' }, description: 'basic URL' },
-      { env: { REDIS_URL: 'redis://user:pass@localhost:6379/0' }, description: 'URL with auth' },
-    ];
-  }
+function generateEdgeCaseConfigs(): Array<{ env: Record<string, string>; description: string }> {
+  return [
+    { env: {}, description: 'empty environment' },
+    { env: { REDIS_URL: '' }, description: 'empty REDIS_URL' },
+    { env: { REDIS_URL: '   ' }, description: 'whitespace REDIS_URL' },
+    { env: { REDIS_URL: 'redis://localhost:6379' }, description: 'basic URL' },
+    { env: { REDIS_URL: 'redis://user:pass@localhost:6379/0' }, description: 'URL with auth' },
+  ];
 }
 
 // Redis client lifecycle manager for test isolation
@@ -140,7 +138,7 @@ describe('Redis Configuration', () => {
     });
 
     describe('URL Parsing - Valid Cases', () => {
-      const validConfigs = RedisTestConfig.generateValidUrls().map((url) => ({
+      const validConfigs = generateValidUrls().map((url) => ({
         url,
         description: `should parse ${url}`,
       }));
@@ -159,7 +157,7 @@ describe('Redis Configuration', () => {
     });
 
     describe('URL Parsing - Invalid Cases', () => {
-      const invalidConfigs = RedisTestConfig.generateInvalidUrls().map((url) => ({
+      const invalidConfigs = generateInvalidUrls().map((url) => ({
         url,
         description: `should handle invalid URL: ${url}`,
       }));
@@ -186,7 +184,7 @@ describe('Redis Configuration', () => {
     });
 
     describe('Edge Case Configurations', () => {
-      const edgeCases = RedisTestConfig.generateEdgeCaseConfigs();
+      const edgeCases = generateEdgeCaseConfigs();
 
       it.each(edgeCases)('should handle $description correctly', ({ env }) => {
         const config = getRedisConfig(env, testLogger);
@@ -295,7 +293,9 @@ describe('Redis Configuration', () => {
         // Retrieve and parse
         const retrieved = await redis.get(key);
         expect(retrieved).toBeTruthy();
-        expect(JSON.parse(retrieved!)).toEqual(testData);
+        if (retrieved) {
+          expect(JSON.parse(retrieved)).toEqual(testData);
+        }
       });
 
       it('should handle hash operations', async () => {

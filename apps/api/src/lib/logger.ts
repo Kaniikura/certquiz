@@ -1,5 +1,5 @@
-import pino from 'pino';
 import { Writable } from 'node:stream';
+import pino from 'pino';
 
 /**
  * Create a pino logger instance with appropriate configuration

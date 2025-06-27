@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Hono } from 'hono';
+import type { RedisClientType } from 'redis';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createRedisClient } from '../config/redis';
 import type { AppEnv } from '../types/app';
 import { healthRoutes } from './health';
-import { createRedisClient } from '../config/redis';
-import type { RedisClientType } from 'redis';
 
 describe('Health Check Routes', () => {
   let app: Hono<AppEnv>;

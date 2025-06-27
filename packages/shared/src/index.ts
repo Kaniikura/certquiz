@@ -1,3 +1,69 @@
-export * from './types';
-export * from './constants';
-export * from './utils';
+// Re-export all named exports from constants
+export {
+  API_ENDPOINTS,
+  BADGE_REQUIREMENT_TYPES,
+  CONFIG,
+  ERROR_CODES,
+  EXAM_TYPES,
+  type ExamType,
+  QUESTION_CATEGORIES,
+  QUESTION_STATUS,
+  QUESTION_TYPES,
+  QUIZ_SIZES,
+  type QuestionStatus,
+  type QuestionType,
+  type QuizSize,
+  REPORT_TYPES,
+  USER_ROLES,
+  type UserRole,
+} from './constants';
+
+// Re-export all named exports from types
+export type {
+  ApiResponse,
+  AuthResponse,
+  AuthTokens,
+  Badge,
+  CategoryStats,
+  LoginCredentials,
+  ProblemReport,
+  Question,
+  QuestionOption,
+  QuizAnswerRequest,
+  QuizAnswerResponse,
+  QuizResultQuestion,
+  QuizResults,
+  QuizSession,
+  QuizStartRequest,
+  SessionQuestion,
+  Subscription,
+  User,
+  UserBadge,
+  UserProgress,
+} from './types';
+
+// Re-export all named exports from utils
+export {
+  apiError,
+  apiResponse,
+  calculateAccuracy,
+  calculateDuration,
+  calculateExperience,
+  calculateLevel,
+  debounce,
+  deepClone,
+  err,
+  formatDuration,
+  generateId,
+  hasRole,
+  isEmpty,
+  isErr,
+  isOk,
+  isValidEmail,
+  ok,
+  paginate,
+  type Result,
+  sanitizeHtml,
+  shuffle,
+  throttle,
+} from './utils';

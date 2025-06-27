@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createRedisClient, getRedisClient, closeRedisConnection } from '../config/redis';
 import type { RedisClientType } from 'redis';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { closeRedisConnection, createRedisClient, getRedisClient } from '../config/redis';
 
 describe('Redis Connection Integration', () => {
   let redis: RedisClientType;

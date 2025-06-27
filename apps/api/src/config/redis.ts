@@ -1,8 +1,8 @@
-import { createClient } from 'redis';
-import type { RedisClientOptions, RedisClientType } from 'redis';
 import { random } from 'es-toolkit';
-import { createLogger } from '../lib/logger';
 import type { Logger } from 'pino';
+import type { RedisClientOptions, RedisClientType } from 'redis';
+import { createClient } from 'redis';
+import { createLogger } from '../lib/logger';
 
 let logger = createLogger('redis');
 

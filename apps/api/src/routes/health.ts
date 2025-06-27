@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
-import type { AppEnv } from '../types/app';
-import type { RedisClientType } from 'redis';
 import os from 'node:os';
+import { Hono } from 'hono';
+import type { RedisClientType } from 'redis';
 import { createLogger } from '../lib/logger';
+import type { AppEnv } from '../types/app';
 
 const logger = createLogger('health');
 
@@ -53,7 +53,7 @@ interface ServiceHealthCheck {
   status: 'ok' | 'error' | 'degraded';
   latency: number;
   error?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -61,7 +61,7 @@ interface ServiceHealthCheck {
  */
 async function checkServiceHealth(
   name: string,
-  healthCheck: () => Promise<undefined | Record<string, any>>
+  healthCheck: () => Promise<undefined | Record<string, unknown>>
 ): Promise<ServiceHealthCheck> {
   const start = Date.now();
 
@@ -209,7 +209,7 @@ export const healthRoutes = new Hono<AppEnv>()
 
   .get('/metrics', async (c) => {
     const redis = c.get('redis');
-    const metrics: Record<string, any> = {
+    const metrics: Record<string, unknown> = {
       uptime: getUptime(),
       memory: getMemoryStats(),
       cpu: getCpuInfo(),
