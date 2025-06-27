@@ -4,24 +4,27 @@ import { z } from 'zod';
 const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url().startsWith('postgresql://'),
-  
+
   // Authentication
   KEYCLOAK_URL: z.string().url(),
   KEYCLOAK_REALM: z.string().min(1),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  
+
   // External services
   BMAC_WEBHOOK_SECRET: z.string().min(1),
-  
+
   // Server configuration
-  API_PORT: z.string().default('4000').transform((val) => parseInt(val, 10))
-    .refine((val) => !isNaN(val) && val > 0 && val < 65536, {
+  API_PORT: z
+    .string()
+    .default('4000')
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => !Number.isNaN(val) && val > 0 && val < 65536, {
       message: 'API_PORT must be a valid port number',
     }),
-  
+
   // Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  
+
   // Frontend URL (optional)
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
@@ -33,9 +36,7 @@ export type EnvConfig = z.infer<typeof envSchema> & {
 };
 
 // Result type for validation
-type ValidationResult<T> = 
-  | { success: true; data: T }
-  | { success: false; error: Error };
+type ValidationResult<T> = { success: true; data: T } | { success: false; error: Error };
 
 /**
  * Validates environment variables against the schema
@@ -63,13 +64,13 @@ export function validateEnv(): ValidationResult<z.infer<typeof envSchema>> {
  */
 export function loadEnv(): EnvConfig {
   const result = validateEnv();
-  
+
   if (!result.success) {
     throw result.error;
   }
-  
+
   const { NODE_ENV } = result.data;
-  
+
   return {
     ...result.data,
     isDevelopment: NODE_ENV === 'development',

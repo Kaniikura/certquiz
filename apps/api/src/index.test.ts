@@ -27,7 +27,7 @@ describe('Main App', () => {
       const response = await app.request('http://localhost/health', {
         method: 'OPTIONS',
         headers: {
-          'Origin': 'http://localhost:5173',
+          Origin: 'http://localhost:5173',
           'Access-Control-Request-Method': 'GET',
         },
       });
@@ -42,14 +42,14 @@ describe('Main App', () => {
       const response = await app.request('http://localhost/non-existent-route');
 
       expect(response.status).toBe(404);
-      
+
       const data = await response.json();
       expect(data).toEqual({
         success: false,
         error: {
           code: 'NOT_FOUND',
-          message: 'Route not found'
-        }
+          message: 'Route not found',
+        },
       });
     });
 
@@ -66,13 +66,13 @@ describe('Main App', () => {
       const response = await app.request('http://localhost/health');
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
       expect(data).toMatchObject({
         status: 'ok',
         timestamp: expect.any(String),
         uptime: expect.any(Number),
-        version: expect.any(String)
+        version: expect.any(String),
       });
     });
 
@@ -83,7 +83,7 @@ describe('Main App', () => {
       // (initializeRedis() only runs when import.meta.main is true)
       // and database check is intentionally degraded by design
       expect(response.status).toBe(503);
-      
+
       const data = await response.json();
       expect(data).toMatchObject({
         status: 'error',
@@ -91,12 +91,12 @@ describe('Main App', () => {
         services: {
           redis: {
             status: 'error',
-            error: 'Redis client not initialized'
+            error: 'Redis client not initialized',
           },
           database: {
-            status: 'degraded'
-          }
-        }
+            status: 'degraded',
+          },
+        },
       });
     });
   });
@@ -130,7 +130,7 @@ describe('Main App', () => {
       expect(getResponse.status).toBe(200);
 
       const optionsResponse = await app.request('http://localhost/health', {
-        method: 'OPTIONS'
+        method: 'OPTIONS',
       });
       expect(optionsResponse.status).toBe(204);
     });

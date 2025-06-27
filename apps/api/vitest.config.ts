@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import path from 'node:path';
 
 export default defineConfig({
   test: {
@@ -17,13 +17,13 @@ export default defineConfig({
       BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
       API_PORT: '4000',
       FRONTEND_URL: 'http://localhost:5173',
-      REDIS_URL: 'redis://localhost:6379'
-    }
+      REDIS_URL: 'redis://localhost:6379',
+    },
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@certquiz/shared': path.resolve(__dirname, '../../packages/shared/src')
-    }
-  }
+      '@certquiz/shared': path.resolve(__dirname, '../../packages/shared/src'),
+    },
+  },
 });

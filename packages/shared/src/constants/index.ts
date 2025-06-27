@@ -1,18 +1,18 @@
 // Quiz configuration
 export const QUIZ_SIZES = [1, 3, 5, 10] as const;
-export type QuizSize = typeof QUIZ_SIZES[number];
+export type QuizSize = (typeof QUIZ_SIZES)[number];
 
 export const EXAM_TYPES = ['CCNP', 'CCIE'] as const;
-export type ExamType = typeof EXAM_TYPES[number];
+export type ExamType = (typeof EXAM_TYPES)[number];
 
 export const USER_ROLES = ['guest', 'user', 'premium', 'admin'] as const;
-export type UserRole = typeof USER_ROLES[number];
+export type UserRole = (typeof USER_ROLES)[number];
 
 export const QUESTION_TYPES = ['single', 'multiple'] as const;
-export type QuestionType = typeof QUESTION_TYPES[number];
+export type QuestionType = (typeof QUESTION_TYPES)[number];
 
 export const QUESTION_STATUS = ['active', 'pending', 'archived'] as const;
-export type QuestionStatus = typeof QUESTION_STATUS[number];
+export type QuestionStatus = (typeof QUESTION_STATUS)[number];
 
 // Configuration
 export const CONFIG = Object.freeze({
@@ -83,22 +83,22 @@ export const ERROR_CODES = Object.freeze({
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
-  
+
   // Validation errors
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   INVALID_INPUT: 'INVALID_INPUT',
-  
+
   // Resource errors
   NOT_FOUND: 'NOT_FOUND',
   ALREADY_EXISTS: 'ALREADY_EXISTS',
-  
+
   // Permission errors
   FORBIDDEN: 'FORBIDDEN',
   INSUFFICIENT_PRIVILEGES: 'INSUFFICIENT_PRIVILEGES',
-  
+
   // Rate limiting
   RATE_LIMIT: 'RATE_LIMIT',
-  
+
   // Server errors
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   DATABASE_ERROR: 'DATABASE_ERROR',
@@ -122,18 +122,7 @@ export const REPORT_TYPES = Object.freeze({
 
 // Categories
 export const QUESTION_CATEGORIES = Object.freeze({
-  CCNP: [
-    'OSPF',
-    'EIGRP',
-    'BGP',
-    'MPLS',
-    'QoS',
-    'Security',
-    'IPv6',
-    'Multicast',
-    'VPN',
-    'SD-WAN',
-  ],
+  CCNP: ['OSPF', 'EIGRP', 'BGP', 'MPLS', 'QoS', 'Security', 'IPv6', 'Multicast', 'VPN', 'SD-WAN'],
   CCIE: [
     'Network Infrastructure',
     'Software Defined Infrastructure',

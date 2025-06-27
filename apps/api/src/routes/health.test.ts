@@ -12,7 +12,7 @@ describe('Health Check Routes', () => {
   beforeAll(async () => {
     // Create Redis client
     redis = createRedisClient();
-    
+
     await redis.connect();
 
     // Create app with health routes
@@ -35,13 +35,13 @@ describe('Health Check Routes', () => {
       const response = await app.request('http://localhost/health');
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
       expect(data).toEqual({
         status: 'ok',
         timestamp: expect.any(String),
         uptime: expect.any(Number),
-        version: expect.any(String)
+        version: expect.any(String),
       });
     });
   });
@@ -51,11 +51,11 @@ describe('Health Check Routes', () => {
       const response = await app.request('http://localhost/health/live');
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
       expect(data).toEqual({
         status: 'ok',
-        timestamp: expect.any(String)
+        timestamp: expect.any(String),
       });
     });
   });
@@ -65,7 +65,7 @@ describe('Health Check Routes', () => {
       const response = await app.request('http://localhost/health/ready');
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
       expect(data).toMatchObject({
         status: 'degraded', // Database is degraded, so overall status is degraded
@@ -73,13 +73,13 @@ describe('Health Check Routes', () => {
         services: {
           database: {
             status: 'degraded',
-            latency: expect.any(Number)
+            latency: expect.any(Number),
           },
           redis: {
             status: 'ok',
-            latency: expect.any(Number)
-          }
-        }
+            latency: expect.any(Number),
+          },
+        },
       });
     });
 
@@ -95,7 +95,7 @@ describe('Health Check Routes', () => {
     it('should handle redis connection failure gracefully', async () => {
       // Create a new app instance without Redis client (simulates failure)
       const testApp = new Hono<AppEnv>()
-        .use('*', async (c, next) => {
+        .use('*', async (_c, next) => {
           // Don't set redis client to simulate unavailable Redis
           await next();
         })
@@ -104,7 +104,7 @@ describe('Health Check Routes', () => {
       const response = await testApp.request('http://localhost/health/ready');
 
       expect(response.status).toBe(503); // Service Unavailable
-      
+
       const data = await response.json();
       expect(data.status).toBe('error');
       expect(data.services.redis.status).toBe('error');
@@ -117,48 +117,48 @@ describe('Health Check Routes', () => {
       const response = await app.request('http://localhost/health/metrics');
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
       expect(data).toMatchObject({
         uptime: expect.any(Number),
         memory: {
           used: expect.any(Number),
           total: expect.any(Number),
-          percentage: expect.any(Number)
+          percentage: expect.any(Number),
         },
         cpu: {
           cores: expect.any(Number),
           loadAverage: {
             '1min': expect.any(Number),
             '5min': expect.any(Number),
-            '15min': expect.any(Number)
+            '15min': expect.any(Number),
           },
           loadPercentage: {
             '1min': expect.any(Number),
             '5min': expect.any(Number),
-            '15min': expect.any(Number)
-          }
+            '15min': expect.any(Number),
+          },
         },
         system: {
           platform: expect.any(String),
           release: expect.any(String),
-          architecture: expect.any(String)
+          architecture: expect.any(String),
         },
         redis: expect.objectContaining({
           connected: true,
           connections: expect.objectContaining({
             current: expect.any(Number),
-            blocked: expect.any(Number)
+            blocked: expect.any(Number),
           }),
           memory: expect.objectContaining({
             used: expect.any(Number),
-            peak: expect.any(Number)
+            peak: expect.any(Number),
           }),
           stats: expect.objectContaining({
             totalCommands: expect.any(Number),
-            instantaneousOps: expect.any(Number)
-          })
-        })
+            instantaneousOps: expect.any(Number),
+          }),
+        }),
       });
     });
   });
