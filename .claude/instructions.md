@@ -49,16 +49,22 @@ You are implementing CertQuiz - a technical certification quiz application. The 
 
 ### API Endpoint Pattern
 ```typescript
-app.post('/api/resource', async ({ body, user }) => {
-  // 1. Validate input (automatic with Elysia)
-  // 2. Check permissions
-  // 3. Perform business logic
-  // 4. Return consistent response
-  return { success: true, data: result };
-}, {
-  body: t.Object({ /* schema */ }),
-  beforeHandle: [authMiddleware]
-});
+import { zValidator } from '@hono/zod-validator';
+
+app.post('/api/resource', 
+  zValidator('json', z.object({ /* schema */ })),
+  authMiddleware,
+  async (c) => {
+    // 1. Get validated input
+    const body = c.req.valid('json');
+    const user = c.get('user');
+    
+    // 2. Check permissions
+    // 3. Perform business logic
+    // 4. Return consistent response
+    return c.json({ success: true, data: result });
+  }
+);
 ```
 
 ### Error Handling Pattern
