@@ -1,4 +1,5 @@
-import { Elysia } from 'elysia';
+import { Hono } from 'hono';
+import type { AppEnv } from '../types/app';
 import type { Redis } from 'ioredis';
 import os from 'os';
 import { createLogger } from '../lib/logger';
@@ -97,22 +98,25 @@ async function checkServiceHealth(
   }
 }
 
-export const healthRoutes = new Elysia({ prefix: '/health' })
-  .get('/', () => ({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: getUptime(),
-    version: process.env.npm_package_version || '1.0.0'
-  }))
+export const healthRoutes = new Hono<AppEnv>()
+  .get('/', (c) => {
+    return c.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: getUptime(),
+      version: process.env.npm_package_version || '1.0.0'
+    });
+  })
   
-  .get('/live', () => ({
-    status: 'ok',
-    timestamp: new Date().toISOString()
-  }))
+  .get('/live', (c) => {
+    return c.json({
+      status: 'ok',
+      timestamp: new Date().toISOString()
+    });
+  })
   
-  .get('/ready', async (context) => {
-    const { set } = context;
-    const redis = (context as any).redis;
+  .get('/ready', async (c) => {
+    const redis = c.get('redis');
     const services: Record<string, ServiceHealthCheck> = {};
     let allHealthy = true;
     let hasWarnings = false;
@@ -183,13 +187,9 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
     const overallStatus = allHealthy ? (hasWarnings ? 'degraded' : 'ok') : 'error';
     
     // Set appropriate status code
-    if (!allHealthy) {
-      set.status = 503; // Service Unavailable
-    } else if (hasWarnings) {
-      set.status = 200; // OK but degraded
-    }
+    const statusCode = allHealthy ? 200 : 503;
 
-    return {
+    return c.json({
       status: overallStatus,
       timestamp: new Date().toISOString(),
       services,
@@ -198,10 +198,11 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
         degraded: hasWarnings,
         uptime: getUptime()
       }
-    };
+    }, statusCode);
   })
-  .get('/metrics', async (context) => {
-    const redis = (context as any).redis;
+  
+  .get('/metrics', async (c) => {
+    const redis = c.get('redis');
     const metrics: Record<string, any> = {
       uptime: getUptime(),
       memory: getMemoryStats(),
@@ -272,5 +273,5 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
       };
     }
 
-    return metrics;
+    return c.json(metrics);
   });

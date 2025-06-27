@@ -25,7 +25,7 @@ quiz-app/
 │   │   ├── package.json
 │   │   └── svelte.config.js
 │   │
-│   └── api/                    # Elysia backend (Service Layer Architecture)
+│   └── api/                    # Hono backend (Service Layer Architecture)
 │       ├── src/
 │       │   ├── index.ts        # Application entry point
 │       │   ├── config/         # Configuration management
@@ -62,7 +62,7 @@ quiz-app/
 │       │   │   ├── event-bus.ts # Event bus implementation
 │       │   │   ├── logger.ts  # Structured logging
 │       │   │   └── monitoring.ts # OpenTelemetry
-│       │   ├── middleware/    # Express/Elysia middleware
+│       │   ├── middleware/    # Hono middleware
 │       │   │   ├── auth.middleware.ts
 │       │   │   ├── rate-limit.middleware.ts
 │       │   │   ├── validation.middleware.ts

@@ -48,7 +48,7 @@ cd apps/api && bun test --coverage
 - [ ] **Database schema**: Drizzle schema updated BEFORE queries (if DB changes)
 - [ ] **Type safety**: No `any` types, explicit return types on all functions
 - [ ] **Error handling**: Uses Result types for operations that can fail
-- [ ] **Validation**: All inputs validated with Zod/Elysia schemas
+- [ ] **Validation**: All inputs validated with Zod schemas
 
 ### 📊 API Requirements
 - [ ] Endpoints follow RESTful conventions

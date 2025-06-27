@@ -138,7 +138,7 @@ src/
 
 ```typescript
 // 1. External imports
-import { Elysia, t } from 'elysia';
+import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 
 // 2. Internal absolute imports
@@ -598,4 +598,4 @@ WIP
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Svelte Documentation](https://svelte.dev/docs)
 - [Drizzle ORM Docs](https://orm.drizzle.team/)
-- [Elysia Documentation](https://elysiajs.com/)
+- [Hono Documentation](https://hono.dev/)

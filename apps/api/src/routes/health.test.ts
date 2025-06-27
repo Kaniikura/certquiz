@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Elysia } from 'elysia';
+import { Hono } from 'hono';
+import type { AppEnv } from '../types/app';
 import { healthRoutes } from './health';
 import { createRedisClient } from '../config/redis';
 import type { Redis } from 'ioredis';
 
 describe('Health Check Routes', () => {
-  let app: Elysia;
+  let app: Hono<AppEnv>;
   let redis: Redis;
 
   beforeAll(async () => {
@@ -15,9 +16,12 @@ describe('Health Check Routes', () => {
     await redis.connect();
 
     // Create app with health routes
-    app = new Elysia()
-      .decorate('redis', redis)
-      .use(healthRoutes);
+    app = new Hono<AppEnv>()
+      .use('*', async (c, next) => {
+        c.set('redis', redis);
+        await next();
+      })
+      .route('/health', healthRoutes);
   });
 
   afterAll(async () => {
@@ -28,9 +32,7 @@ describe('Health Check Routes', () => {
 
   describe('GET /health', () => {
     it('should return basic health status', async () => {
-      const response = await app.handle(
-        new Request('http://localhost/health')
-      );
+      const response = await app.request('http://localhost/health');
 
       expect(response.status).toBe(200);
       
@@ -46,9 +48,7 @@ describe('Health Check Routes', () => {
 
   describe('GET /health/live', () => {
     it('should return liveness probe status', async () => {
-      const response = await app.handle(
-        new Request('http://localhost/health/live')
-      );
+      const response = await app.request('http://localhost/health/live');
 
       expect(response.status).toBe(200);
       
@@ -62,9 +62,7 @@ describe('Health Check Routes', () => {
 
   describe('GET /health/ready', () => {
     it('should return readiness probe with all service statuses', async () => {
-      const response = await app.handle(
-        new Request('http://localhost/health/ready')
-      );
+      const response = await app.request('http://localhost/health/ready');
 
       expect(response.status).toBe(200);
       
@@ -74,7 +72,7 @@ describe('Health Check Routes', () => {
         timestamp: expect.any(String),
         services: {
           database: {
-            status: 'degraded', // Changed from 'ok' to 'degraded'
+            status: 'degraded',
             latency: expect.any(Number)
           },
           redis: {
@@ -86,9 +84,7 @@ describe('Health Check Routes', () => {
     });
 
     it('should report redis status correctly', async () => {
-      const response = await app.handle(
-        new Request('http://localhost/health/ready')
-      );
+      const response = await app.request('http://localhost/health/ready');
 
       const data = await response.json();
       expect(data.services.redis.status).toBe('ok');
@@ -101,16 +97,17 @@ describe('Health Check Routes', () => {
       const failingRedis = createRedisClient();
       
       // Create a new app instance with the failing Redis client
-      const testApp = new Elysia()
-        .decorate('redis', failingRedis)
-        .use(healthRoutes);
+      const testApp = new Hono<AppEnv>()
+        .use('*', async (c, next) => {
+          c.set('redis', failingRedis);
+          await next();
+        })
+        .route('/health', healthRoutes);
       
       // Close the connection to simulate failure
       await failingRedis.quit();
 
-      const response = await testApp.handle(
-        new Request('http://localhost/health/ready')
-      );
+      const response = await testApp.request('http://localhost/health/ready');
 
       expect(response.status).toBe(503); // Service Unavailable
       
@@ -123,9 +120,7 @@ describe('Health Check Routes', () => {
 
   describe('GET /health/metrics', () => {
     it('should return basic metrics', async () => {
-      const response = await app.handle(
-        new Request('http://localhost/health/metrics')
-      );
+      const response = await app.request('http://localhost/health/metrics');
 
       expect(response.status).toBe(200);
       
