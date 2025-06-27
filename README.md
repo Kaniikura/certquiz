@@ -78,8 +78,8 @@ bun run db:generate       # Generate migrations
 # Development
 bun run dev              # Start all services
 bun run typecheck        # TypeScript checking
-bun run lint            # ESLint
-bun run format          # Prettier
+bun run lint            # Biome linter
+bun run format          # Biome formatter
 
 # Database
 bun run db:generate      # Generate migrations

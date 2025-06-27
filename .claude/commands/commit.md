@@ -56,7 +56,7 @@ Closes #42
 | `feat` | ✨ | New feature | `✨ feat(auth): add OAuth2 login` |
 | `fix` | 🐛 | Bug fix | `🐛 fix(quiz): correct answer validation logic` |
 | `docs` | 📝 | Documentation only | `📝 docs(api): update endpoint documentation` |
-| `style` | 💄 | Code style/formatting | `💄 style(web): format with prettier` |
+| `style` | 💄 | Code style/formatting | `💄 style(web): format with biome` |
 | `refactor` | ♻️ | Code refactoring | `♻️ refactor(db): simplify query builder` |
 | `perf` | ⚡️ | Performance improvement | `⚡️ perf(api): optimize question queries` |
 | `test` | ✅ | Add/update tests | `✅ test(quiz): add integration tests` |
@@ -235,7 +235,7 @@ When analyzing the diff, consider splitting commits based on these criteria:
 ♻️ refactor(db): extract common query patterns
 ⚡️ perf(web): lazy load admin components
 ✅ test(quiz): add edge cases for answer validation
-🔧 chore(eslint): add custom rules for imports
+🔧 chore(biome): add custom rules for imports
 🚑 hotfix(api): prevent crash when question has no options
 🎨 style: reorganize component structure for better readability
 🔥 fix: remove deprecated legacy code
