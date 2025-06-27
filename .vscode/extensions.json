@@ -1,0 +1,33 @@
+{
+  "recommendations": [
+    // Biome - Linter and Formatter
+    "biomejs.biome",
+
+    // SvelteKit development
+    "svelte.svelte-vscode",
+
+    // TypeScript development
+    "ms-vscode.vscode-typescript-next",
+
+    // Tailwind CSS IntelliSense
+    "bradlc.vscode-tailwindcss",
+
+    // Testing
+    "vitest.explorer",
+
+    // Database
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-pg",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Markdown
+    "yzhang.markdown-all-in-one"
+  ],
+  "unwantedRecommendations": [
+    // We use Biome instead of ESLint and Prettier
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}
