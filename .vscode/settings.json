@@ -5,6 +5,7 @@
         "CCIE",
         "CCNP",
         "certquiz",
+        "Dockerfiles",
         "Elysia",
         "elysiajs",
         "fdisk",
@@ -24,6 +25,7 @@
         "OSPF",
         "psql",
         "pycache",
+        "reconnections",
         "rpop",
         "rpush",
         "sadd",
@@ -35,6 +37,7 @@
         "typespec",
         "usermod",
         "venv",
-        "vimrc"
+        "vimrc",
+        "zset"
     ]
 }

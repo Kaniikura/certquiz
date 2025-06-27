@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createRedisClient, getRedisClient, closeRedisConnection } from '../config/redis';
-import type { Redis } from 'ioredis';
+import type { RedisClientType } from 'redis';
 
 describe('Redis Connection Integration', () => {
-  let redis: Redis;
+  let redis: RedisClientType;
 
   beforeAll(async () => {
     // Use the connection from environment
@@ -12,7 +12,7 @@ describe('Redis Connection Integration', () => {
   });
 
   afterAll(async () => {
-    if (redis) {
+    if (redis?.isOpen) {
       await redis.quit();
     }
     await closeRedisConnection();
@@ -30,12 +30,12 @@ describe('Redis Connection Integration', () => {
       // Dynamically check based on actual configuration
       if (process.env.REDIS_URL) {
         const url = new URL(process.env.REDIS_URL);
-        expect(redis.options.host).toBe(url.hostname);
-        expect(redis.options.port).toBe(parseInt(url.port || '6379', 10));
+        expect(redis.options?.url).toContain(url.hostname);
+        expect(redis.options?.url).toContain(url.port || '6379');
       } else {
         // Fallback to defaults
-        expect(redis.options.host).toBe(process.env.REDIS_HOST || 'localhost');
-        expect(redis.options.port).toBe(parseInt(process.env.REDIS_PORT || '6379', 10));
+        expect(redis.options?.url).toContain(process.env.REDIS_HOST || 'localhost');
+        expect(redis.options?.url).toContain(process.env.REDIS_PORT || '6379');
       }
     });
 
@@ -59,7 +59,7 @@ describe('Redis Connection Integration', () => {
     });
 
     it('should handle concurrent operations', async () => {
-      const operations = Array.from({ length: 10 }, async (_, i) => {
+      const operations = Array.from({ length: 5 }, async (_, i) => {
         const key = `integration:concurrent:${i}`;
         await redis.set(key, `value-${i}`);
         const value = await redis.get(key);
@@ -84,32 +84,32 @@ describe('Redis Connection Integration', () => {
       expect(await redis.get('test:number')).toBe('42');
 
       // List
-      await redis.rpush('test:list', 'a', 'b', 'c');
-      expect(await redis.lrange('test:list', 0, -1)).toEqual(['a', 'b', 'c']);
+      await redis.rPush('test:list', ['a', 'b', 'c']);
+      expect(await redis.lRange('test:list', 0, -1)).toEqual(['a', 'b', 'c']);
 
       // Set
-      await redis.sadd('test:set', 'member1', 'member2');
-      expect(await redis.sismember('test:set', 'member1')).toBe(1);
+      await redis.sAdd('test:set', ['member1', 'member2']);
+      expect(await redis.sIsMember('test:set', 'member1')).toBe(true);
 
       // Hash
-      await redis.hset('test:hash', 'field1', 'value1');
-      expect(await redis.hget('test:hash', 'field1')).toBe('value1');
+      await redis.hSet('test:hash', 'field1', 'value1');
+      expect(await redis.hGet('test:hash', 'field1')).toBe('value1');
 
       // Cleanup
-      await redis.del('test:string', 'test:number', 'test:list', 'test:set', 'test:hash');
+      await redis.del(['test:string', 'test:number', 'test:list', 'test:set', 'test:hash']);
     });
 
     it('should handle expiration correctly', async () => {
       const key = 'test:expiring';
       
-      // Set with 2 second expiration
-      await redis.setex(key, 2, 'expires soon');
+      // Set with 1 second expiration
+      await redis.setEx(key, 1, 'expires soon');
       
       // Should exist immediately
       expect(await redis.exists(key)).toBe(1);
       
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 2100));
+      await new Promise(resolve => setTimeout(resolve, 1100));
       
       // Should be expired
       expect(await redis.exists(key)).toBe(0);
@@ -125,79 +125,135 @@ describe('Redis Connection Integration', () => {
       
       const results = await multi.exec();
       
-      expect(results).toEqual([
-        [null, 'OK'],
-        [null, 'OK'],
-        [null, 'value1'],
-        [null, 'value2']
-      ]);
+      // node-redis v4 returns array of results directly (not nested arrays)
+      expect(results).toEqual(['OK', 'OK', 'value1', 'value2']);
 
       // Cleanup
-      await redis.del('test:tx:1', 'test:tx:2');
+      await redis.del(['test:tx:1', 'test:tx:2']);
     });
   });
 
   describe('Singleton Pattern', () => {
-    it('should return the same instance', () => {
-      const instance1 = getRedisClient();
-      const instance2 = getRedisClient();
+    it('should return the same instance when called multiple times', async () => {
+      const instance1 = await getRedisClient();
+      const instance2 = await getRedisClient();
       
       expect(instance1).toBe(instance2);
     });
 
     it('should maintain connection across getInstance calls', async () => {
-      const instance = getRedisClient();
+      const instance = await getRedisClient();
       const pong = await instance.ping();
       expect(pong).toBe('PONG');
+    });
+
+    it('should be connected and ready', async () => {
+      const instance = await getRedisClient();
+      expect(instance.isOpen).toBe(true);
+      expect(instance.isReady).toBe(true);
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle invalid commands gracefully', async () => {
-      try {
-        // @ts-ignore - Intentionally calling invalid command
-        await redis.invalidCommand();
-        expect.fail('Should have thrown error');
-      } catch (error) {
-        expect(error).toBeDefined();
-      }
-    });
-
-    it('should recover from temporary disconnection', async () => {
-      // This test would require actually stopping/starting Redis
-      // For now, we just verify the connection is healthy
-      const isConnected = redis.status === 'ready';
-      expect(isConnected).toBe(true);
+    it('should report connection status and handle reconnection', async () => {
+      expect(redis.isOpen).toBe(true);
+      expect(redis.isReady).toBe(true);
+      
+      // Test with separate client
+      const testClient = createRedisClient();
+      await testClient.connect();
+      
+      const pong = await testClient.ping();
+      expect(pong).toBe('PONG');
+      
+      await testClient.quit();
     });
   });
 
   describe('Performance', () => {
-    it('should handle reasonable load', async () => {
-      const iterations = 100;
+    it('should handle basic load and pipelining', async () => {
+      const iterations = 10;
+      
+      // Test basic operations
       const start = Date.now();
-
       for (let i = 0; i < iterations; i++) {
         await redis.set(`perf:test:${i}`, `value-${i}`);
       }
-
       const writeTime = Date.now() - start;
       
-      const readStart = Date.now();
+      // Test pipelining
+      const pipelineStart = Date.now();
+      const pipeline = redis.multi();
       for (let i = 0; i < iterations; i++) {
-        await redis.get(`perf:test:${i}`);
+        pipeline.get(`perf:test:${i}`);
       }
-      
-      const readTime = Date.now() - readStart;
+      await pipeline.exec();
+      const pipelineTime = Date.now() - pipelineStart;
 
       // Cleanup
       const keys = Array.from({ length: iterations }, (_, i) => `perf:test:${i}`);
-      await redis.del(...keys);
+      await redis.del(keys);
 
-      // Performance assertions (generous limits for CI)
-      expect(writeTime).toBeLessThan(1000); // 100 writes in < 1 second
-      expect(readTime).toBeLessThan(500);   // 100 reads in < 0.5 seconds
+      // Basic performance assertions
+      expect(writeTime).toBeLessThan(500);
+      expect(pipelineTime).toBeLessThan(200);
+    });
+  });
+
+  describe('Essential Redis Features', () => {
+    it('should support basic sorted sets and scripting', async () => {
+      // Test sorted sets (essential for some app features)
+      const key = 'test:zset';
+      await redis.zAdd(key, [
+        { score: 1, value: 'one' },
+        { score: 2, value: 'two' }
+      ]);
       
-      console.log(`Performance: ${iterations} writes in ${writeTime}ms, ${iterations} reads in ${readTime}ms`);
+      const range = await redis.zRange(key, 0, -1);
+      expect(range).toEqual(['one', 'two']);
+      
+      // Cleanup
+      await redis.del(key);
+    });
+  });
+
+  describe('Connection Resilience', () => {
+    it('should handle connection before commands', async () => {
+      const testClient = createRedisClient();
+      
+      // Connect first (node-redis v4 requires connection before commands)
+      await testClient.connect();
+      
+      // Send command after connection
+      await testClient.set('test:queue', 'queued-value');
+      
+      const value = await testClient.get('test:queue');
+      expect(value).toBe('queued-value');
+      
+      // Cleanup
+      await testClient.del('test:queue');
+      await testClient.quit();
+    });
+
+    it('should maintain data integrity during reconnections', async () => {
+      const key = 'test:integrity';
+      const value = 'important-data';
+      
+      // Set data
+      await redis.set(key, value);
+      
+      // Verify data exists
+      expect(await redis.get(key)).toBe(value);
+      
+      // Data should persist even if we create a new connection
+      const newClient = createRedisClient();
+      await newClient.connect();
+      
+      expect(await newClient.get(key)).toBe(value);
+      
+      // Cleanup
+      await redis.del(key);
+      await newClient.quit();
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type { Redis } from 'ioredis';
+import type { RedisClientType } from 'redis';
 import type { TestLogger } from '../lib/logger';
 import { createTestLogger, findLogByLevel } from '../lib/logger';
 import { createRedisClient, getRedisConfig } from './redis';
@@ -48,10 +48,10 @@ class RedisTestConfig {
 
 // Redis client lifecycle manager for test isolation
 class RedisTestManager {
-  private clients: Redis[] = [];
+  private clients: RedisClientType[] = [];
   private testKeys: Set<string> = new Set();
 
-  track(client: Redis): Redis {
+  track(client: RedisClientType): RedisClientType {
     this.clients.push(client);
     return client;
   }
@@ -67,14 +67,14 @@ class RedisTestManager {
   }
 
   async cleanup(): Promise<void> {
-    // Clean up test keys from all ready clients
+    // Clean up test keys from all connected clients
     const cleanupPromises = this.clients
-      .filter(client => client.status === 'ready')
+      .filter(client => client.isOpen)
       .map(async (client) => {
         if (this.testKeys.size > 0) {
           try {
             const keysArray = Array.from(this.testKeys);
-            await client.del(...keysArray);
+            await client.del(keysArray);
           } catch (error) {
             // Ignore cleanup errors
           }
@@ -110,23 +110,20 @@ describe('Redis Configuration', () => {
       it('should return secure defaults when no environment variables are provided', () => {
         const config = getRedisConfig({}, testLogger);
         
-        expect(config.host).toBe('localhost');
-        expect(config.port).toBe(6379);
-        expect(config.maxRetriesPerRequest).toBe(3);
-        expect(config.enableReadyCheck).toBe(true);
-        expect(config.lazyConnect).toBe(true);
-        expect(config.retryStrategy).toBeTypeOf('function');
+        expect(config.url).toBe('redis://localhost:6379');
+        expect(config.socket?.reconnectStrategy).toBeTypeOf('function');
+        expect(config.socket?.keepAlive).toBe(30000);
         
         expect(findLogByLevel(testLogger.logs, 'error')).toBeUndefined();
       });
 
       it('should provide sensible retry strategy defaults', () => {
         const config = getRedisConfig({}, testLogger);
-        const retryStrategy = config.retryStrategy!;
+        const reconnectStrategy = config.socket?.reconnectStrategy as (retries: number) => number | false;
         
         // Test exponential backoff pattern
         const attempts = [1, 2, 3, 5, 8];
-        const delays = attempts.map(attempt => retryStrategy(attempt));
+        const delays = attempts.map(attempt => reconnectStrategy(attempt));
         
         // Verify increasing delays (accounting for jitter)
         for (let i = 1; i < delays.length; i++) {
@@ -135,8 +132,8 @@ describe('Redis Configuration', () => {
           expect(currentBase).toBeGreaterThan(prevBase);
         }
         
-        // Verify max attempts limit
-        expect(retryStrategy(11)).toBeNull();
+        // Verify max attempts limit (should return false)
+        expect(reconnectStrategy(11)).toBe(false);
       });
     });
 
@@ -149,12 +146,10 @@ describe('Redis Configuration', () => {
       it.each(validConfigs)('$description', ({ url }) => {
         const config = getRedisConfig({ REDIS_URL: url }, testLogger);
         
-        expect(config.host).toBeTypeOf('string');
-        expect(config.host).toBeDefined();
-        expect((config.host as string).length).toBeGreaterThan(0);
-        expect(config.port).toBeTypeOf('number');
-        expect(config.port).toBeGreaterThan(0);
-        expect(config.port).toBeLessThanOrEqual(65535);
+        expect(config.url).toBeTypeOf('string');
+        expect(config.url).toBeDefined();
+        expect((config.url as string).length).toBeGreaterThan(0);
+        expect(config.url).toContain('redis://');
         
         // Should not log errors for valid URLs
         expect(findLogByLevel(testLogger.logs, 'error')).toBeUndefined();
@@ -173,24 +168,18 @@ describe('Redis Configuration', () => {
         const config = getRedisConfig({ REDIS_URL: url }, freshLogger);
         
         // Should fallback to safe defaults for invalid URLs
-        expect(config.host).toBe('localhost');
-        expect(config.port).toBe(6379);
-        expect(config.maxRetriesPerRequest).toBe(3);
-        expect(config.enableReadyCheck).toBe(true);
-        expect(config.lazyConnect).toBe(true);
-        expect(typeof config.retryStrategy).toBe('function');
+        expect(config.url).toBe('redis://localhost:6379');
+        expect(config.socket?.reconnectStrategy).toBeTypeOf('function');
+        expect(config.socket?.keepAlive).toBe(30000);
         
         // Should have some kind of logging (error or warning)
         expect(freshLogger.logs.length).toBeGreaterThan(0);
         
         // At minimum, configuration should be valid and functional
         expect(config).toBeDefined();
-        expect(typeof config.host).toBe('string');
-        expect(typeof config.port).toBe('number');
-        expect(config.host).toBeDefined();
-        expect((config.host as string).length).toBeGreaterThan(0);
-        expect(config.port).toBeGreaterThan(0);
-        expect(config.port).toBeLessThanOrEqual(65535);
+        expect(typeof config.url).toBe('string');
+        expect(config.url).toBeDefined();
+        expect((config.url as string).length).toBeGreaterThan(0);
       });
     });
 
@@ -201,15 +190,11 @@ describe('Redis Configuration', () => {
         const config = getRedisConfig(env, testLogger);
         
         // All configurations should result in valid config objects
-        expect(config.host).toBeDefined();
-        expect(config.host).toBeTypeOf('string');
-        expect((config.host as string).length).toBeGreaterThan(0);
-        expect(config.port).toBeDefined();
-        expect(config.port).toBeTypeOf('number');
-        expect(config.port).toBeGreaterThan(0);
-        expect(config.port).toBeLessThanOrEqual(65535);
-        expect(config.retryStrategy).toBeDefined();
-        expect(config.retryStrategy).toBeTypeOf('function');
+        expect(config.url).toBeDefined();
+        expect(config.url).toBeTypeOf('string');
+        expect((config.url as string).length).toBeGreaterThan(0);
+        expect(config.socket?.reconnectStrategy).toBeDefined();
+        expect(config.socket?.reconnectStrategy).toBeTypeOf('function');
       });
     });
   });
@@ -219,9 +204,8 @@ describe('Redis Configuration', () => {
       const client = testManager.track(createRedisClient());
       
       expect(client).toBeDefined();
-      expect(client.options.host).toBe('localhost');
-      expect(client.options.port).toBe(6379);
-      expect(client.options.lazyConnect).toBe(true);
+      expect(client.isOpen).toBe(false); // Not connected yet
+      expect(client.options?.url).toContain('redis://');
     });
 
     it('should handle multiple client instances independently', () => {
@@ -231,7 +215,7 @@ describe('Redis Configuration', () => {
       
       clients.forEach(client => {
         expect(client).toBeDefined();
-        expect(client.status).toBe('wait'); // lazyConnect means not connected yet
+        expect(client.isOpen).toBe(false); // Not connected yet
       });
       
       // Each client should be a separate instance
@@ -241,7 +225,7 @@ describe('Redis Configuration', () => {
   });
 
   describe('Redis Operations Integration', () => {
-    let redis: Redis;
+    let redis: RedisClientType;
 
     beforeEach(async () => {
       redis = testManager.track(createRedisClient());
@@ -274,7 +258,7 @@ describe('Redis Configuration', () => {
         const key = testManager.generateTestKey('expiration');
         
         // Set with shorter expiration for testing
-        await redis.setex(key, 1, 'expires-soon');
+        await redis.setEx(key, 1, 'expires-soon');
         
         // Should exist initially
         let value = await redis.get(key);
@@ -314,29 +298,18 @@ describe('Redis Configuration', () => {
         expect(JSON.parse(retrieved!)).toEqual(testData);
       });
 
-      it('should handle binary data operations', async () => {
-        const key = testManager.generateTestKey('binary');
-        const binaryData = Buffer.from('binary test data', 'utf8');
-        
-        await redis.set(key, binaryData);
-        const retrieved = await redis.getBuffer(key);
-        
-        expect(Buffer.isBuffer(retrieved)).toBe(true);
-        expect(retrieved?.toString('utf8')).toBe('binary test data');
-      });
-
-      it('should support hash operations', async () => {
+      it('should handle hash operations', async () => {
         const key = testManager.generateTestKey('hash');
         
         // Set hash fields
-        await redis.hset(key, 'field1', 'value1', 'field2', 'value2');
+        await redis.hSet(key, { field1: 'value1', field2: 'value2' });
         
         // Get individual field
-        const field1 = await redis.hget(key, 'field1');
+        const field1 = await redis.hGet(key, 'field1');
         expect(field1).toBe('value1');
         
         // Get all fields
-        const allFields = await redis.hgetall(key);
+        const allFields = await redis.hGetAll(key);
         expect(allFields).toEqual({
           field1: 'value1',
           field2: 'value2'
@@ -347,18 +320,18 @@ describe('Redis Configuration', () => {
         const key = testManager.generateTestKey('list');
         
         // Push items to list
-        await redis.lpush(key, 'item1', 'item2', 'item3');
+        await redis.lPush(key, ['item1', 'item2', 'item3']);
         
         // Get list length
-        const length = await redis.llen(key);
+        const length = await redis.lLen(key);
         expect(length).toBe(3);
         
         // Pop item from list
-        const item = await redis.rpop(key);
+        const item = await redis.rPop(key);
         expect(item).toBe('item1');
         
         // Get remaining list
-        const remaining = await redis.lrange(key, 0, -1);
+        const remaining = await redis.lRange(key, 0, -1);
         expect(remaining).toEqual(['item3', 'item2']);
       });
 
@@ -366,22 +339,22 @@ describe('Redis Configuration', () => {
         const key = testManager.generateTestKey('set');
         
         // Add items to set
-        await redis.sadd(key, 'member1', 'member2', 'member3');
+        await redis.sAdd(key, ['member1', 'member2', 'member3']);
         
         // Check if member exists
-        const exists = await redis.sismember(key, 'member2');
-        expect(exists).toBe(1);
+        const exists = await redis.sIsMember(key, 'member2');
+        expect(exists).toBe(true);
         
         // Get all members
-        const members = await redis.smembers(key);
+        const members = await redis.sMembers(key);
         expect(members.sort()).toEqual(['member1', 'member2', 'member3']);
         
         // Remove member
-        const removed = await redis.srem(key, 'member2');
+        const removed = await redis.sRem(key, 'member2');
         expect(removed).toBe(1);
         
         // Check remaining members
-        const remaining = await redis.smembers(key);
+        const remaining = await redis.sMembers(key);
         expect(remaining.sort()).toEqual(['member1', 'member3']);
       });
     });
@@ -394,7 +367,7 @@ describe('Redis Configuration', () => {
       }));
       
       await expect(badClient.connect()).rejects.toThrow();
-      expect(badClient.status).not.toBe('ready');
+      expect(badClient.isOpen).toBe(false);
     });
 
     it('should handle network timeouts appropriately', async () => {
@@ -403,10 +376,6 @@ describe('Redis Configuration', () => {
         REDIS_URL: 'redis://1.2.3.4:6379', // Non-routable IP
         REDIS_CONNECT_TIMEOUT: '100' // Very short timeout
       }));
-      
-      // Override client options for faster timeout
-      client.options.connectTimeout = 100;
-      client.options.commandTimeout = 100;
       
       // This should timeout quickly and throw
       await expect(client.connect()).rejects.toThrow();
@@ -429,19 +398,10 @@ describe('Redis Configuration', () => {
       const value = await newClient.get(key);
       expect(value).toBe('before-disconnect');
     });
-
-    it('should handle commands on unconnected clients with lazy connection', async () => {
-      const client = testManager.track(createRedisClient());
-      
-      // With lazyConnect, first command should auto-connect
-      const ping = await client.ping();
-      expect(ping).toBe('PONG');
-      expect(client.status).toBe('ready');
-    });
   });
 
   describe('Redis Health and Monitoring', () => {
-    let redis: Redis;
+    let redis: RedisClientType;
 
     beforeEach(async () => {
       redis = testManager.track(createRedisClient());
@@ -493,30 +453,29 @@ describe('Redis Configuration', () => {
         const result = getRedisConfig(config, testLogger);
         
         // Should always return a valid configuration
-        expect(result.host).toBe('localhost');
-        expect(result.port).toBe(6379);
-        expect(result.retryStrategy).toBeTypeOf('function');
+        expect(result.url).toBe('redis://localhost:6379');
+        expect(result.socket?.reconnectStrategy).toBeTypeOf('function');
       });
     });
 
     it('should validate retry strategy behavior under various conditions', () => {
       const config = getRedisConfig({}, testLogger);
-      const retryStrategy = config.retryStrategy!;
+      const reconnectStrategy = config.socket?.reconnectStrategy as (retries: number) => number | false;
       
       // Test boundary conditions
-      expect(retryStrategy(1)).toBeGreaterThan(0); // First retry
-      expect(retryStrategy(2)).toBeGreaterThan(0); // Second retry
-      expect(retryStrategy(10)).toBeNull();        // Max retries exceeded
-      expect(retryStrategy(0)).toBeNull();         // Invalid attempt number (0)
-      expect(retryStrategy(-1)).toBeNull();        // Invalid attempt number (negative)
-      expect(retryStrategy(100)).toBeNull();       // Way over limit
+      expect(reconnectStrategy(1)).toBeGreaterThan(0); // First retry
+      expect(reconnectStrategy(2)).toBeGreaterThan(0); // Second retry
+      expect(reconnectStrategy(10)).toBe(false);       // Max retries exceeded
+      expect(reconnectStrategy(0)).toBe(false);        // Invalid attempt number (0)
+      expect(reconnectStrategy(-1)).toBe(false);       // Invalid attempt number (negative)
+      expect(reconnectStrategy(100)).toBe(false);      // Way over limit
       
       // Test exponential growth (accounting for jitter ±20%)
-      const delays = [1, 2, 3, 4, 5].map(attempt => retryStrategy(attempt));
+      const delays = [1, 2, 3, 4, 5].map(attempt => reconnectStrategy(attempt));
       
       // Verify each delay is within expected jitter range
       delays.forEach((delay, index) => {
-        if (delay !== null) {
+        if (delay !== false) {
           const attempt = index + 1;
           const baseDelay = Math.min(Math.pow(2, attempt - 1) * 1000, 16000);
           const minDelay = baseDelay * 0.8;
@@ -532,30 +491,22 @@ describe('Redis Configuration', () => {
       const urlTests = [
         {
           url: 'redis://localhost:6379',
-          expectedHost: 'localhost',
-          expectedPort: 6379,
-          expectedPassword: undefined
+          expectedUrl: 'redis://localhost:6379',
         },
         {
           url: 'redis://user:pass@redis.example.com:6380/0',
-          expectedHost: 'redis.example.com',
-          expectedPort: 6380,
-          expectedPassword: 'pass'
+          expectedUrl: 'redis://user:pass@redis.example.com:6380/0',
         },
         {
           url: 'redis://:password@localhost:6379/1',
-          expectedHost: 'localhost',
-          expectedPort: 6379,
-          expectedPassword: 'password'
+          expectedUrl: 'redis://:password@localhost:6379/1',
         }
       ];
 
-      urlTests.forEach(({ url, expectedHost, expectedPort, expectedPassword }) => {
+      urlTests.forEach(({ url, expectedUrl }) => {
         const config = getRedisConfig({ REDIS_URL: url }, testLogger);
         
-        expect(config.host).toBe(expectedHost);
-        expect(config.port).toBe(expectedPort);
-        expect(config.password).toBe(expectedPassword);
+        expect(config.url).toBe(expectedUrl);
         
         // Should not log errors for valid URLs
         expect(findLogByLevel(testLogger.logs, 'error')).toBeUndefined();

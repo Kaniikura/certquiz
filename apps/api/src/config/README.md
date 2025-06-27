@@ -63,7 +63,7 @@ The Redis configuration module (`redis.ts`) provides connection management with 
 ```typescript
 import { getRedisClient } from './redis';
 
-const redis = getRedisClient();
+const redis = await getRedisClient();
 await redis.set('key', 'value');
 const value = await redis.get('key');
 ```
@@ -78,7 +78,7 @@ REDIS_URL=redis://localhost:6379  # or individual REDIS_HOST, REDIS_PORT, REDIS_
 
 - Exponential backoff retry strategy
 - Health check integration
-- TypeScript support with ioredis
+- TypeScript support with node-redis
 - Singleton pattern for connection reuse
 
 ### Testing

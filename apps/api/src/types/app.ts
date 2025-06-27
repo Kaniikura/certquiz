@@ -1,9 +1,9 @@
 import type { Hono } from 'hono'
-import type { Redis } from 'ioredis'
+import type { RedisClientType } from 'redis'
 
 export type AppEnv = {
   Variables: {
-    redis?: Redis
+    redis?: RedisClientType
     user?: {
       id: string
       email: string

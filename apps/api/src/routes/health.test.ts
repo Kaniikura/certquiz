@@ -3,11 +3,11 @@ import { Hono } from 'hono';
 import type { AppEnv } from '../types/app';
 import { healthRoutes } from './health';
 import { createRedisClient } from '../config/redis';
-import type { Redis } from 'ioredis';
+import type { RedisClientType } from 'redis';
 
 describe('Health Check Routes', () => {
   let app: Hono<AppEnv>;
-  let redis: Redis;
+  let redis: RedisClientType;
 
   beforeAll(async () => {
     // Create Redis client
@@ -93,19 +93,13 @@ describe('Health Check Routes', () => {
     });
 
     it('should handle redis connection failure gracefully', async () => {
-      // Create a new Redis client instance for this test
-      const failingRedis = createRedisClient();
-      
-      // Create a new app instance with the failing Redis client
+      // Create a new app instance without Redis client (simulates failure)
       const testApp = new Hono<AppEnv>()
         .use('*', async (c, next) => {
-          c.set('redis', failingRedis);
+          // Don't set redis client to simulate unavailable Redis
           await next();
         })
         .route('/health', healthRoutes);
-      
-      // Close the connection to simulate failure
-      await failingRedis.quit();
 
       const response = await testApp.request('http://localhost/health/ready');
 

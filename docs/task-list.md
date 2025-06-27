@@ -87,6 +87,19 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: All routes work with Hono, tests pass
 ```
 
+### 1.7 Migrate from ioredis to node-redis ✅
+**Time**: 2 hours
+**Status**: COMPLETED
+```bash
+# Tasks:
+- Replace ioredis with redis package in dependencies
+- Update Redis configuration to use node-redis v4 API
+- Migrate all Redis commands to new syntax patterns
+- Update TypeScript types from Redis to RedisClientType
+- Fix integration tests and streamline performance tests
+- Test: All Redis functionality works, 77/77 tests pass
+```
+
 ## 2. Architecture Foundation Tasks 🔴
 
 ### 2.1 Create Core Interfaces
