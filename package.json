@@ -1,5 +1,5 @@
 {
-  "name": "cisco-quiz-app",
+  "name": "cert-quiz",
   "private": true,
   "type": "module",
   "workspaces": ["apps/*", "packages/*"],

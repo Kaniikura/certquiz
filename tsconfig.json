@@ -12,8 +12,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "@cisco-quiz/shared": ["./packages/shared/src"],
-      "@cisco-quiz/shared/*": ["./packages/shared/src/*"]
+      "@certquiz/shared": ["./packages/shared/src"],
+      "@certquiz/shared/*": ["./packages/shared/src/*"]
     }
   },
   "include": ["apps/*/src/**/*", "packages/*/src/**/*"],

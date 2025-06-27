@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "cisco-quiz-app",
+      "name": "quiz-app",
       "dependencies": {
         "es-toolkit": "^1.39.5",
       },
@@ -19,10 +19,10 @@
       },
     },
     "apps/api": {
-      "name": "@cisco-quiz/api",
+      "name": "@certquiz/api",
       "version": "1.0.0",
       "dependencies": {
-        "@cisco-quiz/shared": "workspace:*",
+        "@certquiz/shared": "workspace:*",
         "@elysiajs/cors": "^0.8.0",
         "@elysiajs/jwt": "^0.8.0",
         "@elysiajs/swagger": "^0.8.0",
@@ -44,10 +44,10 @@
       },
     },
     "apps/web": {
-      "name": "@cisco-quiz/web",
+      "name": "@certquiz/web",
       "version": "1.0.0",
       "dependencies": {
-        "@cisco-quiz/shared": "workspace:*",
+        "@certquiz/shared": "workspace:*",
         "bits-ui": "^0.17.0",
         "clsx": "^2.1.0",
         "tailwind-merge": "^2.2.0",
@@ -69,7 +69,7 @@
       },
     },
     "packages/shared": {
-      "name": "@cisco-quiz/shared",
+      "name": "@certquiz/shared",
       "version": "1.0.0",
       "devDependencies": {
         "@types/bun": "latest",
@@ -78,7 +78,7 @@
       },
     },
     "packages/typespec": {
-      "name": "@cisco-quiz/typespec",
+      "name": "@certquiz/typespec",
       "version": "1.0.0",
       "devDependencies": {
         "@typespec/compiler": "latest",
@@ -115,13 +115,13 @@
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@0.2.3", "", {}, "sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw=="],
 
-    "@cisco-quiz/api": ["@cisco-quiz/api@workspace:apps/api"],
+    "@certquiz/api": ["@certquiz/api@workspace:apps/api"],
 
-    "@cisco-quiz/shared": ["@cisco-quiz/shared@workspace:packages/shared"],
+    "@certquiz/shared": ["@certquiz/shared@workspace:packages/shared"],
 
-    "@cisco-quiz/typespec": ["@cisco-quiz/typespec@workspace:packages/typespec"],
+    "@certquiz/typespec": ["@certquiz/typespec@workspace:packages/typespec"],
 
-    "@cisco-quiz/web": ["@cisco-quiz/web@workspace:apps/web"],
+    "@certquiz/web": ["@certquiz/web@workspace:apps/web"],
 
     "@elysiajs/cors": ["@elysiajs/cors@0.8.0", "", { "peerDependencies": { "elysia": ">= 0.8.0" } }, "sha512-NADcOsokALRv4nljA5DYJPJdIJ7iwq+ouV5lH5W+hLgZRMYsfbKShg82QSmxd7BJQFuGSv2dIIF2dfG9ieUyng=="],
 

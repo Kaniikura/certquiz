@@ -361,7 +361,7 @@ async function seed() {
 
   // Create admin user
   const [adminUser] = await db.insert(users).values({
-    email: 'admin@cisco-quiz.app',
+    email: 'admin@certquiz.app',
     username: 'admin',
     role: 'admin',
   }).returning();

@@ -12,7 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@cisco-quiz/shared': path.resolve(__dirname, '../../packages/shared/src')
+      '@certquiz/shared': path.resolve(__dirname, '../../packages/shared/src')
     }
   }
 });

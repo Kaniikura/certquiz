@@ -133,8 +133,8 @@ export function getRedisConfig(
   };
 
   // Apply environment-specific configuration
-  if (env.REDIS_URL) {
-    // REDIS_URL takes precedence
+  if (env.REDIS_URL !== undefined) {
+    // REDIS_URL takes precedence (even if empty string)
     const urlConfig = parseRedisUrl(env.REDIS_URL, activeLogger);
     Object.assign(baseConfig, urlConfig);
   } else {

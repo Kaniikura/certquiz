@@ -1,5 +1,5 @@
 {
-  "name": "@cisco-quiz/typespec",
+  "name": "@certquiz/typespec",
   "version": "1.0.0",
   "private": true,
   "type": "module",

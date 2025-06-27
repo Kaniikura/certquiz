@@ -108,7 +108,7 @@ export function apiError(code: string, message: string, details?: unknown): ApiR
     error: {
       code,
       message,
-      ...(details && { details }),
+      ...(details !== undefined ? { details } : {}),
     },
   };
 }
