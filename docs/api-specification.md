@@ -49,16 +49,20 @@ Login with KeyCloak credentials.
 
 ```typescript
 // Route definition
-app.post('/auth/login', async ({ body }) => {
-  const { email, password } = body;
-  // KeyCloak authentication logic
-  return { success: true, data: { token, user } };
-}, {
-  body: t.Object({
-    email: t.String({ format: 'email' }),
-    password: t.String({ minLength: 8 })
-  })
-});
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+
+app.post('/auth/login', 
+  zValidator('json', z.object({
+    email: z.string().email(),
+    password: z.string().min(8)
+  })),
+  async (c) => {
+    const { email, password } = c.req.valid('json');
+    // KeyCloak authentication logic
+    return c.json({ success: true, data: { token, user } });
+  }
+);
 
 // Request
 {
@@ -86,15 +90,17 @@ Refresh JWT token.
 
 ```typescript
 // Route definition
-app.post('/auth/refresh', async ({ headers }) => {
-  const token = headers.authorization?.replace('Bearer ', '');
-  // Refresh logic
-  return { success: true, data: { token } };
-}, {
-  headers: t.Object({
-    authorization: t.String()
-  })
-});
+app.post('/auth/refresh', 
+  async (c) => {
+    const authHeader = c.req.header('authorization');
+    if (!authHeader) {
+      return c.json({ success: false, error: { code: 'MISSING_AUTH', message: 'Authorization header required' } }, 400);
+    }
+    const token = authHeader.replace('Bearer ', '');
+    // Refresh logic
+    return c.json({ success: true, data: { token } });
+  }
+);
 ```
 
 #### GET /auth/me
@@ -102,14 +108,16 @@ Get current user profile.
 
 ```typescript
 // Route definition (protected)
-app.get('/auth/me', async ({ user }) => {
-  return { 
-    success: true, 
-    data: user 
-  };
-}, {
-  beforeHandle: [authMiddleware]
-});
+app.get('/auth/me', 
+  authMiddleware,
+  async (c) => {
+    const user = c.get('user');
+    return c.json({ 
+      success: true, 
+      data: user 
+    });
+  }
+);
 
 // Response
 {
@@ -135,44 +143,46 @@ Get paginated questions list.
 
 ```typescript
 // Route definition
-app.get('/questions', async ({ query, user }) => {
-  const { page = 1, limit = 10, examType, category, tags } = query;
-  
-  // Apply filters based on user role
-  const filters = {
-    status: 'active',
-    ...(user?.role === 'guest' && { isPremium: false }),
-    ...(examType && { examType }),
-    ...(category && { category }),
-    ...(tags && { tags: { contains: tags.split(',') } })
-  };
-  
-  const questions = await db.query.questions.findMany({
-    where: filters,
-    limit,
-    offset: (page - 1) * limit,
-    with: {
-      options: {
-        columns: { id: true, text: true },
-        orderBy: (options, { asc }) => [asc(options.order)]
+app.get('/questions',
+  zValidator('query', z.object({
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(50).optional().default(10),
+    examType: z.string().optional(),
+    category: z.string().optional(),
+    tags: z.string().optional()
+  })),
+  async (c) => {
+    const { page, limit, examType, category, tags } = c.req.valid('query');
+    const user = c.get('user');
+    
+    // Apply filters based on user role
+    const filters = {
+      status: 'active',
+      ...(user?.role === 'guest' && { isPremium: false }),
+      ...(examType && { examType }),
+      ...(category && { category }),
+      ...(tags && { tags: { contains: tags.split(',') } })
+    };
+    
+    const questions = await db.query.questions.findMany({
+      where: filters,
+      limit,
+      offset: (page - 1) * limit,
+      with: {
+        options: {
+          columns: { id: true, text: true },
+          orderBy: (options, { asc }) => [asc(options.order)]
+        }
       }
-    }
-  });
-  
-  return { 
-    success: true, 
-    data: questions,
-    meta: { page, limit, total: 100 }
-  };
-}, {
-  query: t.Object({
-    page: t.Optional(t.Number({ minimum: 1 })),
-    limit: t.Optional(t.Number({ minimum: 1, maximum: 50 })),
-    examType: t.Optional(t.String()),
-    category: t.Optional(t.String()),
-    tags: t.Optional(t.String())
-  })
-});
+    });
+    
+    return c.json({ 
+      success: true, 
+      data: questions,
+      meta: { page, limit, total: 100 }
+    });
+  }
+);
 
 // Request
 GET /questions?examType=CCNP&category=OSPF&page=1&limit=10
@@ -207,32 +217,36 @@ Get single question with full details.
 
 ```typescript
 // Route definition
-app.get('/questions/:id', async ({ params: { id }, user }) => {
-  const question = await db.query.questions.findFirst({
-    where: eq(questions.id, id),
-    with: {
-      options: true,
-      creator: {
-        columns: { username: true }
+app.get('/questions/:id',
+  zValidator('param', z.object({
+    id: z.string().uuid()
+  })),
+  async (c) => {
+    const { id } = c.req.valid('param');
+    const user = c.get('user');
+    
+    const question = await db.query.questions.findFirst({
+      where: eq(questions.id, id),
+      with: {
+        options: true,
+        creator: {
+          columns: { username: true }
+        }
       }
+    });
+    
+    if (!question) {
+      throw new NotFoundError('Question not found');
     }
-  });
-  
-  if (!question) {
-    throw new NotFoundError('Question not found');
+    
+    // Remove detailed explanation for non-premium users
+    if (user?.role !== 'premium' && user?.role !== 'admin') {
+      delete question.detailedExplanation;
+    }
+    
+    return c.json({ success: true, data: question });
   }
-  
-  // Remove detailed explanation for non-premium users
-  if (user?.role !== 'premium' && user?.role !== 'admin') {
-    delete question.detailedExplanation;
-  }
-  
-  return { success: true, data: question };
-}, {
-  params: t.Object({
-    id: t.String({ format: 'uuid' })
-  })
-});
+);
 ```
 
 #### POST /questions (Admin/User)
@@ -240,47 +254,51 @@ Create a new question.
 
 ```typescript
 // Route definition (protected)
-app.post('/questions', async ({ body, user }) => {
-  const question = await db.transaction(async (tx) => {
-    const [newQuestion] = await tx.insert(questions).values({
-      ...body,
-      createdById: user.id,
-      createdByName: user.username,
-      isUserGenerated: user.role !== 'admin',
-      status: user.role === 'admin' ? 'active' : 'pending'
-    }).returning();
+app.post('/questions',
+  zValidator('json', z.object({
+    examType: z.string(),
+    category: z.string(),
+    tags: z.array(z.string()),
+    questionText: z.string().min(10),
+    type: z.union([z.literal('single'), z.literal('multiple')]),
+    options: z.array(z.object({
+      text: z.string(),
+      isCorrect: z.boolean()
+    })).min(2).max(6),
+    explanation: z.string(),
+    detailedExplanation: z.string().optional(),
+    images: z.array(z.string()).optional()
+  })),
+  authMiddleware,
+  async (c) => {
+    const body = c.req.valid('json');
+    const user = c.get('user');
     
-    // Insert options
-    await tx.insert(questionOptions).values(
-      body.options.map((opt, idx) => ({
-        questionId: newQuestion.id,
-        text: opt.text,
-        isCorrect: opt.isCorrect,
-        order: idx
-      }))
-    );
+    const question = await db.transaction(async (tx) => {
+      const [newQuestion] = await tx.insert(questions).values({
+        ...body,
+        createdById: user.id,
+        createdByName: user.username,
+        isUserGenerated: user.role !== 'admin',
+        status: user.role === 'admin' ? 'active' : 'pending'
+      }).returning();
+      
+      // Insert options
+      await tx.insert(questionOptions).values(
+        body.options.map((opt, idx) => ({
+          questionId: newQuestion.id,
+          text: opt.text,
+          isCorrect: opt.isCorrect,
+          order: idx
+        }))
+      );
+      
+      return newQuestion;
+    });
     
-    return newQuestion;
-  });
-  
-  return { success: true, data: question };
-}, {
-  body: t.Object({
-    examType: t.String(),
-    category: t.String(),
-    tags: t.Array(t.String()),
-    questionText: t.String({ minLength: 10 }),
-    type: t.Union([t.Literal('single'), t.Literal('multiple')]),
-    options: t.Array(t.Object({
-      text: t.String(),
-      isCorrect: t.Boolean()
-    }), { minItems: 2, maxItems: 6 }),
-    explanation: t.String(),
-    detailedExplanation: t.Optional(t.String()),
-    images: t.Optional(t.Array(t.String()))
-  }),
-  beforeHandle: [authMiddleware]
-});
+    return c.json({ success: true, data: question });
+  }
+);
 
 // Request
 {
@@ -304,36 +322,51 @@ Update an existing question.
 
 ```typescript
 // Route definition (admin only)
-app.put('/questions/:id', async ({ params: { id }, body, user }) => {
-  // Record history before update
-  const oldQuestion = await db.query.questions.findFirst({
-    where: eq(questions.id, id),
-    with: { options: true }
-  });
-  
-  await db.transaction(async (tx) => {
-    // Update question
-    await tx.update(questions).set({
-      ...body,
-      version: sql`version + 1`,
-      updatedAt: new Date()
-    }).where(eq(questions.id, id));
+app.put('/questions/:id',
+  zValidator('param', z.object({ 
+    id: z.string().uuid() 
+  })),
+  zValidator('json', z.object({
+    examType: z.string(),
+    category: z.string(),
+    tags: z.array(z.string()),
+    questionText: z.string().min(10),
+    explanation: z.string(),
+    detailedExplanation: z.string().optional()
+  }).partial()),
+  authMiddleware,
+  adminOnly,
+  async (c) => {
+    const { id } = c.req.valid('param');
+    const body = c.req.valid('json');
+    const user = c.get('user');
     
-    // Record history
-    await tx.insert(questionHistory).values({
-      questionId: id,
-      version: oldQuestion.version + 1,
-      changes: { /* diff */ },
-      editedById: user.id
+    // Record history before update
+    const oldQuestion = await db.query.questions.findFirst({
+      where: eq(questions.id, id),
+      with: { options: true }
     });
-  });
-  
-  return { success: true };
-}, {
-  params: t.Object({ id: t.String({ format: 'uuid' }) }),
-  body: t.Partial(/* question schema */),
-  beforeHandle: [authMiddleware, adminOnly]
-});
+    
+    await db.transaction(async (tx) => {
+      // Update question
+      await tx.update(questions).set({
+        ...body,
+        version: sql`version + 1`,
+        updatedAt: new Date()
+      }).where(eq(questions.id, id));
+      
+      // Record history
+      await tx.insert(questionHistory).values({
+        questionId: id,
+        version: oldQuestion.version + 1,
+        changes: { /* diff */ },
+        editedById: user.id
+      });
+    });
+    
+    return c.json({ success: true });
+  }
+);
 ```
 
 ### Quiz Session Endpoints
@@ -343,57 +376,59 @@ Start a new quiz session.
 
 ```typescript
 // Route definition
-app.post('/quiz/start', async ({ body, user }) => {
-  const { questionCount, examType, category } = body;
-  
-  // Get random questions
-  const questionList = await db.execute(sql`
-    SELECT id FROM questions 
-    WHERE status = 'active'
-    ${examType ? sql`AND exam_type = ${examType}` : sql``}
-    ${category ? sql`AND category = ${category}` : sql``}
-    ${user?.role === 'guest' ? sql`AND is_premium = false` : sql``}
-    ORDER BY RANDOM()
-    LIMIT ${questionCount}
-  `);
-  
-  // Create session
-  const [session] = await db.insert(quizSessions).values({
-    userId: user?.id || 'guest',
-    examType,
-    category,
-    questionCount
-  }).returning();
-  
-  // Add questions to session
-  await db.insert(sessionQuestions).values(
-    questionList.map((q, idx) => ({
-      sessionId: session.id,
-      questionId: q.id,
-      order: idx
-    }))
-  );
-  
-  return { 
-    success: true, 
-    data: { 
-      sessionId: session.id,
-      questionCount,
-      firstQuestion: await getQuestionByOrder(session.id, 0)
-    }
-  };
-}, {
-  body: t.Object({
-    questionCount: t.Union([
-      t.Literal(1), 
-      t.Literal(3), 
-      t.Literal(5), 
-      t.Literal(10)
+app.post('/quiz/start',
+  zValidator('json', z.object({
+    questionCount: z.union([
+      z.literal(1), 
+      z.literal(3), 
+      z.literal(5), 
+      z.literal(10)
     ]),
-    examType: t.Optional(t.String()),
-    category: t.Optional(t.String())
-  })
-});
+    examType: z.string().optional(),
+    category: z.string().optional()
+  })),
+  async (c) => {
+    const { questionCount, examType, category } = c.req.valid('json');
+    const user = c.get('user');
+    
+    // Get random questions
+    const questionList = await db.execute(sql`
+      SELECT id FROM questions 
+      WHERE status = 'active'
+      ${examType ? sql`AND exam_type = ${examType}` : sql``}
+      ${category ? sql`AND category = ${category}` : sql``}
+      ${user?.role === 'guest' ? sql`AND is_premium = false` : sql``}
+      ORDER BY RANDOM()
+      LIMIT ${questionCount}
+    `);
+    
+    // Create session
+    const [session] = await db.insert(quizSessions).values({
+      userId: user?.id || 'guest',
+      examType,
+      category,
+      questionCount
+    }).returning();
+    
+    // Add questions to session
+    await db.insert(sessionQuestions).values(
+      questionList.map((q, idx) => ({
+        sessionId: session.id,
+        questionId: q.id,
+        order: idx
+      }))
+    );
+    
+    return c.json({ 
+      success: true, 
+      data: { 
+        sessionId: session.id,
+        questionCount,
+        firstQuestion: await getQuestionByOrder(session.id, 0)
+      }
+    });
+  }
+);
 ```
 
 #### POST /quiz/:sessionId/answer
@@ -401,54 +436,59 @@ Submit answer for current question.
 
 ```typescript
 // Route definition
-app.post('/quiz/:sessionId/answer', async ({ params: { sessionId }, body, user }) => {
-  const { questionId, selectedOptions } = body;
-  
-  // Validate answer and calculate if correct
-  const question = await db.query.questions.findFirst({
-    where: eq(questions.id, questionId),
-    with: { options: true }
-  });
-  
-  const isCorrect = checkAnswer(question, selectedOptions);
-  
-  // Update session question
-  await db.update(sessionQuestions)
-    .set({
-      answeredAt: new Date(),
-      selectedOptions,
-      isCorrect
-    })
-    .where(and(
-      eq(sessionQuestions.sessionId, sessionId),
-      eq(sessionQuestions.questionId, questionId)
-    ));
-  
-  // Update user progress if logged in
-  if (user) {
-    await updateUserProgress(user.id, question.category, isCorrect);
-  }
-  
-  // Get next question or finish
-  const nextQuestion = await getNextQuestion(sessionId);
-  
-  return {
-    success: true,
-    data: {
-      isCorrect,
-      explanation: question.explanation,
-      correctOptions: question.options.filter(o => o.isCorrect).map(o => o.id),
-      nextQuestion,
-      isComplete: !nextQuestion
+app.post('/quiz/:sessionId/answer',
+  zValidator('param', z.object({ 
+    sessionId: z.string().uuid() 
+  })),
+  zValidator('json', z.object({
+    questionId: z.string().uuid(),
+    selectedOptions: z.array(z.string().uuid())
+  })),
+  async (c) => {
+    const { sessionId } = c.req.valid('param');
+    const { questionId, selectedOptions } = c.req.valid('json');
+    const user = c.get('user');
+    
+    // Validate answer and calculate if correct
+    const question = await db.query.questions.findFirst({
+      where: eq(questions.id, questionId),
+      with: { options: true }
+    });
+    
+    const isCorrect = checkAnswer(question, selectedOptions);
+    
+    // Update session question
+    await db.update(sessionQuestions)
+      .set({
+        answeredAt: new Date(),
+        selectedOptions,
+        isCorrect
+      })
+      .where(and(
+        eq(sessionQuestions.sessionId, sessionId),
+        eq(sessionQuestions.questionId, questionId)
+      ));
+    
+    // Update user progress if logged in
+    if (user) {
+      await updateUserProgress(user.id, question.category, isCorrect);
     }
-  };
-}, {
-  params: t.Object({ sessionId: t.String({ format: 'uuid' }) }),
-  body: t.Object({
-    questionId: t.String({ format: 'uuid' }),
-    selectedOptions: t.Array(t.String({ format: 'uuid' }))
-  })
-});
+    
+    // Get next question or finish
+    const nextQuestion = await getNextQuestion(sessionId);
+    
+    return c.json({
+      success: true,
+      data: {
+        isCorrect,
+        explanation: question.explanation,
+        correctOptions: question.options.filter(o => o.isCorrect).map(o => o.id),
+        nextQuestion,
+        isComplete: !nextQuestion
+      }
+    });
+  }
+);
 ```
 
 #### GET /quiz/:sessionId/results
@@ -501,28 +541,31 @@ Get user learning progress.
 
 ```typescript
 // Route definition (protected)
-app.get('/progress', async ({ user }) => {
-  const progress = await db.query.userProgress.findFirst({
-    where: eq(userProgress.userId, user.id)
-  });
-  
-  const recentBadges = await db.query.userBadges.findMany({
-    where: eq(userBadges.userId, user.id),
-    with: { badge: true },
-    orderBy: (ub, { desc }) => [desc(ub.unlockedAt)],
-    limit: 5
-  });
-  
-  return {
-    success: true,
-    data: {
-      ...progress,
-      recentBadges: recentBadges.map(ub => ub.badge)
-    }
-  };
-}, {
-  beforeHandle: [authMiddleware]
-});
+app.get('/progress',
+  authMiddleware,
+  async (c) => {
+    const user = c.get('user');
+    
+    const progress = await db.query.userProgress.findFirst({
+      where: eq(userProgress.userId, user.id)
+    });
+    
+    const recentBadges = await db.query.userBadges.findMany({
+      where: eq(userBadges.userId, user.id),
+      with: { badge: true },
+      orderBy: (ub, { desc }) => [desc(ub.unlockedAt)],
+      limit: 5
+    });
+    
+    return c.json({
+      success: true,
+      data: {
+        ...progress,
+        recentBadges: recentBadges.map(ub => ub.badge)
+      }
+    });
+  }
+);
 ```
 
 #### GET /badges
