@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "paths": {
+      "@cisco-quiz/shared": ["./packages/shared/src"],
+      "@cisco-quiz/shared/*": ["./packages/shared/src/*"]
+    }
+  },
+  "include": ["apps/*/src/**/*", "packages/*/src/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/build", "**/.svelte-kit"]
+}
