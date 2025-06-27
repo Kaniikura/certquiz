@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@certquiz/shared": "workspace:*",
+    "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.6.0",
     "drizzle-orm": "^0.29.0",
     "hono": "^4.7.0",
@@ -22,7 +23,6 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
-    "@hono/node-server": "^1.13.0",
     "@types/bun": "latest",
     "@types/ioredis": "^5.0.0",
     "@types/pino": "^7.0.5",
