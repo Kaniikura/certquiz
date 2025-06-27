@@ -1,43 +1,73 @@
 {
-    "cSpell.words": [
-        "BMAC",
-        "bunx",
-        "CCIE",
-        "CCNP",
-        "certquiz",
-        "Dockerfiles",
-        "Elysia",
-        "elysiajs",
-        "fdisk",
-        "healthcheck",
-        "hget",
-        "hgetall",
-        "hset",
-        "initdb",
-        "isready",
-        "jdbc",
-        "keyspace",
-        "llen",
-        "lpush",
-        "lrange",
-        "maxclients",
-        "Notif",
-        "OSPF",
-        "psql",
-        "pycache",
-        "reconnections",
-        "rpop",
-        "rpush",
-        "sadd",
-        "setex",
-        "sismember",
-        "smembers",
-        "srem",
-        "statefulset",
-        "typespec",
-        "usermod",
-        "venv",
-        "vimrc",
-        "zset"
-    ]
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.biome.useSortedKeys": "explicit"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[svelte]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "cSpell.words": [
+    "Activedescendant",
+    "Autofocus",
+    "BMAC",
+    "bunx",
+    "CCIE",
+    "CCNP",
+    "certquiz",
+    "Dockerfiles",
+    "Elysia",
+    "elysiajs",
+    "fdisk",
+    "healthcheck",
+    "hget",
+    "hgetall",
+    "hset",
+    "initdb",
+    "isready",
+    "jdbc",
+    "keyspace",
+    "llen",
+    "lpush",
+    "lrange",
+    "maxclients",
+    "Notif",
+    "OSPF",
+    "psql",
+    "pycache",
+    "reconnections",
+    "rpop",
+    "rpush",
+    "sadd",
+    "setex",
+    "sismember",
+    "smembers",
+    "srem",
+    "statefulset",
+    "Tabindex",
+    "typespec",
+    "usermod",
+    "venv",
+    "vimrc",
+    "zset"
+  ]
 }

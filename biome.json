@@ -1,0 +1,160 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100,
+    "attributePosition": "auto",
+    "bracketSpacing": true
+  },
+  "javascript": {
+    "formatter": {
+      "enabled": true,
+      "semicolons": "always",
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "trailingCommas": "es5"
+    }
+  },
+  "json": {
+    "formatter": {
+      "enabled": true,
+      "indentWidth": 2,
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": {
+          "level": "error",
+          "fix": "safe"
+        },
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "error",
+        "noConstructorReturn": "error",
+        "noUndeclaredVariables": "error"
+      },
+      "style": {
+        "noDefaultExport": "off",
+        "noNegationElse": "warn",
+        "useConst": "error",
+        "useTemplate": "warn",
+        "noParameterAssign": "error",
+        "noUnusedTemplateLiteral": "warn",
+        "useSingleVarDeclarator": "warn",
+        "useAsConstAssertion": "warn"
+      },
+      "complexity": {
+        "noBannedTypes": "error",
+        "noExtraBooleanCast": "error",
+        "noAdjacentSpacesInRegex": "error",
+        "noStaticOnlyClass": "warn",
+        "noUselessCatch": "error",
+        "noUselessConstructor": "error",
+        "noUselessFragments": "error",
+        "noUselessRename": "error",
+        "noUselessTypeConstraint": "error",
+        "useArrowFunction": "error"
+      },
+      "suspicious": {
+        "noConsole": "warn",
+        "noDebugger": "error",
+        "noDoubleEquals": "warn",
+        "noExplicitAny": "error",
+        "noVar": "error",
+        "noArrayIndexKey": "warn",
+        "noAssignInExpressions": "error",
+        "noCatchAssign": "error",
+        "noConfusingLabels": "error",
+        "noControlCharactersInRegex": "error",
+        "noEmptyBlockStatements": "warn"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "error",
+        "noDangerouslySetInnerHtmlWithChildren": "error"
+      },
+      "a11y": {
+        "noAccessKey": "error",
+        "noAriaUnsupportedElements": "error",
+        "noAutofocus": "off",
+        "useAltText": "error",
+        "useAriaActivedescendantWithTabindex": "error",
+        "useAriaPropsForRole": "error",
+        "useValidAriaProps": "error",
+        "useValidAriaRole": "error",
+        "useValidAnchor": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "warn",
+        "noReExportAll": "warn"
+      }
+    }
+  },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.json",
+      "**/*.jsonc",
+      "**/*.svelte",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.svelte-kit",
+      "!**/coverage",
+      "!**/*.min.js",
+      "!**/*.generated.*",
+      "!**/migrations/*.sql",
+      "!.claude/**"
+    ]
+  },
+  "overrides": [
+    {
+      "includes": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["*.svelte"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useConst": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["*.config.ts", "*.config.js"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ]
+}
