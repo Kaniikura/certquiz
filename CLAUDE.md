@@ -32,6 +32,8 @@ A web-based quiz application for technical certification exam preparation. Built
 - **Database**: PostgreSQL 16 + Redis (caching)
 - **Auth**: KeyCloak
 - **Architecture**: Service Layer + Repository Pattern + Event Bus
+- **Code Quality**: Biome 2.x (linter + formatter)
+- **Testing**: Vitest with 80% coverage requirement
 - **Deployment**: Self-hosted K8s cluster
 
 ## Key Documentation
@@ -88,13 +90,30 @@ bun test path/to/feature.test.ts
 # Improve code while keeping tests green
 ```
 
+### 3. Task Completion Requirements
+**Before marking any task as completed, you MUST:**
+```bash
+# 1. Run all tests and ensure they pass
+bun test
+
+# 2. Apply code formatting and linting
+bun run format    # Format all files
+bun run lint      # Lint with fixes
+
+# 3. Verify no errors remain
+bun run check:ci  # Final check without fixes
+```
+
 ## Current Status
 
 ### Completed:
 - ✅ Project setup and monorepo structure
-- ✅ Docker environment (PostgreSQL + KeyCloak)
+- ✅ Docker environment (PostgreSQL + KeyCloak + Redis)
 - ✅ Environment configuration with validation
 - ✅ Architecture documentation (ADRs)
+- ✅ Migration from Elysia to Hono
+- ✅ Migration from ioredis to node-redis
+- ✅ Migration to Biome 2.x for linting and formatting
 
 ### In Progress: Phase 1
 - 🔄 Service layer architecture implementation
@@ -167,6 +186,12 @@ bun test:e2e          # End-to-end tests
 # Development
 bun run dev              # Start all services
 bun run typecheck       # Type checking
+
+# Code Quality (Biome)
+bun run format          # Format all files
+bun run lint            # Lint with unsafe fixes
+bun run check           # Format + lint with fixes
+bun run check:ci        # Check without fixes (CI)
 
 # Schema & Database
 bun run typespec:compile # Generate from TypeSpec
