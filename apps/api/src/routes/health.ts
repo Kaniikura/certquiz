@@ -200,7 +200,6 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
       }
     };
   })
-  
   .get('/metrics', async (context) => {
     const redis = (context as any).redis;
     const metrics: Record<string, any> = {

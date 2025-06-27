@@ -122,11 +122,11 @@ export function getRedisConfig(
       
       activeLogger.info({
         attempt: times,
-        maxAttempts: 10,
+        maxAttempts: maxRetries,
         delay,
         baseDelay,
         jitter: delay - baseDelay
-      }, `Retry attempt ${times}/10`);
+      }, `Retry attempt ${times}/${maxRetries}`);
       
       return delay;
     }
@@ -241,8 +241,11 @@ export async function closeRedisConnection(): Promise<void> {
     logger.info('Closing Redis connection...');
     
     try {
-      // Set a timeout for graceful shutdown
-        setTimeout(() => reject(new Error(`Redis shutdown timeout for ${redisClient.options.host}:${redisClient.options.port}`)), shutdownTimeout);
+      // Set a timeout for graceful shutdown (5 seconds)
+      const shutdownTimeoutMs = 5000;
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error(`Redis shutdown timeout for ${redisClient?.options.host}:${redisClient?.options.port}`)), shutdownTimeoutMs)
+      );
       
       // Try to quit gracefully
       const quitPromise = redisClient.quit();
