@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import type { App } from './types/app';
-import { createRedisClient } from './config/redis';
-import type { RedisClientType } from 'redis';
 
 // Set environment variables for testing
 process.env.NODE_ENV = 'test';
@@ -16,29 +14,12 @@ process.env.REDIS_URL = 'redis://localhost:6379';
 
 // We'll import the app after it's created
 let app: App;
-let redis: RedisClientType;
 
 describe('Main App', () => {
   beforeAll(async () => {
-    // Create Redis client for testing
-    redis = createRedisClient();
-    await redis.connect();
-
-    // Import the app dynamically so it loads after Redis is ready
+    // Import the app dynamically
     const appModule = await import('./index');
     app = appModule.default;
-    
-    // Inject Redis client into app for testing
-    app.use('*', async (c, next) => {
-      c.set('redis', redis);
-      await next();
-    });
-  });
-
-  afterAll(async () => {
-    if (redis) {
-      await redis.quit();
-    }
   });
 
   describe('CORS configuration', () => {
@@ -98,14 +79,24 @@ describe('Main App', () => {
     it('should handle health ready endpoint', async () => {
       const response = await app.request('http://localhost/health/ready');
 
-      // Expect 503 because Redis client is not initialized in test context
-      // and database check is degraded by design
+      // Expect 503 because Redis is not initialized when app is imported
+      // (initializeRedis() only runs when import.meta.main is true)
+      // and database check is intentionally degraded by design
       expect(response.status).toBe(503);
       
       const data = await response.json();
       expect(data).toMatchObject({
         status: 'error',
-        timestamp: expect.any(String)
+        timestamp: expect.any(String),
+        services: {
+          redis: {
+            status: 'error',
+            error: 'Redis client not initialized'
+          },
+          database: {
+            status: 'degraded'
+          }
+        }
       });
     });
   });

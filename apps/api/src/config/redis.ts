@@ -242,18 +242,12 @@ let redisClient: RedisClientType | null = null;
 export async function getRedisClient(): Promise<RedisClientType> {
   if (!redisClient) {
     redisClient = createRedisClient();
-    
-    // Connect if not already connected
-    if (!redisClient.isOpen) {
-      await redisClient.connect();
-    }
   }
-  
-  // Ensure connection is established
+
   if (!redisClient.isOpen) {
     await redisClient.connect();
   }
-  
+
   return redisClient;
 }
 
