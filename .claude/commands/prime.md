@@ -11,5 +11,6 @@ eza . --tree --git-ignore
 README.md
 .claude/instructions.md
 docs/project-structure.md
+docs/task-list.md
 docs/api-specification.md
 docs/database-schema.md
