@@ -473,6 +473,27 @@ cat > tsconfig.json << 'EOF'
 EOF
 ```
 
+### 9. Development Environment Setup
+
+#### VS Code Extensions
+
+Install the following recommended extensions for the best development experience:
+
+```bash
+# Install VS Code extensions via command line
+code --install-extension biomejs.biome              # Biome linter/formatter
+code --install-extension svelte.svelte-vscode       # Svelte support
+code --install-extension bradlc.vscode-tailwindcss  # Tailwind CSS IntelliSense
+```
+
+Or install them through VS Code:
+1. Open VS Code in the project directory: `code .`
+2. Go to Extensions view (Ctrl+Shift+X / Cmd+Shift+X)
+3. You'll see a notification about recommended extensions
+4. Click "Install All" to install all recommended extensions
+
+The project includes `.vscode/extensions.json` with all recommended extensions.
+
 ## Verification Steps
 
 1. **Check installations**:
