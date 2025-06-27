@@ -61,6 +61,32 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Redis connection works
 ```
 
+### 1.5 Rename Project to CertQuiz ✅
+**Time**: 15 minutes
+**Status**: COMPLETED
+```bash
+# Tasks:
+- Rename project from cisco-quiz-app to CertQuiz
+- Update all references in documentation
+- Update package.json project names
+- Update README.md with new project name
+- Test: Project builds and runs with new name
+```
+
+### 1.6 Migrate from Elysia to Hono 🔴
+**Time**: 2 hours
+**Status**: PENDING
+```bash
+# Tasks:
+- Replace Elysia with Hono in package.json dependencies
+- Migrate route definitions from Elysia syntax to Hono syntax
+- Update middleware implementations for Hono
+- Migrate validation from Elysia's t.Object to Zod schemas
+- Update all test files to use Hono test utilities
+- Update documentation references from Elysia to Hono
+- Test: All routes work with Hono, tests pass
+```
+
 ## 2. Architecture Foundation Tasks 🔴
 
 ### 2.1 Create Core Interfaces
