@@ -3,7 +3,7 @@ import { createCache, type Cache } from './redis';
 
 describe('Cache implementations', () => {
   describe('MemoryCache', () => {
-    let cache: Cache & { init(): Promise<void> };
+    let cache: Cache;
 
     beforeEach(async () => {
       // Save and set environment

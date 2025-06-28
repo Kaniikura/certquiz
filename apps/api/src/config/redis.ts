@@ -10,6 +10,7 @@ let logger = createLogger('redis');
  * Cache interface for abstracted cache operations
  */
 export interface Cache {
+  init(): Promise<void>;
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds?: number): Promise<void>;
   del(key: string): Promise<void>;
@@ -407,10 +408,8 @@ class RedisCache implements Cache {
   private client!: RedisClientType;
 
   async init() {
-    this.client = createRedisClient();
-    if (!this.client.isOpen) {
-      await this.client.connect();
-    }
+    // Use the singleton Redis client
+    this.client = await getRedisClient();
   }
 
   async get(key: string): Promise<string | null> {
@@ -426,7 +425,8 @@ class RedisCache implements Cache {
   }
 
   async close(): Promise<void> {
-    await this.client.quit();
+    // Use the proper graceful shutdown method
+    await closeRedisConnection();
   }
 
   async ping(): Promise<string> {
@@ -471,10 +471,12 @@ class MemoryCache implements Cache {
     this.store.set(key, { value, expiry });
 
     // Set up auto-cleanup timer
+    // Cap timeout at maximum safe value (24.8 days) to prevent integer overflow
+    const timeoutMs = Math.min(ttlSeconds * 1000, 2147483647);
     const timer = setTimeout(() => {
       this.store.delete(key);
       this.timers.delete(key);
-    }, ttlSeconds * 1000);
+    }, timeoutMs);
 
     this.timers.set(key, timer);
   }
@@ -507,7 +509,7 @@ class MemoryCache implements Cache {
 /**
  * Factory function to create the appropriate cache implementation
  */
-export function createCache(): Cache & { init(): Promise<void> } {
+export function createCache(): Cache {
   const cacheDriver = process.env.CACHE_DRIVER || 'redis';
   const redisUrl = process.env.REDIS_URL;
   const nodeEnv = process.env.NODE_ENV;

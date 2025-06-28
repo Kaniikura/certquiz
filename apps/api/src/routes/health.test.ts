@@ -7,7 +7,7 @@ import { createCache, type Cache } from '../config/redis';
 describe('Health routes', () => {
   describe('with memory cache driver', () => {
     let app: Hono<AppEnv>;
-    let cache: Cache & { init(): Promise<void> };
+    let cache: Cache;
     let originalCacheDriver: string | undefined;
 
     beforeEach(async () => {
@@ -96,7 +96,7 @@ describe('Health routes', () => {
 
   describe('with redis cache driver', () => {
     let app: Hono<AppEnv>;
-    let cache: Cache & { init(): Promise<void> };
+    let cache: Cache;
     let originalCacheDriver: string | undefined;
     let originalRedisUrl: string | undefined;
 
@@ -134,7 +134,7 @@ describe('Health routes', () => {
       // Override constructor name to match RedisCache
       Object.defineProperty(MockRedisCache, 'name', { value: 'RedisCache' });
 
-      cache = new MockRedisCache() as Cache & { init(): Promise<void> };
+      cache = new MockRedisCache();
 
       app = new Hono<AppEnv>();
 
