@@ -65,6 +65,7 @@ jobs:
     name: Test (${{ matrix.workspace }})
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    needs: lint  # Ensure lint passes before running tests
     strategy:
       matrix:
         include:
@@ -101,20 +102,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Workspace-specific lint and typecheck
-        run: |
-          cd "${{ matrix.path }}"
-          if [ -f "package.json" ]; then
-            # Run lint if script exists
-            if bun run --silent lint 2>/dev/null; then
-              echo "✅ Lint passed for ${{ matrix.workspace }}"
-            fi
-            # Run typecheck if script exists
-            if bun run --silent typecheck 2>/dev/null; then
-              echo "✅ TypeCheck passed for ${{ matrix.workspace }}"
-            fi
-          fi
 
       - name: Run fast unit tests (no coverage)
         run: |
