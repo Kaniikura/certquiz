@@ -1,16 +1,4 @@
 {
-  "editor.defaultFormatter": "biomejs.biome",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "quickfix.biome": "explicit",
-    "source.biome.useSortedKeys": "explicit"
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  },
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -26,18 +14,38 @@
   "[svelte]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
   "cSpell.words": [
     "Activedescendant",
+    "addgroup",
+    "adduser",
+    "aquasecurity",
+    "autobuild",
     "Autofocus",
     "BMAC",
+    "buildkit",
+    "buildkitd",
+    "Buildx",
     "bunx",
     "CCIE",
     "CCNP",
+    "certmanager",
     "certquiz",
+    "CODEOWNERS",
+    "configmap",
+    "coverallsapp",
+    "cyclonedx",
     "Dockerfiles",
+    "dpkg",
     "Elysia",
     "elysiajs",
     "fdisk",
+    "gitops",
     "healthcheck",
     "hget",
     "hgetall",
@@ -46,28 +54,51 @@
     "isready",
     "jdbc",
     "keyspace",
+    "KUBECONFIG",
+    "kubeconfigs",
+    "kubeseal",
+    "Kustomization",
+    "Lefthook",
     "llen",
     "lpush",
     "lrange",
     "maxclients",
+    "MTTR",
+    "mypassword",
     "Notif",
+    "numbackends",
+    "onprem",
     "OSPF",
     "psql",
     "pycache",
     "reconnections",
+    "rollouts",
     "rpop",
     "rpush",
+    "runbook",
+    "Runbooks",
     "sadd",
+    "sarif",
+    "serviceaccount",
     "setex",
+    "sigstore",
     "sismember",
+    "SLSA",
     "smembers",
     "srem",
     "statefulset",
+    "summerwind",
     "Tabindex",
     "typespec",
     "usermod",
     "venv",
     "vimrc",
     "zset"
-  ]
+  ],
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.biome.useSortedKeys": "explicit"
+  },
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true
 }
