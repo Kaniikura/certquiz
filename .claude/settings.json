@@ -6,6 +6,8 @@
     "allow": [
       // Package manager and runtime
       "Bash(bun:*)",
+      "Bash(bun run:*)",
+      "Bash(bun test:*)",
       "Bash(bunx:*)",
       
       // TypeScript and build tools
@@ -15,7 +17,15 @@
       "Bash(vite:*)",
       "Bash(vitest:*)",
       "Bash(concurrently:*)",
-      
+
+      // MCP tools
+      "mcp__github-server__get_pull_request_comments",
+      "mcp__github-server__get_issue_comments",
+      "mcp__github-server__get_pull_request_reviews",
+      "mcp__github-server__get_pull_request_files",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+
       // Code quality tools
       "Bash(biome:*)",
       
@@ -46,6 +56,10 @@
       // Version control
       "Bash(git:*)",
       "Bash(gh:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
       
       // Container and orchestration
       "Bash(docker:*)",
@@ -58,6 +72,7 @@
       // File system utilities
       "Bash(ls:*)",
       "Bash(cat:*)",
+      "Bash(eza:*)",
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(find:*)",
