@@ -2,9 +2,8 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { RedisClientType } from 'redis';
 import { env } from './config';
-import { getRedisClient } from './config/redis';
+import { createCache } from './config/redis';
 import { createLogger } from './lib/logger';
 import { healthRoutes } from './routes/health';
 import type { AppEnv } from './types/app';
@@ -14,19 +13,8 @@ const app = new Hono<AppEnv>();
 // Initialize logger
 const appLogger = createLogger('server');
 
-// Redis client will be initialized asynchronously
-let redisClient: RedisClientType | null = null;
-
-// Initialize Redis client asynchronously
-async function initializeRedis(): Promise<void> {
-  try {
-    redisClient = await getRedisClient();
-    appLogger.info('Redis client initialized successfully');
-  } catch (error) {
-    appLogger.error({ err: error }, 'Failed to initialize Redis client');
-    throw error;
-  }
-}
+// Cache instance
+const cache = createCache();
 
 // Global middleware
 app.use('*', logger());
@@ -38,11 +26,9 @@ app.use(
   })
 );
 
-// Inject Redis client into context
+// Inject cache into context
 app.use('*', async (c, next) => {
-  if (redisClient) {
-    c.set('redis', redisClient);
-  }
+  c.set('cache', cache);
   await next();
 });
 
@@ -82,16 +68,18 @@ app.notFound((c) => {
 if (import.meta.main) {
   const port = env.API_PORT || 4000;
 
-  // Initialize Redis and start server
+  // Initialize cache and start server
   (async () => {
     try {
-      await initializeRedis();
-      appLogger.info({ port }, '🔥 Server starting');
+      await cache.init();
+      appLogger.info({ port, cacheDriver: env.CACHE_DRIVER }, '🔥 Server starting');
 
       serve({
         fetch: app.fetch,
         port,
       });
+
+      appLogger.info(`✅ API started on :${port} with ${env.CACHE_DRIVER} cache`);
     } catch (error) {
       appLogger.error({ err: error }, 'Failed to start server');
       process.exit(1);
