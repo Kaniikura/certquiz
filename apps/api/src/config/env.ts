@@ -22,6 +22,12 @@ const envSchema = z.object({
       message: 'API_PORT must be a valid port number',
     }),
 
+  // Cache configuration
+  CACHE_DRIVER: z.enum(['redis', 'memory']).default('redis'),
+
+  // Redis URL (optional when CACHE_DRIVER is 'memory')
+  REDIS_URL: z.string().url().optional(),
+
   // Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 

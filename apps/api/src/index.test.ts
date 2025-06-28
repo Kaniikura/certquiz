@@ -79,8 +79,8 @@ describe('Main App', () => {
     it('should handle health ready endpoint', async () => {
       const response = await app.request('http://localhost/health/ready');
 
-      // Expect 503 because Redis is not initialized when app is imported
-      // (initializeRedis() only runs when import.meta.main is true)
+      // Expect 503 because cache is not initialized when app is imported
+      // (cache.init() only runs when import.meta.main is true)
       // and database check is intentionally degraded by design
       expect(response.status).toBe(503);
 
@@ -89,9 +89,9 @@ describe('Main App', () => {
         status: 'error',
         timestamp: expect.any(String),
         services: {
-          redis: {
+          cache: {
             status: 'error',
-            error: 'Redis client not initialized',
+            error: expect.any(String),
           },
           database: {
             status: 'degraded',

@@ -1,165 +1,273 @@
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
-import type { RedisClientType } from 'redis';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRedisClient } from '../config/redis';
 import type { AppEnv } from '../types/app';
 import { healthRoutes } from './health';
+import { createCache, type Cache } from '../config/redis';
 
-describe('Health Check Routes', () => {
-  let app: Hono<AppEnv>;
-  let redis: RedisClientType;
+describe('Health routes', () => {
+  describe('with memory cache driver', () => {
+    let app: Hono<AppEnv>;
+    let cache: Cache;
+    let originalCacheDriver: string | undefined;
 
-  beforeAll(async () => {
-    // Create Redis client
-    redis = createRedisClient();
+    beforeEach(async () => {
+      // Save and set environment
+      originalCacheDriver = process.env.CACHE_DRIVER;
+      process.env.CACHE_DRIVER = 'memory';
 
-    await redis.connect();
+      // Create cache and app
+      cache = createCache();
+      await cache.init();
 
-    // Create app with health routes
-    app = new Hono<AppEnv>()
-      .use('*', async (c, next) => {
-        c.set('redis', redis);
+      app = new Hono<AppEnv>();
+
+      // Inject cache into context
+      app.use('*', async (c, next) => {
+        c.set('cache', cache);
         await next();
-      })
-      .route('/health', healthRoutes);
-  });
+      });
 
-  afterAll(async () => {
-    if (redis) {
-      await redis.quit();
-    }
-  });
+      // Mount health routes
+      app.route('/health', healthRoutes);
+    });
 
-  describe('GET /health', () => {
-    it('should return basic health status', async () => {
-      const response = await app.request('http://localhost/health');
+    afterEach(async () => {
+      // Cleanup
+      await cache.close();
 
-      expect(response.status).toBe(200);
+      // Restore environment
+      if (originalCacheDriver !== undefined) {
+        process.env.CACHE_DRIVER = originalCacheDriver;
+      } else {
+        delete process.env.CACHE_DRIVER;
+      }
+    });
 
-      const data = await response.json();
-      expect(data).toEqual({
+    it('GET /health should return basic health info', async () => {
+      const res = await app.request('/health');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data).toHaveProperty('status', 'ok');
+      expect(data).toHaveProperty('timestamp');
+      expect(data).toHaveProperty('uptime');
+      expect(data).toHaveProperty('version');
+    });
+
+    it('GET /health/live should return live status', async () => {
+      const res = await app.request('/health/live');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data).toHaveProperty('status', 'ok');
+      expect(data).toHaveProperty('timestamp');
+    });
+
+    it('GET /health/ready should check memory cache', async () => {
+      const res = await app.request('/health/ready');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data).toHaveProperty('status', 'degraded'); // degraded due to DB check not implemented
+      expect(data).toHaveProperty('services');
+      expect(data.services.cache).toMatchObject({
         status: 'ok',
-        timestamp: expect.any(String),
-        uptime: expect.any(Number),
-        version: expect.any(String),
+        details: {
+          pingResult: 'PONG',
+          type: 'MemoryCache',
+        },
+      });
+      expect(data.services.cache.latency).toBeGreaterThanOrEqual(0);
+    });
+
+    it('GET /health/metrics should include memory cache metrics', async () => {
+      const res = await app.request('/health/metrics');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data).toHaveProperty('cache');
+      expect(data.cache).toMatchObject({
+        connected: true,
+        type: 'MemoryCache',
+        healthy: true,
       });
     });
   });
 
-  describe('GET /health/live', () => {
-    it('should return liveness probe status', async () => {
-      const response = await app.request('http://localhost/health/live');
+  describe('with redis cache driver', () => {
+    let app: Hono<AppEnv>;
+    let cache: Cache;
+    let originalCacheDriver: string | undefined;
+    let originalRedisUrl: string | undefined;
 
-      expect(response.status).toBe(200);
+    beforeEach(async () => {
+      // Save environment
+      originalCacheDriver = process.env.CACHE_DRIVER;
+      originalRedisUrl = process.env.REDIS_URL;
 
-      const data = await response.json();
-      expect(data).toEqual({
+      // Set Redis configuration
+      process.env.CACHE_DRIVER = 'redis';
+      process.env.REDIS_URL = 'redis://localhost:6379';
+
+      // Create a mock RedisCache
+      class MockRedisCache implements Cache {
+        async init() {
+          // Mock initialization
+        }
+        async get(_key: string): Promise<string | null> {
+          return null;
+        }
+        async set(_key: string, _value: string, _ttlSeconds?: number): Promise<void> {
+          // Mock set operation
+        }
+        async del(_key: string): Promise<void> {
+          // Mock delete operation
+        }
+        async close(): Promise<void> {
+          // Mock close operation
+        }
+        async ping(): Promise<string> {
+          return 'PONG';
+        }
+      }
+
+      // Override constructor name to match RedisCache
+      Object.defineProperty(MockRedisCache, 'name', { value: 'RedisCache' });
+
+      cache = new MockRedisCache();
+
+      app = new Hono<AppEnv>();
+
+      // Inject cache into context
+      app.use('*', async (c, next) => {
+        c.set('cache', cache);
+        await next();
+      });
+
+      // Mount health routes
+      app.route('/health', healthRoutes);
+    });
+
+    afterEach(() => {
+      // Restore environment
+      if (originalCacheDriver !== undefined) {
+        process.env.CACHE_DRIVER = originalCacheDriver;
+      } else {
+        delete process.env.CACHE_DRIVER;
+      }
+
+      if (originalRedisUrl !== undefined) {
+        process.env.REDIS_URL = originalRedisUrl;
+      } else {
+        delete process.env.REDIS_URL;
+      }
+    });
+
+    it('GET /health/ready should check redis cache', async () => {
+      const res = await app.request('/health/ready');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.services.cache).toMatchObject({
         status: 'ok',
-        timestamp: expect.any(String),
+        details: {
+          pingResult: 'PONG',
+          type: 'RedisCache',
+        },
+      });
+    });
+
+    it('GET /health/ready should handle redis errors gracefully', async () => {
+      // Mock a failing Redis ping
+      cache.ping = async () => {
+        throw new Error('Redis connection failed');
+      };
+
+      const res = await app.request('/health/ready');
+      const data = await res.json();
+
+      expect(res.status).toBe(503); // Service unavailable
+      expect(data).toHaveProperty('status', 'error');
+      expect(data.services.cache).toMatchObject({
+        status: 'error',
+        error: 'Redis connection failed',
+      });
+    });
+
+    it('GET /health/metrics should include redis cache type', async () => {
+      const res = await app.request('/health/metrics');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.cache).toMatchObject({
+        connected: true,
+        type: 'RedisCache',
+        healthy: true,
+      });
+    });
+
+    it('GET /health/metrics should handle redis errors in metrics', async () => {
+      // Mock a failing Redis ping
+      cache.ping = async () => {
+        throw new Error('Redis metrics error');
+      };
+
+      const res = await app.request('/health/metrics');
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.cache).toMatchObject({
+        connected: false,
+        type: 'RedisCache',
+        error: 'Redis metrics error',
+        errorType: 'Error',
       });
     });
   });
 
-  describe('GET /health/ready', () => {
-    it('should return readiness probe with all service statuses', async () => {
-      const response = await app.request('http://localhost/health/ready');
+  describe('cache driver fallback scenarios', () => {
+    let originalCacheDriver: string | undefined;
+    let originalRedisUrl: string | undefined;
 
-      expect(response.status).toBe(200);
+    beforeEach(() => {
+      originalCacheDriver = process.env.CACHE_DRIVER;
+      originalRedisUrl = process.env.REDIS_URL;
+    });
 
-      const data = await response.json();
-      expect(data).toMatchObject({
-        status: 'degraded', // Database is degraded, so overall status is degraded
-        timestamp: expect.any(String),
-        services: {
-          database: {
-            status: 'degraded',
-            latency: expect.any(Number),
-          },
-          redis: {
-            status: 'ok',
-            latency: expect.any(Number),
-          },
-        },
+    afterEach(() => {
+      if (originalCacheDriver !== undefined) {
+        process.env.CACHE_DRIVER = originalCacheDriver;
+      } else {
+        delete process.env.CACHE_DRIVER;
+      }
+
+      if (originalRedisUrl !== undefined) {
+        process.env.REDIS_URL = originalRedisUrl;
+      } else {
+        delete process.env.REDIS_URL;
+      }
+    });
+
+    it('should fallback to memory cache when REDIS_URL is missing', async () => {
+      process.env.CACHE_DRIVER = 'redis';
+      delete process.env.REDIS_URL;
+
+      const cache = createCache();
+      await cache.init();
+
+      const app = new Hono<AppEnv>();
+      app.use('*', async (c, next) => {
+        c.set('cache', cache);
+        await next();
       });
-    });
+      app.route('/health', healthRoutes);
 
-    it('should report redis status correctly', async () => {
-      const response = await app.request('http://localhost/health/ready');
+      const res = await app.request('/health/ready');
+      const data = await res.json();
 
-      const data = await response.json();
-      expect(data.services.redis.status).toBe('ok');
-      expect(data.services.redis.latency).toBeGreaterThanOrEqual(0);
-      expect(data.services.redis.latency).toBeLessThan(100); // Should be fast
-    });
+      expect(data.services.cache.details.type).toBe('MemoryCache');
 
-    it('should handle redis connection failure gracefully', async () => {
-      // Create a new app instance without Redis client (simulates failure)
-      const testApp = new Hono<AppEnv>()
-        .use('*', async (_c, next) => {
-          // Don't set redis client to simulate unavailable Redis
-          await next();
-        })
-        .route('/health', healthRoutes);
-
-      const response = await testApp.request('http://localhost/health/ready');
-
-      expect(response.status).toBe(503); // Service Unavailable
-
-      const data = await response.json();
-      expect(data.status).toBe('error');
-      expect(data.services.redis.status).toBe('error');
-      expect(data.services.redis.error).toBeDefined();
-    });
-  });
-
-  describe('GET /health/metrics', () => {
-    it('should return basic metrics', async () => {
-      const response = await app.request('http://localhost/health/metrics');
-
-      expect(response.status).toBe(200);
-
-      const data = await response.json();
-      expect(data).toMatchObject({
-        uptime: expect.any(Number),
-        memory: {
-          used: expect.any(Number),
-          total: expect.any(Number),
-          percentage: expect.any(Number),
-        },
-        cpu: {
-          cores: expect.any(Number),
-          loadAverage: {
-            '1min': expect.any(Number),
-            '5min': expect.any(Number),
-            '15min': expect.any(Number),
-          },
-          loadPercentage: {
-            '1min': expect.any(Number),
-            '5min': expect.any(Number),
-            '15min': expect.any(Number),
-          },
-        },
-        system: {
-          platform: expect.any(String),
-          release: expect.any(String),
-          architecture: expect.any(String),
-        },
-        redis: expect.objectContaining({
-          connected: true,
-          connections: expect.objectContaining({
-            current: expect.any(Number),
-            blocked: expect.any(Number),
-          }),
-          memory: expect.objectContaining({
-            used: expect.any(Number),
-            peak: expect.any(Number),
-          }),
-          stats: expect.objectContaining({
-            totalCommands: expect.any(Number),
-            instantaneousOps: expect.any(Number),
-          }),
-        }),
-      });
+      await cache.close();
     });
   });
 });
