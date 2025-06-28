@@ -1,6 +1,5 @@
 import os from 'node:os';
 import { Hono } from 'hono';
-import type { RedisClientType } from 'redis';
 import { createLogger } from '../lib/logger';
 import type { AppEnv } from '../types/app';
 
@@ -119,60 +118,23 @@ export const healthRoutes = new Hono<AppEnv>()
   })
 
   .get('/ready', async (c) => {
-    const redis = c.get('redis');
+    const cache = c.get('cache');
     const services: Record<string, ServiceHealthCheck> = {};
     let allHealthy = true;
     let hasWarnings = false;
 
-    // Check Redis health with detailed diagnostics
-    if (redis) {
-      services.redis = await checkServiceHealth('redis', async () => {
-        const redisClient = redis as RedisClientType;
+    // Check cache health
+    services.cache = await checkServiceHealth('cache', async () => {
+      // Ping to check basic connectivity
+      const pingResult = await cache.ping();
 
-        // Ping to check basic connectivity
-        const pingResult = await redisClient.ping();
-
-        // Get additional Redis info
-        const [clientInfo, memoryInfo] = await Promise.all([
-          redisClient.info('clients'),
-          redisClient.info('memory'),
-        ]);
-
-        // Parse connected clients
-        const connectedMatch = clientInfo.match(/connected_clients:(\d+)/);
-        const connectedClients = connectedMatch ? parseInt(connectedMatch[1], 10) : 0;
-
-        // Parse memory usage
-        const memoryMatch = memoryInfo.match(/used_memory_human:([^\r\n]+)/);
-        const memoryUsage = memoryMatch ? memoryMatch[1] : 'unknown';
-
-        // Check for degraded state (high connection count)
-        if (connectedClients > 100) {
-          hasWarnings = true;
-          return {
-            warning: 'High connection count',
-            connectedClients,
-            memoryUsage,
-            pingResult,
-          };
-        }
-
-        return {
-          connectedClients,
-          memoryUsage,
-          pingResult,
-        };
-      });
-
-      if (services.redis.status === 'error') {
-        allHealthy = false;
-      }
-    } else {
-      services.redis = {
-        status: 'error',
-        latency: 0,
-        error: 'Redis client not initialized',
+      return {
+        pingResult,
+        type: cache.constructor.name,
       };
+    });
+
+    if (services.cache.status === 'error') {
       allHealthy = false;
     }
 
@@ -208,7 +170,7 @@ export const healthRoutes = new Hono<AppEnv>()
   })
 
   .get('/metrics', async (c) => {
-    const redis = c.get('redis');
+    const cache = c.get('cache');
     const metrics: Record<string, unknown> = {
       uptime: getUptime(),
       memory: getMemoryStats(),
@@ -220,65 +182,28 @@ export const healthRoutes = new Hono<AppEnv>()
       },
     };
 
-    // Collect Redis metrics if available
-    if (redis) {
-      try {
-        const redisClient = redis as RedisClientType;
-        const [clientInfo, memoryInfo, statsInfo] = await Promise.all([
-          redisClient.info('clients'),
-          redisClient.info('memory'),
-          redisClient.info('stats'),
-        ]);
-
-        // Parse Redis metrics
-        const parseMetric = (info: string, pattern: RegExp): string | number => {
-          const match = info.match(pattern);
-          if (!match) return 0;
-          const value = match[1];
-          return Number.isNaN(Number(value)) ? value : Number(value);
-        };
-
-        metrics.redis = {
-          connected: true,
-          connections: {
-            current: parseMetric(clientInfo, /connected_clients:(\d+)/),
-            blocked: parseMetric(clientInfo, /blocked_clients:(\d+)/),
-            maxClients: parseMetric(clientInfo, /maxclients:(\d+)/),
-          },
-          memory: {
-            used: parseMetric(memoryInfo, /used_memory:(\d+)/),
-            peak: parseMetric(memoryInfo, /used_memory_peak:(\d+)/),
-            rss: parseMetric(memoryInfo, /used_memory_rss:(\d+)/),
-            overhead: parseMetric(memoryInfo, /used_memory_overhead:(\d+)/),
-            fragmentation: parseMetric(memoryInfo, /mem_fragmentation_ratio:([0-9.]+)/),
-          },
-          stats: {
-            totalCommands: parseMetric(statsInfo, /total_commands_processed:(\d+)/),
-            instantaneousOps: parseMetric(statsInfo, /instantaneous_ops_per_sec:(\d+)/),
-            rejectedConnections: parseMetric(statsInfo, /rejected_connections:(\d+)/),
-            expiredKeys: parseMetric(statsInfo, /expired_keys:(\d+)/),
-            evictedKeys: parseMetric(statsInfo, /evicted_keys:(\d+)/),
-          },
-        };
-      } catch (error) {
-        logger.error(
-          {
-            err: error as Error,
-            operation: 'redis_metrics_collection',
-            context: 'health_metrics_endpoint',
-          },
-          'Error fetching Redis metrics'
-        );
-        metrics.redis = {
-          connected: false,
-          error: error instanceof Error ? error.message : 'Failed to fetch metrics',
-          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-        };
-      }
-    } else {
-      metrics.redis = {
+    // Collect cache metrics
+    try {
+      const pingResult = await cache.ping();
+      metrics.cache = {
+        connected: true,
+        type: cache.constructor.name,
+        healthy: pingResult === 'PONG',
+      };
+    } catch (error) {
+      logger.error(
+        {
+          err: error as Error,
+          operation: 'cache_metrics_collection',
+          context: 'health_metrics_endpoint',
+        },
+        'Error fetching cache metrics'
+      );
+      metrics.cache = {
         connected: false,
-        error: 'Redis client not initialized',
+        type: cache.constructor.name,
+        error: error instanceof Error ? error.message : 'Failed to fetch metrics',
+        errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
       };
     }
 

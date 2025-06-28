@@ -1,9 +1,9 @@
 import type { Hono } from 'hono';
-import type { RedisClientType } from 'redis';
+import type { Cache } from '../config/redis';
 
 export type AppEnv = {
   Variables: {
-    redis?: RedisClientType;
+    cache: Cache;
     user?: {
       id: string;
       email: string;
