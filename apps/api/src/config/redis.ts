@@ -7,6 +7,18 @@ import { createLogger } from '../lib/logger';
 let logger = createLogger('redis');
 
 /**
+ * Cache interface for abstracted cache operations
+ */
+export interface Cache {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ttlSeconds?: number): Promise<void>;
+  del(key: string): Promise<void>;
+  close(): Promise<void>;
+  // Health check method
+  ping(): Promise<string>;
+}
+
+/**
  * Set a custom logger instance for testing purposes
  * @param customLogger Logger instance to use
  */
@@ -386,4 +398,141 @@ export function setupGracefulShutdown(): void {
  */
 export function isAppShuttingDown(): boolean {
   return isShuttingDown;
+}
+
+/**
+ * Redis implementation of the Cache interface
+ */
+class RedisCache implements Cache {
+  private client!: RedisClientType;
+
+  async init() {
+    this.client = createRedisClient();
+    if (!this.client.isOpen) {
+      await this.client.connect();
+    }
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.client.get(key);
+  }
+
+  async set(key: string, value: string, ttlSeconds = 60): Promise<void> {
+    await this.client.set(key, value, { EX: ttlSeconds });
+  }
+
+  async del(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
+  async close(): Promise<void> {
+    await this.client.quit();
+  }
+
+  async ping(): Promise<string> {
+    return this.client.ping();
+  }
+}
+
+/**
+ * In-memory implementation of the Cache interface
+ * Used when Redis is not available (e.g., smoke tests)
+ */
+class MemoryCache implements Cache {
+  private store = new Map<string, { value: string; expiry: number }>();
+  private timers = new Map<string, NodeJS.Timeout>();
+
+  async init(): Promise<void> {
+    // Nothing to initialize for in-memory cache
+    logger.info('MemoryCache initialized');
+  }
+
+  async get(key: string): Promise<string | null> {
+    const record = this.store.get(key);
+    if (!record) return null;
+
+    if (Date.now() > record.expiry) {
+      this.store.delete(key);
+      this.timers.delete(key);
+      return null;
+    }
+
+    return record.value;
+  }
+
+  async set(key: string, value: string, ttlSeconds = 60): Promise<void> {
+    // Clear existing timer if any
+    const existingTimer = this.timers.get(key);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    const expiry = Date.now() + ttlSeconds * 1000;
+    this.store.set(key, { value, expiry });
+
+    // Set up auto-cleanup timer
+    const timer = setTimeout(() => {
+      this.store.delete(key);
+      this.timers.delete(key);
+    }, ttlSeconds * 1000);
+
+    this.timers.set(key, timer);
+  }
+
+  async del(key: string): Promise<void> {
+    this.store.delete(key);
+
+    // Clear timer if exists
+    const timer = this.timers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      this.timers.delete(key);
+    }
+  }
+
+  async close(): Promise<void> {
+    // Clear all timers to prevent memory leaks
+    for (const timer of this.timers.values()) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
+    this.store.clear();
+  }
+
+  async ping(): Promise<string> {
+    return 'PONG';
+  }
+}
+
+/**
+ * Factory function to create the appropriate cache implementation
+ */
+export function createCache(): Cache & { init(): Promise<void> } {
+  const cacheDriver = process.env.CACHE_DRIVER || 'redis';
+  const redisUrl = process.env.REDIS_URL;
+  const nodeEnv = process.env.NODE_ENV;
+
+  logger.info({ cacheDriver, nodeEnv }, 'Creating cache instance');
+
+  // Prevent accidental use of MemoryCache in production
+  if (cacheDriver === 'memory' && nodeEnv === 'production') {
+    throw new Error(
+      'MemoryCache is not allowed in production environment. Please configure Redis.'
+    );
+  }
+
+  if (cacheDriver === 'memory') {
+    return new MemoryCache();
+  }
+
+  if (!redisUrl) {
+    // Also check for production when falling back to memory cache
+    if (nodeEnv === 'production') {
+      throw new Error('REDIS_URL is required in production environment.');
+    }
+    logger.warn('REDIS_URL not provided, falling back to memory cache');
+    return new MemoryCache();
+  }
+
+  return new RedisCache();
 }
