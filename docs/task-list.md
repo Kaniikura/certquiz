@@ -38,32 +38,18 @@ All foundational setup tasks completed, including:
 
 ## 2. Shared Utilities Setup 🔴
 
-### 2.1 Create Shared Utilities
-**Time**: 1.5 hours
+### 2.1 Create Shared Utilities ✅
+**Time**: 1.5 hours (actual: 1 hour)
+**Status**: COMPLETED
 ```typescript
 // Tasks:
-- Create shared/logger.ts with Pino logger
-- Create shared/cache.ts with Redis wrapper
-- Create shared/database.ts with DB connection
-- Create shared/result.ts with Result<T, E> type
-- Create shared/errors.ts with error classes
-- Test: All utilities work correctly
+- Create shared/logger.ts with Pino logger + comprehensive tests
+- Create shared/cache.ts with Redis wrapper + MemoryCache fallback
+- Create shared/result.ts with Result<T, E> type + helper functions
+- Create shared/errors.ts with error classes + type guards
+- Test: All utilities work correctly (86 tests passing)
 ```
-
-### 2.1a Setup CodeQL Security Scanning 🟡
-**Time**: 30 minutes
-**Status**: PLANNED
-**Reason**: Add static security analysis after implementing business logic
-```yaml
-# Tasks:
-- Create .github/workflows/codeql.yml with minimal configuration
-- Configure for JavaScript/TypeScript analysis
-- Set up push (main) and weekly schedule triggers only
-- Exclude test files and generated code
-- Test: CodeQL runs successfully without impacting PR feedback time
-```
-
-**Timing**: Implement after Task 2.1 when actual business logic exists to scan. This ensures meaningful security feedback without wasting time on boilerplate code analysis.
+**Note**: `shared/database.ts` moved to Task 2.3 for implementation with Drizzle ORM setup.
 
 ### 2.2 Setup Configuration
 **Time**: 30 minutes
@@ -98,6 +84,31 @@ All foundational setup tasks completed, including:
 - Generate initial migration
 - Test: `bun run db:generate` creates migration files
 ```
+
+### 2.3 Create Database Connection (**Moved from 2.1**)
+**Time**: 30 minutes
+```typescript
+// Tasks:
+- Create shared/database.ts with DB connection
+- Setup Drizzle connection wrapper
+- Add connection pooling configuration
+- Add graceful shutdown handling
+- Test: Database connection works
+```
+
+### 2.3a Setup CodeQL Security Scanning (**Moved from 2.1a**) 🟡
+**Time**: 30 minutes
+**Status**: PLANNED
+**Reason**: Add static security analysis after implementing business logic
+```yaml
+# Tasks:
+- Create .github/workflows/codeql.yml with minimal configuration
+- Configure for JavaScript/TypeScript analysis
+- Set up push (main) and weekly schedule triggers only
+- Exclude test files and generated code
+- Test: CodeQL runs successfully without impacting PR feedback time
+```
+**Timing**: Implement after database setup when actual business logic exists to scan.
 
 ### 3.3 Create Database Query Functions
 **Time**: 2 hours
