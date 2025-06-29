@@ -3,7 +3,12 @@ import { z } from 'zod';
 // Environment variable schema
 const envSchema = z.object({
   // Database
-  DATABASE_URL: z.string().url().startsWith('postgresql://'),
+  DATABASE_URL: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith('postgresql://') || url.startsWith('postgres://'), {
+      message: 'DATABASE_URL must start with postgresql:// or postgres://',
+    }),
 
   // Authentication
   KEYCLOAK_URL: z.string().url(),

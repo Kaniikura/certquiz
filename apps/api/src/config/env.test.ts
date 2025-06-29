@@ -106,6 +106,40 @@ describe('Environment Configuration', () => {
         expect(result.error.message).toContain('JWT_SECRET');
       }
     });
+
+    it('should accept both postgresql:// and postgres:// protocols', () => {
+      // Test with postgres:// protocol
+      Object.assign(process.env, {
+        ...validEnvForTests,
+        API_PORT: '4000',
+        DATABASE_URL: 'postgres://user:pass@localhost:5432/testdb',
+      });
+
+      const result1 = validateEnv();
+      expect(result1.success).toBe(true);
+
+      // Test with postgresql:// protocol
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/testdb';
+
+      const result2 = validateEnv();
+      expect(result2.success).toBe(true);
+    });
+
+    it('should reject invalid database protocols', () => {
+      Object.assign(process.env, {
+        ...validEnvForTests,
+        API_PORT: '4000',
+        DATABASE_URL: 'mysql://user:pass@localhost:5432/testdb',
+      });
+
+      const result = validateEnv();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain(
+          'DATABASE_URL must start with postgresql:// or postgres://'
+        );
+      }
+    });
   });
 
   describe('loadEnv', () => {
