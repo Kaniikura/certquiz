@@ -7,18 +7,18 @@ describe('Drizzle Setup', () => {
 
     expect(config.default).toBeDefined();
     expect(config.default.dialect).toBe('postgresql');
-    expect(config.default.schema).toBe('./src/db/schema.ts');
-    expect(config.default.out).toBe('./src/db/migrations');
+    expect(config.default.schema).toBe('./db/schema/index.ts');
+    expect(config.default.out).toBe('./db/migrations');
     expect(config.default.verbose).toBe(true);
     expect(config.default.strict).toBe(true);
   });
 
-  it('should import test schema successfully', async () => {
-    const { testTable } = await import('./schema');
+  it('should import schema successfully', async () => {
+    const { users } = await import('../../db/schema');
 
     // Test that schema can be imported and is defined
-    expect(testTable).toBeDefined();
-    expect(typeof testTable).toBe('object');
+    expect(users).toBeDefined();
+    expect(typeof users).toBe('object');
   });
 
   it('should validate test environment setup', () => {
