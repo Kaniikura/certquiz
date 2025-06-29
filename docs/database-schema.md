@@ -230,8 +230,8 @@ export const userBadges = pgTable('user_badges', {
 export const quizSessions = pgTable('quiz_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  examId: uuid('exam_id').references(() => exams.id), // Optional: filter by specific exam
-  categoryId: uuid('category_id').references(() => categories.id), // Optional: filter by specific category
+  examId: uuid('exam_id').references(() => exams.id, { onDelete: 'set null' }), // Optional: filter by specific exam
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }), // Optional: filter by specific category
   questionCount: integer('question_count').notNull(),
   currentIndex: integer('current_index').notNull().default(0),
   score: integer('score'),
@@ -287,7 +287,7 @@ export const problemReports = pgTable('problem_reports', {
   description: text('description').notNull(),
   status: reportStatusEnum('status').notNull().default('pending'),
   adminComment: text('admin_comment'),
-  reviewedById: uuid('reviewed_by_id').references(() => users.id),
+  reviewedById: uuid('reviewed_by_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 }, (table) => {

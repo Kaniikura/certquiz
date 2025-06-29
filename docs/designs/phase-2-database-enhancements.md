@@ -10,19 +10,23 @@ This document contains database enhancements deferred from Phase 1 following YAG
 
 #### Materialized Views
 ```sql
--- Category statistics materialized view
+-- Category statistics materialized view (updated for normalized schema)
 CREATE MATERIALIZED VIEW category_statistics AS
 SELECT 
-  exam_type,
-  category,
+  e.code as exam_code,
+  c.code as category_code,
   COUNT(*) as total_questions,
-  COUNT(*) FILTER (WHERE is_premium = true) as premium_questions,
-  COUNT(*) FILTER (WHERE is_user_generated = true) as user_questions
-FROM questions
-WHERE status = 'active'
-GROUP BY exam_type, category;
+  COUNT(*) FILTER (WHERE q.is_premium = true) as premium_questions,
+  COUNT(*) FILTER (WHERE q.is_user_generated = true) as user_questions
+FROM questions q
+JOIN question_exams qe ON q.id = qe.question_id
+JOIN exams e ON qe.exam_id = e.id
+JOIN question_categories qc ON q.id = qc.question_id  
+JOIN categories c ON qc.category_id = c.id
+WHERE q.status = 'active'
+GROUP BY e.code, c.code;
 
-CREATE INDEX idx_cat_stats ON category_statistics(exam_type, category);
+CREATE INDEX idx_cat_stats ON category_statistics(exam_code, category_code);
 
 -- Refresh function
 CREATE OR REPLACE FUNCTION refresh_category_statistics()
