@@ -67,12 +67,13 @@ This document breaks down Phase 1 implementation into manageable tasks using a s
 ## 1A. Additional Setup Tasks (Addendum) 🔄
 *Unplanned tasks added during implementation - addressing technical debt and tooling improvements*
 
-> **Note**: Tasks 1.5-1.9 and 1A.1 were not in the original Phase 1 plan but became necessary due to:
+> **Note**: Tasks 1.5-1.11 and 1A.1 were not in the original Phase 1 plan but became necessary due to:
 > - Framework stability concerns (Elysia → Hono migration)
 > - Performance optimizations (ioredis → node-redis migration)  
 > - Code quality improvements (ESLint/Prettier → Biome 2.x migration)
 > - Project rebranding (cisco-quiz-app → CertQuiz)
 > - Code structure alignment with Phase 1 architecture
+> - Test configuration issues (duplication, inconsistencies)
 > - CI/CD foundation setup for development efficiency
 
 ### 1.5 Rename Project to CertQuiz ✅
@@ -131,9 +132,9 @@ This document breaks down Phase 1 implementation into manageable tasks using a s
 - Test: All formatting and linting works with Biome
 ```
 
-### 1.9 Reorganize API Code Structure 🔴
-**Time**: 1 hour
-**Status**: NOT STARTED  
+### 1.9 Reorganize API Code Structure ✅
+**Time**: 1 hour (Actual: 1.5 hours)
+**Status**: COMPLETED  
 **Reason**: Align code structure with Phase 1 module-based architecture before CI/CD setup
 ```bash
 # Tasks:
@@ -147,12 +148,44 @@ This document breaks down Phase 1 implementation into manageable tasks using a s
 - Move integration/ tests to tests/integration/
 - Remove obsolete directories (core/, lib/)
 - Update all import paths
-- Test: All tests pass with new structure
+- Test: All tests pass with new structure (60/60 tests passing)
 ```
 
-### 1A.1 Setup GitHub Actions CI/CD Foundation 🚧
+### 1.10 Centralize Test Environment Configuration ✅
+**Time**: 2 hours  
+**Status**: COMPLETED
+**Reason**: Eliminate test environment duplication and resolve bun test inconsistencies
+```bash
+# Tasks:
+- Create single source of truth for test environment variables (test-env.ts)
+- Add automatic test isolation via vitest.setup.ts
+- Refactor env.test.ts to use centralized configuration  
+- Simplify env-proxy.test.ts by removing manual environment setup
+- Eliminate code duplication between vitest.config.ts and test files
+- Follow o3's recommendation for clean test environment management
+- Test: All tests use consistent environment setup
+```
+
+### 1.11 Resolve Test Duplication and Vitest Configuration ✅
+**Time**: 1.5 hours
+**Status**: COMPLETED
+**Reason**: Fix bun test vs bun run test inconsistency and proper monorepo configuration
+```bash
+# Tasks:
+- Create root vitest.config.ts with proper project configuration
+- Fix apps/api/vitest.config.ts to use defineProject() for monorepo
+- Move integration tests to tests/integration/ directory (outside src/)
+- Remove duplicate test file from src/tests/integration/
+- Add setupFiles configuration to all test projects
+- Resolve bun test vs bun run test inconsistency (127 vs 60 tests)
+- Archive old test files to prevent Bun discovery
+- Follow o3's guidance for proper Bun + Vitest monorepo setup
+- Test: Both commands run same 60 tests consistently
+```
+
+### 1A.1 Setup GitHub Actions CI/CD Foundation 🔴
 **Time**: 3-4 hours
-**Status**: IN PROGRESS  
+**Status**: NOT STARTED  
 **Reason**: Early CI/CD setup for development efficiency and quality gates
 ```yaml
 # Tasks:
@@ -610,8 +643,13 @@ Each task is complete when:
 
 **Actual Setup Phase Summary**:
 - Original tasks (1.1-1.4): 1.5 hours (as planned)
-- Additional tasks (1.5-1.9 + 1A.1): ~9 hours (unplanned but valuable)
-- Total setup time: ~10.5 hours vs planned 1.5 hours
+- Additional tasks (1.5-1.11): ~12.5 hours (unplanned but valuable)
+- Total setup time: ~14 hours vs planned 1.5 hours
+- **Key achievements**: 
+  - Stable framework migration (Elysia → Hono)
+  - Optimal tooling setup (Biome 2.x, node-redis)
+  - Proper monorepo test configuration (60 tests consistent)
+  - Clean module-based architecture foundation
 
 Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
 
