@@ -43,6 +43,9 @@ coverage/
 *.lcov
 .nyc_output
 
+# Vitest cache
+.vitest_cache/
+
 # Bun
 bun.lockb
 
