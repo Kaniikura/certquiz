@@ -55,10 +55,6 @@ A web-based quiz application for technical certification exam preparation. Built
 bun install
 bun run docker:up
 bun run db:migrate
-
-# Start development (TDD mode)
-bun test --watch  # Keep tests running
-bun run dev       # In another terminal
 ```
 
 ## Development Workflow
@@ -94,11 +90,10 @@ bun test path/to/feature.test.ts
 **Before marking any task as completed, you MUST:**
 ```bash
 # 1. Run all tests and ensure they pass
-bun test
+bun run test
 
 # 2. Apply code formatting and linting
-bun run format    # Format all files
-bun run lint      # Lint with fixes
+bun run check    # Format & Lint
 
 # 3. Verify no errors remain
 bun run check:ci  # Final check without fixes
@@ -171,13 +166,13 @@ NODE_ENV=development
 
 ```bash
 # TDD workflow
-bun test --watch        # Run tests in watch mode
-bun test --coverage     # Check coverage (must be >80%)
+bun run test --watch        # Run tests in watch mode
+bun run test --coverage     # Check coverage (must be >80%)
 
 # Specific test types
-bun test:unit          # Unit tests only
-bun test:integration   # Integration tests
-bun test:e2e          # End-to-end tests
+bun run test:unit          # Unit tests only
+bun run test:integration   # Integration tests
+bun run test:e2e          # End-to-end tests
 ```
 
 ## Common Commands

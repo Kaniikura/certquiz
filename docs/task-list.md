@@ -36,34 +36,20 @@ All foundational setup tasks completed, including:
 
 > 📁 **Detailed task breakdown**: [docs/completed/01-core-setup-tasks.md](./completed/01-core-setup-tasks.md)
 
-## 2. Shared Utilities Setup 🔴
+## 2. Shared Utilities & Configuration 🔴
 
-### 2.1 Create Shared Utilities
-**Time**: 1.5 hours
+### 2.1 Create Shared Utilities ✅
+**Time**: 1.5 hours (actual: 1 hour)
+**Status**: COMPLETED
 ```typescript
 // Tasks:
-- Create shared/logger.ts with Pino logger
-- Create shared/cache.ts with Redis wrapper
-- Create shared/database.ts with DB connection
-- Create shared/result.ts with Result<T, E> type
-- Create shared/errors.ts with error classes
-- Test: All utilities work correctly
+- Create shared/logger.ts with Pino logger + comprehensive tests
+- Create shared/cache.ts with Redis wrapper + MemoryCache fallback
+- Create shared/result.ts with Result<T, E> type + helper functions
+- Create shared/errors.ts with error classes + type guards
+- Test: All utilities work correctly (86 tests passing)
 ```
-
-### 2.1a Setup CodeQL Security Scanning 🟡
-**Time**: 30 minutes
-**Status**: PLANNED
-**Reason**: Add static security analysis after implementing business logic
-```yaml
-# Tasks:
-- Create .github/workflows/codeql.yml with minimal configuration
-- Configure for JavaScript/TypeScript analysis
-- Set up push (main) and weekly schedule triggers only
-- Exclude test files and generated code
-- Test: CodeQL runs successfully without impacting PR feedback time
-```
-
-**Timing**: Implement after Task 2.1 when actual business logic exists to scan. This ensures meaningful security feedback without wasting time on boilerplate code analysis.
+**Note**: `shared/database.ts` moved to Task 3.2 for proper dependency ordering with Drizzle ORM.
 
 ### 2.2 Setup Configuration
 **Time**: 30 minutes
@@ -75,7 +61,7 @@ All foundational setup tasks completed, including:
 - Test: Configuration loads correctly
 ```
 
-## 3. Database Setup Tasks 🔴
+## 3. Database Foundation 🔴
 
 ### 3.1 Setup Drizzle ORM
 **Time**: 30 minutes
@@ -83,12 +69,24 @@ All foundational setup tasks completed, including:
 // Tasks:
 - Install Drizzle dependencies
 - Create drizzle.config.ts
-- Setup database connection pool
-- Configure connection pooling
-- Test: Connection to PostgreSQL works
+- Setup database connection pool configuration
+- Configure connection pooling options
+- Test: Drizzle ORM installed and configured
 ```
 
-### 3.2 Implement Core Schema
+### 3.2 Create Database Connection Wrapper (**Moved from 2.3**)
+**Time**: 30 minutes
+```typescript
+// Tasks:
+- Create shared/database.ts with DB connection wrapper
+- Setup Drizzle client instantiation
+- Add connection pooling configuration
+- Add graceful shutdown handling
+- Test: Database connection works with Drizzle
+```
+**Note**: Now correctly placed after Drizzle ORM setup to resolve dependencies.
+
+### 3.3 Implement Core Schema
 **Time**: 1 hour
 ```typescript
 // Tasks:
@@ -99,14 +97,14 @@ All foundational setup tasks completed, including:
 - Test: `bun run db:generate` creates migration files
 ```
 
-### 3.3 Create Database Query Functions
+### 3.4 Create Database Query Functions
 **Time**: 2 hours
 ```typescript
 // Tasks:
 - Create modules/user/user.db.ts with user queries
 - Create modules/quiz/quiz.db.ts with quiz queries
 - Create modules/question/question.db.ts
-- Add transaction helpers in shared/database.ts
+- Add transaction helpers using shared/database.ts
 - Test: All database queries work
 ```
 
@@ -121,9 +119,25 @@ All foundational setup tasks completed, including:
 - Test: Database populated with test data
 ```
 
-## 4. Module Implementation 🟡
+## 4. Quality Gates 🟡
 
-### 4.1 Implement Auth Module
+### 4.1 Setup CodeQL Security Scanning (**Moved from 2.3a**)
+**Time**: 30 minutes
+**Status**: PLANNED
+**Reason**: Add static security analysis after implementing business logic
+```yaml
+# Tasks:
+- Create .github/workflows/codeql.yml with minimal configuration
+- Configure for JavaScript/TypeScript analysis
+- Set up push (main) and weekly schedule triggers only
+- Exclude test files and generated code
+- Test: CodeQL runs successfully without impacting PR feedback time
+```
+**Timing**: Implement after database foundation when actual business logic exists to scan.
+
+## 5. Module Implementation 🟡
+
+### 5.1 Implement Auth Module
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -134,7 +148,7 @@ All foundational setup tasks completed, including:
 - Test: Auth flow works end-to-end
 ```
 
-### 4.2 Implement Quiz Module
+### 5.2 Implement Quiz Module
 **Time**: 3 hours
 ```typescript
 // Tasks:
@@ -145,7 +159,7 @@ All foundational setup tasks completed, including:
 - Test: Complete quiz flow tested
 ```
 
-### 4.3 Implement User Module
+### 5.3 Implement User Module
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -156,7 +170,7 @@ All foundational setup tasks completed, including:
 - Test: User operations work correctly
 ```
 
-### 4.4 Implement Question Module
+### 5.4 Implement Question Module
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -167,9 +181,9 @@ All foundational setup tasks completed, including:
 - Test: Question operations tested
 ```
 
-## 5. API Layer Implementation 🟡
+## 6. API Layer Implementation 🟡
 
-### 5.1 Initialize Hono Server
+### 6.1 Initialize Hono Server
 **Time**: 30 minutes
 ```typescript
 // Tasks:
@@ -180,7 +194,7 @@ All foundational setup tasks completed, including:
 - Test: Server starts on port 4000
 ```
 
-### 5.2 Implement Core Middleware
+### 6.2 Implement Core Middleware
 **Time**: 1.5 hours
 ```typescript
 // Tasks:
@@ -191,7 +205,7 @@ All foundational setup tasks completed, including:
 - Test: Middleware chain works correctly
 ```
 
-### 5.3 Wire Up Module Routes
+### 6.3 Wire Up Module Routes
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -202,7 +216,7 @@ All foundational setup tasks completed, including:
 - Test: All endpoints return expected responses
 ```
 
-### 5.4 Add Admin Module (Optional)
+### 6.4 Add Admin Module (Optional)
 **Time**: 2 hours
 **DEFER TO PHASE 2**
 ```typescript
@@ -213,9 +227,9 @@ All foundational setup tasks completed, including:
 - Test: Admin endpoints protected
 ```
 
-## 6. Basic Features Implementation 🟢
+## 7. Basic Features Implementation 🟢
 
-### 6.1 Add Caching Layer
+### 7.1 Add Caching Layer
 **Time**: 1 hour
 ```typescript
 // Tasks:
@@ -226,7 +240,7 @@ All foundational setup tasks completed, including:
 - Test: Caching improves performance
 ```
 
-### 6.2 Add Basic Gamification
+### 7.2 Add Basic Gamification
 **Time**: 1.5 hours
 ```typescript
 // Tasks:
@@ -236,9 +250,9 @@ All foundational setup tasks completed, including:
 - Test: Gamification features work
 ```
 
-## 7. Frontend Foundation Tasks 🟢
+## 8. Frontend Foundation Tasks 🟢
 
-### 7.1 Setup SvelteKit Project
+### 8.1 Setup SvelteKit Project
 **Time**: 30 minutes
 ```bash
 # Tasks:
@@ -249,7 +263,7 @@ All foundational setup tasks completed, including:
 - Test: Dev server starts, TailwindCSS works
 ```
 
-### 7.2 Create Layout Components
+### 8.2 Create Layout Components
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
@@ -260,7 +274,7 @@ All foundational setup tasks completed, including:
 - Test: Layout responsive on all screen sizes
 ```
 
-### 7.3 Setup State Management
+### 8.3 Setup State Management
 **Time**: 1 hour
 **REVISED TASK**
 ```typescript
@@ -272,7 +286,7 @@ All foundational setup tasks completed, including:
 - Test: State management works correctly
 ```
 
-### 7.4 Implement API Client
+### 8.4 Implement API Client
 **Time**: 1.5 hours
 **REVISED TASK**
 ```typescript
@@ -284,9 +298,9 @@ All foundational setup tasks completed, including:
 - Test: API calls work with proper error handling
 ```
 
-## 8. Core UI Implementation Tasks 🟢
+## 9. Core UI Implementation Tasks 🟢
 
-### 8.1 Authentication Flow
+### 9.1 Authentication Flow
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
@@ -297,7 +311,7 @@ All foundational setup tasks completed, including:
 - Test: Complete auth flow works
 ```
 
-### 8.2 Quiz Interface
+### 9.2 Quiz Interface
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
@@ -309,7 +323,7 @@ All foundational setup tasks completed, including:
 - Test: Complete quiz flow in UI
 ```
 
-### 8.3 Question Browser
+### 9.3 Question Browser
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
@@ -321,9 +335,9 @@ All foundational setup tasks completed, including:
 - Test: Browsing and filtering work smoothly
 ```
 
-## 9. Admin Interface Tasks 🟢
+## 10. Admin Interface Tasks 🟢
 
-### 9.1 Admin Dashboard
+### 10.1 Admin Dashboard
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
@@ -334,7 +348,7 @@ All foundational setup tasks completed, including:
 - Test: Dashboard displays real data
 ```
 
-### 9.2 Question Management
+### 10.2 Question Management
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
@@ -346,7 +360,7 @@ All foundational setup tasks completed, including:
 - Test: All admin operations work
 ```
 
-### 9.3 User Management
+### 10.3 User Management
 **Time**: 2 hours
 **NEW TASK**
 ```svelte
@@ -358,9 +372,9 @@ All foundational setup tasks completed, including:
 - Test: User management features work
 ```
 
-## 10. Testing & Quality Tasks 🟡
+## 11. Testing & Quality Tasks 🟡
 
-### 10.1 Unit Test Setup
+### 11.1 Unit Test Setup
 **Time**: 1 hour
 ```typescript
 // Tasks:
@@ -371,7 +385,7 @@ All foundational setup tasks completed, including:
 - Test: `bun test` runs all tests
 ```
 
-### 10.2 Integration Test Suite
+### 11.2 Integration Test Suite
 **Time**: 3 hours
 ```typescript
 // Tasks:
@@ -382,7 +396,7 @@ All foundational setup tasks completed, including:
 - Test: Integration tests pass
 ```
 
-### 10.3 E2E Test Suite
+### 11.3 E2E Test Suite
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -393,7 +407,7 @@ All foundational setup tasks completed, including:
 - Test: E2E tests pass
 ```
 
-### 10.4 Performance Testing
+### 11.4 Performance Testing
 **Time**: 2 hours
 **NEW TASK**
 ```typescript
@@ -405,9 +419,9 @@ All foundational setup tasks completed, including:
 - Test: Meets performance targets
 ```
 
-## 11. DevOps & Deployment Tasks 🟢
+## 12. DevOps & Deployment Tasks 🟢
 
-### 11.1 CI/CD Pipeline
+### 12.1 CI/CD Pipeline
 **Time**: 2 hours
 ```yaml
 # Tasks:
@@ -418,7 +432,7 @@ All foundational setup tasks completed, including:
 - Test: CI runs on every push
 ```
 
-### 11.2 Container Optimization
+### 12.2 Container Optimization
 **Time**: 2 hours
 ```dockerfile
 # Tasks:
@@ -429,7 +443,7 @@ All foundational setup tasks completed, including:
 - Test: Containers run efficiently
 ```
 
-### 11.3 Kubernetes Deployment
+### 12.3 Kubernetes Deployment
 **Time**: 2 hours
 ```yaml
 # Tasks:
@@ -440,7 +454,7 @@ All foundational setup tasks completed, including:
 - Test: Deploys to local K8s
 ```
 
-### 11.4 Monitoring Setup
+### 12.4 Monitoring Setup
 **Time**: 2 hours
 **NEW TASK**
 ```yaml
@@ -457,19 +471,20 @@ All foundational setup tasks completed, including:
 ```mermaid
 graph TD
     A[1. Project Setup] --> B[2. Shared Utilities]
-    B --> C[3. Database Setup]
-    C --> D[4. Modules]
-    D --> E[5. API Layer]
-    E --> F[6. Basic Features]
+    B --> C[3. Database Foundation]
+    C --> D[4. Quality Gates]
+    C --> E[5. Modules]
+    E --> F[6. API Layer]
+    F --> G[7. Basic Features]
     
-    A --> G[7. Frontend Foundation]
-    G --> H[8. Core UI]
-    H --> I[9. Admin Interface]
+    A --> H[8. Frontend Foundation]
+    H --> I[9. Core UI]
+    I --> J[10. Admin Interface]
     
-    D --> J[10. Testing]
-    G --> J
+    E --> K[11. Testing]
+    H --> K
     
-    All --> K[11. DevOps]
+    All --> L[12. DevOps]
 ```
 
 ## Definition of Done
@@ -487,12 +502,12 @@ Each task is complete when:
 
 **Note**: Timeline updated to reflect additional setup tasks (1A series) completed during implementation.
 
-- **Week 1**: Tasks 1 + 1A + 2 (Core Setup + Additional Tasks + Shared Utilities)
-- **Week 2**: Tasks 3-4 (Database & Modules)
-- **Week 3**: Tasks 5-6 (API & Basic Features)
-- **Week 4**: Tasks 7-8 (Frontend Implementation)
-- **Week 5**: Tasks 9-10 (Admin & Testing)
-- **Week 6**: Task 11 (DevOps & Deployment)
+- **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities)
+- **Week 2**: Tasks 3-5 (Database Foundation + Quality Gates + Modules)
+- **Week 3**: Tasks 6-7 (API Layer + Basic Features)
+- **Week 4**: Tasks 8-9 (Frontend Foundation + Core UI)
+- **Week 5**: Tasks 10-11 (Admin Interface + Testing)
+- **Week 6**: Task 12 (DevOps & Deployment)
 
 **Actual Setup Phase Summary**:
 - Original tasks (1.1-1.4): 1.5 hours (as planned)
@@ -506,7 +521,7 @@ Each task is complete when:
   - Clean module-based architecture foundation
   - Full CI/CD foundation (lint, test, Docker build, dependency scan)
   - Branch protection enabled via GitHub Rulesets
-  - CodeQL planned for optimal timing after business logic
+  - CodeQL moved to Quality Gates section (4.1) for optimal timing
 
 Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
 
@@ -514,9 +529,9 @@ Total estimate: ~90-110 hours of development time (reduced with simpler architec
 
 The following tasks are on the critical path and block other work:
 1. Shared Utilities (blocks module development)
-2. Database Setup (blocks all data operations)
+2. Database Foundation (blocks all data operations)
 3. Module Implementation (blocks API routes)
-4. API Routes (blocks frontend integration)
+4. API Layer (blocks frontend integration)
 
 ## Risk Mitigation
 
