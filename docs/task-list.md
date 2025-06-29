@@ -1,10 +1,10 @@
-# Implementation Task List - Phase 1 (Revised with Service Layer Architecture)
+# Implementation Task List - Phase 1 (Simple MVP Architecture)
 
 ## Overview
 
-This document breaks down Phase 1 implementation into manageable tasks, incorporating the service layer architecture decisions. Each task should be completed with tests before moving to the next.
+This document breaks down Phase 1 implementation into manageable tasks using a simplified module-based architecture. Each task should be completed with tests before moving to the next.
 
-**Phase 1 Goal**: Basic quiz functionality with authentication, admin features, and proper architecture foundations.
+**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using a simple, module-based structure that can evolve to clean architecture when needed.
 
 ## Task Organization
 
@@ -145,42 +145,28 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: PR checks complete in under 5 minutes
 ```
 
-## 2. Architecture Foundation Tasks 🔴
+## 2. Shared Utilities Setup 🔴
 
-### 2.1 Create Core Interfaces
-**Time**: 1 hour
-**NEW TASK**
+### 2.1 Create Shared Utilities
+**Time**: 1.5 hours
 ```typescript
 // Tasks:
-- Create repository interfaces (base, paginated)
-- Create service interfaces (base, context, result)
-- Create cache interface
-- Create event bus interface
-- Test: TypeScript compiles without errors
+- Create shared/logger.ts with Pino logger
+- Create shared/cache.ts with Redis wrapper
+- Create shared/database.ts with DB connection
+- Create shared/result.ts with Result<T, E> type
+- Create shared/errors.ts with error classes
+- Test: All utilities work correctly
 ```
 
-### 2.2 Implement Infrastructure Services
-**Time**: 2 hours
-**NEW TASK**
+### 2.2 Setup Configuration
+**Time**: 30 minutes
 ```typescript
 // Tasks:
-- Implement Redis cache service
-- Implement event bus (in-memory first, Redis pub/sub later)
-- Implement structured logger
-- Implement error classes
-- Test: Unit tests for each service
-```
-
-### 2.3 Setup Monitoring and Observability
-**Time**: 1 hour
-**NEW TASK**
-```typescript
-// Tasks:
-- Setup OpenTelemetry
-- Configure structured logging
-- Add request tracing
-- Add performance metrics
-- Test: Logs and traces are generated
+- Create config/env.ts with typed env vars
+- Validate environment variables on startup
+- Move Redis config to shared/cache.ts
+- Test: Configuration loads correctly
 ```
 
 ## 3. Database Setup Tasks 🔴
@@ -207,28 +193,15 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: `bun run db:generate` creates migration files
 ```
 
-### 3.3 Implement Base Repository
-**Time**: 1 hour
-**NEW TASK**
-```typescript
-// Tasks:
-- Create base repository class
-- Implement CRUD operations
-- Add pagination support
-- Add transaction support
-- Test: Base repository operations work
-```
-
-### 3.4 Implement Domain Repositories
+### 3.3 Create Database Query Functions
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create UserRepository
-- Create QuestionRepository
-- Create QuizRepository
-- Create ProgressRepository
-- Test: All repositories have integration tests
+- Create modules/user/user.db.ts with user queries
+- Create modules/quiz/quiz.db.ts with quiz queries
+- Create modules/question/question.db.ts
+- Add transaction helpers in shared/database.ts
+- Test: All database queries work
 ```
 
 ### 3.5 Run Migrations and Seed Data
@@ -242,55 +215,50 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Database populated with test data
 ```
 
-## 4. Service Layer Implementation 🟡
+## 4. Module Implementation 🟡
 
-### 4.1 Implement Authentication Service
+### 4.1 Implement Auth Module
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create AuthService with KeyCloak integration
-- Implement login/logout logic
-- Add token validation with caching
-- Implement refresh token logic
-- Test: Authentication flow works end-to-end
+- Create modules/auth/auth.service.ts with business logic
+- Create modules/auth/auth.routes.ts with endpoints
+- Create modules/auth/auth.middleware.ts
+- Integrate KeyCloak authentication
+- Test: Auth flow works end-to-end
 ```
 
-### 4.2 Implement Question Service
-**Time**: 2 hours
-**NEW TASK**
-```typescript
-// Tasks:
-- Create QuestionService
-- Implement question retrieval with caching
-- Add filtering and pagination
-- Implement admin operations
-- Test: All question operations tested
-```
-
-### 4.3 Implement Quiz Service
+### 4.2 Implement Quiz Module
 **Time**: 3 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create QuizService
-- Implement quiz session management
-- Add answer validation logic
-- Implement progress tracking
-- Emit domain events
+- Create modules/quiz/quiz.service.ts
+- Create modules/quiz/quiz.routes.ts
+- Create modules/quiz/quiz.db.ts
+- Create modules/quiz/quiz.types.ts
 - Test: Complete quiz flow tested
 ```
 
-### 4.4 Implement User Progress Service
+### 4.3 Implement User Module
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create ProgressService
-- Implement badge unlock logic
-- Add statistics calculation
-- Handle progress events
-- Test: Progress tracking works correctly
+- Create modules/user/user.service.ts
+- Create modules/user/user.routes.ts
+- Create modules/user/user.db.ts
+- Add progress tracking logic
+- Test: User operations work correctly
+```
+
+### 4.4 Implement Question Module
+**Time**: 2 hours
+```typescript
+// Tasks:
+- Create modules/question/question.service.ts
+- Create modules/question/question.routes.ts
+- Create modules/question/question.db.ts
+- Add caching for question retrieval
+- Test: Question operations tested
 ```
 
 ## 5. API Layer Implementation 🟡
@@ -317,53 +285,49 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Middleware chain works correctly
 ```
 
-### 5.3 Implement V1 API Routes
-**Time**: 3 hours
+### 5.3 Wire Up Module Routes
+**Time**: 2 hours
 ```typescript
 // Tasks:
-- Create /api/v1/auth routes (thin layer)
-- Create /api/v1/questions routes
-- Create /api/v1/quiz routes
-- Create /api/v1/admin routes
+- Mount auth routes at /api/auth
+- Mount quiz routes at /api/quiz
+- Mount user routes at /api/users
+- Mount question routes at /api/questions
 - Test: All endpoints return expected responses
 ```
 
-### 5.4 Implement WebSocket Support
+### 5.4 Add Admin Module (Optional)
 **Time**: 2 hours
-**NEW TASK**
+**DEFER TO PHASE 2**
 ```typescript
 // Tasks:
-- Setup WebSocket server
-- Implement real-time quiz updates
-- Add progress notifications
-- Handle connection management
-- Test: WebSocket events work
+- Create modules/admin/admin.routes.ts
+- Add basic admin endpoints
+- Implement authorization checks
+- Test: Admin endpoints protected
 ```
 
-## 6. Event System Implementation 🟢
+## 6. Basic Features Implementation 🟢
 
-### 6.1 Define Domain Events
+### 6.1 Add Caching Layer
 **Time**: 1 hour
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create event type definitions
-- Define quiz events
-- Define user events
-- Define progress events
-- Test: Events are properly typed
+- Implement caching in quiz.service.ts
+- Cache question lists
+- Cache user sessions
+- Add cache invalidation
+- Test: Caching improves performance
 ```
 
-### 6.2 Implement Event Handlers
-**Time**: 2 hours
-**NEW TASK**
+### 6.2 Add Basic Gamification
+**Time**: 1.5 hours
 ```typescript
 // Tasks:
-- Create badge unlock handler
-- Create progress update handler
-- Create notification handler
-- Create audit log handler
-- Test: Handlers process events correctly
+- Implement streak tracking
+- Add basic badge unlocking
+- Update user progress after quizzes
+- Test: Gamification features work
 ```
 
 ## 7. Frontend Foundation Tasks 🟢
@@ -586,11 +550,11 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 
 ```mermaid
 graph TD
-    A[1. Project Setup] --> B[2. Architecture Foundation]
+    A[1. Project Setup] --> B[2. Shared Utilities]
     B --> C[3. Database Setup]
-    C --> D[4. Service Layer]
+    C --> D[4. Modules]
     D --> E[5. API Layer]
-    E --> F[6. Event System]
+    E --> F[6. Basic Features]
     
     A --> G[7. Frontend Foundation]
     G --> H[8. Core UI]
@@ -617,9 +581,9 @@ Each task is complete when:
 
 **Note**: Timeline updated to reflect additional setup tasks (1A series) completed during implementation.
 
-- **Week 1**: Tasks 1 + 1A + 2 (Core Setup + Additional Tasks + Architecture Foundation)
-- **Week 2**: Tasks 3-4 (Database & Service Layer)
-- **Week 3**: Tasks 5-6 (API & Events)
+- **Week 1**: Tasks 1 + 1A + 2 (Core Setup + Additional Tasks + Shared Utilities)
+- **Week 2**: Tasks 3-4 (Database & Modules)
+- **Week 3**: Tasks 5-6 (API & Basic Features)
 - **Week 4**: Tasks 7-8 (Frontend Implementation)
 - **Week 5**: Tasks 9-10 (Admin & Testing)
 - **Week 6**: Task 11 (DevOps & Deployment)
@@ -629,19 +593,19 @@ Each task is complete when:
 - Additional tasks (1.5-1.8 + 1A.1): ~8 hours (unplanned but valuable)
 - Total setup time: ~9.5 hours vs planned 1.5 hours
 
-Total estimate: ~130-150 hours of development time (increased due to additional setup tasks + proper architecture)
+Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
 
 ## Critical Path
 
 The following tasks are on the critical path and block other work:
-1. Architecture Foundation (blocks everything)
-2. Database + Repositories (blocks services)
-3. Service Layer (blocks API routes)
+1. Shared Utilities (blocks module development)
+2. Database Setup (blocks all data operations)
+3. Module Implementation (blocks API routes)
 4. API Routes (blocks frontend integration)
 
 ## Risk Mitigation
 
-- **Performance Risk**: Implement caching early
-- **Complexity Risk**: Keep services focused and small
-- **Integration Risk**: Test service interactions thoroughly
-- **Scale Risk**: Design for horizontal scaling from start
+- **Performance Risk**: Add caching only where needed
+- **Complexity Risk**: Keep modules simple and focused
+- **Over-engineering Risk**: Follow YAGNI principle
+- **Migration Risk**: Maintain clear module boundaries for Phase 2
