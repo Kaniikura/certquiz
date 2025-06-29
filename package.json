@@ -33,8 +33,8 @@
     "lint:check": "biome lint",
     "format": "biome format --write",
     "format:check": "biome format",
-    "check": "biome check --write --unsafe",
-    "check:ci": "biome check",
+    "check": "bun run typecheck && biome check --write --unsafe",
+    "check:ci": "bun run typecheck && biome check",
     "typespec:compile": "cd packages/typespec && tsp compile ."
   },
   "devDependencies": {
