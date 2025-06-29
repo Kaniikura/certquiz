@@ -98,7 +98,7 @@ This document defines the CI/CD strategy for CertQuiz, integrating best practice
     path: |
       ~/.bun/install/cache
       **/node_modules
-    key: ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lockb') }}
+    key: ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
     restore-keys: |
       ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-
       ${{ runner.os }}-bun-
@@ -537,7 +537,7 @@ permissions:
       ~/.bun/install/cache
       **/node_modules
       ~/.cache/ms-playwright
-    key: ${{ runner.os }}-deps-${{ hashFiles('**/bun.lockb') }}
+    key: ${{ runner.os }}-deps-${{ hashFiles('**/bun.lock') }}
     restore-keys: |
       ${{ runner.os }}-deps-
 
@@ -620,7 +620,7 @@ fi
 # Multi-stage build with security hardening
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build

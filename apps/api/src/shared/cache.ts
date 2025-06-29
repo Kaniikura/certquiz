@@ -125,7 +125,7 @@ export function getRedisConfig(
   const activeLogger = customLogger || logger;
 
   const baseConfig: RedisClientOptions = {
-    url: 'redis://localhost:6379',
+    url: 'redis://127.0.0.1:6379',
     socket: {
       reconnectStrategy: (retries: number) => {
         const maxRetries = parseInt(env.REDIS_MAX_RETRIES || '10', 10);
@@ -173,7 +173,7 @@ export function getRedisConfig(
     // If parsing failed, we'll stick with the default configuration
   } else {
     // Fallback to individual variables
-    const host = env.REDIS_HOST || 'localhost';
+    const host = env.REDIS_HOST || '127.0.0.1';
     const port = env.REDIS_PORT || '6379';
     const password = env.REDIS_PASSWORD;
     const database = env.REDIS_DB || '0';
@@ -441,9 +441,11 @@ class RedisCache implements Cache {
 class MemoryCache implements Cache {
   private store = new Map<string, { value: string; expiry: number }>();
   private timers = new Map<string, NodeJS.Timeout>();
+  private ready = false;
 
   async init(): Promise<void> {
-    // Nothing to initialize for in-memory cache
+    // Mark the cache as ready (consistent with RedisCache behavior)
+    this.ready = true;
     logger.info('MemoryCache initialized');
   }
 
@@ -502,6 +504,9 @@ class MemoryCache implements Cache {
   }
 
   async ping(): Promise<string> {
+    if (!this.ready) {
+      throw new Error('MemoryCache not initialized');
+    }
     return 'PONG';
   }
 }

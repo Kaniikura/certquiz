@@ -25,18 +25,26 @@ describe('Redis Connection Integration', () => {
     });
 
     it('should use the correct Redis URL from environment', () => {
-      const _expectedUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      // Use consistent default that matches CI environment
+      const defaultUrl = 'redis://127.0.0.1:6379';
+      const expectedUrl = process.env.REDIS_URL || defaultUrl;
 
-      // Dynamically check based on actual configuration
-      if (process.env.REDIS_URL) {
-        const url = new URL(process.env.REDIS_URL);
-        expect(redis.options?.url).toContain(url.hostname);
-        expect(redis.options?.url).toContain(url.port || '6379');
-      } else {
-        // Fallback to defaults
-        expect(redis.options?.url).toContain(process.env.REDIS_HOST || 'localhost');
-        expect(redis.options?.url).toContain(process.env.REDIS_PORT || '6379');
+      // Normalize host comparison to handle localhost vs 127.0.0.1 equivalence
+      function normalizeHost(url: string) {
+        const { hostname, port } = new URL(url);
+
+        // Treat localhost, 127.0.0.1 and ::1 (IPv6 localhost) as the same
+        const normalizedHostname =
+          hostname === 'localhost' || hostname === '::1' ? '127.0.0.1' : hostname;
+
+        // Redis default port fallback
+        const normalizedPort = port || '6379';
+
+        return `${normalizedHostname}:${normalizedPort}`;
       }
+
+      // Test that client uses the configured URL (semantically equivalent)
+      expect(normalizeHost(redis.options?.url || '')).toBe(normalizeHost(expectedUrl));
     });
 
     it('should persist data across operations', async () => {

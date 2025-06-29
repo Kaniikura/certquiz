@@ -13,7 +13,7 @@
 # Core configuration files
 /.env.example      @Kaniikura
 /package.json      @Kaniikura
-/bun.lockb         @Kaniikura
+/bun.lock          @Kaniikura
 /tsconfig.json     @Kaniikura
 /biome.json        @Kaniikura
 

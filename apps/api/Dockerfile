@@ -7,10 +7,12 @@ WORKDIR /app
 # Copy package files
 COPY package.json bun.lock ./
 COPY packages/shared/package.json packages/shared/
+COPY packages/typespec/package.json packages/typespec/
 COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
 
 # Install dependencies
-RUN bun install
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY packages/shared packages/shared/

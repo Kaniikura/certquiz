@@ -11,7 +11,7 @@ export const baseTestEnv = {
   KEYCLOAK_REALM: 'test',
   KEYCLOAK_URL: 'http://localhost:8080',
   NODE_ENV: 'test',
-  REDIS_URL: 'redis://localhost:6379',
+  REDIS_URL: 'redis://127.0.0.1:6379',
 } as const;
 
 /**
