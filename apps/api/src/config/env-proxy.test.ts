@@ -1,26 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { env } from './env';
 
+// No need to import test environment - vitest.setup.ts handles it automatically
+
 describe('Environment Configuration Integration', () => {
-  const originalEnv = { ...process.env };
-
-  beforeAll(() => {
-    // Set up test environment variables
-    process.env.DATABASE_URL = 'postgresql://postgres:password@localhost:5432/certquiz_test';
-    process.env.KEYCLOAK_URL = 'http://localhost:8080';
-    process.env.KEYCLOAK_REALM = 'certquiz';
-    process.env.JWT_SECRET = 'test-secret-key-with-minimum-length';
-    process.env.BMAC_WEBHOOK_SECRET = 'test-webhook-secret';
-    process.env.API_PORT = '4000';
-    process.env.NODE_ENV = 'test';
-    process.env.FRONTEND_URL = 'http://localhost:5173';
-  });
-
-  afterAll(() => {
-    // Restore original environment
-    process.env = originalEnv;
-  });
-
   it('should load environment variables through proxy', () => {
     // Test that env proxy provides access to all required variables
     expect(env.DATABASE_URL).toBeDefined();

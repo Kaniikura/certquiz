@@ -1,53 +1,35 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { validEnvForTests } from '../../test-env';
 import { loadEnv, validateEnv } from './env';
 
 describe('Environment Configuration', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    // Reset process.env before each test
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    // Restore original environment
-    process.env = originalEnv;
-  });
-
   describe('validateEnv', () => {
     it('should validate all required environment variables', () => {
-      process.env = {
-        ...process.env,
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
+      // Setup is handled by vitest.setup.ts, but we can override specific values
+      Object.assign(process.env, {
+        ...validEnvForTests,
         API_PORT: '4000',
         NODE_ENV: 'test',
-      };
+      });
 
       const result = validateEnv();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.DATABASE_URL).toBe(
-          'postgresql://postgres:password@localhost:5432/certquiz'
-        );
-        expect(result.data.KEYCLOAK_URL).toBe('http://localhost:8080');
-        expect(result.data.KEYCLOAK_REALM).toBe('certquiz');
-        expect(result.data.JWT_SECRET).toBe('test-secret-key-with-minimum-length');
-        expect(result.data.BMAC_WEBHOOK_SECRET).toBe('test-webhook-secret');
+        expect(result.data.DATABASE_URL).toBe(validEnvForTests.DATABASE_URL);
+        expect(result.data.KEYCLOAK_URL).toBe(validEnvForTests.KEYCLOAK_URL);
+        expect(result.data.KEYCLOAK_REALM).toBe(validEnvForTests.KEYCLOAK_REALM);
+        expect(result.data.JWT_SECRET).toBe(validEnvForTests.JWT_SECRET);
+        expect(result.data.BMAC_WEBHOOK_SECRET).toBe(validEnvForTests.BMAC_WEBHOOK_SECRET);
         expect(result.data.API_PORT).toBe(4000);
         expect(result.data.NODE_ENV).toBe('test');
       }
     });
 
     it('should fail when required environment variables are missing', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        // Missing other required variables
-      };
+      // Remove required variables to test validation failure
+      delete process.env.KEYCLOAK_URL;
+      delete process.env.JWT_SECRET;
 
       const result = validateEnv();
 
@@ -59,14 +41,10 @@ describe('Environment Configuration', () => {
     });
 
     it('should use default values for optional variables', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
-        // API_PORT not provided, should use default
-      };
+      // Set required vars but omit optional ones to test defaults
+      Object.assign(process.env, validEnvForTests);
+      delete process.env.API_PORT; // Should use default
+      delete process.env.NODE_ENV; // Should use default
 
       const result = validateEnv();
 
@@ -78,13 +56,9 @@ describe('Environment Configuration', () => {
     });
 
     it('should validate DATABASE_URL format', () => {
-      process.env = {
-        DATABASE_URL: 'invalid-database-url',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
-      };
+      // Set valid env then override with invalid DATABASE_URL
+      Object.assign(process.env, validEnvForTests);
+      process.env.DATABASE_URL = 'invalid-database-url';
 
       const result = validateEnv();
 
@@ -95,13 +69,9 @@ describe('Environment Configuration', () => {
     });
 
     it('should validate KEYCLOAK_URL format', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'not-a-url',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
-      };
+      // Set valid env then override with invalid KEYCLOAK_URL
+      Object.assign(process.env, validEnvForTests);
+      process.env.KEYCLOAK_URL = 'not-a-url';
 
       const result = validateEnv();
 
@@ -112,14 +82,9 @@ describe('Environment Configuration', () => {
     });
 
     it('should validate API_PORT is a valid number', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
-        API_PORT: 'not-a-number',
-      };
+      // Set valid env then override with invalid API_PORT
+      Object.assign(process.env, validEnvForTests);
+      process.env.API_PORT = 'not-a-number';
 
       const result = validateEnv();
 
@@ -130,13 +95,9 @@ describe('Environment Configuration', () => {
     });
 
     it('should require minimum JWT_SECRET length', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'short',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
-      };
+      // Set valid env then override with short JWT_SECRET
+      Object.assign(process.env, validEnvForTests);
+      process.env.JWT_SECRET = 'short';
 
       const result = validateEnv();
 
@@ -149,20 +110,17 @@ describe('Environment Configuration', () => {
 
   describe('loadEnv', () => {
     it('should load and return validated environment configuration', () => {
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
+      // Override specific values for this test
+      Object.assign(process.env, {
+        ...validEnvForTests,
         API_PORT: '5000',
         NODE_ENV: 'production',
         FRONTEND_URL: 'https://certquiz.example.com',
-      };
+      });
 
       const config = loadEnv();
 
-      expect(config.DATABASE_URL).toBe('postgresql://postgres:password@localhost:5432/certquiz');
+      expect(config.DATABASE_URL).toBe(validEnvForTests.DATABASE_URL);
       expect(config.API_PORT).toBe(5000);
       expect(config.NODE_ENV).toBe('production');
       expect(config.FRONTEND_URL).toBe('https://certquiz.example.com');
@@ -172,21 +130,22 @@ describe('Environment Configuration', () => {
     });
 
     it('should throw error when environment validation fails', () => {
-      process.env = {}; // Empty environment
+      // Remove all environment variables to trigger validation failure
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith('DATABASE_') || key.startsWith('KEYCLOAK_') || key.startsWith('JWT_')) {
+          delete process.env[key];
+        }
+      }
 
       expect(() => loadEnv()).toThrow('Invalid environment variables');
     });
 
     it('should set correct boolean flags for different environments', () => {
       // Test development
-      process.env = {
-        DATABASE_URL: 'postgresql://postgres:password@localhost:5432/certquiz',
-        KEYCLOAK_URL: 'http://localhost:8080',
-        KEYCLOAK_REALM: 'certquiz',
-        JWT_SECRET: 'test-secret-key-with-minimum-length',
-        BMAC_WEBHOOK_SECRET: 'test-webhook-secret',
+      Object.assign(process.env, {
+        ...validEnvForTests,
         NODE_ENV: 'development',
-      };
+      });
 
       let config = loadEnv();
       expect(config.isDevelopment).toBe(true);

@@ -1,7 +1,7 @@
 import os from 'node:os';
 import { Hono } from 'hono';
-import { createLogger } from '../lib/logger';
-import type { AppEnv } from '../types/app';
+import { createLogger } from '../../shared/logger';
+import type { AppEnv } from '../../types/app';
 
 const logger = createLogger('health');
 

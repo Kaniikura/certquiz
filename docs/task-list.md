@@ -1,10 +1,10 @@
-# Implementation Task List - Phase 1 (Revised with Service Layer Architecture)
+# Implementation Task List - Phase 1 (Simple MVP Architecture)
 
 ## Overview
 
-This document breaks down Phase 1 implementation into manageable tasks, incorporating the service layer architecture decisions. Each task should be completed with tests before moving to the next.
+This document breaks down Phase 1 implementation into manageable tasks using a simplified module-based architecture. Each task should be completed with tests before moving to the next.
 
-**Phase 1 Goal**: Basic quiz functionality with authentication, admin features, and proper architecture foundations.
+**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using a simple, module-based structure that can evolve to clean architecture when needed.
 
 ## Task Organization
 
@@ -14,7 +14,8 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - ⏱️ **Estimated Time**: Rough estimate for completion
 - ✅ **Completed**: Task finished
 
-## 1. Project Setup Tasks 🔴
+## 1. Core Project Setup Tasks 🔴
+*Original planned tasks - completed as designed*
 
 ### 1.1 Initialize Monorepo Structure ✅
 **Time**: 30 minutes
@@ -61,9 +62,24 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Redis connection works
 ```
 
+---
+
+## 1A. Additional Setup Tasks (Addendum) 🔄
+*Unplanned tasks added during implementation - addressing technical debt and tooling improvements*
+
+> **Note**: Tasks 1.5-1.11 and 1A.1 were not in the original Phase 1 plan but became necessary due to:
+> - Framework stability concerns (Elysia → Hono migration)
+> - Performance optimizations (ioredis → node-redis migration)  
+> - Code quality improvements (ESLint/Prettier → Biome 2.x migration)
+> - Project rebranding (cisco-quiz-app → CertQuiz)
+> - Code structure alignment with Phase 1 architecture
+> - Test configuration issues (duplication, inconsistencies)
+> - CI/CD foundation setup for development efficiency
+
 ### 1.5 Rename Project to CertQuiz ✅
 **Time**: 15 minutes
-**Status**: COMPLETED
+**Status**: COMPLETED  
+**Reason**: Project rebranding for clearer scope definition
 ```bash
 # Tasks:
 - Rename project from cisco-quiz-app to CertQuiz
@@ -75,7 +91,8 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 
 ### 1.6 Migrate from Elysia to Hono ✅
 **Time**: 2 hours
-**Status**: COMPLETED
+**Status**: COMPLETED  
+**Reason**: Framework stability and better TypeScript support
 ```bash
 # Tasks:
 - Replace Elysia with Hono in package.json dependencies
@@ -89,7 +106,8 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 
 ### 1.7 Migrate from ioredis to node-redis ✅
 **Time**: 2 hours
-**Status**: COMPLETED
+**Status**: COMPLETED  
+**Reason**: Performance optimization and reduced dependencies
 ```bash
 # Tasks:
 - Replace ioredis with redis package in dependencies
@@ -102,7 +120,8 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 
 ### 1.8 Migrate to Biome 2.x ✅
 **Time**: 1.5 hours
-**Status**: COMPLETED
+**Status**: COMPLETED  
+**Reason**: Unified linting/formatting tool for improved developer experience
 ```bash
 # Tasks:
 - Remove ESLint and Prettier dependencies
@@ -113,42 +132,94 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: All formatting and linting works with Biome
 ```
 
-## 2. Architecture Foundation Tasks 🔴
-
-### 2.1 Create Core Interfaces
-**Time**: 1 hour
-**NEW TASK**
-```typescript
-// Tasks:
-- Create repository interfaces (base, paginated)
-- Create service interfaces (base, context, result)
-- Create cache interface
-- Create event bus interface
-- Test: TypeScript compiles without errors
+### 1.9 Reorganize API Code Structure ✅
+**Time**: 1 hour (Actual: 1.5 hours)
+**Status**: COMPLETED  
+**Reason**: Align code structure with Phase 1 module-based architecture before CI/CD setup
+```bash
+# Tasks:
+- Create modules/ directory structure
+- Move routes/health.ts to modules/health/health.routes.ts
+- Move routes/health.test.ts to modules/health/health.routes.test.ts
+- Create shared/ directory for shared utilities
+- Move lib/logger.ts to shared/logger.ts
+- Move config/redis.ts to shared/cache.ts
+- Create placeholder files for shared/result.ts, shared/errors.ts, shared/types.ts
+- Move integration/ tests to tests/integration/
+- Remove obsolete directories (core/, lib/)
+- Update all import paths
+- Test: All tests pass with new structure (60/60 tests passing)
 ```
 
-### 2.2 Implement Infrastructure Services
-**Time**: 2 hours
-**NEW TASK**
-```typescript
-// Tasks:
-- Implement Redis cache service
-- Implement event bus (in-memory first, Redis pub/sub later)
-- Implement structured logger
-- Implement error classes
-- Test: Unit tests for each service
+### 1.10 Centralize Test Environment Configuration ✅
+**Time**: 2 hours  
+**Status**: COMPLETED
+**Reason**: Eliminate test environment duplication and resolve bun test inconsistencies
+```bash
+# Tasks:
+- Create single source of truth for test environment variables (test-env.ts)
+- Add automatic test isolation via vitest.setup.ts
+- Refactor env.test.ts to use centralized configuration  
+- Simplify env-proxy.test.ts by removing manual environment setup
+- Eliminate code duplication between vitest.config.ts and test files
+- Follow o3's recommendation for clean test environment management
+- Test: All tests use consistent environment setup
 ```
 
-### 2.3 Setup Monitoring and Observability
-**Time**: 1 hour
-**NEW TASK**
+### 1.11 Resolve Test Duplication and Vitest Configuration ✅
+**Time**: 1.5 hours
+**Status**: COMPLETED
+**Reason**: Fix bun test vs bun run test inconsistency and proper monorepo configuration
+```bash
+# Tasks:
+- Create root vitest.config.ts with proper project configuration
+- Fix apps/api/vitest.config.ts to use defineProject() for monorepo
+- Move integration tests to tests/integration/ directory (outside src/)
+- Remove duplicate test file from src/tests/integration/
+- Add setupFiles configuration to all test projects
+- Resolve bun test vs bun run test inconsistency (127 vs 60 tests)
+- Archive old test files to prevent Bun discovery
+- Follow o3's guidance for proper Bun + Vitest monorepo setup
+- Test: Both commands run same 60 tests consistently
+```
+
+### 1A.1 Setup GitHub Actions CI/CD Foundation 🔴
+**Time**: 3-4 hours
+**Status**: NOT STARTED  
+**Reason**: Early CI/CD setup for development efficiency and quality gates
+```yaml
+# Tasks:
+- Create basic CI workflow (.github/workflows/ci.yml)
+- Implement lint + typecheck + unit test pipeline
+- Add Docker build and smoke test validation
+- Configure branch protection rules (CI green required)
+- Setup aggressive caching strategy for <5min PR feedback
+- Add basic dependency security scanning
+- Test: PR checks complete in under 5 minutes
+```
+
+## 2. Shared Utilities Setup 🔴
+
+### 2.1 Create Shared Utilities
+**Time**: 1.5 hours
 ```typescript
 // Tasks:
-- Setup OpenTelemetry
-- Configure structured logging
-- Add request tracing
-- Add performance metrics
-- Test: Logs and traces are generated
+- Create shared/logger.ts with Pino logger
+- Create shared/cache.ts with Redis wrapper
+- Create shared/database.ts with DB connection
+- Create shared/result.ts with Result<T, E> type
+- Create shared/errors.ts with error classes
+- Test: All utilities work correctly
+```
+
+### 2.2 Setup Configuration
+**Time**: 30 minutes
+```typescript
+// Tasks:
+- Create config/env.ts with typed env vars
+- Validate environment variables on startup
+- Move Redis config to shared/cache.ts
+- Test: Configuration loads correctly
 ```
 
 ## 3. Database Setup Tasks 🔴
@@ -175,28 +246,15 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: `bun run db:generate` creates migration files
 ```
 
-### 3.3 Implement Base Repository
-**Time**: 1 hour
-**NEW TASK**
-```typescript
-// Tasks:
-- Create base repository class
-- Implement CRUD operations
-- Add pagination support
-- Add transaction support
-- Test: Base repository operations work
-```
-
-### 3.4 Implement Domain Repositories
+### 3.3 Create Database Query Functions
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create UserRepository
-- Create QuestionRepository
-- Create QuizRepository
-- Create ProgressRepository
-- Test: All repositories have integration tests
+- Create modules/user/user.db.ts with user queries
+- Create modules/quiz/quiz.db.ts with quiz queries
+- Create modules/question/question.db.ts
+- Add transaction helpers in shared/database.ts
+- Test: All database queries work
 ```
 
 ### 3.5 Run Migrations and Seed Data
@@ -210,55 +268,50 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Database populated with test data
 ```
 
-## 4. Service Layer Implementation 🟡
+## 4. Module Implementation 🟡
 
-### 4.1 Implement Authentication Service
+### 4.1 Implement Auth Module
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create AuthService with KeyCloak integration
-- Implement login/logout logic
-- Add token validation with caching
-- Implement refresh token logic
-- Test: Authentication flow works end-to-end
+- Create modules/auth/auth.service.ts with business logic
+- Create modules/auth/auth.routes.ts with endpoints
+- Create modules/auth/auth.middleware.ts
+- Integrate KeyCloak authentication
+- Test: Auth flow works end-to-end
 ```
 
-### 4.2 Implement Question Service
-**Time**: 2 hours
-**NEW TASK**
-```typescript
-// Tasks:
-- Create QuestionService
-- Implement question retrieval with caching
-- Add filtering and pagination
-- Implement admin operations
-- Test: All question operations tested
-```
-
-### 4.3 Implement Quiz Service
+### 4.2 Implement Quiz Module
 **Time**: 3 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create QuizService
-- Implement quiz session management
-- Add answer validation logic
-- Implement progress tracking
-- Emit domain events
+- Create modules/quiz/quiz.service.ts
+- Create modules/quiz/quiz.routes.ts
+- Create modules/quiz/quiz.db.ts
+- Create modules/quiz/quiz.types.ts
 - Test: Complete quiz flow tested
 ```
 
-### 4.4 Implement User Progress Service
+### 4.3 Implement User Module
 **Time**: 2 hours
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create ProgressService
-- Implement badge unlock logic
-- Add statistics calculation
-- Handle progress events
-- Test: Progress tracking works correctly
+- Create modules/user/user.service.ts
+- Create modules/user/user.routes.ts
+- Create modules/user/user.db.ts
+- Add progress tracking logic
+- Test: User operations work correctly
+```
+
+### 4.4 Implement Question Module
+**Time**: 2 hours
+```typescript
+// Tasks:
+- Create modules/question/question.service.ts
+- Create modules/question/question.routes.ts
+- Create modules/question/question.db.ts
+- Add caching for question retrieval
+- Test: Question operations tested
 ```
 
 ## 5. API Layer Implementation 🟡
@@ -285,53 +338,49 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 - Test: Middleware chain works correctly
 ```
 
-### 5.3 Implement V1 API Routes
-**Time**: 3 hours
+### 5.3 Wire Up Module Routes
+**Time**: 2 hours
 ```typescript
 // Tasks:
-- Create /api/v1/auth routes (thin layer)
-- Create /api/v1/questions routes
-- Create /api/v1/quiz routes
-- Create /api/v1/admin routes
+- Mount auth routes at /api/auth
+- Mount quiz routes at /api/quiz
+- Mount user routes at /api/users
+- Mount question routes at /api/questions
 - Test: All endpoints return expected responses
 ```
 
-### 5.4 Implement WebSocket Support
+### 5.4 Add Admin Module (Optional)
 **Time**: 2 hours
-**NEW TASK**
+**DEFER TO PHASE 2**
 ```typescript
 // Tasks:
-- Setup WebSocket server
-- Implement real-time quiz updates
-- Add progress notifications
-- Handle connection management
-- Test: WebSocket events work
+- Create modules/admin/admin.routes.ts
+- Add basic admin endpoints
+- Implement authorization checks
+- Test: Admin endpoints protected
 ```
 
-## 6. Event System Implementation 🟢
+## 6. Basic Features Implementation 🟢
 
-### 6.1 Define Domain Events
+### 6.1 Add Caching Layer
 **Time**: 1 hour
-**NEW TASK**
 ```typescript
 // Tasks:
-- Create event type definitions
-- Define quiz events
-- Define user events
-- Define progress events
-- Test: Events are properly typed
+- Implement caching in quiz.service.ts
+- Cache question lists
+- Cache user sessions
+- Add cache invalidation
+- Test: Caching improves performance
 ```
 
-### 6.2 Implement Event Handlers
-**Time**: 2 hours
-**NEW TASK**
+### 6.2 Add Basic Gamification
+**Time**: 1.5 hours
 ```typescript
 // Tasks:
-- Create badge unlock handler
-- Create progress update handler
-- Create notification handler
-- Create audit log handler
-- Test: Handlers process events correctly
+- Implement streak tracking
+- Add basic badge unlocking
+- Update user progress after quizzes
+- Test: Gamification features work
 ```
 
 ## 7. Frontend Foundation Tasks 🟢
@@ -554,11 +603,11 @@ This document breaks down Phase 1 implementation into manageable tasks, incorpor
 
 ```mermaid
 graph TD
-    A[1. Project Setup] --> B[2. Architecture Foundation]
+    A[1. Project Setup] --> B[2. Shared Utilities]
     B --> C[3. Database Setup]
-    C --> D[4. Service Layer]
+    C --> D[4. Modules]
     D --> E[5. API Layer]
-    E --> F[6. Event System]
+    E --> F[6. Basic Features]
     
     A --> G[7. Frontend Foundation]
     G --> H[8. Core UI]
@@ -583,26 +632,38 @@ Each task is complete when:
 
 ## Revised Timeline
 
-- **Week 1**: Tasks 1-2 (Setup & Architecture Foundation)
-- **Week 2**: Tasks 3-4 (Database & Service Layer)
-- **Week 3**: Tasks 5-6 (API & Events)
+**Note**: Timeline updated to reflect additional setup tasks (1A series) completed during implementation.
+
+- **Week 1**: Tasks 1 + 1A + 2 (Core Setup + Additional Tasks + Shared Utilities)
+- **Week 2**: Tasks 3-4 (Database & Modules)
+- **Week 3**: Tasks 5-6 (API & Basic Features)
 - **Week 4**: Tasks 7-8 (Frontend Implementation)
 - **Week 5**: Tasks 9-10 (Admin & Testing)
 - **Week 6**: Task 11 (DevOps & Deployment)
 
-Total estimate: ~120-140 hours of development time (increased due to proper architecture)
+**Actual Setup Phase Summary**:
+- Original tasks (1.1-1.4): 1.5 hours (as planned)
+- Additional tasks (1.5-1.11): ~12.5 hours (unplanned but valuable)
+- Total setup time: ~14 hours vs planned 1.5 hours
+- **Key achievements**: 
+  - Stable framework migration (Elysia → Hono)
+  - Optimal tooling setup (Biome 2.x, node-redis)
+  - Proper monorepo test configuration (60 tests consistent)
+  - Clean module-based architecture foundation
+
+Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
 
 ## Critical Path
 
 The following tasks are on the critical path and block other work:
-1. Architecture Foundation (blocks everything)
-2. Database + Repositories (blocks services)
-3. Service Layer (blocks API routes)
+1. Shared Utilities (blocks module development)
+2. Database Setup (blocks all data operations)
+3. Module Implementation (blocks API routes)
 4. API Routes (blocks frontend integration)
 
 ## Risk Mitigation
 
-- **Performance Risk**: Implement caching early
-- **Complexity Risk**: Keep services focused and small
-- **Integration Risk**: Test service interactions thoroughly
-- **Scale Risk**: Design for horizontal scaling from start
+- **Performance Risk**: Add caching only where needed
+- **Complexity Risk**: Keep modules simple and focused
+- **Over-engineering Risk**: Follow YAGNI principle
+- **Migration Risk**: Maintain clear module boundaries for Phase 2

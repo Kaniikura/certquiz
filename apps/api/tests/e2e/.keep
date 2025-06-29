@@ -1,0 +1,10 @@
+# End-to-End Tests Directory
+
+This directory will contain E2E tests that test the complete application flow, including:
+- Full API workflow tests
+- Authentication flow tests
+- Quiz session complete flow tests
+- Integration with external services
+
+E2E tests differ from integration tests by testing the entire application
+from the user's perspective, including all layers and external dependencies.

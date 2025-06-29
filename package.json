@@ -14,9 +14,11 @@
     "build:shared": "cd packages/shared && bun run build",
     "build:api": "cd apps/api && bun run build",
     "build:web": "cd apps/web && bun run build",
-    "test": "bun run test:unit && bun run test:integration",
-    "test:unit": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project api-unit",
+    "test:integration": "vitest run --project api-integration",
+    "test:e2e": "vitest run --project api-e2e",
+    "test:api": "vitest run --project api-unit --project api-integration --project api-e2e",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "db:generate": "cd apps/api && drizzle-kit generate:pg",
@@ -38,10 +40,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",
     "@types/bun": "latest",
-    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^8.2.0",
     "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "es-toolkit": "^1.39.5"
