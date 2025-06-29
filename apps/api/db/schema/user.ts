@@ -54,7 +54,7 @@ export const subscriptions = pgTable(
   {
     userId: uuid('user_id')
       .primaryKey()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     plan: subscriptionPlanEnum('plan').notNull().default('free'),
     status: subscriptionStatusEnum('status').notNull().default('active'),
     buyMeACoffeeEmail: text('buy_me_a_coffee_email'),
