@@ -13,6 +13,9 @@ const originalUnmodified = { ...process.env };
 
 beforeEach(() => {
   // Start each test from the same clean slate:
-  // Original Node environment + our test defaults
-  process.env = { ...originalUnmodified, ...baseTestEnv };
+  // Clear current env and restore original + test defaults
+  for (const key in process.env) {
+    delete process.env[key];
+  }
+  Object.assign(process.env, originalUnmodified, baseTestEnv);
 });

@@ -113,8 +113,8 @@ describe('Redis Connection Integration', () => {
       expect(ttl).toBeGreaterThan(0);
       expect(ttl).toBeLessThanOrEqual(2);
 
-      // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Wait for expiration (reduced from 3000ms to 2100ms)
+      await new Promise((resolve) => setTimeout(resolve, 2100));
 
       // Should be expired now
       expect(await redis.exists(key)).toBe(0);

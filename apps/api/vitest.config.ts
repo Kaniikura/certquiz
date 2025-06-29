@@ -23,7 +23,6 @@ export default defineProject({
   resolve: {
     alias: {
       '@api': path.resolve(__dirname, './src'),
-      '@': path.resolve(__dirname, './src'),
       '@certquiz/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
