@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cache, createCache } from '../config/redis';
-import type { AppEnv } from '../types/app';
-import { healthRoutes } from './health';
+import { type Cache, createCache } from '../../shared/cache';
+import type { AppEnv } from '../../types/app';
+import { healthRoutes } from './health.routes';
 
 describe('Health routes', () => {
   describe('with memory cache driver', () => {

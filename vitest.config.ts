@@ -1,0 +1,58 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  // Global options that apply to all projects
+  cacheDir: '.vitest_cache',
+  test: {
+    // Coverage and reporters can only be configured at root level
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+    },
+    reporters: ['default'],
+
+    // Define non-overlapping projects only (to avoid test duplication)
+    projects: [
+      // --------------- API Projects (scoped) -----------------
+      // API - Unit tests only
+      {
+        root: './apps/api',
+        extends: true,
+        test: {
+          name: 'api-unit',
+          include: ['src/**/*.test.ts'],
+          exclude: ['**/node_modules/**', '**/dist/**'],
+          setupFiles: ['./vitest.setup.ts'],
+        },
+      },
+
+      // API - Integration tests only
+      {
+        root: './apps/api',
+        extends: true,
+        test: {
+          name: 'api-integration',
+          include: ['tests/integration/**/*.test.ts'],
+          testTimeout: 30_000,
+          setupFiles: ['./vitest.setup.ts'],
+        },
+      },
+
+      // API - E2E tests only
+      {
+        root: './apps/api',
+        extends: true,
+        test: {
+          name: 'api-e2e',
+          include: ['tests/e2e/**/*.test.ts'],
+          testTimeout: 120_000,
+          setupFiles: ['./vitest.setup.ts'],
+        },
+      },
+
+      // --------------- Future Projects -----------------
+      // 'apps/web',
+      // 'packages/*',
+    ],
+  },
+});

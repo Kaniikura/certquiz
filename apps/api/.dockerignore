@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Test files
+src/tests/
+**/*.test.ts
+**/*.spec.ts
+
+# Development files
+.env.local
+.env.development
+.env.test
+
+# Documentation
+README.md
+docs/
+
+# Source maps
+**/*.map
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

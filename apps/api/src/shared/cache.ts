@@ -2,7 +2,7 @@ import { random } from 'es-toolkit';
 import type { Logger } from 'pino';
 import type { RedisClientOptions, RedisClientType } from 'redis';
 import { createClient } from 'redis';
-import { createLogger } from '../lib/logger';
+import { createLogger } from './logger';
 
 let logger = createLogger('redis');
 
