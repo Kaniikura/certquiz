@@ -67,8 +67,22 @@ jobs:
     timeout-minutes: 8
     needs: lint  # Ensure lint passes before running tests
     
-    # Redis service for integration tests
+    # Services for integration tests
     services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: certquiz_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d certquiz_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      
       redis:
         image: bitnami/redis:7.2
         env:
@@ -123,6 +137,9 @@ jobs:
         run: bun run ${{ matrix.command }}
         env:
           VITEST_MAX_THREADS: 4
+          # PostgreSQL service connection (for integration tests)
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/certquiz_test?sslmode=disable
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/certquiz_test?sslmode=disable
           # Redis service connection (for integration tests)
           # Use localhost because job runs on host, not in container
           REDIS_HOST: localhost
@@ -132,6 +149,11 @@ jobs:
           CACHE_DRIVER: ${{ matrix.test-type == 'integration' && 'redis' || 'memory' }}
           # Test environment
           NODE_ENV: test
+          # Mock required env vars for tests (these are validated by env.ts)
+          KEYCLOAK_URL: http://localhost:8080
+          KEYCLOAK_REALM: certquiz
+          JWT_SECRET: test-jwt-secret-at-least-16-chars
+          BMAC_WEBHOOK_SECRET: test-webhook-secret
 
   # Docker build and smoke test
   docker-build:
@@ -175,6 +197,14 @@ jobs:
           # Start container with smoke test configuration
           # Uses CACHE_DRIVER=memory for lightweight testing
           docker run -d --name api-test -p 4000:4000 \
+            -e DATABASE_URL="postgres://postgres:postgres@host.docker.internal:5432/certquiz_test?sslmode=disable" \
+            -e REDIS_URL="redis://host.docker.internal:6379" \
+            -e CACHE_DRIVER="memory" \
+            -e KEYCLOAK_URL="http://localhost:8080" \
+            -e KEYCLOAK_REALM="certquiz" \
+            -e JWT_SECRET="test-jwt-secret-at-least-16-chars" \
+            -e BMAC_WEBHOOK_SECRET="test-webhook-secret" \
+            -e NODE_ENV="test" \
             certquiz/api:ci
 
       - name: Wait for API to be ready
