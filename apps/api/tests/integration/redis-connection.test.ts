@@ -1,6 +1,6 @@
 import type { RedisClientType } from 'redis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closeRedisConnection, createRedisClient, getRedisClient } from '../../shared/cache';
+import { closeRedisConnection, createRedisClient, getRedisClient } from '../../src/shared/cache';
 
 describe('Redis Connection Integration', () => {
   let redis: RedisClientType;
@@ -102,16 +102,21 @@ describe('Redis Connection Integration', () => {
     it('should handle expiration correctly', async () => {
       const key = 'test:expiring';
 
-      // Set with 1 second expiration
-      await redis.setEx(key, 1, 'expires soon');
+      // Set with 2 second expiration
+      await redis.setEx(key, 2, 'expires soon');
 
       // Should exist immediately
       expect(await redis.exists(key)).toBe(1);
 
-      // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      // Check TTL is set
+      const ttl = await redis.ttl(key);
+      expect(ttl).toBeGreaterThan(0);
+      expect(ttl).toBeLessThanOrEqual(2);
 
-      // Should be expired
+      // Wait for expiration
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Should be expired now
       expect(await redis.exists(key)).toBe(0);
     });
 
