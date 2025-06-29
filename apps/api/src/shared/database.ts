@@ -64,9 +64,9 @@ function validateDatabaseUrl(url: string | undefined): void {
     throw new Error('DATABASE_URL environment variable is required');
   }
 
-  if (!url.startsWith('postgresql://')) {
+  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
     throw new Error(
-      'DATABASE_URL must be a valid PostgreSQL connection string starting with postgresql://'
+      'DATABASE_URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://'
     );
   }
 
@@ -165,7 +165,7 @@ export function getDatabase(): Database {
 /**
  * Gracefully shutdown the database connection
  */
-export async function shutdownDatabase(_timeoutSec = 5): Promise<void> {
+export async function shutdownDatabase(): Promise<void> {
   if (dbInstance) {
     try {
       await dbInstance.close();
