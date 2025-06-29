@@ -33,50 +33,57 @@ certquiz/
 │   │   └── svelte.config.js
 │   │
 │   └── api/                    # Hono backend (Simple Service Layer)
+│       ├── db/                 # Database-related files
+│       │   ├── schema/         # Drizzle table definitions
+│       │   ├── migrations/     # Generated migration files
+│       │   └── index.ts        # Database client factory
 │       ├── src/
 │       │   ├── index.ts        # Application entry point
 │       │   ├── config/         # Environment configuration (values only)
 │       │   │   ├── env.ts      # Typed environment variables
 │       │   │   └── index.ts    # Config exports
-│       │   ├── modules/        # Feature-based organization 🔑
-│       │   │   ├── quiz/       # Quiz module (*.test.ts files co-located)
+│       │   ├── modules/        # Feature-based organization
+│       │   │   ├── quiz/       # Quiz module
 │       │   │   │   ├── quiz.service.ts      # Business logic
 │       │   │   │   ├── quiz.routes.ts       # HTTP endpoints
 │       │   │   │   ├── quiz.db.ts          # Direct Drizzle queries
 │       │   │   │   ├── quiz.types.ts       # TypeScript types
-│       │   │   │   └── index.ts            # Module exports
-│       │   │   ├── user/       # User module (tests co-located)
+│       │   │   │   └── index.ts            # Module barrel exports
+│       │   │   ├── user/       # User module
 │       │   │   │   ├── user.service.ts
 │       │   │   │   ├── user.routes.ts
 │       │   │   │   ├── user.db.ts
-│       │   │   │   └── user.types.ts
-│       │   │   ├── auth/       # Auth module (tests co-located)
+│       │   │   │   ├── user.types.ts
+│       │   │   │   └── index.ts
+│       │   │   ├── auth/       # Auth module
 │       │   │   │   ├── auth.service.ts
 │       │   │   │   ├── auth.routes.ts
-│       │   │   │   └── auth.middleware.ts
+│       │   │   │   ├── auth.middleware.ts
+│       │   │   │   └── index.ts
 │       │   │   └── health/     # Health check module
-│       │   │       └── health.routes.ts
+│       │   │       ├── health.routes.ts
+│       │   │       └── index.ts
 │       │   ├── shared/         # Shared utilities & infrastructure
 │       │   │   ├── logger.ts   # Structured logging
 │       │   │   ├── cache.ts    # Redis wrapper (implementation)
-│       │   │   ├── database.ts # Database connection
 │       │   │   ├── result.ts   # Result<T, E> type
 │       │   │   ├── errors.ts   # Error classes
 │       │   │   └── types.ts    # Shared TypeScript types
-│       │   ├── db/            # Database schema
-│       │   │   ├── schema.ts
-│       │   │   ├── relations.ts
-│       │   │   ├── migrations/
-│       │   │   └── seeds/
-│       │   └── middleware/    # HTTP middleware
+│       │   └── middleware/     # HTTP middleware
 │       │       ├── validation.middleware.ts
 │       │       ├── error.middleware.ts
 │       │       └── rate-limit.middleware.ts
-│       ├── tests/            # Integration & E2E tests only
+│       ├── tests/              # Integration & E2E tests
 │       │   ├── integration/
-│       │   └── fixtures/     # Test data
+│       │   │   ├── setup.ts    # Integration test setup
+│       │   │   └── redis-connection.test.ts
+│       │   └── e2e/
+│       │       └── setup.ts    # E2E test setup
 │       ├── package.json
-│       └── drizzle.config.ts
+│       ├── tsconfig.json       # API-specific TypeScript config
+│       ├── vitest.config.ts    # Test configuration (API project)
+│       ├── drizzle.config.ts
+│       └── .dockerignore       # Exclude tests, docs from Docker
 │
 ├── packages/                   # Shared packages
 │   ├── shared/                 # Common types and utilities
@@ -108,7 +115,10 @@ certquiz/
     └── migrate.sh
 ```
 
-> 📝 **Test File Convention**: Unit tests are co-located with source files using the `.test.ts` suffix (e.g., `quiz.service.ts` → `quiz.service.test.ts`). This convention applies throughout the codebase except for integration/E2E tests which remain in the `tests/` directory.
+> 📝 **Co-located File Conventions**: 
+> - **Unit tests** are co-located with source files using the `.test.ts` suffix (e.g., `quiz.service.ts` → `quiz.service.test.ts`)
+> - **Validation schemas** are co-located using the `.schema.ts` suffix (e.g., `quiz.schema.ts` for Zod validation)
+> - This convention applies throughout the codebase except for integration/E2E tests which remain in the `tests/` directory
 
 ## Key Design Decisions
 
@@ -125,11 +135,24 @@ Services contain business logic but directly use Drizzle queries (no repository 
 Common utilities in `shared/` folder:
 - **logger.ts**: Pino logger instance
 - **cache.ts**: Redis client wrapper
-- **database.ts**: Database connection
 - **result.ts**: Result<T, E> type for consistent error handling
+- **errors.ts**: Custom error classes
+- **types.ts**: Shared TypeScript types
 
 ### 5. Direct Database Access 📊
-Each module has a `*.db.ts` file with Drizzle queries. No repository pattern yet - just organized query functions.
+Each module has a `*.db.ts` file with Drizzle queries. No repository pattern yet - just organized query functions. Database schema and migrations are kept outside `src/` to exclude them from runtime bundles.
+
+### 6. Module Barrel Exports 📦
+Each module includes an `index.ts` file that re-exports public APIs, making imports cleaner and controlling module boundaries:
+```typescript
+// modules/quiz/index.ts
+export { quizRoutes } from './quiz.routes';
+export { QuizService } from './quiz.service';
+export type { Quiz, QuizSession } from './quiz.types';
+```
+
+### 7. Validation Schemas 🛡️
+Each module has a `*.schema.ts` file for Zod validation schemas, keeping validation logic separate from business logic for easier testing and future migration.
 
 ## Migration Path to Phase 2
 
@@ -229,6 +252,57 @@ Using [Biome 2.x](https://biomejs.dev) for fast, all-in-one formatting and linti
 }
 ```
 
+## TypeScript Configuration
+
+### Path Aliases
+
+Configure path aliases in `apps/api/tsconfig.json` for cleaner imports:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": ["./src/*"]
+    }
+  }
+}
+```
+
+This allows imports like:
+```typescript
+import { cache } from '@api/shared/cache';
+import { QuizService } from '@api/modules/quiz';
+```
+
+### Docker Configuration
+
+Create `apps/api/.dockerignore` to exclude unnecessary files from the Docker build:
+
+```
+# Dependencies
+node_modules/
+
+# Test files
+src/tests/
+**/*.test.ts
+**/*.spec.ts
+
+# Development files
+.env.local
+.env.development
+
+# Documentation
+README.md
+docs/
+
+# Source maps
+**/*.map
+
+# TypeScript cache
+*.tsbuildinfo
+```
+
 ## Development Workflow
 
 ### 1. Adding a New Feature
@@ -237,16 +311,21 @@ Using [Biome 2.x](https://biomejs.dev) for fast, all-in-one formatting and linti
 # 1. Create module structure
 mkdir -p apps/api/src/modules/newfeature
 
-# 2. Write tests first (TDD)
+# 2. Create module files
+touch apps/api/src/modules/newfeature/index.ts              # Barrel exports
+touch apps/api/src/modules/newfeature/newfeature.types.ts   # TypeScript types
+touch apps/api/src/modules/newfeature/newfeature.schema.ts  # Zod schemas
+
+# 3. Write tests first (TDD)
 touch apps/api/src/modules/newfeature/newfeature.service.test.ts
 
-# 3. Implement service
+# 4. Implement service
 touch apps/api/src/modules/newfeature/newfeature.service.ts
 
-# 4. Add routes
+# 5. Add routes
 touch apps/api/src/modules/newfeature/newfeature.routes.ts
 
-# 5. Database queries if needed
+# 6. Database queries if needed
 touch apps/api/src/modules/newfeature/newfeature.db.ts
 ```
 
@@ -291,8 +370,22 @@ export interface Quiz {
   score?: number;
 }
 
+// modules/quiz/quiz.schema.ts
+import { z } from 'zod';
+
+export const startQuizSchema = z.object({
+  questionCount: z.number().int().min(1).max(50),
+  category: z.string().optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+});
+
+export const submitAnswerSchema = z.object({
+  questionId: z.string().uuid(),
+  answer: z.string(),
+});
+
 // modules/quiz/quiz.service.ts
-import { Result } from '../../shared/result';
+import { Result } from '@api/shared/result';
 import * as quizDb from './quiz.db';
 
 export async function startQuiz(
@@ -306,16 +399,28 @@ export async function startQuiz(
 
 // modules/quiz/quiz.routes.ts
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
 import * as quizService from './quiz.service';
+import { startQuizSchema } from './quiz.schema';
 
 export const quizRoutes = new Hono()
-  .post('/start', async (c) => {
-    const result = await quizService.startQuiz(/*...*/);
-    if (!result.success) {
-      return c.json({ error: result.error.message }, 400);
+  .post('/start', 
+    zValidator('json', startQuizSchema),
+    async (c) => {
+      const { questionCount } = c.req.valid('json');
+      const result = await quizService.startQuiz(c.get('user').id, questionCount);
+      if (!result.success) {
+        return c.json({ error: result.error.message }, 400);
+      }
+      return c.json(result.data);
     }
-    return c.json(result.data);
-  });
+  );
+
+// modules/quiz/index.ts (barrel exports)
+export { quizRoutes } from './quiz.routes';
+export { QuizService } from './quiz.service';
+export type { Quiz, QuizSession } from './quiz.types';
+export { startQuizSchema, submitAnswerSchema } from './quiz.schema';
 ```
 
 ## Next Steps
