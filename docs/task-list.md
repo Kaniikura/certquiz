@@ -67,11 +67,12 @@ This document breaks down Phase 1 implementation into manageable tasks using a s
 ## 1A. Additional Setup Tasks (Addendum) 🔄
 *Unplanned tasks added during implementation - addressing technical debt and tooling improvements*
 
-> **Note**: Tasks 1.5-1.8 and 1A.1 were not in the original Phase 1 plan but became necessary due to:
+> **Note**: Tasks 1.5-1.9 and 1A.1 were not in the original Phase 1 plan but became necessary due to:
 > - Framework stability concerns (Elysia → Hono migration)
 > - Performance optimizations (ioredis → node-redis migration)  
 > - Code quality improvements (ESLint/Prettier → Biome 2.x migration)
 > - Project rebranding (cisco-quiz-app → CertQuiz)
+> - Code structure alignment with Phase 1 architecture
 > - CI/CD foundation setup for development efficiency
 
 ### 1.5 Rename Project to CertQuiz ✅
@@ -128,6 +129,25 @@ This document breaks down Phase 1 implementation into manageable tasks using a s
 - Update package.json scripts to use Biome commands
 - Configure VS Code settings for Biome extension
 - Test: All formatting and linting works with Biome
+```
+
+### 1.9 Reorganize API Code Structure 🔴
+**Time**: 1 hour
+**Status**: NOT STARTED  
+**Reason**: Align code structure with Phase 1 module-based architecture before CI/CD setup
+```bash
+# Tasks:
+- Create modules/ directory structure
+- Move routes/health.ts to modules/health/health.routes.ts
+- Move routes/health.test.ts to modules/health/health.routes.test.ts
+- Create shared/ directory for shared utilities
+- Move lib/logger.ts to shared/logger.ts
+- Move config/redis.ts to shared/cache.ts
+- Create placeholder files for shared/result.ts, shared/errors.ts, shared/types.ts
+- Move integration/ tests to tests/integration/
+- Remove obsolete directories (core/, lib/)
+- Update all import paths
+- Test: All tests pass with new structure
 ```
 
 ### 1A.1 Setup GitHub Actions CI/CD Foundation 🚧
@@ -590,8 +610,8 @@ Each task is complete when:
 
 **Actual Setup Phase Summary**:
 - Original tasks (1.1-1.4): 1.5 hours (as planned)
-- Additional tasks (1.5-1.8 + 1A.1): ~8 hours (unplanned but valuable)
-- Total setup time: ~9.5 hours vs planned 1.5 hours
+- Additional tasks (1.5-1.9 + 1A.1): ~9 hours (unplanned but valuable)
+- Total setup time: ~10.5 hours vs planned 1.5 hours
 
 Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
 
