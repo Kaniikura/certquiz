@@ -22,7 +22,7 @@ quiz-app/
 ├── .env.example                 # Environment template
 ├── .gitignore
 ├── package.json                 # Root monorepo config
-├── bun.lockb
+├── bun.lock
 ├── tsconfig.json               # Root TypeScript config
 │
 ├── apps/                       # Application packages

@@ -1,0 +1,53 @@
+# CODEOWNERS - CertQuiz Project
+# Optimized for solo development with minimal maintenance cost
+# Strategy: Critical infrastructure protection + catch-all fallback
+
+# ==========================================
+# Critical Infrastructure (High Priority)
+# ==========================================
+/.github/**        @Kaniikura
+/docker/**         @Kaniikura  
+/k8s/**            @Kaniikura
+/scripts/**        @Kaniikura
+
+# Core configuration files
+/.env.example      @Kaniikura
+/package.json      @Kaniikura
+/bun.lock          @Kaniikura
+/tsconfig.json     @Kaniikura
+/biome.json        @Kaniikura
+
+# ==========================================
+# Documentation & Project Specs
+# ==========================================
+/docs/**           @Kaniikura
+/README.md         @Kaniikura
+/CLAUDE.md         @Kaniikura
+/.claude/**        @Kaniikura
+
+# ==========================================
+# Monorepo Workspaces (Broad Coverage)
+# ==========================================
+/apps/**           @Kaniikura
+/packages/**       @Kaniikura
+
+# ==========================================
+# Exclusions (No Review Needed)
+# ==========================================
+# Build artifacts and generated files
+!/apps/**/dist/**
+!/packages/**/dist/**
+!/apps/**/coverage/**
+!/packages/**/coverage/**
+
+# Temporary and cache files
+!**/.bun/**
+!**/node_modules/**
+!**/.temp/**
+!**/.cache/**
+
+# ==========================================
+# Fallback (Everything Else)
+# ==========================================
+# Catch-all rule to ensure no files are missed
+*                  @Kaniikura

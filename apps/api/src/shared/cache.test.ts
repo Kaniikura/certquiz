@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cache, createCache } from '../shared/cache';
+import { type Cache, createCache } from './cache';
 
 describe('Cache implementations', () => {
   describe('MemoryCache', () => {
@@ -58,6 +58,15 @@ describe('Cache implementations', () => {
     it('should return PONG on ping', async () => {
       const result = await cache.ping();
       expect(result).toBe('PONG');
+    });
+
+    it('should throw error when ping is called before init', async () => {
+      // Create a new MemoryCache instance without initializing
+      process.env.CACHE_DRIVER = 'memory';
+      const uninitializedCache = createCache();
+
+      // Should throw error because init() hasn't been called
+      await expect(uninitializedCache.ping()).rejects.toThrow('MemoryCache not initialized');
     });
 
     it('should clear all values on close', async () => {

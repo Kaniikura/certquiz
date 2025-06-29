@@ -5,9 +5,11 @@ FROM oven/bun:1-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY packages/shared/package.json packages/shared/
+COPY packages/typespec/package.json packages/typespec/
 COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
@@ -39,4 +41,4 @@ ENV NODE_ENV=test \
     BMAC_WEBHOOK_SECRET=smoke-test-webhook
 
 # Run the application directly
-CMD ["bun", "src/index.ts"]
+CMD ["bun", "run", "start:dev"]

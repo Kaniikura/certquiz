@@ -15,7 +15,7 @@ certquiz/
 ├── .env.example                 # Environment template
 ├── .gitignore
 ├── package.json                 # Root monorepo config
-├── bun.lockb
+├── bun.lock
 ├── tsconfig.json               # Root TypeScript config
 ├── biome.json                  # Biome linter/formatter config
 │
