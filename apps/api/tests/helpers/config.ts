@@ -2,8 +2,9 @@ import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 // Priority order = .env.test → .env → process env
-dotenv.config({ path: '.env.test', override: false });
-dotenv.config(); // fall back to the standard file
+// Load in correct priority order: lowest priority first, then override with higher priority
+dotenv.config(); // Load .env first (lowest priority)
+dotenv.config({ path: '.env.test', override: true }); // Override with .env.test (highest priority)
 
 const Env = z.object({
   DATABASE_URL: z.string().url().optional(),
