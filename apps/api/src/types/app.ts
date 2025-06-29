@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import type { Cache } from '../config/redis';
+import type { Cache } from '../shared/cache';
 
 export type AppEnv = {
   Variables: {

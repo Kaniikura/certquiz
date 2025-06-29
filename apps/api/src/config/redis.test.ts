@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cache, createCache } from './redis';
+import { type Cache, createCache } from '../shared/cache';
 
 describe('Cache implementations', () => {
   describe('MemoryCache', () => {

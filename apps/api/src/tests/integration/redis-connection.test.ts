@@ -1,6 +1,6 @@
 import type { RedisClientType } from 'redis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closeRedisConnection, createRedisClient, getRedisClient } from '../config/redis';
+import { closeRedisConnection, createRedisClient, getRedisClient } from '../../shared/cache';
 
 describe('Redis Connection Integration', () => {
   let redis: RedisClientType;
