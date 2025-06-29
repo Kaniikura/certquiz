@@ -177,7 +177,7 @@ quiz-app/
 │   ├── api-specification.md   # API endpoint details
 │   ├── task-list.md          # Implementation tasks
 │   ├── coding-standards.md    # Development conventions
-│   └── architecture-decisions.md # Architecture documentation
+│   └── adr/                     # Architecture Decision Records
 │
 ├── docker/                    # Container configurations
 │   ├── docker-compose.yml
@@ -294,7 +294,7 @@ In CLAUDE.md, reference other files like:
 - **API Specification**: [docs/api-specification.md](docs/api-specification.md)
 - **Task List**: [docs/task-list.md](docs/task-list.md)
 - **Coding Standards**: [docs/coding-standards.md](docs/coding-standards.md)
-- **Architecture Decisions**: [docs/architecture-decisions.md](docs/architecture-decisions.md)
+- **Architecture Decisions**: [docs/adr/](../adr/) - Architecture Decision Records
 ```
 
 This allows Claude Code to navigate to detailed documentation when needed while keeping the main CLAUDE.md concise.
