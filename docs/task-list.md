@@ -137,6 +137,7 @@ All shared infrastructure components completed, including:
 
 ### 3.5 Create Database Query Functions
 **Time**: 2 hours
+**Status**: IN PROGRESS
 ```typescript
 // Tasks:
 - Create modules/user/user.db.ts with user queries
@@ -145,6 +146,10 @@ All shared infrastructure components completed, including:
 - Add transaction helpers using shared/database.ts
 - Test: All database queries work
 ```
+
+**Progress Update**:
+- ✅ **DB Structure Cleanup** (a85a707): Resolved duplicate db folder structure, moved test files to correct locations
+- ✅ **Testcontainers Integration** (243e212): Added testcontainers for PostgreSQL/Redis, replacing CI service containers
 
 ### 3.6 Run Migrations and Seed Data
 **Time**: 30 minutes

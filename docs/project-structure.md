@@ -74,9 +74,8 @@ certquiz/
 │       │       ├── error.middleware.ts
 │       │       └── rate-limit.middleware.ts
 │       ├── tests/              # Integration & E2E tests
-│       │   ├── integration/
-│       │   │   ├── setup.ts    # Integration test setup
-│       │   │   └── redis-connection.test.ts
+│       │   ├── containers/     # Testcontainers for PostgreSQL/Redis
+│       │   ├── integration/    # Integration test suite
 │       │   └── e2e/
 │       │       └── setup.ts    # E2E test setup
 │       ├── package.json

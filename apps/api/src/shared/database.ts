@@ -1,6 +1,6 @@
+import * as schema from '@api/schema';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
-import * as schema from '../db/schema';
 
 /**
  * Database interface that wraps Drizzle ORM with additional functionality

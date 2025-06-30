@@ -8,6 +8,8 @@
 import { beforeEach } from 'vitest';
 import { baseTestEnv } from './test-env';
 
+Object.assign(process.env, baseTestEnv);
+
 // Capture the original environment when Node started
 const originalUnmodified = { ...process.env };
 
