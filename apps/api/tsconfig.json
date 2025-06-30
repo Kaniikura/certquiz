@@ -10,5 +10,5 @@
   },
   "exclude": ["node_modules", "dist"],
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "tests/**/*.ts", "db/**/*.ts"]
+  "include": ["src/**/*", "tests/**/*.ts", "db/**/*.ts", "*.ts"]
 }
