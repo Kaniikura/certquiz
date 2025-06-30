@@ -5,7 +5,7 @@ import {
   EXPECTED_TABLES,
   MIN_EXPECTED_FOREIGN_KEYS,
   MIN_EXPECTED_INDEXES,
-} from '@api/schema/meta';
+} from '@api-db/schema/meta';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
