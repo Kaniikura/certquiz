@@ -1,15 +1,15 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   EXPECTED_ENUMS,
   EXPECTED_TABLES,
   MIN_EXPECTED_FOREIGN_KEYS,
   MIN_EXPECTED_INDEXES,
-} from '../../db/schema/meta';
+} from '@api/schema/meta';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresSingleton } from '../containers';
 
 // Expected database objects are now derived from schema definitions

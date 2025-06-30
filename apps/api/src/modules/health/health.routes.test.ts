@@ -1,7 +1,7 @@
+import { type Cache, createCache } from '@api/shared/cache';
+import type { AppEnv } from '@api/types/app';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cache, createCache } from '../../shared/cache';
-import type { AppEnv } from '../../types/app';
 import { healthRoutes } from './health.routes';
 
 describe('Health routes', () => {
@@ -71,11 +71,11 @@ describe('Health routes', () => {
       expect(data).toHaveProperty('status', 'degraded'); // degraded due to DB check not implemented
       expect(data).toHaveProperty('services');
       expect(data.services.cache).toMatchObject({
-        status: 'ok',
         details: {
           pingResult: 'PONG',
           type: 'MemoryCache',
         },
+        status: 'ok',
       });
       expect(data.services.cache.latency).toBeGreaterThanOrEqual(0);
     });
@@ -88,8 +88,8 @@ describe('Health routes', () => {
       expect(data).toHaveProperty('cache');
       expect(data.cache).toMatchObject({
         connected: true,
-        type: 'MemoryCache',
         healthy: true,
+        type: 'MemoryCache',
       });
     });
   });
@@ -169,11 +169,11 @@ describe('Health routes', () => {
 
       expect(res.status).toBe(200);
       expect(data.services.cache).toMatchObject({
-        status: 'ok',
         details: {
           pingResult: 'PONG',
           type: 'RedisCache',
         },
+        status: 'ok',
       });
     });
 
@@ -189,8 +189,8 @@ describe('Health routes', () => {
       expect(res.status).toBe(503); // Service unavailable
       expect(data).toHaveProperty('status', 'error');
       expect(data.services.cache).toMatchObject({
-        status: 'error',
         error: 'Redis connection failed',
+        status: 'error',
       });
     });
 
@@ -201,8 +201,8 @@ describe('Health routes', () => {
       expect(res.status).toBe(200);
       expect(data.cache).toMatchObject({
         connected: true,
-        type: 'RedisCache',
         healthy: true,
+        type: 'RedisCache',
       });
     });
 
@@ -218,9 +218,9 @@ describe('Health routes', () => {
       expect(res.status).toBe(200);
       expect(data.cache).toMatchObject({
         connected: false,
-        type: 'RedisCache',
         error: 'Redis metrics error',
         errorType: 'Error',
+        type: 'RedisCache',
       });
     });
   });

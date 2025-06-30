@@ -1,5 +1,5 @@
+import type { Cache } from '@api/shared/cache';
 import type { Hono } from 'hono';
-import type { Cache } from '../shared/cache';
 
 export type AppEnv = {
   Variables: {
