@@ -149,6 +149,7 @@ All shared infrastructure components completed, including:
 
 **Progress Update**:
 - ✅ **DB Structure Cleanup** (a85a707): Resolved duplicate db folder structure, moved test files to correct locations
+- ✅ **Testcontainers Integration** (243e212): Added testcontainers for PostgreSQL/Redis, replacing CI service containers
 
 ### 3.6 Run Migrations and Seed Data
 **Time**: 30 minutes
