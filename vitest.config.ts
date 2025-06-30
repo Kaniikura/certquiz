@@ -14,6 +14,9 @@ export default defineConfig({
     },
     reporters: ['default'],
 
+    // Use forks pool to ensure single container set across all tests
+    pool: 'forks',
+
     // Define non-overlapping projects only (to avoid test duplication)
     projects: [
       // --------------- API Projects (scoped) -----------------
@@ -26,6 +29,10 @@ export default defineConfig({
           include: ['src/**/*.test.ts'],
           exclude: ['**/node_modules/**', '**/dist/**'],
           setupFiles: ['./vitest.setup.ts'],
+          env: {
+            TEST_TYPE: 'unit',
+            CACHE_DRIVER: 'memory', // Unit tests use memory cache
+          },
         },
       },
 
@@ -38,6 +45,11 @@ export default defineConfig({
           include: ['tests/integration/**/*.test.ts'],
           testTimeout: 30_000,
           setupFiles: ['./vitest.setup.ts'],
+          globalSetup: ['./tests/containers/index.ts'], // Container setup for integration tests
+          env: {
+            TEST_TYPE: 'integration',
+            // CACHE_DRIVER will be set to 'redis' by global setup
+          },
         },
       },
 
@@ -50,6 +62,11 @@ export default defineConfig({
           include: ['tests/e2e/**/*.test.ts'],
           testTimeout: 120_000,
           setupFiles: ['./vitest.setup.ts'],
+          globalSetup: ['./tests/containers/index.ts'], // Container setup for e2e tests
+          env: {
+            TEST_TYPE: 'e2e',
+            // CACHE_DRIVER will be set to 'redis' by global setup
+          },
         },
       },
 
