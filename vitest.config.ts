@@ -28,9 +28,12 @@ export default defineConfig({
           name: 'api-unit',
           include: ['src/**/*.test.ts'],
           exclude: ['**/node_modules/**', '**/dist/**'],
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.unit.setup.ts',
+          ],
+          unstubEnvs: true, // Automatically restore env vars after each test
           env: {
-            TEST_TYPE: 'unit',
             CACHE_DRIVER: 'memory', // Unit tests use memory cache
           },
         },
@@ -43,13 +46,18 @@ export default defineConfig({
         test: {
           name: 'api-integration',
           include: ['tests/integration/**/*.test.ts'],
-          testTimeout: 30_000,
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.integration.setup.ts',
+          ],
           globalSetup: ['./tests/containers/index.ts'], // Container setup for integration tests
-          env: {
-            TEST_TYPE: 'integration',
-            // CACHE_DRIVER will be set to 'redis' by global setup
+          pool: 'forks',
+          poolOptions: {
+            forks: {
+              singleFork: true, // Single process to avoid container conflicts
+            },
           },
+          // Note: testTimeout is set in vitest.integration.setup.ts
         },
       },
 
@@ -61,11 +69,16 @@ export default defineConfig({
           name: 'api-e2e',
           include: ['tests/e2e/**/*.test.ts'],
           testTimeout: 120_000,
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.integration.setup.ts', // E2E uses same setup as integration
+          ],
           globalSetup: ['./tests/containers/index.ts'], // Container setup for e2e tests
-          env: {
-            TEST_TYPE: 'e2e',
-            // CACHE_DRIVER will be set to 'redis' by global setup
+          pool: 'forks',
+          poolOptions: {
+            forks: {
+              singleFork: true, // Single process to avoid container conflicts
+            },
           },
         },
       },
