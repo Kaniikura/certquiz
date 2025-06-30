@@ -556,8 +556,8 @@ await sql.end();
 export { db, type Database } from '@api/shared/database';
 
 // Re-export schema for easy access
-export * from '@api/schema';
-export * from '@api/schema/relations';
+export * from '@api-db/schema';
+export * from '@api-db/schema/relations';
 ```
 
 ## Seed Data Example
@@ -565,7 +565,7 @@ export * from '@api/schema/relations';
 ```typescript
 // apps/api/db/seeds/initial.ts - Simplified seed for MVP
 import { db } from '@api/shared/database';
-import { users, exams, categories, questions, questionOptions, questionExams, questionCategories, badges } from '@api/schema';
+import { users, exams, categories, questions, questionOptions, questionExams, questionCategories, badges } from '@api-db/schema';
 
 // Create admin user
 const [adminUser] = await db.insert(users).values({

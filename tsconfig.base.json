@@ -17,7 +17,8 @@
       "@certquiz/typespec/*": ["packages/typespec/src/*"],
 
       /* app-local aliases – point at a folder inside the app   */
-      "@api/*": ["apps/api/src/*", "apps/api/db/*"],
+      "@api/*": ["apps/api/src/*"] /* Application source code */,
+      "@api-db/*": ["apps/api/db/*"] /* Database schemas and migrations */,
       "@web/*": ["apps/web/src/*"]
     },
     "resolveJsonModule": true,

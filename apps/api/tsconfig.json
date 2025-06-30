@@ -4,7 +4,8 @@
     "composite": true,
     "outDir": "./dist",
     "paths": {
-      "@api/*": ["src/*", "db/*"]
+      "@api/*": ["src/*"] /* Application source code */,
+      "@api-db/*": ["db/*"] /* Database schemas and migrations */
     },
     "rootDirs": ["src", "db"]
   },
