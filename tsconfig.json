@@ -1,21 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "paths": {
-      "@certquiz/shared": ["./packages/shared/src"],
-      "@certquiz/shared/*": ["./packages/shared/src/*"]
-    }
-  },
+  "extends": "./tsconfig.base.json",
   "include": ["apps/*/src/**/*", "packages/*/src/**/*"],
   "exclude": ["node_modules", "**/dist", "**/build", "**/.svelte-kit"]
 }

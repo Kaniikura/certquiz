@@ -1,6 +1,9 @@
+import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
+
   // Global options that apply to all projects
   cacheDir: '.vitest_cache',
   test: {
