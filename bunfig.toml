@@ -1,0 +1,10 @@
+# Bun configuration file
+# This file configures Bun's behavior for this project
+
+[test]
+# Point Bun's test runner to a directory with a single sentinel test
+# that displays a user-friendly message about using Vitest instead
+root = "./tests-disabled"
+
+# When someone runs "bun test", they'll see a clear message explaining
+# that this project uses Vitest and how to run tests properly

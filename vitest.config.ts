@@ -1,6 +1,9 @@
+import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
+
   // Global options that apply to all projects
   cacheDir: '.vitest_cache',
   test: {
@@ -10,6 +13,9 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
     },
     reporters: ['default'],
+
+    // Use forks pool to ensure single container set across all tests
+    pool: 'forks',
 
     // Define non-overlapping projects only (to avoid test duplication)
     projects: [
@@ -22,7 +28,14 @@ export default defineConfig({
           name: 'api-unit',
           include: ['src/**/*.test.ts'],
           exclude: ['**/node_modules/**', '**/dist/**'],
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.unit.setup.ts',
+          ],
+          unstubEnvs: true, // Automatically restore env vars after each test
+          env: {
+            CACHE_DRIVER: 'memory', // Unit tests use memory cache
+          },
         },
       },
 
@@ -33,8 +46,18 @@ export default defineConfig({
         test: {
           name: 'api-integration',
           include: ['tests/integration/**/*.test.ts'],
-          testTimeout: 30_000,
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.integration.setup.ts',
+          ],
+          globalSetup: ['./tests/containers/index.ts'], // Container setup for integration tests
+          pool: 'forks',
+          poolOptions: {
+            forks: {
+              singleFork: true, // Single process to avoid container conflicts
+            },
+          },
+          // Note: testTimeout is set in vitest.integration.setup.ts
         },
       },
 
@@ -46,7 +69,17 @@ export default defineConfig({
           name: 'api-e2e',
           include: ['tests/e2e/**/*.test.ts'],
           testTimeout: 120_000,
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            './tests/setup/vitest.shared.setup.ts',
+            './tests/setup/vitest.integration.setup.ts', // E2E uses same setup as integration
+          ],
+          globalSetup: ['./tests/containers/index.ts'], // Container setup for e2e tests
+          pool: 'forks',
+          poolOptions: {
+            forks: {
+              singleFork: true, // Single process to avoid container conflicts
+            },
+          },
         },
       },
 

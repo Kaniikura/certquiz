@@ -67,34 +67,7 @@ jobs:
     timeout-minutes: 8
     needs: lint  # Ensure lint passes before running tests
     
-    # Services for integration tests
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: certquiz_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d certquiz_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-      
-      redis:
-        image: bitnami/redis:7.2
-        env:
-          ALLOW_EMPTY_PASSWORD: "yes"
-          REDIS_AOF_ENABLED: "no"  # Disable persistence for faster CI
-        ports:
-          - 6379:6379  # Publish port to host for job steps access
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No services needed - testcontainers will handle everything!
     
     strategy:
       matrix:
@@ -137,19 +110,10 @@ jobs:
         run: bun run ${{ matrix.command }}
         env:
           VITEST_MAX_THREADS: 4
-          # PostgreSQL service connection (for integration tests)
-          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/certquiz_test?sslmode=disable
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/certquiz_test?sslmode=disable
-          # Redis service connection (for integration tests)
-          # Use localhost because job runs on host, not in container
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          REDIS_URL: redis://localhost:6379
-          # Use memory cache for unit tests, redis for integration tests
-          CACHE_DRIVER: ${{ matrix.test-type == 'integration' && 'redis' || 'memory' }}
           # Test environment
           NODE_ENV: test
           # Mock required env vars for tests (these are validated by env.ts)
+          # Testcontainers will set DATABASE_URL, DATABASE_URL_TEST, and REDIS_URL automatically
           KEYCLOAK_URL: http://localhost:8080
           KEYCLOAK_REALM: certquiz
           JWT_SECRET: test-jwt-secret-at-least-16-chars
@@ -195,10 +159,10 @@ jobs:
       - name: Start API container for smoke test
         run: |
           # Start container with smoke test configuration
-          # Uses CACHE_DRIVER=memory for lightweight testing
+          # Uses CACHE_DRIVER=memory for lightweight testing (no external dependencies)
           docker run -d --name api-test -p 4000:4000 \
-            -e DATABASE_URL="postgres://postgres:postgres@host.docker.internal:5432/certquiz_test?sslmode=disable" \
-            -e REDIS_URL="redis://host.docker.internal:6379" \
+            -e DATABASE_URL="postgres://postgres:postgres@localhost:5432/certquiz_test" \
+            -e REDIS_URL="redis://localhost:6379" \
             -e CACHE_DRIVER="memory" \
             -e KEYCLOAK_URL="http://localhost:8080" \
             -e KEYCLOAK_REALM="certquiz" \

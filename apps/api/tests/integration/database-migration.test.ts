@@ -1,16 +1,16 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   EXPECTED_ENUMS,
   EXPECTED_TABLES,
   MIN_EXPECTED_FOREIGN_KEYS,
   MIN_EXPECTED_INDEXES,
-} from '../../db/schema/meta';
-import { TEST_DB_URL } from '../helpers/config';
+} from '@api/schema/meta';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PostgresSingleton } from '../containers';
 
 // Expected database objects are now derived from schema definitions
 // This ensures tests stay in sync with schema changes automatically
@@ -33,24 +33,21 @@ describe('Database Migration Integration', () => {
   let migrationClient: postgres.Sql;
   let queryClient: postgres.Sql;
 
-  // Use test database from environment configuration
-
   beforeAll(async () => {
+    // Reset database to clean state
+    await PostgresSingleton.resetToCleanState();
+
+    // Get connection URL from the container
+    const connectionUrl = await PostgresSingleton.getConnectionUrl();
+
     // Create migration client (max: 1 for advisory lock)
-    migrationClient = postgres(TEST_DB_URL, { max: 1 });
+    migrationClient = postgres(connectionUrl, { max: 1 });
 
     // Create query client for raw SQL testing
-    queryClient = postgres(TEST_DB_URL);
+    queryClient = postgres(connectionUrl);
 
-    // Clean and run migrations
+    // Run migrations on the clean database
     const drizzleDb = drizzle(migrationClient);
-
-    // Drop all schemas and tables completely (clean slate for tests)
-    await queryClient`DROP SCHEMA IF EXISTS public CASCADE`;
-    await queryClient`DROP SCHEMA IF EXISTS drizzle CASCADE`;
-    await queryClient`CREATE SCHEMA public`;
-    await queryClient`GRANT ALL ON SCHEMA public TO postgres`;
-    await queryClient`GRANT ALL ON SCHEMA public TO public`;
 
     // Resolve absolute path to migrations folder
     const migrationsDir = path.resolve(
