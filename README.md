@@ -9,7 +9,7 @@ A modern web application for technical certification exam preparation, built wit
 
 # Clone and install
 git clone <repository-url>
-cd cert-quiz
+cd certquiz
 bun install
 
 # Start services
