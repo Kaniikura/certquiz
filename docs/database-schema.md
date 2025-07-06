@@ -1,96 +1,126 @@
-# Database Schema Documentation - Personal MVP
+# Database Schema Documentation - VSA + DDD Architecture
 
 ## Overview
 
-PostgreSQL database schema for CertQuiz personal project. Optimized for simplicity and rapid development while maintaining future extensibility. Based on expert review recommendations for solo developer MVP.
+PostgreSQL database schema for CertQuiz using Vertical Slice Architecture (VSA) with Domain-Driven Design (DDD). The schema is kept centralized as infrastructure while supporting rich domain models through the DbContext pattern.
 
-## Design Principles (Personal Project Focus)
+## Architecture Principles
 
-1. **Keep it simple** - Avoid premature optimization
-2. **Essential constraints only** - PK/FK/UNIQUE/NOT NULL that prevent data corruption
-3. **Minimal indexes** - Only for authentication and frequent JOINs
-4. **Smart normalization** - Only normalize where it provides clear benefits (e.g., selectedOptions for analytics)
-5. **JSONB for flexibility** - Keep categoryStats as JSONB with version field for future migration
-6. **Arrays are OK** - PostgreSQL arrays work fine for tags at small scale
+1. **Infrastructure Layer** - All Drizzle table definitions remain centralized in `db/schema/`
+2. **DbContext Pattern** - Request-scoped wrapper providing typed database access
+3. **Domain Modeling** - Entities and value objects map to/from database rows
+4. **Type Exports** - Each schema file exports row types for domain mapping
+5. **Bounded Context Organization** - Tables grouped by domain boundaries
 
-## Schema File Structure
+## Schema Organization
 
 ```
-apps/api/db/                     # Database files outside src/ for build optimization
-├── schema/
-│   ├── index.ts                # Main schema definitions
+apps/api/db/
+├── schema/                      # Centralized table definitions (infrastructure)
+│   ├── index.ts                # Barrel export with bounded context grouping
 │   ├── enums.ts               # PostgreSQL enums
-│   └── triggers.sql           # Database triggers
-├── migrations/                 # Generated migrations
-├── seeds/
-│   └── initial.ts             # Initial seed data
-└── index.ts                   # Database connection
-
-apps/api/src/db/               # Runtime database access
-└── index.ts                   # Re-exports from apps/api/db
+│   ├── user.ts                # User bounded context tables
+│   ├── quiz.ts                # Quiz bounded context tables
+│   ├── question.ts            # Question bounded context tables
+│   ├── exam.ts                # Exam/Category lookup tables
+│   ├── community.ts           # Community features (badges, reports)
+│   ├── system.ts              # System tables (webhooks, etc.)
+│   └── relations.ts           # Drizzle ORM relationships
+├── migrations/                 # Generated migration files
+├── seeds/                      # Seed data
+└── DbContext.ts               # Database context implementation
 ```
 
-## Complete Schema Definition
+## DbContext Implementation
 
 ```typescript
-// apps/api/db/schema/index.ts
-import { 
-  pgTable, 
-  uuid, 
-  text, 
-  timestamp, 
-  boolean, 
-  integer, 
-  decimal,
-  jsonb,
-  pgEnum,
-  index,
-  uniqueIndex
-} from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+// apps/api/db/DbContext.ts
+import { drizzle, type PostgresJsDatabase, type PostgresJsTransaction } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
 
-// Enums
-export const userRoleEnum = pgEnum('user_role', ['guest', 'user', 'premium', 'admin']);
-export const questionTypeEnum = pgEnum('question_type', ['single', 'multiple']);
-export const questionStatusEnum = pgEnum('question_status', ['active', 'pending', 'archived']);
-export const reportTypeEnum = pgEnum('report_type', ['error', 'unclear', 'outdated']);
-export const reportStatusEnum = pgEnum('report_status', ['pending', 'accepted', 'rejected']);
-export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'premium']);
-export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'cancelled', 'expired']);
-
-// Exams table (lookup table for exam types)
-export const exams = pgTable('exams', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  code: text('code').notNull().unique(), // 'CCNA', 'CCNP_ENCOR', 'CCNP_ENARSI', etc.
-  name: text('name').notNull(), // Full display name
-  description: text('description'), // Optional description
-  displayOrder: integer('display_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    codeIdx: uniqueIndex('idx_exams_code').on(table.code),
-    activeIdx: index('idx_exams_active').on(table.isActive),
-  };
+// Singleton connection pool
+const pool = postgres(process.env.DATABASE_URL!, { 
+  max: process.env.NODE_ENV === 'production' ? 20 : 5 
 });
+const db = drizzle(pool, { schema });
 
-// Categories table (lookup table for question categories)
-export const categories = pgTable('categories', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  code: text('code').notNull().unique(), // 'NETWORK_FUNDAMENTALS', 'OSPF', 'QOS', etc.
-  name: text('name').notNull(), // Full display name
-  description: text('description'), // Optional description
-  displayOrder: integer('display_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    codeIdx: uniqueIndex('idx_categories_code').on(table.code),
-    activeIdx: index('idx_categories_active').on(table.isActive),
+export type DrizzleDb = PostgresJsDatabase<typeof schema>;
+
+// Request-scoped wrapper
+export class DbContext {
+  constructor(private readonly conn: DrizzleDb | PostgresJsTransaction<typeof schema>) {}
+
+  // Direct access to Drizzle instance
+  get sql() { return this.conn; }
+  get query() { return this.conn.query; }
+
+  // Convenience methods for common queries
+  users = {
+    findById: (id: string) =>
+      this.conn.query.users.findFirst({
+        where: (u, { eq }) => eq(u.id, id),
+      }),
+    findByEmail: (email: string) =>
+      this.conn.query.users.findFirst({
+        where: (u, { eq }) => eq(u.email, email),
+      }),
   };
-});
+
+  // Transaction support with improved type safety
+  async transaction<T>(fn: (tx: DbContext) => Promise<T>): Promise<T> {
+    return this.conn.transaction(async (trx: PostgresJsTransaction<typeof schema>) => 
+      fn(new DbContext(trx))
+    );
+  }
+}
+
+// Factory for creating request-scoped instances
+export const createDbContext = () => new DbContext(db);
+
+// Graceful shutdown
+export const closeDatabase = async () => {
+  await pool.end();
+};
+```
+
+## Bounded Context Exports
+
+```typescript
+// apps/api/db/schema/index.ts - Improved barrel export by bounded context
+export * as user from './user';
+export * as quiz from './quiz';
+export * as question from './question';
+export * as exam from './exam';
+export * as community from './community';
+export * as system from './system';
+
+// Re-export all for migrations
+export * from './enums';
+export * from './user';
+export * from './quiz';
+export * from './question';
+export * from './exam';
+export * from './community';
+export * from './system';
+```
+
+This allows cleaner imports in feature slices:
+```typescript
+// In feature files
+import { quiz, question } from '@api-db/schema';
+
+// Usage
+const sessions = await ctx.sql.select().from(quiz.quizSessions);
+const questions = await ctx.sql.select().from(question.questions);
+```
+
+## User Bounded Context
+
+```typescript
+// apps/api/db/schema/user.ts
+import { pgTable, uuid, text, timestamp, boolean, integer, decimal, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { userRoleEnum, subscriptionPlanEnum, subscriptionStatusEnum } from './enums';
 
 // Users table
 export const users = pgTable('users', {
@@ -102,12 +132,127 @@ export const users = pgTable('users', {
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    emailIdx: index('idx_users_email').on(table.email),
-    keycloakIdx: index('idx_users_keycloak').on(table.keycloakId),
-  };
+}, (table) => [
+  index('idx_users_email').on(table.email),
+  index('idx_users_keycloak').on(table.keycloakId),
+]);
+
+// Type exports for domain mapping
+export type UserRow = typeof users.$inferSelect;
+export type NewUserRow = typeof users.$inferInsert;
+
+// User progress tracking
+export const userProgress = pgTable('user_progress', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  level: integer('level').notNull().default(1),
+  experience: integer('experience').notNull().default(0),
+  totalQuestions: integer('total_questions').notNull().default(0),
+  correctAnswers: integer('correct_answers').notNull().default(0),
+  accuracy: decimal('accuracy', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  studyTime: integer('study_time').notNull().default(0), // minutes
+  streak: integer('streak').notNull().default(0),
+  lastStudyDate: timestamp('last_study_date', { withTimezone: true }),
+  categoryStats: jsonb('category_stats').notNull().default({ version: 1 }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type UserProgressRow = typeof userProgress.$inferSelect;
+export type NewUserProgressRow = typeof userProgress.$inferInsert;
+
+// Subscriptions
+export const subscriptions = pgTable('subscriptions', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  plan: subscriptionPlanEnum('plan').notNull().default('free'),
+  status: subscriptionStatusEnum('status').notNull().default('active'),
+  buyMeACoffeeEmail: text('buy_me_a_coffee_email'),
+  startDate: timestamp('start_date', { withTimezone: true }).notNull().defaultNow(),
+  endDate: timestamp('end_date', { withTimezone: true }),
+  autoRenew: boolean('auto_renew').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index('idx_subscriptions_bmac_email').on(table.buyMeACoffeeEmail),
+  index('idx_subscriptions_status').on(table.status),
+  uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
+]);
+
+export type SubscriptionRow = typeof subscriptions.$inferSelect;
+export type NewSubscriptionRow = typeof subscriptions.$inferInsert;
+```
+
+## Quiz Bounded Context
+
+```typescript
+// apps/api/db/schema/quiz.ts
+import { pgTable, uuid, integer, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { users } from './user';
+import { exams, categories } from './exam';
+import { questions, questionOptions } from './question';
+
+// Quiz sessions
+export const quizSessions = pgTable('quiz_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  examId: uuid('exam_id').references(() => exams.id, { onDelete: 'set null' }),
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  questionCount: integer('question_count').notNull(),
+  currentIndex: integer('current_index').notNull().default(0),
+  score: integer('score'),
+  isPaused: boolean('is_paused').notNull().default(false),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+}, (table) => [
+  index('idx_sessions_user').on(table.userId),
+  index('idx_sessions_completed').on(table.completedAt),
+  index('idx_sessions_exam').on(table.examId),
+  index('idx_sessions_category').on(table.categoryId),
+  index('idx_sessions_user_started').on(table.userId, table.startedAt),
+]);
+
+export type QuizSessionRow = typeof quizSessions.$inferSelect;
+export type NewQuizSessionRow = typeof quizSessions.$inferInsert;
+
+// Session questions (many-to-many with order)
+export const sessionQuestions = pgTable('session_questions', {
+  sessionId: uuid('session_id').notNull().references(() => quizSessions.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull().references(() => questions.id),
+  questionOrder: integer('question_order').notNull(),
+  answeredAt: timestamp('answered_at', { withTimezone: true }),
+  isCorrect: boolean('is_correct'),
+}, (table) => [
+  uniqueIndex('pk_session_questions').on(table.sessionId, table.questionId),
+  index('idx_session_questions_session').on(table.sessionId),
+  index('idx_session_questions_question').on(table.questionId),
+]);
+
+export type SessionQuestionRow = typeof sessionQuestions.$inferSelect;
+export type NewSessionQuestionRow = typeof sessionQuestions.$inferInsert;
+
+// Selected options (normalized for analytics)
+export const sessionSelectedOptions = pgTable('session_selected_options', {
+  sessionId: uuid('session_id').notNull().references(() => quizSessions.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull().references(() => questions.id),
+  optionId: uuid('option_id').notNull().references(() => questionOptions.id),
+  selectedAt: timestamp('selected_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('pk_session_selected_options').on(table.sessionId, table.questionId, table.optionId),
+  index('idx_session_selected_session_question').on(table.sessionId, table.questionId),
+  index('idx_session_selected_option').on(table.optionId),
+]);
+
+export type SessionSelectedOptionRow = typeof sessionSelectedOptions.$inferSelect;
+export type NewSessionSelectedOptionRow = typeof sessionSelectedOptions.$inferInsert;
+```
+
+## Question Bounded Context
+
+```typescript
+// apps/api/db/schema/question.ts
+import { pgTable, uuid, text, timestamp, boolean, integer, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { questionTypeEnum, questionStatusEnum } from './enums';
+import { users } from './user';
+import { exams, categories } from './exam';
 
 // Questions table
 export const questions = pgTable('questions', {
@@ -126,566 +271,370 @@ export const questions = pgTable('questions', {
   version: integer('version').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    statusIdx: index('idx_questions_status').on(table.status),
-    createdByIdx: index('idx_questions_created_by').on(table.createdById),
-    tagsGinIdx: index('idx_questions_tags_gin').using('gin').on(table.tags),
-    // Partial index for active questions only
-    activeQuestionsIdx: index('idx_active_questions')
-      .on(table.status)
-      .where(sql`status = 'active'`),
-  };
-});
+}, (table) => [
+  index('idx_questions_status').on(table.status),
+  index('idx_questions_created_by').on(table.createdById),
+  index('idx_questions_tags_gin').using('gin').on(table.tags),
+  index('idx_active_questions').on(table.status).where(sql`status = 'active'`),
+]);
 
-// Question options table
+export type QuestionRow = typeof questions.$inferSelect;
+export type NewQuestionRow = typeof questions.$inferInsert;
+
+// Question options
 export const questionOptions = pgTable('question_options', {
   id: uuid('id').primaryKey().defaultRandom(),
   questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   text: text('text').notNull(),
   isCorrect: boolean('is_correct').notNull().default(false),
-  displayOrder: integer('display_order').notNull().default(0), // Renamed from 'order'
+  displayOrder: integer('display_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    questionIdx: index('idx_options_question').on(table.questionId),
-    // Ensure unique display order per question
-    uniqueOrderPerQuestion: uniqueIndex('unq_question_display_order')
-      .on(table.questionId, table.displayOrder),
-  };
-});
+}, (table) => [
+  index('idx_options_question').on(table.questionId),
+  uniqueIndex('unq_question_display_order').on(table.questionId, table.displayOrder),
+]);
 
-// Question-Exam junction table (many-to-many)
+export type QuestionOptionRow = typeof questionOptions.$inferSelect;
+export type NewQuestionOptionRow = typeof questionOptions.$inferInsert;
+
+// Question-Exam junction
 export const questionExams = pgTable('question_exams', {
   questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   examId: uuid('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_question_exams').on(table.questionId, table.examId),
-    questionIdx: index('idx_question_exams_question').on(table.questionId), // Added missing FK index
-    examIdx: index('idx_question_exams_exam').on(table.examId),
-  };
-});
+}, (table) => [
+  uniqueIndex('pk_question_exams').on(table.questionId, table.examId),
+  index('idx_question_exams_question').on(table.questionId),
+  index('idx_question_exams_exam').on(table.examId),
+]);
 
-// Question-Category junction table (many-to-many)
+export type QuestionExamRow = typeof questionExams.$inferSelect;
+export type NewQuestionExamRow = typeof questionExams.$inferInsert;
+
+// Question-Category junction
 export const questionCategories = pgTable('question_categories', {
   questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_question_categories').on(table.questionId, table.categoryId),
-    questionIdx: index('idx_question_categories_question').on(table.questionId), // Added missing FK index
-    categoryIdx: index('idx_question_categories_category').on(table.categoryId),
-  };
-});
+}, (table) => [
+  uniqueIndex('pk_question_categories').on(table.questionId, table.categoryId),
+  index('idx_question_categories_question').on(table.questionId),
+  index('idx_question_categories_category').on(table.categoryId),
+]);
 
-// User progress table
-export const userProgress = pgTable('user_progress', {
-  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  level: integer('level').notNull().default(1),
-  experience: integer('experience').notNull().default(0),
-  totalQuestions: integer('total_questions').notNull().default(0),
-  correctAnswers: integer('correct_answers').notNull().default(0),
-  accuracy: decimal('accuracy', { precision: 5, scale: 2 }).notNull().default('0.00'),
-  studyTime: integer('study_time').notNull().default(0), // in minutes
-  streak: integer('streak').notNull().default(0),
-  lastStudyDate: timestamp('last_study_date', { withTimezone: true }),
-  categoryStats: jsonb('category_stats').notNull().default({ version: 1 }), // Added version field for future migrations
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export type QuestionCategoryRow = typeof questionCategories.$inferSelect;
+export type NewQuestionCategoryRow = typeof questionCategories.$inferInsert;
 
-// Badges table
-export const badges = pgTable('badges', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull().unique(),
-  description: text('description').notNull(),
-  icon: text('icon').notNull(),
-  category: text('category').notNull(),
-  requirementType: text('requirement_type').notNull(), // questions_solved, accuracy, streak, category_mastery
-  requirementValue: integer('requirement_value').notNull(),
-  requirementCategory: text('requirement_category'), // for category-specific badges
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    categoryIdx: index('idx_badges_category').on(table.category),
-  };
-});
-
-// User badges (many-to-many)
-export const userBadges = pgTable('user_badges', {
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  badgeId: uuid('badge_id').notNull().references(() => badges.id, { onDelete: 'cascade' }),
-  unlockedAt: timestamp('unlocked_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_user_badges').on(table.userId, table.badgeId),
-    userIdx: index('idx_user_badges_user').on(table.userId),
-    badgeIdx: index('idx_user_badges_badge').on(table.badgeId), // Added missing FK index
-  };
-});
-
-// Quiz sessions table
-export const quizSessions = pgTable('quiz_sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  examId: uuid('exam_id').references(() => exams.id, { onDelete: 'set null' }), // Optional: filter by specific exam
-  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }), // Optional: filter by specific category
-  questionCount: integer('question_count').notNull(),
-  currentIndex: integer('current_index').notNull().default(0),
-  score: integer('score'),
-  isPaused: boolean('is_paused').notNull().default(false),
-  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-}, (table) => {
-  return {
-    userIdx: index('idx_sessions_user').on(table.userId),
-    completedIdx: index('idx_sessions_completed').on(table.completedAt),
-    examIdx: index('idx_sessions_exam').on(table.examId),
-    categoryIdx: index('idx_sessions_category').on(table.categoryId),
-    // Composite index for active sessions
-    userStartedIdx: index('idx_sessions_user_started').on(table.userId, table.startedAt),
-  };
-});
-
-// Quiz session questions (many-to-many with order)
-export const sessionQuestions = pgTable('session_questions', {
-  sessionId: uuid('session_id').notNull().references(() => quizSessions.id, { onDelete: 'cascade' }),
-  questionId: uuid('question_id').notNull().references(() => questions.id),
-  questionOrder: integer('question_order').notNull(),
-  answeredAt: timestamp('answered_at', { withTimezone: true }),
-  isCorrect: boolean('is_correct'),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_session_questions').on(table.sessionId, table.questionId),
-    sessionIdx: index('idx_session_questions_session').on(table.sessionId),
-    questionIdx: index('idx_session_questions_question').on(table.questionId), // Added missing FK index
-  };
-});
-
-// Session selected options (normalized from array)
-export const sessionSelectedOptions = pgTable('session_selected_options', {
-  sessionId: uuid('session_id').notNull().references(() => quizSessions.id, { onDelete: 'cascade' }),
-  questionId: uuid('question_id').notNull().references(() => questions.id),
-  optionId: uuid('option_id').notNull().references(() => questionOptions.id),
-  selectedAt: timestamp('selected_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_session_selected_options').on(table.sessionId, table.questionId, table.optionId),
-    sessionQuestionIdx: index('idx_session_selected_session_question').on(table.sessionId, table.questionId),
-    optionIdx: index('idx_session_selected_option').on(table.optionId),
-  };
-});
-
-// Problem reports table
-export const problemReports = pgTable('problem_reports', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  questionId: uuid('question_id').notNull().references(() => questions.id),
-  reporterId: uuid('reporter_id').notNull().references(() => users.id),
-  type: reportTypeEnum('type').notNull(),
-  description: text('description').notNull(),
-  status: reportStatusEnum('status').notNull().default('pending'),
-  adminComment: text('admin_comment'),
-  reviewedById: uuid('reviewed_by_id').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
-}, (table) => {
-  return {
-    questionIdx: index('idx_reports_question').on(table.questionId),
-    reporterIdx: index('idx_reports_reporter').on(table.reporterId),
-    statusIdx: index('idx_reports_status').on(table.status),
-  };
-});
-
-// Subscriptions table
-export const subscriptions = pgTable('subscriptions', {
-  userId: uuid('user_id').primaryKey().references(() => users.id),
-  plan: subscriptionPlanEnum('plan').notNull().default('free'),
-  status: subscriptionStatusEnum('status').notNull().default('active'),
-  buyMeACoffeeEmail: text('buy_me_a_coffee_email'),
-  startDate: timestamp('start_date', { withTimezone: true }).notNull().defaultNow(),
-  endDate: timestamp('end_date', { withTimezone: true }),
-  autoRenew: boolean('auto_renew').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    emailIdx: index('idx_subscriptions_bmac_email').on(table.buyMeACoffeeEmail),
-    statusIdx: index('idx_subscriptions_status').on(table.status),
-    // Unique constraint for Buy Me a Coffee email
-    uniqueBmacEmail: uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
-  };
-});
-
-// Question bookmarks table
-export const bookmarks = pgTable('bookmarks', {
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    pk: uniqueIndex('pk_bookmarks').on(table.userId, table.questionId),
-    userIdx: index('idx_bookmarks_user').on(table.userId),
-  };
-});
-
-// Question history table (for versioning)
+// Question history for versioning
 export const questionHistory = pgTable('question_history', {
   id: uuid('id').primaryKey().defaultRandom(),
   questionId: uuid('question_id').notNull().references(() => questions.id),
   version: integer('version').notNull(),
-  changes: jsonb('changes').notNull(), // JSON diff of changes
+  changes: jsonb('changes').notNull(),
   editedById: uuid('edited_by_id').notNull().references(() => users.id),
   editedAt: timestamp('edited_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    questionVersionIdx: uniqueIndex('idx_history_question_version').on(table.questionId, table.version),
-  };
-});
+}, (table) => [
+  uniqueIndex('idx_history_question_version').on(table.questionId, table.version),
+]);
 
-// Webhook events table (for payment processing)
-export const webhookEvents = pgTable('webhook_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  eventType: text('event_type').notNull(), // 'subscription.created', 'subscription.cancelled', etc.
-  externalEventId: text('external_event_id').unique(), // External service event ID for deduplication
-  payload: jsonb('payload').notNull(), // Raw webhook payload
-  processedAt: timestamp('processed_at', { withTimezone: true }), // NULL if not processed yet
+export type QuestionHistoryRow = typeof questionHistory.$inferSelect;
+export type NewQuestionHistoryRow = typeof questionHistory.$inferInsert;
+
+// Bookmarks
+export const bookmarks = pgTable('bookmarks', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => {
-  return {
-    eventTypeIdx: index('idx_webhook_events_type').on(table.eventType),
-    processedAtIdx: index('idx_webhook_events_processed').on(table.processedAt), // For finding unprocessed events
-    // externalEventId already has unique index
-  };
-});
-
-// Audit log table (defer to Phase 2)
-// Removed for MVP simplicity - add when you need compliance/detailed tracking
-```
-
-## Table Relations
-
-```typescript
-// apps/api/db/schema/relations.ts
-import { relations } from 'drizzle-orm';
-import * as schema from './index';
-
-// User relations
-export const usersRelations = relations(schema.users, ({ one, many }) => ({
-  progress: one(schema.userProgress),
-  subscription: one(schema.subscriptions),
-  badges: many(schema.userBadges),
-  createdQuestions: many(schema.questions),
-  reports: many(schema.problemReports),
-  sessions: many(schema.quizSessions),
-  bookmarks: many(schema.bookmarks),
-}));
-
-// Exam relations
-export const examsRelations = relations(schema.exams, ({ many }) => ({
-  questions: many(schema.questionExams),
-}));
-
-// Category relations
-export const categoriesRelations = relations(schema.categories, ({ many }) => ({
-  questions: many(schema.questionCategories),
-}));
-
-// Question relations
-export const questionsRelations = relations(schema.questions, ({ one, many }) => ({
-  creator: one(schema.users, {
-    fields: [schema.questions.createdById],
-    references: [schema.users.id],
-  }),
-  options: many(schema.questionOptions),
-  exams: many(schema.questionExams),
-  categories: many(schema.questionCategories),
-  reports: many(schema.problemReports),
-  bookmarks: many(schema.bookmarks),
-  history: many(schema.questionHistory),
-}));
-
-// Question-Exam junction relations
-export const questionExamsRelations = relations(schema.questionExams, ({ one }) => ({
-  question: one(schema.questions, {
-    fields: [schema.questionExams.questionId],
-    references: [schema.questions.id],
-  }),
-  exam: one(schema.exams, {
-    fields: [schema.questionExams.examId],
-    references: [schema.exams.id],
-  }),
-}));
-
-// Question-Category junction relations
-export const questionCategoriesRelations = relations(schema.questionCategories, ({ one }) => ({
-  question: one(schema.questions, {
-    fields: [schema.questionCategories.questionId],
-    references: [schema.questions.id],
-  }),
-  category: one(schema.categories, {
-    fields: [schema.questionCategories.categoryId],
-    references: [schema.categories.id],
-  }),
-}));
-
-// Question options relations
-export const questionOptionsRelations = relations(schema.questionOptions, ({ one }) => ({
-  question: one(schema.questions, {
-    fields: [schema.questionOptions.questionId],
-    references: [schema.questions.id],
-  }),
-}));
-
-// Quiz session relations
-export const quizSessionsRelations = relations(schema.quizSessions, ({ one, many }) => ({
-  user: one(schema.users, {
-    fields: [schema.quizSessions.userId],
-    references: [schema.users.id],
-  }),
-  exam: one(schema.exams, {
-    fields: [schema.quizSessions.examId],
-    references: [schema.exams.id],
-  }),
-  category: one(schema.categories, {
-    fields: [schema.quizSessions.categoryId],
-    references: [schema.categories.id],
-  }),
-  questions: many(schema.sessionQuestions),
-}));
-
-// Session questions relations
-export const sessionQuestionsRelations = relations(schema.sessionQuestions, ({ one, many }) => ({
-  session: one(schema.quizSessions, {
-    fields: [schema.sessionQuestions.sessionId],
-    references: [schema.quizSessions.id],
-  }),
-  question: one(schema.questions, {
-    fields: [schema.sessionQuestions.questionId],
-    references: [schema.questions.id],
-  }),
-  selectedOptions: many(schema.sessionSelectedOptions),
-}));
-
-// Session selected options relations
-export const sessionSelectedOptionsRelations = relations(schema.sessionSelectedOptions, ({ one }) => ({
-  session: one(schema.quizSessions, {
-    fields: [schema.sessionSelectedOptions.sessionId],
-    references: [schema.quizSessions.id],
-  }),
-  question: one(schema.questions, {
-    fields: [schema.sessionSelectedOptions.questionId],
-    references: [schema.questions.id],
-  }),
-  option: one(schema.questionOptions, {
-    fields: [schema.sessionSelectedOptions.optionId],
-    references: [schema.questionOptions.id],
-  }),
-}));
-
-// User progress relations
-export const userProgressRelations = relations(schema.userProgress, ({ one }) => ({
-  user: one(schema.users, {
-    fields: [schema.userProgress.userId],
-    references: [schema.users.id],
-  }),
-}));
-```
-
-## Database Triggers
-
-```sql
--- apps/api/db/schema/triggers.sql
-
--- Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = CURRENT_TIMESTAMP;
-  RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Apply trigger to all tables with updated_at column
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_questions_updated_at BEFORE UPDATE ON questions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_progress_updated_at BEFORE UPDATE ON user_progress
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_exams_updated_at BEFORE UPDATE ON exams
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-```
-
-## Migration & Seed Setup
-
-```typescript
-// apps/api/db/migrate.ts
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-
-const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
-const db = drizzle(sql);
-
-await migrate(db, { migrationsFolder: './db/migrations' });
-await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-// Apply triggers from triggers.sql separately
-
-// Add JSONB constraints
-await sql`ALTER TABLE user_progress ADD CONSTRAINT chk_category_stats_version CHECK (category_stats ? 'version')`;
-
-await sql.end();
-```
-
-## Database Connection
-
-```typescript
-// apps/api/src/db/index.ts
-// Re-export the database instance from the shared wrapper
-export { db, type Database } from '@api/shared/database';
-
-// Re-export schema for easy access
-export * from '@api-db/schema';
-export * from '@api-db/schema/relations';
-```
-
-## Seed Data Example
-
-```typescript
-// apps/api/db/seeds/initial.ts - Simplified seed for MVP
-import { db } from '@api/shared/database';
-import { users, exams, categories, questions, questionOptions, questionExams, questionCategories, badges } from '@api-db/schema';
-
-// Create admin user
-const [adminUser] = await db.insert(users).values({
-  email: 'admin@certquiz.app',
-  username: 'admin',
-  role: 'admin',
-}).returning();
-
-// Create basic exam types
-await db.insert(exams).values([
-  { code: 'CCNA', name: 'Cisco Certified Network Associate', displayOrder: 1 },
-  { code: 'CCNP_ENCOR', name: 'CCNP Enterprise Core', displayOrder: 2 },
+}, (table) => [
+  uniqueIndex('pk_bookmarks').on(table.userId, table.questionId),
+  index('idx_bookmarks_user').on(table.userId),
 ]);
 
-// Create basic categories
-await db.insert(categories).values([
-  { code: 'NETWORK_FUNDAMENTALS', name: 'Network Fundamentals', displayOrder: 1 },
-  { code: 'OSPF', name: 'OSPF', displayOrder: 2 },
-]);
-
-// Add a few sample questions with junction table relationships
-// See full example in db/seeds/initial.ts
+export type BookmarkRow = typeof bookmarks.$inferSelect;
+export type NewBookmarkRow = typeof bookmarks.$inferInsert;
 ```
 
-## Basic Query Examples
+## Feature Slice Query Pattern
 
 ```typescript
-// Get questions with options
-const questionsWithOptions = await db.query.questions.findMany({
-  where: eq(questions.status, 'active'),
-  with: {
-    options: {
-      orderBy: (options, { asc }) => [asc(options.displayOrder)],
-    },
+// features/quiz/start-quiz/queries.ts
+import { DbContext } from '@api-db/DbContext';
+import { quiz, question } from '@api-db/schema';
+import { eq, sql } from 'drizzle-orm';
+
+export const startQuizQueries = {
+  // Get random questions for quiz
+  async getRandomQuestions(ctx: DbContext, count: number, filters?: {
+    examId?: string;
+    categoryId?: string;
+  }) {
+    const query = ctx.sql
+      .select()
+      .from(question.questions)
+      .where(eq(question.questions.status, 'active'))
+      .orderBy(sql`RANDOM()`)
+      .limit(count);
+    
+    return query;
   },
-  limit: 10,
-});
 
-// Record selected answer (normalized)
-await db.insert(sessionSelectedOptions).values({
-  sessionId,
-  questionId,
-  optionId,
-});
+  // Create quiz session with questions
+  async createSession(ctx: DbContext, data: {
+    userId: string;
+    questionIds: string[];
+    examId?: string;
+    categoryId?: string;
+  }) {
+    return ctx.transaction(async (tx) => {
+      // Insert session
+      const [session] = await tx.sql
+        .insert(quiz.quizSessions)
+        .values({
+          userId: data.userId,
+          questionCount: data.questionIds.length,
+          examId: data.examId,
+          categoryId: data.categoryId,
+        })
+        .returning();
 
-// Update category stats in JSONB
-await db.update(userProgress)
-  .set({
-    categoryStats: sql`
-      jsonb_set(
-        category_stats,
-        '{${category}}',
-        jsonb_build_object(
-          'version', 1,
-          'attempted', COALESCE((category_stats->>${category}->>'attempted')::int, 0) + 1,
-          'correct', COALESCE((category_stats->>${category}->>'correct')::int, 0) + ${isCorrect ? 1 : 0}
-        )
-      )
-    `,
+      // Insert session questions
+      await tx.sql.insert(quiz.sessionQuestions).values(
+        data.questionIds.map((questionId, index) => ({
+          sessionId: session.id,
+          questionId,
+          questionOrder: index,
+        }))
+      );
+
+      return session;
+    });
+  },
+};
+```
+
+## N+1 Query Prevention
+
+```typescript
+// ❌ BAD: N+1 problem
+const session = await ctx.query.quizSessions.findFirst({ where: eq(quiz.quizSessions.id, id) });
+for (const sq of session.questions) {
+  const q = await ctx.query.questions.findFirst({ where: eq(question.questions.id, sq.questionId) });
+}
+
+// ✅ GOOD: Single query with joins
+const result = await ctx.sql
+  .select({
+    session: quiz.quizSessions,
+    question: question.questions,
+    options: question.questionOptions,
   })
-  .where(eq(userProgress.userId, userId));
+  .from(quiz.quizSessions)
+  .innerJoin(quiz.sessionQuestions, eq(quiz.sessionQuestions.sessionId, quiz.quizSessions.id))
+  .innerJoin(question.questions, eq(question.questions.id, quiz.sessionQuestions.questionId))
+  .leftJoin(question.questionOptions, eq(question.questionOptions.questionId, question.questions.id))
+  .where(eq(quiz.quizSessions.id, sessionId));
+
+// ✅ GOOD: Batch fetch with inArray
+const users = await ctx.sql
+  .select()
+  .from(user.users)
+  .where(inArray(user.users.id, userIds));
 ```
 
-## Maintenance Scripts
+## Domain Mapping Pattern
 
-```bash
-# Generate new migration
-bun run db:generate
+```typescript
+// features/quiz/domain/entities/QuizSession.ts
+import { QuizSessionRow } from '@api-db/schema';
 
-# Apply migrations
-bun run db:migrate
+export class QuizSession {
+  private constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly questionCount: number,
+    public readonly currentIndex: number,
+    private _score: number,
+    private _startedAt: Date,
+    private _completedAt?: Date,
+  ) {}
 
-# Seed database
-bun run apps/api/db/seeds/initial.ts
+  // Factory method for creating new sessions
+  static create(props: {
+    userId: string;
+    questionCount: number;
+  }): QuizSession {
+    return new QuizSession(
+      crypto.randomUUID(),
+      props.userId,
+      props.questionCount,
+      0,
+      0,
+      new Date(),
+    );
+  }
+
+  // Restore from database
+  static fromRow(row: QuizSessionRow): QuizSession {
+    return new QuizSession(
+      row.id,
+      row.userId,
+      row.questionCount,
+      row.currentIndex,
+      row.score ?? 0,
+      row.startedAt,
+      row.completedAt ?? undefined,
+    );
+  }
+
+  // Convert to database row
+  toRow(): Partial<QuizSessionRow> {
+    return {
+      id: this.id,
+      userId: this.userId,
+      questionCount: this.questionCount,
+      currentIndex: this.currentIndex,
+      score: this._score,
+      startedAt: this._startedAt,
+      completedAt: this._completedAt,
+    };
+  }
+
+  // Domain logic
+  answerQuestion(isCorrect: boolean): void {
+    if (isCorrect) this._score++;
+    this.currentIndex++;
+  }
+
+  complete(): void {
+    this._completedAt = new Date();
+  }
+
+  get isComplete(): boolean {
+    return this.currentIndex >= this.questionCount;
+  }
+
+  get accuracy(): number {
+    if (this.currentIndex === 0) return 0;
+    return Math.round((this._score / this.currentIndex) * 100);
+  }
+}
 ```
 
-## MVP Implementation Notes
+## Migration Strategy
 
-### What We're Building
-- Simple quiz application with question banks
-- User progress tracking with basic gamification
-- Premium tier support via Buy Me a Coffee
-- Community features (problem reporting)
+### 1. Keep Schema Centralized
+- All table definitions remain in `db/schema/`
+- Migrations continue to work without changes
+- Single source of truth for database structure
 
-### What We're Deferring
-- Complex indexes (add as needed)
-- Audit logs (add when compliance needed)
-- Partitioning (add when tables exceed 50M rows)
-- Row-level security (using app-level filtering for now)
-- Advanced analytics tables
+### 2. Use DbContext in Features
+```typescript
+// features/quiz/start-quiz/handler.ts
+import { createDbContext } from '@api-db/DbContext';
+import { startQuizQueries } from './queries';
+import { QuizSession } from '../domain/entities/QuizSession';
 
-### Key Decisions for Personal MVP
-1. **selectedOptions normalized** - The only array we normalized for future analytics
-2. **categoryStats as JSONB** - Flexible with version field for future migration (with CHECK constraint)
-3. **tags remain as array** - Works fine for small scale, easy to query
-4. **Essential indexes only** - FK indexes and authentication queries
-5. **Simple triggers** - Just updated_at timestamp automation
-6. **webhookEvents table** - Store raw webhook payloads for payment processing reliability
+export async function startQuizHandler(input: StartQuizInput) {
+  const ctx = createDbContext();
+  
+  // Use domain entity
+  const session = QuizSession.create({
+    userId: input.userId,
+    questionCount: input.questionCount,
+  });
 
-### Future Migration Path
-When your app grows beyond a personal project:
-1. Add missing performance indexes
-2. Normalize tags if needed
-3. Add RLS policies (user_id is already in place)
-4. Consider separating categoryStats to its own table
-5. Add audit logging
-6. Implement table partitioning for large tables
+  // Persist using queries
+  const questions = await startQuizQueries.getRandomQuestions(
+    ctx, 
+    input.questionCount
+  );
+  
+  const savedSession = await startQuizQueries.createSession(ctx, {
+    userId: session.userId,
+    questionIds: questions.map(q => q.id),
+  });
 
-## Security Notes for MVP
+  return {
+    sessionId: savedSession.id,
+    firstQuestion: questions[0],
+  };
+}
+```
 
-### Essential Security (Do Now)
-- ✅ All tables have proper FK constraints
-- ✅ Use parameterized queries (Drizzle handles this)
-- ✅ Environment variables for DATABASE_URL
-- ✅ bcrypt for password hashing (in app layer)
-- ✅ Weekly backups (use managed DB service)
-- ✅ Webhook signature verification (check externalEventId for deduplication)
+### 3. Gradual Migration
+- Keep existing `modules/` during transition
+- Move one use case at a time to `features/`
+- Update imports gradually
+- Delete old code only when unused
 
-### Defer Until Later
-- ⏸️ Row-level security (use app-level user_id filtering)
-- ⏸️ Detailed audit logs
-- ⏸️ Database encryption at rest (managed DB handles this)
-- ⏸️ Complex permission systems
+## Performance Considerations
+
+### 1. Connection Pooling
+```typescript
+// Production: 20 connections, Dev: 5 connections
+const pool = postgres(process.env.DATABASE_URL!, { 
+  max: process.env.NODE_ENV === 'production' ? 20 : 5 
+});
+```
+
+### 2. Query Optimization
+- Use proper indexes (already defined in schema)
+- Leverage PostgreSQL's native features (arrays, JSONB)
+- Keep queries close to use cases for better understanding
+
+### 3. Transaction Boundaries
+- Use DbContext transactions for consistency
+- Keep transactions small and focused
+- Avoid long-running transactions
+
+## Security Best Practices
+
+### 1. Parameterized Queries
+- Drizzle ORM handles parameterization automatically
+- Never concatenate user input into SQL strings
+
+### 2. Row-Level Security
+- Currently handled at application level
+- Check user ownership in queries
+- Consider PostgreSQL RLS for future
+
+### 3. Sensitive Data
+- Never log full database rows
+- Exclude sensitive fields in API responses
+- Use environment variables for connection strings
+
+## Testing with DbContext
+
+```typescript
+// features/quiz/start-quiz/handler.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createTestDbContext } from '@/test/utils';
+import { startQuizHandler } from './handler';
+
+describe('startQuizHandler', () => {
+  let ctx: DbContext;
+
+  beforeEach(async () => {
+    ctx = await createTestDbContext(); // Uses test database
+  });
+
+  it('should create quiz session', async () => {
+    const result = await startQuizHandler({
+      userId: 'test-user',
+      questionCount: 5,
+    });
+
+    expect(result.sessionId).toBeDefined();
+    expect(result.firstQuestion).toBeDefined();
+  });
+});
+```
+
+## Key Takeaways
+
+1. **Schema stays centralized** - Pure infrastructure concern
+2. **DbContext is request-scoped** - Lightweight wrapper
+3. **Features import only what they need** - Via bounded context exports
+4. **Domain entities map to/from rows** - Clear separation
+5. **Queries live in feature slices** - Close to use cases
+6. **Gradual migration supported** - Both structures coexist

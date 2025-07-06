@@ -1,10 +1,10 @@
-# Implementation Task List - Phase 1 (Simple MVP Architecture)
+# Implementation Task List - Phase 1 (Vertical Slice Architecture)
 
 ## Overview
 
-This document breaks down Phase 1 implementation into manageable tasks using a simplified module-based architecture. Each task should be completed with tests before moving to the next.
+This document breaks down Phase 1 implementation into manageable tasks using Vertical Slice Architecture (VSA) with Domain-Driven Design (DDD) principles. Each task should be completed with tests before moving to the next.
 
-**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using a simple, module-based structure that can evolve to clean architecture when needed.
+**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using VSA, where each feature is organized as a complete vertical slice containing all layers.
 
 ## Task Organization
 
@@ -173,29 +173,92 @@ All shared infrastructure components completed, including:
 - Type-safe Drizzle ORM integration
 - Full test coverage with transaction isolation
 
-### 3.5 Create Database Query Functions
-**Time**: 2 hours
-**Status**: IN PROGRESS
+### 3.4a VSA + Repository Pattern Migration Plan 🔴
+**Time**: 30 minutes
+**Status**: NEW
+**Priority**: BLOCKER
 ```typescript
 // Tasks:
-- Create modules/user/user.db.ts with user queries
-- Create modules/quiz/quiz.db.ts with quiz queries
-- Create modules/question/question.db.ts
-- Add transaction helpers using shared/database.ts
-- Test: All database queries work
+- Review planning/vsa-implementation-plan.md document
+- Create legacy-module-arch branch for backup
+- Confirm team sign-off on clean-slate approach
+- Document migration checkpoints
+- Test: Migration plan approved and understood
 ```
 
-**Progress Update**:
-- ✅ **DB Structure Cleanup** (a85a707): Resolved duplicate db folder structure, moved test files to correct locations
-- ✅ **Testcontainers Integration** (243e212): Added testcontainers for PostgreSQL/Redis, replacing CI service containers
+### 3.5 Clean-Slate Architecture Reset 🔴
+**Time**: 1 hour
+**Status**: NEW
+**Priority**: BLOCKER
+```bash
+# Tasks:
+- Backup current code: git checkout -b legacy-module-arch
+- Delete module-based architecture:
+  - rm -rf apps/api/src/modules/
+  - rm -rf apps/api/src/services/
+  - rm -rf apps/api/src/repositories/
+- Create new VSA directory structure:
+  - mkdir -p src/features/{quiz,user,auth,question}/domain/{entities,value-objects,aggregates,repositories}
+  - mkdir -p src/system/health
+  - mkdir -p src/infra/{db,events}
+  - mkdir src/shared
+- Move database files to infra/db/
+- Test: Clean project structure ready for VSA
+```
 
-### 3.6 Run Migrations and Seed Data
+### 3.6 Implement Infrastructure Foundation 🔴
+**Time**: 2 hours
+**Status**: NEW
+**Priority**: BLOCKER
+```typescript
+// Tasks:
+- Create infra/db/client.ts (postgres -> drizzle wrapper)
+- Create infra/unit-of-work.ts with transaction helper:
+  export const withTransaction = db.transaction;
+- Setup centralized error handling middleware
+- Add request-ID and logging middleware
+- Configure CORS and security headers
+- Test: Infrastructure layer operational
+```
+
+### 3.7 Create First Vertical Slice (Health) 🔴
+**Time**: 1.5 hours
+**Status**: NEW
+**Priority**: HIGH
+```typescript
+// Tasks:
+- Create system/health/handler.ts
+- Create system/health/handler.test.ts (TDD first!)
+- Create system/health/route.ts
+- Wire up in src/index.ts (main app)
+- Validate middleware chain works
+- Test: Health endpoint returns 200 with new architecture
+```
+
+### 3.8 Implement Auth Slice with Repository Pattern 🔴
+**Time**: 3 hours
+**Status**: NEW
+**Priority**: HIGH
+```typescript
+// Tasks:
+- Create features/auth/login/ use case:
+  - handler.ts with withTransaction wrapper
+  - handler.test.ts (TDD!)
+  - dto.ts, validation.ts, route.ts
+- Create features/auth/domain/repositories/IUserRepository.ts (interface)
+- Create features/auth/domain/repositories/DrizzleUserRepository.ts (implementation)
+- Integrate KeyCloak authentication
+- Test: Login flow works with repository pattern
+```
+
+### 3.9 Run Migrations and Seed Data
 **Time**: 30 minutes
+**Status**: PENDING
 ```typescript
 // Tasks:
 - Create migrate.ts script
-- Run migrations on database
-- Create comprehensive seed data
+- Run existing migrations on database
+- Create comprehensive seed data for testing
 - Add badges and initial questions
 - Test: Database populated with test data
 ```
@@ -216,49 +279,62 @@ All shared infrastructure components completed, including:
 ```
 **Timing**: Implement after database foundation when actual business logic exists to scan.
 
-## 5. Module Implementation 🟡
+## 5. Feature Implementation (VSA + Repository Pattern) 🟡
 
-### 5.1 Implement Auth Module
-**Time**: 2 hours
+### 5.1 Implement Quiz Domain & Repository 🟡
+**Time**: 4 hours
+**Priority**: HIGH
 ```typescript
 // Tasks:
-- Create modules/auth/auth.service.ts with business logic
-- Create modules/auth/auth.routes.ts with endpoints
-- Create modules/auth/auth.middleware.ts
-- Integrate KeyCloak authentication
-- Test: Auth flow works end-to-end
+- Create features/quiz/domain/:
+  - entities/Quiz.ts, Question.ts
+  - value-objects/QuizId.ts, Score.ts
+  - aggregates/QuizSession.ts
+  - repositories/IQuizRepository.ts (interface)
+  - repositories/DrizzleQuizRepository.ts (implementation)
+- Write domain unit tests (90% coverage target)
+- Test: Domain model works with repository pattern
 ```
 
-### 5.2 Implement Quiz Module
+### 5.2 Implement Quiz Feature Slices 🟡
+**Time**: 5 hours
+```typescript
+// Tasks:
+- Create features/quiz/start-quiz/:
+  - handler.ts with withTransaction wrapper
+  - handler.test.ts (TDD!)
+  - dto.ts, validation.ts, route.ts
+- Create features/quiz/submit-answer/ (same structure)
+- Create features/quiz/get-results/ (same structure)
+- Test: Complete quiz flow with repository pattern
+```
+
+### 5.3 Implement User Domain & Features 🟢
 **Time**: 3 hours
 ```typescript
 // Tasks:
-- Create modules/quiz/quiz.service.ts
-- Create modules/quiz/quiz.routes.ts
-- Create modules/quiz/quiz.db.ts
-- Create modules/quiz/quiz.types.ts
-- Test: Complete quiz flow tested
+- Create features/user/domain/:
+  - entities/User.ts
+  - value-objects/UserId.ts, Email.ts
+  - repositories/IUserRepository.ts
+  - repositories/DrizzleUserRepository.ts
+- Create features/user/register/ use case
+- Create features/user/update-progress/ use case
+- Create features/user/get-profile/ use case
+- Test: User operations with repository pattern
 ```
 
-### 5.3 Implement User Module
+### 5.4 Implement Question Features 🟢
 **Time**: 2 hours
 ```typescript
 // Tasks:
-- Create modules/user/user.service.ts
-- Create modules/user/user.routes.ts
-- Create modules/user/user.db.ts
-- Add progress tracking logic
-- Test: User operations work correctly
-```
-
-### 5.4 Implement Question Module
-**Time**: 2 hours
-```typescript
-// Tasks:
-- Create modules/question/question.service.ts
-- Create modules/question/question.routes.ts
-- Create modules/question/question.db.ts
-- ~~Add caching for question retrieval~~ (Removed - using Neon DB)
+- Create features/question/domain/:
+  - Use existing Quiz domain entities
+  - repositories/IQuestionRepository.ts
+  - repositories/DrizzleQuestionRepository.ts
+- Create features/question/list-questions/ use case
+- Create features/question/get-question/ use case
+- Create features/question/create-question/ use case (admin)
 - Test: Question operations tested
 ```
 
@@ -286,14 +362,16 @@ All shared infrastructure components completed, including:
 - Test: Middleware chain works correctly
 ```
 
-### 6.3 Wire Up Module Routes
-**Time**: 2 hours
+### 6.3 Create Route Composition
+**Time**: 1 hour
 ```typescript
 // Tasks:
-- Mount auth routes at /api/auth
-- Mount quiz routes at /api/quiz
-- Mount user routes at /api/users
-- Mount question routes at /api/questions
+- Create src/routes.ts as composition root
+- Import and mount auth feature routes
+- Import and mount quiz feature routes
+- Import and mount user feature routes
+- Import and mount question feature routes
+- Mount system/health route
 - Test: All endpoints return expected responses
 ```
 
@@ -584,44 +662,69 @@ Each task is complete when:
 6. ✅ Documentation is updated
 7. ✅ Feature works end-to-end
 
-## Revised Timeline
+## Revised Timeline (VSA + Repository Pattern)
 
-**Note**: Timeline updated to reflect additional setup tasks (1A series) completed during implementation.
+**Note**: Timeline updated to reflect VSA + Repository Pattern architecture with clean-slate rewrite.
 
-- **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities)
-- **Week 2**: Tasks 3-5 (Database Foundation + Quality Gates + Modules)
-- **Week 3**: Tasks 6-7 (API Layer + Basic Features)
-- **Week 4**: Tasks 8-9 (Frontend Foundation + Core UI)
-- **Week 5**: Tasks 10-11 (Admin Interface + Testing)
-- **Week 6**: Task 12 (DevOps & Deployment)
+- **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities) ✅
+- **Week 2**: Tasks 3.1-3.9 (Database Foundation + VSA Migration)
+  - Day 1-2: Clean-slate reset & infrastructure foundation
+  - Day 3-4: First vertical slice (Health + Auth)
+  - Day 5: Migrations and seed data
+- **Week 3**: Tasks 4-5 (Quality Gates + Domain/Repository Implementation)
+  - Day 1-2: Quiz domain model & repository
+  - Day 3-5: Quiz feature slices with TDD
+- **Week 4**: Tasks 5.3-6 (User/Question Features + API Layer)
+- **Week 5**: Tasks 7-9 (Basic Features + Frontend Foundation + Core UI)
+- **Week 6**: Tasks 10-12 (Admin Interface + Testing + DevOps)
 
-**Actual Setup Phase Summary**:
-- Original tasks (1.1-1.4): 1.5 hours (as planned)
-- Additional tasks (1.5-1.11): ~12.5 hours (unplanned but valuable)
-- Task 1A.1 (CI/CD): ~3 hours (completed)
-- Total setup time: ~17 hours vs planned 1.5 hours
-- **Key achievements**: 
-  - Stable framework migration (Elysia → Hono)
-  - Optimal tooling setup (Biome 2.x, node-redis)
-  - Proper monorepo test configuration (60 tests consistent)
-  - Clean module-based architecture foundation
-  - Full CI/CD foundation (lint, test, Docker build, dependency scan)
-  - Branch protection enabled via GitHub Rulesets
-  - CodeQL moved to Quality Gates section (4.1) for optimal timing
+**Architecture Migration Summary**:
+- Clean-slate approach (no gradual migration)
+- Repository pattern for persistence isolation
+- Unit-of-Work via Drizzle transactions
+- Domain-first development with 90% coverage target
+- Vertical slices with co-located tests
 
-Total estimate: ~90-110 hours of development time (reduced with simpler architecture, but including additional setup tasks)
+Total estimate: ~100-120 hours of development time (includes repository pattern overhead but cleaner architecture)
 
 ## Critical Path
 
 The following tasks are on the critical path and block other work:
-1. Shared Utilities (blocks module development)
-2. Database Foundation (blocks all data operations)
-3. Module Implementation (blocks API routes)
-4. API Layer (blocks frontend integration)
+1. Shared Utilities (blocks feature development) ✅
+2. Database Foundation (blocks all data operations) ✅
+3. Clean-Slate Architecture Reset (blocks VSA implementation) 🔴
+4. Infrastructure Foundation (blocks all features) 🔴
+5. First Vertical Slice (validates architecture) 🔴
+6. Domain/Repository Implementation (blocks business logic) 🟡
+7. API Layer (blocks frontend integration) 🟡
 
 ## Risk Mitigation
 
-- **Performance Risk**: Add caching only where needed
-- **Complexity Risk**: Keep modules simple and focused
-- **Over-engineering Risk**: Follow YAGNI principle
-- **Migration Risk**: Maintain clear module boundaries for Phase 2
+- **Performance Risk**: Repository pattern adds minimal overhead, mitigated by Drizzle's efficiency
+- **Complexity Risk**: Start with simple domain models, evolve as business rules emerge
+- **Testing Risk**: 90% domain coverage enforced from day one
+- **Migration Risk**: Clean-slate approach with legacy branch backup
+- **Team Risk**: Kick-off workshop + code review templates for VSA understanding
+
+## VSA Implementation Notes
+
+### Repository Pattern Guidelines
+1. **Interface in domain layer**: `features/[bc]/domain/repositories/I[Entity]Repository.ts`
+2. **Implementation alongside**: `features/[bc]/domain/repositories/Drizzle[Entity]Repository.ts`
+3. **Transaction via closure**: All handlers use `withTransaction(async trx => {...})`
+4. **No cross-slice imports**: ESLint boundaries enforced
+
+### Testing Strategy
+1. **Domain tests**: Pure unit tests, no DB, 90% coverage
+2. **Repository tests**: SQLite in-memory adapter
+3. **Handler tests**: Mock repositories, test business flow
+4. **Contract tests**: Full HTTP tests with real DB
+
+### Development Flow
+1. Write failing handler test
+2. Create domain entities/VOs as needed
+3. Define repository interface
+4. Implement repository with Drizzle
+5. Wire up handler with transaction
+6. Create route with validation
+7. Run contract test end-to-end
