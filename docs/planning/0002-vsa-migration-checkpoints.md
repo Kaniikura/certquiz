@@ -27,17 +27,21 @@ This document tracks the migration checkpoints for the clean-slate VSA + Reposit
 - [x] Create basic index.ts with Hono setup
 - [x] Create unit-of-work.ts helper
 
-### Checkpoint 3: Infrastructure Foundation
-- [ ] Create infra/db/client.ts
-- [ ] Create infra/unit-of-work.ts
-- [ ] Setup error handling middleware
-- [ ] Configure logging and request-ID middleware
+### Checkpoint 3: Infrastructure Foundation ✅
+- [x] Create infra/db/client.ts
+- [x] Create infra/unit-of-work.ts
+- [x] Setup error handling middleware
+- [x] Configure logging and request-ID middleware
+- [x] Configure CORS and security headers
+- [x] Wire up all middleware in proper order
+- [x] Update database client to VSA architecture (following o3 advice)
+- [x] Remove schema for Day 1 (will add incrementally with slices)
 
-### Checkpoint 4: First Vertical Slice (Health)
-- [ ] Create system/health structure
-- [ ] Implement health handler with TDD
-- [ ] Wire up health route
-- [ ] Validate middleware chain
+### Checkpoint 4: First Vertical Slice (Health) ✅
+- [x] Create system/health structure
+- [x] Implement health handler with TDD
+- [x] Wire up health route
+- [x] Validate middleware chain
 
 ### Checkpoint 5: Auth Slice with Repository
 - [ ] Create auth domain with repository interface
