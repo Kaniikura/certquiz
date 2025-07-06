@@ -4,35 +4,33 @@
 
 ### Core Documentation
 - [Task List](./task-list.md) - Current implementation tasks and progress
-- [Project Structure](./project-structure.md) - Phase 1 architecture overview
-- [Database Schema](./database-schema.md) - Drizzle ORM schema definitions
+- [Project Structure](./project-structure.md) - VSA + Repository Pattern architecture
 - [API Specification](./api-specification.md) - RESTful API endpoints
-- [Coding Standards](./coding-standards.md) - Development conventions
+- [Coding Standards](./coding-standards.md) - Development conventions with DDD
+- [Database Schema](./database-schema.md) - PostgreSQL schema with Drizzle ORM
 - [GitHub Actions Strategy](./github-actions-strategy.md) - CI/CD implementation plan
 
 ### Architecture Decision Records (ADRs)
 - [ADR Directory](./adr/) - Architecture decisions and rationale
 
 #### Key Architectural Decisions
-1. **Service Layer Architecture** - Separation of business logic from HTTP concerns
-2. **Repository Pattern** - Data access abstraction  
-3. **Event-Driven Architecture** - Decoupled communication via events
-4. **Redis Caching** - Multi-level caching strategy
-5. **API Versioning** - URL-based versioning strategy
-6. **Soft Deletes** - Data integrity and audit trail maintenance
-7. **Limited JSONB Usage** - Normalized tables for structured data
+1. **Vertical Slice Architecture (VSA)** - Features organized by use case, not technical layers
+2. **Domain-Driven Design (DDD)** - Rich domain models with business logic encapsulation
+3. **Repository Pattern** - Domain interfaces with infrastructure implementations
+4. **Unit of Work Pattern** - Transaction boundaries via Drizzle's transaction wrapper
+5. **Result Type Pattern** - Explicit error handling without exceptions
+6. **API Versioning** - URL-based versioning strategy (/api/v1)
+7. **Soft Deletes** - Data integrity and audit trail maintenance
+8. **Limited JSONB Usage** - Normalized tables for structured data
 
 ### Completed Tasks
 - [01 - Core Setup Tasks](./completed/01-core-setup-tasks.md) - Initial project setup details
-
-### Design Documents
-- [Phase 2 Clean Architecture](./designs/phase-2-clean-architecture.md) - Future architecture vision
 
 ### Planning
 - [Planning Directory](./planning/) - Task planning and backlog management
 
 ## Quick Links
 
-- **Current Focus**: [Task List](./task-list.md) - Section 2: Shared Utilities Setup
-- **Database Design**: [Database Schema](./database-schema.md)
+- **Current Focus**: [Task List](./task-list.md) - Section 3: VSA + Repository Pattern Migration
 - **API Design**: [API Specification](./api-specification.md)
+- **Domain Modeling**: [Coding Standards](./coding-standards.md#domain-driven-design-standards)
