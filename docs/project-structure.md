@@ -65,7 +65,6 @@ certquiz/
 │       │   │       └── index.ts
 │       │   ├── shared/         # Shared utilities & infrastructure
 │       │   │   ├── logger.ts   # Structured logging
-│       │   │   ├── cache.ts    # Redis wrapper (implementation)
 │       │   │   ├── result.ts   # Result<T, E> type
 │       │   │   ├── errors.ts   # Error classes
 │       │   │   └── types.ts    # Shared TypeScript types
@@ -74,7 +73,7 @@ certquiz/
 │       │       ├── error.middleware.ts
 │       │       └── rate-limit.middleware.ts
 │       ├── tests/              # Integration & E2E tests
-│       │   ├── containers/     # Testcontainers for PostgreSQL/Redis
+│       │   ├── containers/     # Testcontainers for PostgreSQL
 │       │   ├── integration/    # Integration test suite
 │       │   └── e2e/
 │       │       └── setup.ts    # E2E test setup
@@ -133,7 +132,6 @@ Services contain business logic but directly use Drizzle queries (no repository 
 ### 4. Shared Infrastructure 🔧
 Common utilities in `shared/` folder:
 - **logger.ts**: Pino logger instance
-- **cache.ts**: Redis client wrapper
 - **result.ts**: Result<T, E> type for consistent error handling
 - **errors.ts**: Custom error classes
 - **types.ts**: Shared TypeScript types
@@ -270,7 +268,6 @@ Configure path aliases in `apps/api/tsconfig.json` for cleaner imports:
 
 This allows imports like:
 ```typescript
-import { cache } from '@api/shared/cache';
 import { QuizService } from '@api/modules/quiz';
 ```
 

@@ -125,7 +125,6 @@ src/
 │   ├── schema.ts
 │   └── migrations/
 ├── lib/            # Infrastructure
-│   ├── cache.ts
 │   └── event-bus.ts
 ├── interfaces/     # TypeScript interfaces
 ├── events/         # Domain events

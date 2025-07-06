@@ -29,7 +29,7 @@ A web-based quiz application for technical certification exam preparation. Built
 
 - **Frontend**: SvelteKit + TypeScript + TailwindCSS
 - **Backend**: Bun + Hono + Drizzle ORM
-- **Database**: PostgreSQL 16 + Redis (caching)
+- **Database**: Neon PostgreSQL (serverless)
 - **Auth**: KeyCloak
 - **Architecture**: Service Layer + Repository Pattern + Event Bus
 - **Code Quality**: Biome 2.x (linter + formatter)
@@ -103,17 +103,16 @@ bun run check:ci  # Final check without fixes
 
 ### Completed:
 - ✅ Project setup and monorepo structure
-- ✅ Docker environment (PostgreSQL + KeyCloak + Redis)
+- ✅ Docker environment (PostgreSQL + KeyCloak)
 - ✅ Environment configuration with validation
 - ✅ Architecture documentation (ADRs)
 - ✅ Migration from Elysia to Hono
-- ✅ Migration from ioredis to node-redis
 - ✅ Migration to Biome 2.x for linting and formatting
+- ✅ Removed Redis caching (using Neon PostgreSQL instead)
 
 ### In Progress: Phase 1
 - 🔄 Service layer architecture implementation
 - 🔄 Repository pattern for data access
-- 🔄 Redis caching integration
 - 📋 Basic quiz functionality
 - 📋 User authentication via KeyCloak
 - 📋 Progress tracking and gamification
@@ -145,9 +144,8 @@ See @docs/task-list.md for detailed implementation tasks.
 
 Required in `.env`:
 ```env
-# Database
+# Database (Use Neon connection string for production)
 DATABASE_URL=postgresql://postgres:password@localhost:5432/certquiz
-REDIS_URL=redis://localhost:6379
 
 # Authentication
 KEYCLOAK_URL=http://localhost:8080
