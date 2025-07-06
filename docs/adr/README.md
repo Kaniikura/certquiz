@@ -8,14 +8,20 @@ An Architecture Decision Record (ADR) is a document that captures an important a
 
 ## ADR Index
 
+### Active
 - [ADR-0001](./0001-record-architecture-decisions.md) - Record architecture decisions
-- [ADR-0002](./0002-service-layer-architecture.md) - Use Service Layer Architecture
-- [ADR-0003](./0003-repository-pattern.md) - Use Repository Pattern for Data Access
-- [ADR-0004](./0004-event-driven-architecture.md) - Implement Event-Driven Architecture for Cross-Cutting Concerns
-- [ADR-0005](./0005-redis-caching-strategy.md) - Use Redis for Multi-Level Caching
 - [ADR-0006](./0006-api-versioning-strategy.md) - Use URL-Based API Versioning
 - [ADR-0007](./0007-soft-deletes-strategy.md) - Use Soft Deletes Instead of Hard Deletes
 - [ADR-0008](./0008-limit-jsonb-usage.md) - Limit JSONB Usage to Truly Dynamic Data
+- [ADR-0009](./0009-vertical-slice-architecture.md) - Adopt Vertical Slice Architecture with DDD
+
+### Superseded
+- [ADR-0002](./0002-service-layer-architecture.md) - ~~Use Service Layer Architecture~~ (Superseded by ADR-0009)
+- [ADR-0003](./0003-repository-pattern.md) - ~~Use Repository Pattern for Data Access~~ (Superseded by ADR-0009)
+- [ADR-0004](./0004-event-driven-architecture.md) - ~~Implement Event-Driven Architecture~~ (Superseded by ADR-0009)
+
+### Deprecated
+- [ADR-0005](./0005-redis-caching-strategy.md) - ~~Use Redis for Multi-Level Caching~~ (Removed in favor of Neon)
 
 ## ADR Template
 

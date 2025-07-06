@@ -4,7 +4,7 @@ Date: 2025-06-27
 
 ## Status
 
-Accepted
+Deprecated - Redis caching removed in favor of Neon database's built-in connection pooling and PostgreSQL's native caching
 
 ## Context
 
