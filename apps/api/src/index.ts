@@ -1,30 +1,43 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import {
+  errorHandler,
+  type LoggerVariables,
+  loggerMiddleware,
+  type RequestIdVariables,
+  requestIdMiddleware,
+  securityMiddleware,
+} from './middleware';
 
-// TODO: Import routes after implementing features
-// import { healthRoute } from './system/health/route';
-// import { authRoutes } from './features/auth/routes';
-// import { quizRoutes } from './features/quiz/routes';
+// Import routes
+import { healthRoute } from './system/health/route';
 
-const app = new Hono();
+// Create app with proper type for context variables
+const app = new Hono<{
+  Variables: LoggerVariables & RequestIdVariables;
+}>();
 
-// Global middleware
-app.use('*', cors());
-app.use('*', logger());
+// Global middleware (order matters!)
+app.use('*', requestIdMiddleware());
+app.use('*', loggerMiddleware);
+app.use('*', securityMiddleware());
 
-// TODO: Mount routes
-// app.route('/health', healthRoute);
+// Mount routes
+app.route('/health', healthRoute);
+// TODO: Add more routes as features are implemented
 // app.route('/api/auth', authRoutes);
 // app.route('/api/quiz', quizRoutes);
 
-// Temporary root route
+// Root route
 app.get('/', (c) => {
-  return c.json({ 
-    message: 'CertQuiz API - VSA Architecture', 
-    status: 'ready' 
+  return c.json({
+    message: 'CertQuiz API - VSA Architecture',
+    status: 'ready',
+    version: '0.0.1',
   });
 });
+
+// Install error handler (must be after all routes)
+app.onError(errorHandler);
 
 const port = process.env.API_PORT || 4000;
 
@@ -35,5 +48,6 @@ export default {
 
 // Start server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
+  // biome-ignore lint/suspicious/noConsole: Server startup logging
   console.log(`Server starting on port ${port}...`);
 }
