@@ -11,9 +11,9 @@ This document defines coding conventions and best practices for the CertQuiz pro
 3. **Small Functions**: Single responsibility, <20 lines preferred
 4. **Descriptive Names**: Self-documenting code
 5. **Test-Driven**: Write tests before implementation
-6. **Layered Architecture**: Strict separation of concerns
-7. **Dependency Injection**: Services receive dependencies via constructor
-8. **Event-Driven**: Use events for cross-cutting concerns
+6. **Vertical Slice Architecture**: Organize by use case, not by layer
+7. **Domain-Driven Design**: Rich domain models with business logic
+8. **DbContext Pattern**: Direct database access without repository interfaces
 
 ## TypeScript Standards
 
@@ -106,31 +106,37 @@ export type UserRole = 'guest' | 'user' | 'premium' | 'admin';
 
 ## File Organization
 
-### Directory Structure
+### VSA Directory Structure
 
 ```
 src/
-├── routes/          # API endpoints (thin HTTP layer)
-│   ├── v1/         # Versioned routes
-│   │   ├── auth.routes.ts
-│   │   └── quiz.routes.ts
-│   └── health.ts   # Health check
-├── services/        # Business logic layer
-│   ├── auth.service.ts
-│   └── quiz.service.ts
-├── repositories/    # Data access layer
-│   ├── base.repository.ts
-│   └── user.repository.ts
-├── db/             # Database schema
-│   ├── schema.ts
-│   └── migrations/
-├── lib/            # Infrastructure
-│   └── event-bus.ts
-├── interfaces/     # TypeScript interfaces
-├── events/         # Domain events
-├── errors/         # Custom errors
-├── utils/          # Utilities
-└── middleware/     # HTTP middleware
+├── features/        # Feature slices (vertical slices)
+│   ├── quiz/       # Quiz bounded context
+│   │   ├── start-quiz/         # Use case folder
+│   │   │   ├── handler.ts      # Application logic
+│   │   │   ├── handler.test.ts # Co-located test
+│   │   │   ├── dto.ts          # Input/output types
+│   │   │   ├── validation.ts   # Zod schemas
+│   │   │   ├── db.ts           # Database queries
+│   │   │   └── route.ts        # HTTP route
+│   │   └── domain/             # Domain models
+│   │       ├── entities/
+│   │       ├── value-objects/
+│   │       └── aggregates/
+│   ├── user/       # User bounded context
+│   └── auth/       # Auth bounded context
+├── system/          # Operational features
+│   └── health/
+├── shared/          # Shared kernel
+│   ├── logger.ts
+│   ├── result.ts
+│   └── errors.ts
+├── infrastructure/  # External adapters
+│   ├── database.ts
+│   └── keycloak.ts
+├── middleware/      # Global middleware
+├── routes.ts        # Route composition
+└── index.ts         # Application entry
 ```
 
 ### Import Order
@@ -207,6 +213,99 @@ const CreateQuestionSchema = z.object({
 
 // ✅ Good: Type inference from schema
 type CreateQuestionInput = z.infer<typeof CreateQuestionSchema>;
+```
+
+## VSA Standards
+
+### Use Case Structure
+
+```typescript
+// features/quiz/start-quiz/handler.ts
+import { Result, ok, err } from '@/shared/result';
+import type { StartQuizInput, StartQuizOutput } from './dto';
+
+// Handler function - contains application logic
+export async function startQuiz(
+  input: StartQuizInput,
+  context: { userId: string, db: DbContext }
+): Promise<Result<StartQuizOutput, StartQuizError>> {
+  // 1. Domain logic
+  const session = QuizSession.create(input);
+  
+  // 2. Persistence
+  const result = await context.db.quizzes.create(session);
+  
+  // 3. Return result
+  return ok({ quizId: result.id });
+}
+```
+
+### Domain Models
+
+```typescript
+// ✅ Good: Rich domain entity
+export class QuizSession {
+  private constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    private _questions: Question[],
+    private _startedAt: Date
+  ) {}
+
+  static create(props: CreateQuizProps): QuizSession {
+    // Factory with validation
+    if (props.questionCount < 1) {
+      throw new DomainError('Invalid question count');
+    }
+    return new QuizSession(/*...*/);
+  }
+
+  // Business methods
+  submitAnswer(questionId: string, answer: string): void {
+    // Domain logic here
+  }
+}
+
+// ❌ Bad: Anemic domain model
+interface QuizSession {
+  id: string;
+  userId: string;
+  questions: Question[];
+}
+```
+
+### DbContext Usage
+
+```typescript
+// ✅ Good: Slice-specific queries
+// features/quiz/start-quiz/db.ts
+import { dbContext } from '@/infrastructure/database';
+
+export const startQuizDb = {
+  async getRandomQuestions(count: number, category?: string) {
+    return dbContext.questions.random(count, { category });
+  },
+  
+  async createSession(session: QuizSession) {
+    return dbContext.transaction(async (tx) => {
+      // Transaction logic
+    });
+  }
+};
+```
+
+### Route Organization
+
+```typescript
+// ✅ Good: Each slice exports its routes
+// features/quiz/start-quiz/route.ts
+export const startQuizRoute = new Hono()
+  .post('/start', zValidator('json', startQuizSchema), handler);
+
+// src/routes.ts - Composition root
+export const appRoutes = new Hono()
+  .route('/api/quiz', startQuizRoute)
+  .route('/api/quiz', submitAnswerRoute);
 ```
 
 ## Database Standards
@@ -330,40 +429,68 @@ export const isAuthenticated = derived(auth, $auth => !!$auth);
 
 ## Testing Standards
 
-### Test Organization
+### VSA Test Organization
 
 ```typescript
-// ✅ Good: Descriptive test names
-describe('QuizService', () => {
-  describe('calculateScore', () => {
-    it('should return 0 when no questions are answered', () => {
-      // ...
-    });
-    
-    it('should calculate percentage correctly', () => {
-      // ...
-    });
-    
-    it('should handle division by zero', () => {
-      // ...
-    });
+// ✅ Good: Co-located test next to handler
+// features/quiz/start-quiz/handler.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { startQuiz } from './handler';
+import { createMockDbContext } from '@/tests/mocks';
+
+describe('startQuiz', () => {
+  let mockDb: DbContext;
+
+  beforeEach(() => {
+    mockDb = createMockDbContext();
+  });
+
+  it('should create quiz session with valid input', async () => {
+    // Arrange
+    const input = { questionCount: 10, category: 'networking' };
+    const userId = 'user-123';
+
+    // Act
+    const result = await startQuiz(input, { userId, db: mockDb });
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.data.quizId).toBeDefined();
+  });
+
+  it('should return error for invalid question count', async () => {
+    // Arrange
+    const input = { questionCount: 0 };
+    const userId = 'user-123';
+
+    // Act
+    const result = await startQuiz(input, { userId, db: mockDb });
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error.message).toBe('Invalid question count');
   });
 });
+```
 
-// ✅ Good: Arrange-Act-Assert pattern
-it('should create a new quiz session', async () => {
-  // Arrange
-  const userId = 'test-user-id';
-  const questionCount = 5;
-  
-  // Act
-  const session = await createQuizSession(userId, questionCount);
-  
-  // Assert
-  expect(session).toMatchObject({
-    userId,
-    questionCount,
-    currentIndex: 0,
+### Domain Model Testing
+
+```typescript
+// ✅ Good: Test domain logic in isolation
+// features/quiz/domain/entities/QuizSession.test.ts
+describe('QuizSession', () => {
+  it('should calculate score correctly', () => {
+    // No database, pure domain logic
+    const session = QuizSession.create({
+      userId: 'user-123',
+      questionCount: 5
+    });
+
+    session.submitAnswer('q1', 'correct');
+    session.submitAnswer('q2', 'wrong');
+
+    expect(session.getScore()).toBe(1);
+    expect(session.getAccuracy()).toBe(50);
   });
 });
 ```
@@ -582,11 +709,22 @@ WIP
 
 ## Code Review Checklist
 
+### General
 - [ ] Types are explicit (no `any`)
 - [ ] Functions are pure where possible
-- [ ] Error handling is consistent
-- [ ] Tests are included
+- [ ] Error handling uses Result type
+- [ ] Tests are included and co-located
 - [ ] Documentation is updated
+
+### VSA Specific
+- [ ] Use case is in its own folder
+- [ ] Handler contains only application logic
+- [ ] Domain logic is in entities/aggregates
+- [ ] Database queries are in db.ts
+- [ ] Routes are thin wrappers
+- [ ] No cross-slice imports
+
+### Quality
 - [ ] Performance impact considered
 - [ ] Security implications reviewed
 - [ ] Accessibility maintained

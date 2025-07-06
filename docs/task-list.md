@@ -1,10 +1,10 @@
-# Implementation Task List - Phase 1 (Simple MVP Architecture)
+# Implementation Task List - Phase 1 (Vertical Slice Architecture)
 
 ## Overview
 
-This document breaks down Phase 1 implementation into manageable tasks using a simplified module-based architecture. Each task should be completed with tests before moving to the next.
+This document breaks down Phase 1 implementation into manageable tasks using Vertical Slice Architecture (VSA) with Domain-Driven Design (DDD) principles. Each task should be completed with tests before moving to the next.
 
-**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using a simple, module-based structure that can evolve to clean architecture when needed.
+**Phase 1 Goal**: Basic quiz functionality with authentication and admin features using VSA, where each feature is organized as a complete vertical slice containing all layers.
 
 ## Task Organization
 
@@ -173,21 +173,35 @@ All shared infrastructure components completed, including:
 - Type-safe Drizzle ORM integration
 - Full test coverage with transaction isolation
 
-### 3.5 Create Database Query Functions
-**Time**: 2 hours
+### 3.5 Create DbContext
+**Time**: 1 hour
 **Status**: IN PROGRESS
 ```typescript
 // Tasks:
-- Create modules/user/user.db.ts with user queries
-- Create modules/quiz/quiz.db.ts with quiz queries
-- Create modules/question/question.db.ts
-- Add transaction helpers using shared/database.ts
-- Test: All database queries work
+- Create db/DbContext.ts wrapping Drizzle instance
+- Add table-specific query helpers (users, quizzes, questions)
+- Add transaction support method
+- Export singleton instance
+- Test: DbContext methods work correctly
 ```
 
 **Progress Update**:
 - ✅ **DB Structure Cleanup** (a85a707): Resolved duplicate db folder structure, moved test files to correct locations
 - ✅ **Testcontainers Integration** (243e212): Added testcontainers for PostgreSQL/Redis, replacing CI service containers
+
+### 3.5a Update Database Schema 🔴
+**Time**: 1 hour
+**Status**: NEW
+**Priority**: HIGH
+```typescript
+// Tasks:
+- Review current schema files for VSA compatibility
+- Update schema to support domain requirements
+- Add any missing fields or tables
+- Update indexes for query patterns
+- Generate new migration files
+- Test: Schema supports all use cases
+```
 
 ### 3.6 Run Migrations and Seed Data
 **Time**: 30 minutes
@@ -198,6 +212,20 @@ All shared infrastructure components completed, including:
 - Create comprehensive seed data
 - Add badges and initial questions
 - Test: Database populated with test data
+```
+
+## 3.7 Architecture Migration Setup 🔴
+**Time**: 1 hour
+**Status**: NEW
+```typescript
+// Tasks:
+- Create src/features/ directory structure
+- Create src/system/ directory for operational endpoints
+- Move modules/health/ to system/health/
+- Create src/infrastructure/ directory
+- Move shared/database.ts to infrastructure/database.ts
+- Update imports in existing code
+- Test: All existing tests still pass
 ```
 
 ## 4. Quality Gates 🟡
@@ -216,49 +244,50 @@ All shared infrastructure components completed, including:
 ```
 **Timing**: Implement after database foundation when actual business logic exists to scan.
 
-## 5. Module Implementation 🟡
+## 5. Feature Implementation (VSA) 🟡
 
-### 5.1 Implement Auth Module
-**Time**: 2 hours
-```typescript
-// Tasks:
-- Create modules/auth/auth.service.ts with business logic
-- Create modules/auth/auth.routes.ts with endpoints
-- Create modules/auth/auth.middleware.ts
-- Integrate KeyCloak authentication
-- Test: Auth flow works end-to-end
-```
-
-### 5.2 Implement Quiz Module
+### 5.1 Implement Auth Features
 **Time**: 3 hours
 ```typescript
 // Tasks:
-- Create modules/quiz/quiz.service.ts
-- Create modules/quiz/quiz.routes.ts
-- Create modules/quiz/quiz.db.ts
-- Create modules/quiz/quiz.types.ts
+- Create features/auth/login/ use case
+  - handler.ts, handler.test.ts, dto.ts, validation.ts, route.ts
+  - Integrate KeyCloak authentication
+- Create features/auth/refresh-token/ use case
+- Create features/auth/middleware/auth.middleware.ts
+- Test: Auth flow works end-to-end
+```
+
+### 5.2 Implement Quiz Features
+**Time**: 5 hours
+```typescript
+// Tasks:
+- Create features/quiz/start-quiz/ use case
+  - handler.ts, handler.test.ts, dto.ts, validation.ts, db.ts, route.ts
+- Create features/quiz/submit-answer/ use case
+- Create features/quiz/get-quiz-results/ use case
+- Create features/quiz/domain/ with entities (Quiz, Question)
 - Test: Complete quiz flow tested
 ```
 
-### 5.3 Implement User Module
-**Time**: 2 hours
+### 5.3 Implement User Features
+**Time**: 3 hours
 ```typescript
 // Tasks:
-- Create modules/user/user.service.ts
-- Create modules/user/user.routes.ts
-- Create modules/user/user.db.ts
-- Add progress tracking logic
+- Create features/user/register/ use case
+- Create features/user/update-progress/ use case
+- Create features/user/get-profile/ use case
+- Create features/user/domain/ with User entity
 - Test: User operations work correctly
 ```
 
-### 5.4 Implement Question Module
+### 5.4 Implement Question Features
 **Time**: 2 hours
 ```typescript
 // Tasks:
-- Create modules/question/question.service.ts
-- Create modules/question/question.routes.ts
-- Create modules/question/question.db.ts
-- ~~Add caching for question retrieval~~ (Removed - using Neon DB)
+- Create features/question/list-questions/ use case
+- Create features/question/get-question/ use case
+- Create features/question/create-question/ use case (admin)
 - Test: Question operations tested
 ```
 
@@ -286,14 +315,16 @@ All shared infrastructure components completed, including:
 - Test: Middleware chain works correctly
 ```
 
-### 6.3 Wire Up Module Routes
-**Time**: 2 hours
+### 6.3 Create Route Composition
+**Time**: 1 hour
 ```typescript
 // Tasks:
-- Mount auth routes at /api/auth
-- Mount quiz routes at /api/quiz
-- Mount user routes at /api/users
-- Mount question routes at /api/questions
+- Create src/routes.ts as composition root
+- Import and mount auth feature routes
+- Import and mount quiz feature routes
+- Import and mount user feature routes
+- Import and mount question feature routes
+- Mount system/health route
 - Test: All endpoints return expected responses
 ```
 
@@ -588,12 +619,12 @@ Each task is complete when:
 
 **Note**: Timeline updated to reflect additional setup tasks (1A series) completed during implementation.
 
-- **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities)
-- **Week 2**: Tasks 3-5 (Database Foundation + Quality Gates + Modules)
-- **Week 3**: Tasks 6-7 (API Layer + Basic Features)
-- **Week 4**: Tasks 8-9 (Frontend Foundation + Core UI)
-- **Week 5**: Tasks 10-11 (Admin Interface + Testing)
-- **Week 6**: Task 12 (DevOps & Deployment)
+- **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities) ✅
+- **Week 2**: Tasks 3 (Database Foundation + Architecture Migration)
+- **Week 3**: Tasks 4-5 (Quality Gates + Feature Implementation)
+- **Week 4**: Tasks 6-7 (API Layer + Basic Features)
+- **Week 5**: Tasks 8-9 (Frontend Foundation + Core UI)
+- **Week 6**: Tasks 10-12 (Admin Interface + Testing + DevOps)
 
 **Actual Setup Phase Summary**:
 - Original tasks (1.1-1.4): 1.5 hours (as planned)
@@ -614,14 +645,15 @@ Total estimate: ~90-110 hours of development time (reduced with simpler architec
 ## Critical Path
 
 The following tasks are on the critical path and block other work:
-1. Shared Utilities (blocks module development)
-2. Database Foundation (blocks all data operations)
-3. Module Implementation (blocks API routes)
-4. API Layer (blocks frontend integration)
+1. Shared Utilities (blocks feature development) ✅
+2. Database Foundation (blocks all data operations) - IN PROGRESS
+3. Architecture Migration (blocks VSA implementation)
+4. Feature Implementation (blocks API routes)
+5. API Layer (blocks frontend integration)
 
 ## Risk Mitigation
 
-- **Performance Risk**: Add caching only where needed
-- **Complexity Risk**: Keep modules simple and focused
-- **Over-engineering Risk**: Follow YAGNI principle
-- **Migration Risk**: Maintain clear module boundaries for Phase 2
+- **Performance Risk**: DbContext provides direct database access
+- **Complexity Risk**: Start with simple DTOs, add domain complexity as needed
+- **Over-engineering Risk**: No CQRS, no repository interfaces
+- **Migration Risk**: Keep both module and VSA structure during transition
