@@ -71,8 +71,6 @@ export const healthRoutes = new Hono<AppEnv>()
 
   .get('/ready', async (c) => {
     const services: Record<string, ServiceHealthCheck> = {};
-    const allHealthy = true;
-    const hasWarnings = true;
 
     // Check Database health (placeholder for now)
     services.database = {
@@ -83,11 +81,17 @@ export const healthRoutes = new Hono<AppEnv>()
       },
     };
 
-    // Determine overall status
-    const overallStatus = allHealthy ? (hasWarnings ? 'degraded' : 'ok') : 'error';
+    // Dynamically calculate health status from all services
+    const serviceStatuses = Object.values(services);
+    const allHealthy = serviceStatuses.every((s) => s.status === 'ok');
+    const hasErrors = serviceStatuses.some((s) => s.status === 'error');
+    const hasDegraded = serviceStatuses.some((s) => s.status === 'degraded');
 
-    // Set appropriate status code
-    const statusCode = allHealthy ? 200 : 503;
+    // Determine overall status based on actual service states
+    const overallStatus = hasErrors ? 'error' : hasDegraded ? 'degraded' : 'ok';
+
+    // Set appropriate status code (503 for errors, 200 otherwise)
+    const statusCode = hasErrors ? 503 : 200;
 
     return c.json(
       {
@@ -96,7 +100,7 @@ export const healthRoutes = new Hono<AppEnv>()
         services,
         details: {
           healthy: allHealthy,
-          degraded: hasWarnings,
+          degraded: hasDegraded,
           uptime: getUptime(),
         },
       },
