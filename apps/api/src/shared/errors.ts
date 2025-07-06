@@ -2,13 +2,17 @@
  * Base application error class
  */
 export class AppError extends Error {
+  public readonly details?: unknown;
+
   constructor(
     message: string,
     public readonly code: string,
-    public readonly statusCode: number = 500
+    public readonly statusCode: number = 500,
+    details?: unknown
   ) {
     super(message);
     this.name = 'AppError';
+    this.details = details;
     // Maintain proper stack trace in V8
     Error.captureStackTrace(this, this.constructor);
   }
