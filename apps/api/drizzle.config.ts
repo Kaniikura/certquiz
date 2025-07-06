@@ -6,8 +6,10 @@ if (!databaseUrl) {
 }
 
 export default defineConfig({
-  schema: './db/schema/index.ts',
-  out: './db/migrations',
+  // Schema will be added incrementally as we implement vertical slices
+  // For now, we'll use a placeholder that will be updated in Day 2+
+  schema: './src/infra/db/schema/*.ts',
+  out: './src/infra/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: databaseUrl,
