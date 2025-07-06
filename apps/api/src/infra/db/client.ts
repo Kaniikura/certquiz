@@ -1,22 +1,5 @@
-import * as schema from '@api-db/schema';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres, { type Sql } from 'postgres';
-
-/**
- * Database interface that wraps Drizzle ORM with additional functionality
- */
-export interface Database {
-  // Drizzle ORM methods
-  select: ReturnType<typeof drizzle>['select'];
-  insert: ReturnType<typeof drizzle>['insert'];
-  update: ReturnType<typeof drizzle>['update'];
-  delete: ReturnType<typeof drizzle>['delete'];
-  transaction: ReturnType<typeof drizzle>['transaction'];
-
-  // Custom methods
-  close(): Promise<void>;
-  ping(): Promise<boolean>;
-}
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 
 /**
  * Connection pool configuration based on environment
@@ -77,114 +60,52 @@ function validateDatabaseUrl(url: string | undefined): void {
   }
 }
 
-/**
- * Creates a new database connection with proper configuration
- */
-export function createDatabase(): Database {
-  const databaseUrl = process.env.DATABASE_URL;
-  const nodeEnv = process.env.NODE_ENV || 'development';
+// Create the connection pool
+const databaseUrl = process.env.DATABASE_URL;
+const nodeEnv = process.env.NODE_ENV || 'development';
 
-  // Validate DATABASE_URL
-  validateDatabaseUrl(databaseUrl);
+// Validate DATABASE_URL
+validateDatabaseUrl(databaseUrl);
 
-  // After validation, databaseUrl is guaranteed to be string
-  const validDatabaseUrl = databaseUrl as string;
+// After validation, databaseUrl is guaranteed to be defined
+const validDatabaseUrl = databaseUrl as string;
 
-  // Create postgres connection with environment-specific config
-  const poolConfig = getPoolConfig(nodeEnv);
-  const sql: Sql = postgres(validDatabaseUrl, poolConfig);
+// Create postgres connection with environment-specific config
+const poolConfig = getPoolConfig(nodeEnv);
+export const pool = postgres(validDatabaseUrl, poolConfig);
 
-  // Create Drizzle instance with schema
-  const db = drizzle(sql, {
-    schema,
-    logger: nodeEnv === 'development',
-  });
+// Create Drizzle instance without schema for now (Day 1 infrastructure)
+// Schema will be added incrementally as we implement slices
+export const db = drizzle(pool, {
+  logger: nodeEnv === 'development',
+});
 
-  // Track if connection is closed
-  let isClosed = false;
-
-  return {
-    // Drizzle ORM methods
-    select: db.select.bind(db),
-    insert: db.insert.bind(db),
-    update: db.update.bind(db),
-    delete: db.delete.bind(db),
-    transaction: db.transaction.bind(db),
-
-    // Graceful shutdown
-    async close(): Promise<void> {
-      if (isClosed) {
-        return; // Already closed, don't attempt again
-      }
-
-      try {
-        await sql.end({ timeout: 5 }); // 5 second timeout
-      } catch (error) {
-        // Log error but don't throw - we want graceful shutdown
-        if (nodeEnv !== 'test') {
-          // Use console.error only for critical shutdown errors
-          // In production, this would be replaced with proper logging
-          // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
-          console.error('[database] Forced close after timeout:', error);
-        }
-      } finally {
-        // Always mark as closed, regardless of success/failure
-        isClosed = true;
-      }
-    },
-
-    // Health check
-    async ping(): Promise<boolean> {
-      if (isClosed) {
-        return false;
-      }
-
-      try {
-        await sql`SELECT 1`;
-        return true;
-      } catch (_error) {
-        return false;
-      }
-    },
-  };
-}
-
-// Singleton database instance
-let dbInstance: Database | null = null;
+// Export the database type
+export type DrizzleDb = PostgresJsDatabase;
 
 /**
- * Gets or creates the singleton database instance
+ * Health check function
  */
-export function getDatabase(): Database {
-  if (!dbInstance) {
-    dbInstance = createDatabase();
+export async function ping(): Promise<boolean> {
+  try {
+    await pool`SELECT 1`;
+    return true;
+  } catch (_error) {
+    return false;
   }
-  return dbInstance;
 }
-
-/**
- * Export singleton instance for unit-of-work pattern
- */
-export const db = getDatabase();
 
 /**
  * Gracefully shutdown the database connection
  */
 export async function shutdownDatabase(): Promise<void> {
-  if (dbInstance) {
-    try {
-      await dbInstance.close();
-    } catch (error) {
-      // Suppress errors during shutdown
-      const nodeEnv = process.env.NODE_ENV || 'development';
-      if (nodeEnv !== 'test') {
-        // Use console.error only for critical shutdown errors
-        // In production, this would be replaced with proper logging
-        // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
-        console.error('[database] Error during shutdown:', error);
-      }
-    } finally {
-      dbInstance = null;
+  try {
+    await pool.end({ timeout: 5 }); // 5 second timeout
+  } catch (error) {
+    // Log error but don't throw - we want graceful shutdown
+    if (nodeEnv !== 'test') {
+      // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
+      console.error('[database] Error during shutdown:', error);
     }
   }
 }
@@ -196,8 +117,7 @@ if (typeof process !== 'undefined') {
   signals.forEach((signal) => {
     process.on(signal, async () => {
       await shutdownDatabase();
+      process.exit(0);
     });
   });
 }
-
-// Type is already exported above with the interface declaration
