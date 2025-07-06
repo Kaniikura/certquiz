@@ -1,9 +1,6 @@
 import os from 'node:os';
-import { createLogger } from '@api/shared/logger';
 import type { AppEnv } from '@api/types/app';
 import { Hono } from 'hono';
-
-const logger = createLogger('health');
 
 /**
  * Get process uptime in seconds
@@ -55,51 +52,6 @@ interface ServiceHealthCheck {
   details?: Record<string, unknown>;
 }
 
-/**
- * Check service health with detailed diagnostics
- */
-async function checkServiceHealth(
-  name: string,
-  healthCheck: () => Promise<undefined | Record<string, unknown>>
-): Promise<ServiceHealthCheck> {
-  const start = Date.now();
-
-  try {
-    const result = await healthCheck();
-    const latency = Date.now() - start;
-
-    logger.debug({ name, latency }, `Health check for ${name} succeeded`);
-
-    return {
-      status: 'ok',
-      latency,
-      ...(result && { details: result }),
-    };
-  } catch (error) {
-    const latency = Date.now() - start;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    logger.error(
-      {
-        name,
-        latency,
-        err: error instanceof Error ? error : new Error(errorMessage),
-      },
-      `Health check for ${name} failed`
-    );
-
-    return {
-      status: 'error',
-      latency,
-      error: errorMessage,
-      details: {
-        type: error instanceof Error ? error.constructor.name : 'UnknownError',
-        ...(error instanceof Error && error.cause ? { cause: String(error.cause) } : {}),
-      },
-    };
-  }
-}
-
 export const healthRoutes = new Hono<AppEnv>()
   .get('/', (c) => {
     return c.json({
@@ -118,25 +70,9 @@ export const healthRoutes = new Hono<AppEnv>()
   })
 
   .get('/ready', async (c) => {
-    const cache = c.get('cache');
     const services: Record<string, ServiceHealthCheck> = {};
-    let allHealthy = true;
-    let hasWarnings = false;
-
-    // Check cache health
-    services.cache = await checkServiceHealth('cache', async () => {
-      // Ping to check basic connectivity
-      const pingResult = await cache.ping();
-
-      return {
-        pingResult,
-        type: cache.constructor.name,
-      };
-    });
-
-    if (services.cache.status === 'error') {
-      allHealthy = false;
-    }
+    const allHealthy = true;
+    const hasWarnings = true;
 
     // Check Database health (placeholder for now)
     services.database = {
@@ -146,7 +82,6 @@ export const healthRoutes = new Hono<AppEnv>()
         note: 'Database health check not yet implemented',
       },
     };
-    hasWarnings = true; // Mark that there are warnings
 
     // Determine overall status
     const overallStatus = allHealthy ? (hasWarnings ? 'degraded' : 'ok') : 'error';
@@ -170,7 +105,6 @@ export const healthRoutes = new Hono<AppEnv>()
   })
 
   .get('/metrics', async (c) => {
-    const cache = c.get('cache');
     const metrics: Record<string, unknown> = {
       uptime: getUptime(),
       memory: getMemoryStats(),
@@ -181,31 +115,6 @@ export const healthRoutes = new Hono<AppEnv>()
         architecture: os.arch(),
       },
     };
-
-    // Collect cache metrics
-    try {
-      const pingResult = await cache.ping();
-      metrics.cache = {
-        connected: true,
-        type: cache.constructor.name,
-        healthy: pingResult === 'PONG',
-      };
-    } catch (error) {
-      logger.error(
-        {
-          err: error as Error,
-          operation: 'cache_metrics_collection',
-          context: 'health_metrics_endpoint',
-        },
-        'Error fetching cache metrics'
-      );
-      metrics.cache = {
-        connected: false,
-        type: cache.constructor.name,
-        error: error instanceof Error ? error.message : 'Failed to fetch metrics',
-        errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-      };
-    }
 
     return c.json(metrics);
   });

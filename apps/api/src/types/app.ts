@@ -1,9 +1,7 @@
-import type { Cache } from '@api/shared/cache';
 import type { Hono } from 'hono';
 
 export type AppEnv = {
   Variables: {
-    cache: Cache;
     user?: {
       id: string;
       email: string;
@@ -14,7 +12,6 @@ export type AppEnv = {
   Bindings: {
     JWT_SECRET: string;
     DATABASE_URL: string;
-    REDIS_URL?: string;
     KEYCLOAK_URL: string;
     KEYCLOAK_REALM: string;
     BMAC_WEBHOOK_SECRET: string;
