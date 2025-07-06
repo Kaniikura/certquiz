@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDatabase, type Database } from './database';
+import { createDatabase, type Database } from './client';
 
 describe('Database connection wrapper', () => {
   let originalDatabaseUrl: string | undefined;

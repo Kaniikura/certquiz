@@ -163,6 +163,11 @@ export function getDatabase(): Database {
 }
 
 /**
+ * Export singleton instance for unit-of-work pattern
+ */
+export const db = getDatabase();
+
+/**
  * Gracefully shutdown the database connection
  */
 export async function shutdownDatabase(): Promise<void> {

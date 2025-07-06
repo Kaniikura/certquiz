@@ -1,78 +1,39 @@
-import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { env } from './config';
-import { healthRoutes } from './modules/health';
-import { createLogger } from './shared/logger';
-import type { AppEnv } from './types/app';
 
-const app = new Hono<AppEnv>();
+// TODO: Import routes after implementing features
+// import { healthRoute } from './system/health/route';
+// import { authRoutes } from './features/auth/routes';
+// import { quizRoutes } from './features/quiz/routes';
 
-// Initialize logger
-const appLogger = createLogger('server');
+const app = new Hono();
 
 // Global middleware
+app.use('*', cors());
 app.use('*', logger());
-app.use(
-  '*',
-  cors({
-    origin: env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
-  })
-);
 
-// Error handling
-app.onError((err, c) => {
-  appLogger.error({ err, path: c.req.path, method: c.req.method }, 'Application error');
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'An error occurred',
-      },
-    },
-    500
-  );
+// TODO: Mount routes
+// app.route('/health', healthRoute);
+// app.route('/api/auth', authRoutes);
+// app.route('/api/quiz', quizRoutes);
+
+// Temporary root route
+app.get('/', (c) => {
+  return c.json({ 
+    message: 'CertQuiz API - VSA Architecture', 
+    status: 'ready' 
+  });
 });
 
-// Mount routes
-app.route('/health', healthRoutes);
+const port = process.env.API_PORT || 4000;
 
-// 404 handler
-app.notFound((c) => {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'NOT_FOUND',
-        message: 'Route not found',
-      },
-    },
-    404
-  );
-});
+export default {
+  port,
+  fetch: app.fetch,
+};
 
-// Start server when run directly (not imported)
-if (import.meta.main) {
-  const port = env.API_PORT || 4000;
-
-  // Start server
-  try {
-    appLogger.info({ port }, '🔥 Server starting');
-
-    serve({
-      fetch: app.fetch,
-      port,
-    });
-
-    appLogger.info(`✅ API started on :${port}`);
-  } catch (error) {
-    appLogger.error({ err: error }, 'Failed to start server');
-    process.exit(1);
-  }
+// Start server if run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  console.log(`Server starting on port ${port}...`);
 }
-
-export default app;
-export type { App } from './types/app';
