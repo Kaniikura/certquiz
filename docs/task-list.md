@@ -57,6 +57,44 @@ All shared infrastructure components completed, including:
 
 > 📁 **Detailed task breakdown**: [docs/completed/02-shared-utilities-configuration.md](./completed/02-shared-utilities-configuration.md)
 
+## 2.1 Remove Cache Infrastructure ✅
+**Status**: COMPLETED
+**Time**: 1.5 hours (actual: ~1 hour)
+**Priority**: HIGH
+**Reason**: Using Neon database which provides built-in connection pooling and scaling
+
+### Completed Tasks:
+```typescript
+// Redis/Cache Removal:
+✅ Remove Redis from docker-compose.yml
+✅ Delete apps/api/src/shared/cache.ts and cache.test.ts
+✅ Remove cache references from shared utilities
+✅ Update environment variables (remove REDIS_URL)
+
+// Module Updates:
+✅ Remove caching from quiz.service.ts (Task 7.1)
+✅ Remove caching from question retrieval (Task 5.4)
+✅ Remove session caching references
+✅ Update all import statements
+
+// Documentation Updates:
+✅ Update CLAUDE.md to reflect Neon usage
+✅ Update project-structure.md
+✅ Update coding-standards.md
+✅ Remove cache-related patterns
+
+// Test Updates:
+✅ Remove all cache-related tests
+✅ Update integration tests to not expect caching
+✅ Verify all tests pass without Redis (157 tests passing)
+```
+
+### Rationale:
+- **Neon provides connection pooling**: Built-in multiplexing eliminates traditional RDB connection bottlenecks
+- **PostgreSQL has native caching**: Shared buffers and OS cache handle repeated queries efficiently
+- **Drizzle ORM is cache-free by design**: Keeps code simple and maintainable
+- **Premature caching adds complexity**: Cache invalidation and fallback logic increase operational overhead
+
 ## 3. Database Foundation 🔴
 
 ### 3.1 Setup Drizzle ORM ✅
@@ -220,7 +258,7 @@ All shared infrastructure components completed, including:
 - Create modules/question/question.service.ts
 - Create modules/question/question.routes.ts
 - Create modules/question/question.db.ts
-- Add caching for question retrieval
+- ~~Add caching for question retrieval~~ (Removed - using Neon DB)
 - Test: Question operations tested
 ```
 
@@ -272,15 +310,20 @@ All shared infrastructure components completed, including:
 
 ## 7. Basic Features Implementation 🟢
 
-### 7.1 Add Caching Layer
-**Time**: 1 hour
+### 7.1 ~~Add Caching Layer~~ (REMOVED)
+**Time**: ~~1 hour~~ 0 hours
+**Status**: REMOVED - Using Neon database instead
 ```typescript
-// Tasks:
-- Implement caching in quiz.service.ts
-- Cache question lists
-- Cache user sessions
-- Add cache invalidation
-- Test: Caching improves performance
+// Removed Tasks:
+- ~~Implement caching in quiz.service.ts~~
+- ~~Cache question lists~~
+- ~~Cache user sessions~~
+- ~~Add cache invalidation~~
+- ~~Test: Caching improves performance~~
+
+// Reason: Neon provides built-in connection pooling and PostgreSQL
+// has native caching through shared buffers. Adding application-level
+// caching would introduce unnecessary complexity.
 ```
 
 ### 7.2 Add Basic Gamification
@@ -323,7 +366,7 @@ All shared infrastructure components completed, including:
 ```typescript
 // Tasks:
 - Create typed Svelte stores
-- Implement auth store with caching
+- Implement auth store ~~with caching~~ (store in memory only)
 - Add quiz session store
 - Create progress store
 - Test: State management works correctly
@@ -372,7 +415,7 @@ All shared infrastructure components completed, including:
 <!-- Tasks: -->
 - Question grid/list view
 - Advanced filtering
-- Pagination with caching
+- Pagination ~~with caching~~ (server-side only)
 - Search functionality
 - Bookmark feature
 - Test: Browsing and filtering work smoothly

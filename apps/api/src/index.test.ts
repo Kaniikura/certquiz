@@ -10,7 +10,6 @@ process.env.JWT_SECRET = 'test-secret-key-for-testing-purposes';
 process.env.BMAC_WEBHOOK_SECRET = 'test-webhook-secret';
 process.env.API_PORT = '4000';
 process.env.FRONTEND_URL = 'http://localhost:5173';
-process.env.REDIS_URL = 'redis://localhost:6379';
 
 // We'll import the app after it's created
 let app: App;
@@ -79,20 +78,15 @@ describe('Main App', () => {
     it('should handle health ready endpoint', async () => {
       const response = await app.request('http://localhost/health/ready');
 
-      // Expect 503 because cache is not initialized when app is imported
-      // (cache.init() only runs when import.meta.main is true)
-      // and database check is intentionally degraded by design
-      expect(response.status).toBe(503);
+      // Now without cache, the endpoint returns 200 with degraded status
+      // due to database check not being implemented yet
+      expect(response.status).toBe(200);
 
       const data = await response.json();
       expect(data).toMatchObject({
-        status: 'error',
+        status: 'degraded',
         timestamp: expect.any(String),
         services: {
-          cache: {
-            status: 'error',
-            error: expect.any(String),
-          },
           database: {
             status: 'degraded',
           },

@@ -1,5 +1,4 @@
 import { PostgresSingleton } from './postgres';
-import { RedisSingleton } from './redis';
 
 /**
  * Global setup function for Vitest.
@@ -11,23 +10,15 @@ export async function setup() {
   if (testType === 'unit') {
     return;
   }
-  // Start containers in parallel for faster startup
-  const [postgresContainer, _redisContainer] = await Promise.all([
-    PostgresSingleton.getInstance(),
-    RedisSingleton.getInstance(),
-  ]);
+  // Start PostgreSQL container
+  const postgresContainer = await PostgresSingleton.getInstance();
 
-  // Get connection URLs
+  // Get connection URL
   const postgresUrl = postgresContainer.getConnectionUri();
-  const redisUrl = await RedisSingleton.getConnectionUrl();
 
   // Set environment variables for the test run
   process.env.DATABASE_URL_TEST = postgresUrl;
   process.env.DATABASE_URL = postgresUrl; // Some tests might use DATABASE_URL
-  process.env.REDIS_URL = redisUrl;
-
-  // Set cache driver to Redis for integration tests
-  process.env.CACHE_DRIVER = 'redis';
 }
 
 /**
@@ -40,4 +31,4 @@ export async function teardown() {
 }
 
 // Export singletons for direct use in tests
-export { PostgresSingleton, RedisSingleton };
+export { PostgresSingleton };

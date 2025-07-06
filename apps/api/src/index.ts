@@ -4,7 +4,6 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { env } from './config';
 import { healthRoutes } from './modules/health';
-import { createCache } from './shared/cache';
 import { createLogger } from './shared/logger';
 import type { AppEnv } from './types/app';
 
@@ -12,9 +11,6 @@ const app = new Hono<AppEnv>();
 
 // Initialize logger
 const appLogger = createLogger('server');
-
-// Cache instance
-const cache = createCache();
 
 // Global middleware
 app.use('*', logger());
@@ -25,12 +21,6 @@ app.use(
     credentials: true,
   })
 );
-
-// Inject cache into context
-app.use('*', async (c, next) => {
-  c.set('cache', cache);
-  await next();
-});
 
 // Error handling
 app.onError((err, c) => {
@@ -68,23 +58,20 @@ app.notFound((c) => {
 if (import.meta.main) {
   const port = env.API_PORT || 4000;
 
-  // Initialize cache and start server
-  (async () => {
-    try {
-      await cache.init();
-      appLogger.info({ port, cacheDriver: env.CACHE_DRIVER }, '🔥 Server starting');
+  // Start server
+  try {
+    appLogger.info({ port }, '🔥 Server starting');
 
-      serve({
-        fetch: app.fetch,
-        port,
-      });
+    serve({
+      fetch: app.fetch,
+      port,
+    });
 
-      appLogger.info(`✅ API started on :${port} with ${env.CACHE_DRIVER} cache`);
-    } catch (error) {
-      appLogger.error({ err: error }, 'Failed to start server');
-      process.exit(1);
-    }
-  })();
+    appLogger.info(`✅ API started on :${port}`);
+  } catch (error) {
+    appLogger.error({ err: error }, 'Failed to start server');
+    process.exit(1);
+  }
 }
 
 export default app;
