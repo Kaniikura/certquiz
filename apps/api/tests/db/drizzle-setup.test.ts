@@ -7,19 +7,15 @@ describe('Drizzle Setup', () => {
 
     expect(config.default).toBeDefined();
     expect(config.default.dialect).toBe('postgresql');
-    expect(config.default.schema).toBe('./db/schema/index.ts');
-    expect(config.default.out).toBe('./db/migrations');
+    // Schema will be added incrementally as we implement vertical slices
+    expect(config.default.schema).toBe('./src/infra/db/schema/*.ts');
+    expect(config.default.out).toBe('./src/infra/db/migrations');
     expect(config.default.verbose).toBe(true);
     expect(config.default.strict).toBe(true);
   });
 
-  it('should import schema successfully', async () => {
-    const { users } = await import('../../db/schema');
-
-    // Test that schema can be imported and is defined
-    expect(users).toBeDefined();
-    expect(typeof users).toBe('object');
-  });
+  // Schema will be added incrementally as we implement vertical slices (Day 2+)
+  // For now, we're on Day 1 with minimal infrastructure only
 
   it('should validate test environment setup', () => {
     // Verify we're in test environment

@@ -59,6 +59,7 @@
     "hget",
     "hgetall",
     "hset",
+    "HSTS",
     "indexdef",
     "initdb",
     "Internetwork",
@@ -78,6 +79,7 @@
     "mypassword",
     "newfeature",
     "njsproj",
+    "nosniff",
     "Notif",
     "ntvs",
     "numbackends",
@@ -129,7 +131,7 @@
   ],
   "editor.codeActionsOnSave": {
     "quickfix.biome": "explicit",
-    "source.biome.useSortedKeys": "explicit"
+    "source.biome.useSortedKeys": "never"
   },
   "editor.defaultFormatter": "biomejs.biome",
   "editor.formatOnSave": true

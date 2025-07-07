@@ -1,0 +1,171 @@
+import { afterAll, describe, expect, it } from 'vitest';
+import { app } from '../../../src/index';
+import { shutdownDatabase } from '../../../src/infra/db/client';
+
+describe('Health check endpoints', () => {
+  afterAll(async () => {
+    // Shutdown database connections
+    await shutdownDatabase();
+  });
+
+  describe('GET /health/live (liveness probe)', () => {
+    it('returns healthy status with system information', async () => {
+      const res = await app.request('/health/live');
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toMatch(/application\/json/);
+      expect(res.headers.get('x-request-id')).toBeDefined();
+
+      const body = await res.json();
+      expect(body).toMatchObject({
+        status: 'healthy',
+        service: 'certquiz-api',
+        version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+        environment: expect.any(String),
+        timestamp: expect.any(String),
+        uptime: expect.any(Number),
+        memory: {
+          heapUsed: expect.any(Number),
+          heapTotal: expect.any(Number),
+          rss: expect.any(Number),
+        },
+      });
+
+      // Verify timestamp is valid ISO string
+      expect(new Date(body.timestamp).toISOString()).toBe(body.timestamp);
+    });
+
+    it('always returns 200 status', async () => {
+      // Liveness should always succeed if the process is running
+      const res = await app.request('/health/live');
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe('GET /health/ready (readiness probe)', () => {
+    it('returns health status with database connectivity', async () => {
+      const res = await app.request('/health/ready');
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toMatch(/application\/json/);
+      expect(res.headers.get('x-request-id')).toBeDefined();
+
+      const body = await res.json();
+      expect(body).toMatchObject({
+        status: expect.stringMatching(/^(healthy|unhealthy)$/),
+        timestamp: expect.any(String),
+        services: {
+          database: {
+            status: expect.stringMatching(/^(healthy|unhealthy)$/),
+          },
+        },
+      });
+
+      // Verify timestamp is valid ISO string
+      expect(new Date(body.timestamp).toISOString()).toBe(body.timestamp);
+    });
+
+    it('includes request ID from middleware', async () => {
+      const res = await app.request('/health/ready');
+
+      const requestId = res.headers.get('x-request-id');
+      expect(requestId).toBeDefined();
+      expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    });
+  });
+
+  describe('GET /health (legacy endpoint)', () => {
+    it('returns readiness status for backward compatibility', async () => {
+      const res = await app.request('/health');
+
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      // Should return the same structure as readiness endpoint
+      expect(body).toMatchObject({
+        status: expect.stringMatching(/^(healthy|unhealthy)$/),
+        timestamp: expect.any(String),
+        services: {
+          database: {
+            status: expect.stringMatching(/^(healthy|unhealthy)$/),
+          },
+        },
+      });
+    });
+  });
+
+  describe('Middleware integration', () => {
+    it('all health endpoints include request ID', async () => {
+      const endpoints = ['/health', '/health/live', '/health/ready'];
+
+      for (const endpoint of endpoints) {
+        const res = await app.request(endpoint);
+        expect(res.headers.get('x-request-id')).toBeDefined();
+      }
+    });
+
+    it('validates middleware chain works correctly', async () => {
+      // Make multiple requests to ensure middleware state is isolated
+      const res1 = await app.request('/health/live');
+      const res2 = await app.request('/health/ready');
+
+      const requestId1 = res1.headers.get('x-request-id');
+      const requestId2 = res2.headers.get('x-request-id');
+
+      // Each request should have a unique ID
+      expect(requestId1).not.toBe(requestId2);
+    });
+
+    it('health endpoints respond quickly', async () => {
+      const start = Date.now();
+      const res = await app.request('/health/live');
+      const duration = Date.now() - start;
+
+      expect(res.status).toBe(200);
+      expect(duration).toBeLessThan(500); // Liveness should be reasonably fast
+    });
+  });
+});
+
+describe('Error handling', () => {
+  it('returns 404 for non-existent endpoints', async () => {
+    const res = await app.request('/non-existent');
+
+    expect(res.status).toBe(404);
+
+    const body = await res.json();
+    expect(body).toMatchObject({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: expect.any(String),
+      },
+    });
+  });
+
+  it('returns proper error format with request ID', async () => {
+    const res = await app.request('/this-does-not-exist');
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get('x-request-id')).toBeDefined();
+
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toBeDefined();
+  });
+});
+
+describe('Root endpoint', () => {
+  it('returns API information', async () => {
+    const res = await app.request('/');
+
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body).toMatchObject({
+      message: 'CertQuiz API - VSA Architecture',
+      status: 'ready',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+    });
+  });
+});
