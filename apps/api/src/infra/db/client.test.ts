@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db, ping, pool, shutdownDatabase } from './client';
+import { db, getPool, ping, pool, shutdownDatabase } from './client';
 
 describe('Database client', () => {
   const originalEnv = process.env;
@@ -41,7 +41,9 @@ describe('Database client', () => {
 
   describe('graceful shutdown', () => {
     it('should handle shutdown gracefully', async () => {
-      const endSpy = vi.spyOn(pool, 'end').mockResolvedValueOnce(undefined);
+      // Initialize the pool first by calling getPool
+      const poolInstance = getPool();
+      const endSpy = vi.spyOn(poolInstance, 'end').mockResolvedValueOnce(undefined);
 
       await shutdownDatabase();
 
@@ -51,7 +53,9 @@ describe('Database client', () => {
     it('should not log errors in test environment', async () => {
       process.env.NODE_ENV = 'test';
       const consoleErrorSpy = vi.spyOn(console, 'error');
-      vi.spyOn(pool, 'end').mockRejectedValueOnce(new Error('Shutdown failed'));
+      // Initialize the pool first
+      const poolInstance = getPool();
+      vi.spyOn(poolInstance, 'end').mockRejectedValueOnce(new Error('Shutdown failed'));
 
       await shutdownDatabase();
 
