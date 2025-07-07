@@ -131,7 +131,7 @@
   ],
   "editor.codeActionsOnSave": {
     "quickfix.biome": "explicit",
-    "source.biome.useSortedKeys": "explicit"
+    "source.biome.useSortedKeys": "never"
   },
   "editor.defaultFormatter": "biomejs.biome",
   "editor.formatOnSave": true
