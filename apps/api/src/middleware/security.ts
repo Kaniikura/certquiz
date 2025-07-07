@@ -18,12 +18,17 @@ import { secureHeaders } from 'hono/secure-headers';
 export const securityMiddleware = () =>
   createMiddleware(async (c, next) => {
     // Apply CORS first
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
     await cors({
-      origin: [
-        'http://localhost:5173', // SvelteKit dev server
-        'http://localhost:4173', // SvelteKit preview
-        process.env.FRONTEND_URL || 'http://localhost:5173',
-      ].filter(Boolean),
+      origin: isDevelopment
+        ? [
+            frontendUrl,
+            'http://localhost:5173', // SvelteKit dev server
+            'http://localhost:4173', // SvelteKit preview
+          ]
+        : [frontendUrl],
       credentials: true,
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],

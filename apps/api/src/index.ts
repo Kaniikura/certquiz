@@ -30,10 +30,11 @@ app.route('/health', healthRoute);
 
 // Root route
 app.get('/', (c) => {
+  const pkg = require('../package.json');
   return c.json({
     message: 'CertQuiz API - VSA Architecture',
     status: 'ready',
-    version: '0.0.1',
+    version: pkg.version,
   });
 });
 

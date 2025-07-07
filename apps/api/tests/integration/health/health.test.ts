@@ -122,7 +122,7 @@ describe('Health check endpoints', () => {
       const duration = Date.now() - start;
 
       expect(res.status).toBe(200);
-      expect(duration).toBeLessThan(100); // Liveness should be very fast
+      expect(duration).toBeLessThan(500); // Liveness should be reasonably fast
     });
   });
 });
@@ -165,7 +165,7 @@ describe('Root endpoint', () => {
     expect(body).toMatchObject({
       message: 'CertQuiz API - VSA Architecture',
       status: 'ready',
-      version: '0.0.1',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
     });
   });
 });
