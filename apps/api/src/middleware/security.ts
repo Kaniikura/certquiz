@@ -52,7 +52,7 @@ export const securityMiddleware = () =>
             : false,
         xContentTypeOptions: 'nosniff',
         xFrameOptions: 'DENY',
-        xXssProtection: '1; mode=block',
+        xXssProtection: '0',
       })(c, next);
     });
   });

@@ -1,6 +1,43 @@
 import type { ErrorHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import type {
+  ClientErrorStatusCode,
+  ContentfulStatusCode,
+  ServerErrorStatusCode,
+} from 'hono/utils/http-status';
 import { AppError, AuthenticationError, NotFoundError, ValidationError } from '../shared/errors';
+
+type ErrorBody<C extends string = string> = {
+  error: {
+    message: string;
+    code: C;
+    details?: unknown;
+  };
+};
+
+/**
+ * Type guard to check if value is Error-like
+ */
+function isErrorLike(e: unknown): e is Error {
+  return typeof e === 'object' && e !== null && 'message' in e;
+}
+
+/**
+ * Check if running in production environment
+ */
+function isProd(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * Look up status code for known error types
+ */
+function lookupKnownStatus(err: unknown): ClientErrorStatusCode | ServerErrorStatusCode | null {
+  if (err instanceof ValidationError) return 400;
+  if (err instanceof AuthenticationError) return 401;
+  if (err instanceof NotFoundError) return 404;
+  return null;
+}
 
 /**
  * Global error handler for the application
@@ -13,117 +50,81 @@ import { AppError, AuthenticationError, NotFoundError, ValidationError } from '.
  * All errors are logged with the request logger and returned as JSON.
  */
 export const errorHandler: ErrorHandler = (err, c) => {
-  const logger = c.get('logger') || console;
+  const logger = c.get('logger') ?? console;
 
   // Handle HTTPException (thrown by Hono middleware)
   if (err instanceof HTTPException) {
-    const response = err.getResponse();
-    logger.warn(
-      {
-        error: err.message,
-        status: response.status,
-      },
-      'HTTP exception'
-    );
-    return response;
+    logger.warn({ err, status: err.status }, 'HTTP exception');
+    return err.getResponse();
   }
 
   // Handle our custom AppError hierarchy
   if (err instanceof AppError) {
-    const status = getStatusCode(err);
-    logger.warn(
+    const status = mapErrorToStatus(err);
+    const level = status >= 500 ? 'error' : 'warn';
+
+    logger[level](
       {
-        error: err.message,
-        code: err.code,
+        err,
         status,
-        details: err.details,
       },
-      'Application error'
+      'App error'
     );
 
-    // Create response based on status code
-    switch (status) {
-      case 400:
-        return c.json(
-          {
-            error: {
-              message: err.message,
-              code: err.code,
-              ...(err.details !== undefined && { details: err.details }),
-            },
-          },
-          400
-        );
-      case 401:
-        return c.json(
-          {
-            error: {
-              message: err.message,
-              code: err.code,
-            },
-          },
-          401
-        );
-      case 404:
-        return c.json(
-          {
-            error: {
-              message: err.message,
-              code: err.code,
-            },
-          },
-          404
-        );
-      default:
-        return c.json(
-          {
-            error: {
-              message: err.message,
-              code: err.code,
-            },
-          },
-          500
-        );
-    }
+    const body: ErrorBody<typeof err.code> = {
+      error: {
+        message: err.message,
+        code: err.code,
+        // Only include details for validation errors and not in production
+        ...(status === 400 && err.details && !isProd() ? { details: err.details } : {}),
+      },
+    };
+
+    return c.json(body, status);
   }
 
   // Handle unexpected errors
-  logger.error(
-    {
-      error: err.message,
-      stack: err.stack,
-      name: err.name,
-    },
-    'Unhandled error'
-  );
+  logger.error({ err }, 'Unhandled error');
 
-  // Don't leak internal errors in production
-  const message =
-    process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message || 'Unknown error';
-
-  return c.json(
-    {
-      error: {
-        message,
-        code: 'INTERNAL_ERROR',
-      },
+  const body: ErrorBody<'INTERNAL_ERROR'> = {
+    error: {
+      message: isProd()
+        ? 'Internal server error'
+        : isErrorLike(err)
+          ? err.message
+          : 'Unknown error',
+      code: 'INTERNAL_ERROR',
     },
-    500
-  );
+  };
+
+  return c.json(body, 500);
 };
 
 /**
- * Maps AppError subclasses to HTTP status codes
+ * Clamp status code to valid HTTP error range that can carry content
  */
-function getStatusCode(error: AppError): number {
-  if (error instanceof ValidationError) return 400;
-  if (error instanceof AuthenticationError) return 401;
-  if (error instanceof NotFoundError) return 404;
+function clampStatus(code: number): ContentfulStatusCode {
+  if (Number.isInteger(code) && code >= 400 && code < 600) {
+    return code as ContentfulStatusCode;
+  }
+  return 500;
+}
 
-  // Default status from error or 500
-  return error.statusCode || 500;
+/**
+ * Maps errors to HTTP status codes with proper TypeScript typing
+ */
+function mapErrorToStatus(err: unknown): ContentfulStatusCode {
+  // Check if AppError has a custom status code
+  if (err instanceof AppError && err.statusCode) {
+    return clampStatus(err.statusCode);
+  }
+
+  // Check our known error types
+  const knownStatus = lookupKnownStatus(err);
+  if (knownStatus !== null) return knownStatus;
+
+  // Default to 500
+  return 500;
 }
 
 /**
@@ -136,20 +137,11 @@ function getStatusCode(error: AppError): number {
  * if (!result.success) throw toHttpError(result.error);
  * ```
  */
-export function toHttpError(error: Error): HTTPException {
-  if (error instanceof AppError) {
-    const status = getStatusCode(error);
-    // Use specific status codes that Hono accepts
-    switch (status) {
-      case 400:
-        return new HTTPException(400, { message: error.message });
-      case 401:
-        return new HTTPException(401, { message: error.message });
-      case 404:
-        return new HTTPException(404, { message: error.message });
-      default:
-        return new HTTPException(500, { message: error.message });
-    }
-  }
-  return new HTTPException(500, { message: error.message });
+export function toHttpError(error: unknown): HTTPException {
+  const status = mapErrorToStatus(error);
+  const message = isErrorLike(error) ? error.message : 'Error';
+  return new HTTPException(status, {
+    message,
+    cause: error,
+  });
 }

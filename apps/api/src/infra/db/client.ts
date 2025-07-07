@@ -1,6 +1,9 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
+// Type alias for Drizzle client without schema (Day 1 infrastructure)
+type DrizzleClient = PostgresJsDatabase;
+
 /**
  * Connection pool configuration based on environment
  */
@@ -90,7 +93,9 @@ function initializeDatabase(): { pool: postgres.Sql; db: PostgresJsDatabase } {
     });
   }
 
-  return { pool: _pool, db: _db };
+  // TypeScript doesn't understand that _pool and _db are guaranteed to be non-null here
+  // due to the lazy initialization pattern. We'll cast them safely.
+  return { pool: _pool as postgres.Sql, db: _db as DrizzleClient };
 }
 
 /**
