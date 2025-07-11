@@ -9,7 +9,7 @@
     "start:dev": "bun src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:integration": "vitest run src/**/*.integration.test.ts",
+    "test:integration": "vitest run src/**/*.integration.test.ts tests/integration/**/*.test.ts",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
     "typecheck": "tsc --noEmit",
     "check": "tsc --noEmit && biome check --write --unsafe",

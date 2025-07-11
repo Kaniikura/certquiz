@@ -10,6 +10,17 @@ type Relations = ExtractTablesWithRelations<Schema>;
 type DrizzleTransaction = PostgresJsTransaction<Schema, Relations>;
 
 /**
+ * Custom error class for intentional test rollbacks.
+ * This distinguishes planned rollbacks from actual errors.
+ */
+class RollbackError extends Error {
+  constructor() {
+    super('Test rollback');
+    this.name = 'RollbackError';
+  }
+}
+
+/**
  * Execute a test function within a database transaction that will be rolled back.
  * This provides perfect isolation between tests without the overhead of resetting the entire database.
  *
@@ -53,11 +64,11 @@ export async function withRollback<T>(
       }
 
       // Force rollback by throwing
-      throw new Error('Test rollback');
+      throw new RollbackError();
     });
   } catch (error) {
     // Ignore our intentional rollback error
-    if (error instanceof Error && error.message !== 'Test rollback') {
+    if (!(error instanceof RollbackError)) {
       throw error;
     }
   }
@@ -111,7 +122,7 @@ export async function createTestContext() {
           if (!isRolledBack) {
             isRolledBack = true;
             // Force rollback by throwing
-            throw new Error('Test rollback');
+            throw new RollbackError();
           }
         },
       };
@@ -125,14 +136,14 @@ export async function createTestContext() {
         ctx.rollback = async () => {
           if (!isRolledBack) {
             isRolledBack = true;
-            reject(new Error('Test rollback'));
+            reject(new RollbackError());
           }
         };
       });
     })
     .catch((error: unknown) => {
       // Ignore our rollback error
-      if (error instanceof Error && error.message !== 'Test rollback') {
+      if (!(error instanceof RollbackError)) {
         throw error;
       }
     });
