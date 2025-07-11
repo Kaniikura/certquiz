@@ -267,37 +267,45 @@ All shared infrastructure components completed, including:
 - 5 tests passing for handler functionality
 - Health endpoint accessible at `/health`
 
-### 3.8 Implement Auth Slice with Repository Pattern 🔴
-**Time**: 3 hours
+### 3.8 Automate Test Database Setup with Testcontainers ✅
+**Time**: 1 hour (actual: ~1.5 hours)
+**Status**: COMPLETED
+**Priority**: HIGH
+```typescript
+// Completed Tasks:
+✅ Modified existing @testcontainers/postgresql implementation
+✅ Configured for Bun compatibility:
+  - Disable Ryuk via isBun() runtime detection
+  - Container reuse with .withReuse() for performance
+✅ Created test database helpers with auto-migration support
+✅ Implemented transaction-based test isolation (withRollback)
+✅ Created modular test support structure (tests/support/)
+✅ Test: Integration tests demonstrate container usage and isolation
+```
+
+**Key Achievements**:
+- Enhanced existing PostgresSingleton with getPostgres() function
+- Transaction isolation via savepoints for fast test execution <!-- cspell:ignore savepoints -->
+- Seed data helpers for users (extensible for other entities)
+- Temporary test schema until actual schema is implemented
+- Full compatibility with both Bun and Node.js runtimes
+
+### 3.9 Establish Migration Rollback Convention 🔴
+**Time**: 30 minutes
 **Status**: NEW
 **Priority**: HIGH
 ```typescript
 // Tasks:
-- Create features/auth/login/ use case:
-  - handler.ts with withTransaction wrapper
-  - handler.test.ts (TDD!)
-  - dto.ts, validation.ts, route.ts
-- Create features/auth/domain/repositories/IUserRepository.ts (interface)
-- Create features/auth/domain/repositories/DrizzleUserRepository.ts (implementation)
-- Integrate KeyCloak authentication
-- Test: Login flow works with repository pattern
-```
-
-### 3.9 Run Migrations and Seed Data
-**Time**: 30 minutes
-**Status**: PENDING
-```typescript
-// Tasks:
-- Create migrate.ts script
-- Run existing migrations on database
-- Create comprehensive seed data for testing
-- Add badges and initial questions
-- Test: Database populated with test data
+- Configure drizzle-kit to generate reversible migrations (--sql flag)
+- Add migrate:up/down scripts to package.json
+- Document rollback procedure in CONTRIBUTING.md
+- Create CI job for migration reversibility testing
+- Test: Can rollback migrations safely
 ```
 
 ## 4. Quality Gates 🟡
 
-### 4.1 Setup CodeQL Security Scanning (**Moved from 2.3a**)
+### 4.1 Setup CodeQL Security Scanning
 **Time**: 30 minutes
 **Status**: PLANNED
 **Reason**: Add static security analysis after implementing business logic
@@ -328,7 +336,38 @@ All shared infrastructure components completed, including:
 - Test: Domain model works with repository pattern
 ```
 
-### 5.2 Implement Quiz Feature Slices 🟡
+### 5.2 Implement Auth Slice with Repository Pattern 🔴
+**Time**: 3 hours
+**Status**: NEW
+**Priority**: HIGH
+**Note**: Moved from 3.8 - implement after domain design
+```typescript
+// Tasks:
+- Create minimal User aggregate (id, email, passwordHash)
+- Create features/auth/login/ use case:
+  - handler.ts with withTransaction wrapper
+  - handler.test.ts (TDD!)
+  - dto.ts, validation.ts, route.ts
+- Create features/auth/domain/repositories/IUserRepository.ts (interface)
+- Create features/auth/domain/repositories/DrizzleUserRepository.ts (implementation)
+- Integrate KeyCloak authentication
+- Test: Login flow works with repository pattern
+```
+
+### 5.3 Run Migrations and Seed Data 🟡
+**Time**: 30 minutes
+**Status**: PENDING
+**Note**: Moved from 3.9 - run after domain models are defined
+```typescript
+// Tasks:
+- Create migrate.ts script
+- Run existing migrations on database
+- Create comprehensive seed data for testing
+- Add badges and initial questions
+- Test: Database populated with test data
+```
+
+### 5.4 Implement Quiz Feature Slices 🟡
 **Time**: 5 hours
 ```typescript
 // Tasks:
@@ -341,10 +380,11 @@ All shared infrastructure components completed, including:
 - Test: Complete quiz flow with repository pattern
 ```
 
-### 5.3 Implement User Domain & Features 🟢
+### 5.5 Implement User Domain & Features 🟢
 **Time**: 3 hours
 ```typescript
 // Tasks:
+- Evolve User aggregate with full domain model
 - Create features/user/domain/:
   - entities/User.ts
   - value-objects/UserId.ts, Email.ts
@@ -356,7 +396,7 @@ All shared infrastructure components completed, including:
 - Test: User operations with repository pattern
 ```
 
-### 5.4 Implement Question Features 🟢
+### 5.6 Implement Question Features 🟢
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -669,7 +709,7 @@ graph TD
     A[1. Project Setup] --> B[2. Shared Utilities]
     B --> C[3. Database Foundation]
     C --> D[4. Quality Gates]
-    C --> E[5. Modules]
+    D --> E[5. Feature Implementation]
     E --> F[6. API Layer]
     F --> G[7. Basic Features]
     
@@ -696,17 +736,23 @@ Each task is complete when:
 
 ## Revised Timeline (VSA + Repository Pattern)
 
-**Note**: Timeline updated to reflect VSA + Repository Pattern architecture with clean-slate rewrite.
+**Note**: Timeline updated to reflect VSA + Repository Pattern architecture with clean-slate rewrite and reordered tasks.
 
 - **Week 1**: Tasks 1 + 2 (Core Setup + Shared Utilities) ✅
-- **Week 2**: Tasks 3.1-3.9 (Database Foundation + VSA Migration)
-  - Day 1-2: Clean-slate reset & infrastructure foundation
-  - Day 3-4: First vertical slice (Health + Auth)
+- **Week 2**: Tasks 3.1-3.7 (Database Foundation + VSA Migration)
+  - Day 1-2: Clean-slate reset & infrastructure foundation ✅
+  - Day 3-4: First vertical slice (Health) ✅
+  - Day 5: Quality Gates setup
+- **Week 3**: Tasks 4 + 5.1-5.3 (Quality Gates + Domain Design + Auth + Migrations)
+  - Day 1: Quality Gates
+  - Day 2-3: Quiz domain model & repository
+  - Day 4: Auth slice with minimal User aggregate
   - Day 5: Migrations and seed data
-- **Week 3**: Tasks 4-5 (Quality Gates + Domain/Repository Implementation)
-  - Day 1-2: Quiz domain model & repository
-  - Day 3-5: Quiz feature slices with TDD
-- **Week 4**: Tasks 5.3-6 (User/Question Features + API Layer)
+- **Week 4**: Tasks 5.4-6 (Quiz Features + User/Question Features + API Layer)
+  - Day 1-2: Quiz feature slices with TDD
+  - Day 3: User domain evolution & features
+  - Day 4: Question features
+  - Day 5: API layer completion
 - **Week 5**: Tasks 7-9 (Basic Features + Frontend Foundation + Core UI)
 - **Week 6**: Tasks 10-12 (Admin Interface + Testing + DevOps)
 
@@ -724,11 +770,12 @@ Total estimate: ~100-120 hours of development time (includes repository pattern 
 The following tasks are on the critical path and block other work:
 1. Shared Utilities (blocks feature development) ✅
 2. Database Foundation (blocks all data operations) ✅
-3. Clean-Slate Architecture Reset (blocks VSA implementation) 🔴
-4. Infrastructure Foundation (blocks all features) 🔴
-5. First Vertical Slice (validates architecture) 🔴
-6. Domain/Repository Implementation (blocks business logic) 🟡
-7. API Layer (blocks frontend integration) 🟡
+3. Clean-Slate Architecture Reset (blocks VSA implementation) ✅
+4. Infrastructure Foundation (blocks all features) ✅
+5. First Vertical Slice (validates architecture) ✅
+6. Quality Gates (establishes code quality standards) 🟡
+7. Domain/Repository Implementation (blocks business logic) 🟡
+8. API Layer (blocks frontend integration) 🟡
 
 ## Risk Mitigation
 
