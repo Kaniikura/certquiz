@@ -93,24 +93,41 @@ export async function createTestContext() {
   const db = await getTestDb();
   let isRolledBack = false;
 
+  // Create a promise that resolves when the context is ready
+  let contextReady: (value: { tx: DrizzleTransaction; rollback: () => Promise<void> }) => void;
+  const contextPromise = new Promise<{ tx: DrizzleTransaction; rollback: () => Promise<void> }>(
+    (resolve) => {
+      contextReady = resolve;
+    }
+  );
+
   // Start a new transaction
   const txPromise = db
     .transaction(async (tx) => {
+      // Create the context
+      const ctx = {
+        tx,
+        rollback: async () => {
+          if (!isRolledBack) {
+            isRolledBack = true;
+            // Force rollback by throwing
+            throw new Error('Test rollback');
+          }
+        },
+      };
+
+      // Signal that context is ready
+      contextReady(ctx);
+
       // Keep transaction open until rollback is called
       await new Promise<void>((_resolve, reject) => {
-        const ctx = {
-          tx,
-          rollback: async () => {
-            if (!isRolledBack) {
-              isRolledBack = true;
-              // Force rollback by throwing
-              reject(new Error('Test rollback'));
-            }
-          },
+        // Store reject function for rollback
+        ctx.rollback = async () => {
+          if (!isRolledBack) {
+            isRolledBack = true;
+            reject(new Error('Test rollback'));
+          }
         };
-
-        // Make context available
-        Object.assign(context, ctx);
       });
     })
     .catch((error: unknown) => {
@@ -120,17 +137,8 @@ export async function createTestContext() {
       }
     });
 
-  const context: {
-    tx?: DrizzleTransaction;
-    rollback?: () => Promise<void>;
-  } = {};
-
-  // Wait a bit for transaction to start
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
-  if (!context.tx || !context.rollback) {
-    throw new Error('Test context not initialized');
-  }
+  // Wait for context to be ready
+  const context = await contextPromise;
 
   return {
     tx: context.tx,

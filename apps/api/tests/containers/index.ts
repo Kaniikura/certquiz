@@ -1,3 +1,9 @@
+// Set environment variables BEFORE importing testcontainers modules
+// This ensures Ryuk is disabled for Bun compatibility
+if (typeof Bun !== 'undefined' || process.versions.bun) {
+  process.env.TESTCONTAINERS_RYUK_DISABLED ??= 'true';
+}
+
 import { getPostgres } from './postgres';
 
 /**

@@ -1,4 +1,5 @@
 import { exec } from 'node:child_process';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -13,9 +14,15 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
 
   // Check if migrations directory exists
   const migrationsDir = path.join(__dirname, '../../db/migrations');
-  const hasMigrations = await execAsync(`ls ${migrationsDir} 2>/dev/null | grep -E '\\.sql$'`)
-    .then(() => true)
-    .catch(() => false);
+  let hasMigrations = false;
+
+  try {
+    const files = await fs.readdir(migrationsDir);
+    hasMigrations = files.some((file) => file.endsWith('.sql'));
+  } catch (_error) {
+    // Directory doesn't exist or can't be read
+    hasMigrations = false;
+  }
 
   if (!hasMigrations) {
     // No production migrations yet, but create test tables
