@@ -25,7 +25,8 @@
       "arrowParentheses": "always",
       "bracketSameLine": false,
       "trailingCommas": "es5"
-    }
+    },
+    "globals": ["Bun"]
   },
   "json": {
     "formatter": {
@@ -152,6 +153,24 @@
         "rules": {
           "style": {
             "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/api/tests/support/**"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noReExportAll": "off"
+          },
+          "suspicious": {
+            "noConsole": {
+              "level": "warn",
+              "options": {
+                "allow": ["warn", "error"]
+              }
+            }
           }
         }
       }

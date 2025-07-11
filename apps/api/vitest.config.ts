@@ -1,22 +1,40 @@
+import { resolve } from 'node:path';
 import { defineProject } from 'vitest/config';
-import { baseTestEnv } from './test-env';
 
 export default defineProject({
+  // Everything is resolved from the directory that contains this file
+  root: __dirname,
+
   test: {
     clearMocks: true,
-    // Use centralized test environment (no duplication)
-    env: { ...baseTestEnv },
     environment: 'node',
     exclude: ['**/node_modules/**', '**/dist/**'],
-    // Global defaults
     globals: true,
+
+    // Global setup for test database - runs once for all tests
+    globalSetup: resolve(__dirname, 'tests/containers/index.ts'),
+
     // Include all tests by default
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts', // Unit tests co-located with source
+      'tests/**/*.test.ts', // Integration tests
+    ],
+
     mockReset: true,
-    // Project name - this config is for ALL tests in api
     name: 'api',
+
+    // Pool configuration for transaction isolation
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true, // Run tests sequentially for transaction isolation
+      },
+    },
+
     restoreMocks: true,
-    // Setup file ensures consistent test isolation
-    setupFiles: ['./vitest.setup.ts'],
+
+    // Test timeout for container operations
+    // Note: Increase this value on CI if Docker image pulls are slow
+    testTimeout: process.env.CI ? 60_000 : 30_000,
   },
 });

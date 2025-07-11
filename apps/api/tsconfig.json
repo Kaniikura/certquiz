@@ -7,7 +7,8 @@
       "@api/*": ["src/*"] /* Application source code */,
       "@api-db/*": ["db/*"] /* Database schemas and migrations */
     },
-    "rootDirs": ["src", "db"]
+    "rootDirs": ["src", "db"],
+    "types": ["node", "@types/bun"]
   },
   "exclude": ["node_modules", "dist"],
   "extends": "../../tsconfig.base.json",
