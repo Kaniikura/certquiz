@@ -1,4 +1,10 @@
-import { PostgresSingleton } from './postgres';
+// Set environment variables BEFORE importing testcontainers modules
+// This ensures Ryuk is disabled for Bun compatibility
+if (typeof Bun !== 'undefined' || process.versions.bun) {
+  process.env.TESTCONTAINERS_RYUK_DISABLED ??= 'true';
+}
+
+import { getPostgres } from './postgres';
 
 /**
  * Global setup function for Vitest.
@@ -10,8 +16,9 @@ export async function setup() {
   if (testType === 'unit') {
     return;
   }
+
   // Start PostgreSQL container
-  const postgresContainer = await PostgresSingleton.getInstance();
+  const postgresContainer = await getPostgres();
 
   // Get connection URL
   const postgresUrl = postgresContainer.getConnectionUri();
@@ -30,5 +37,5 @@ export async function teardown() {
   // They will be automatically cleaned up by Testcontainers/Docker when no longer needed
 }
 
-// Export singletons for direct use in tests
-export { PostgresSingleton };
+// Export utilities for direct use in tests
+export { getPostgres, PostgresSingleton } from './postgres';

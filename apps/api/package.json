@@ -9,6 +9,8 @@
     "start:dev": "bun src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest watch",
+    "test:integration": "vitest run src/**/*.integration.test.ts tests/integration/**/*.test.ts",
+    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
     "typecheck": "tsc --noEmit",
     "check": "tsc --noEmit && biome check --write --unsafe",
     "check:ci": "tsc --noEmit && biome check",
@@ -29,8 +31,8 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^11.0.3",
-    "@types/bun": "latest",
+    "@testcontainers/postgresql": "^11.2.1",
+    "@types/bun": "^1.2.18",
     "@types/pino": "^7.0.5",
     "drizzle-kit": "^0.31.1",
     "testcontainers": "^11.0.3",
