@@ -3,7 +3,7 @@
  * @fileoverview Pure unit tests for QuizSession business logic
  */
 
-import { TestClock, testIds } from '@api/test-support';
+import { TestClock, testIds, unwrapOrFail } from '@api/test-support';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DuplicateQuestionError,
@@ -42,7 +42,7 @@ describe('QuizSession', () => {
     it('should create a new quiz session with valid inputs', () => {
       // Arrange
       const userId = testIds.userId();
-      const config = aQuizConfig().withQuestionCount(3).build();
+      const config = unwrapOrFail(aQuizConfig().withQuestionCount(3).build());
       const questionIds = [
         testIds.questionId('q1'),
         testIds.questionId('q2'),
@@ -78,7 +78,7 @@ describe('QuizSession', () => {
     it('should fail when question count mismatch', () => {
       // Arrange
       const userId = testIds.userId();
-      const config = aQuizConfig().withQuestionCount(3).build();
+      const config = unwrapOrFail(aQuizConfig().withQuestionCount(3).build());
       const questionIds = [testIds.questionId('q1')]; // Only 1 question, config expects 3
 
       // Act
@@ -94,7 +94,7 @@ describe('QuizSession', () => {
     it('should fail when duplicate questions provided', () => {
       // Arrange
       const userId = testIds.userId();
-      const config = aQuizConfig().withQuestionCount(2).build();
+      const config = unwrapOrFail(aQuizConfig().withQuestionCount(2).build());
       const duplicateId = testIds.questionId('q1');
       const questionIds = [duplicateId, duplicateId]; // Duplicate
 
@@ -111,7 +111,7 @@ describe('QuizSession', () => {
       // Arrange
       const userId = testIds.userId();
       // Create config with valid count, then test with too many questions
-      const validConfig = aQuizConfig().withQuestionCount(50).build();
+      const validConfig = unwrapOrFail(aQuizConfig().withQuestionCount(50).build());
       const questionIds = Array.from({ length: 101 }, (_, i) => testIds.questionId(`q${i}`));
 
       // Act - This should fail due to question count mismatch
@@ -130,7 +130,7 @@ describe('QuizSession', () => {
 
     beforeEach(() => {
       session = aQuizSession()
-        .withConfig(aQuizConfig().withQuestionCount(3).build())
+        .withConfig(unwrapOrFail(aQuizConfig().withQuestionCount(3).build()))
         .withQuestionIds([
           testIds.questionId('q1'),
           testIds.questionId('q2'),
@@ -173,7 +173,7 @@ describe('QuizSession', () => {
     it('should auto-complete when all questions answered and autoComplete enabled', () => {
       // Arrange - Session with 2 questions and autoComplete enabled
       const session2Q = aQuizSession()
-        .withConfig(aQuizConfig().withQuestionCount(2).withAutoComplete(true).build())
+        .withConfig(unwrapOrFail(aQuizConfig().withQuestionCount(2).withAutoComplete(true).build()))
         .withQuestionIds([testIds.questionId('q1'), testIds.questionId('q2')])
         .withClock(clock)
         .build();
@@ -338,7 +338,9 @@ describe('QuizSession', () => {
     it('should enforce sequential answering when enabled', () => {
       // Arrange - Session with sequential answering enforced
       const sequentialSession = aQuizSession()
-        .withConfig(aQuizConfig().withQuestionCount(3).withSequentialAnswering(true).build())
+        .withConfig(
+          unwrapOrFail(aQuizConfig().withQuestionCount(3).withSequentialAnswering(true).build())
+        )
         .withQuestionIds([
           testIds.questionId('q1'),
           testIds.questionId('q2'),
@@ -418,7 +420,9 @@ describe('QuizSession', () => {
     it('should fail when requireAllAnswers is true and questions unanswered', () => {
       // Arrange
       const strictSession = aQuizSession()
-        .withConfig(aQuizConfig().withQuestionCount(3).withRequireAllAnswers(true).build())
+        .withConfig(
+          unwrapOrFail(aQuizConfig().withQuestionCount(3).withRequireAllAnswers(true).build())
+        )
         .withClock(clock)
         .build();
       strictSession.pullUncommittedEvents();
@@ -551,7 +555,7 @@ describe('QuizSession', () => {
       const userId = testIds.userId();
       const aggregateId = testIds.quizSessionId();
       const questionIds = [testIds.questionId('q1'), testIds.questionId('q2')];
-      const config = aQuizConfig().withQuestionCount(2).build();
+      const config = unwrapOrFail(aQuizConfig().withQuestionCount(2).build());
 
       const events = [
         new QuizStartedEvent({
