@@ -5,12 +5,25 @@
 
 export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
+function okOverload<T>(data: T): Result<T, never>;
+function okOverload(): Result<void, never>;
+function okOverload<T>(...data: [T] | []): Result<T, never> | Result<void, never> {
+  if (data.length === 0) {
+    return { success: true } as Result<void, never>;
+  } else {
+    return { success: true, data: data[0] } as Result<T, never>;
+  }
+}
+
 export const Result = {
-  ok<T>(data: T): Result<T, never> {
-    return { success: true, data };
-  },
+  ok: okOverload,
 
   err<E>(error: E): Result<never, E> {
+    return { success: false, error };
+  },
+
+  // Alias for design document compatibility
+  fail<E>(error: E): Result<never, E> {
     return { success: false, error };
   },
 

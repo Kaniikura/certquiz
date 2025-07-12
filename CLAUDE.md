@@ -127,6 +127,7 @@ See @docs/task-list.md for detailed implementation tasks.
 - No `any` types - use `unknown` and type guards
 - Explicit return types on all functions
 - Test files next to source: `feature.ts` → `feature.test.ts`
+- Domain objects use the `Result<T, E>` pattern—use `unwrapOrFail()` in tests
 
 ### Database (Schema-Driven)
 - Schema changes start in `schema.ts`

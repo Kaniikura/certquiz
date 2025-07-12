@@ -84,15 +84,6 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
 }
 
 /**
- * Get or create the PostgreSQL container instance.
- * @deprecated Use getPostgres() instead. Will be removed after 2025-09-01.
- */
-/* biome-ignore lint/correctness/noUnusedVariables: kept for backward compatibility */
-async function getInstance(): Promise<StartedPostgreSqlContainer> {
-  return getPostgres();
-}
-
-/**
  * Create a named snapshot of the current database state.
  * This uses pg_dump internally for fast backup/restore.
  */
