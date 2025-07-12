@@ -3,6 +3,9 @@
  * @fileoverview Domain types for quiz categorization
  */
 
+/**
+ * Supported certification exam types
+ */
 export type ExamType =
   | 'CCNA'
   | 'CCNP_ENCOR'
@@ -11,6 +14,9 @@ export type ExamType =
   | 'NETWORK_PLUS'
   | 'CISSP';
 
+/**
+ * Topic categories for quiz questions
+ */
 export type Category =
   | 'OSPF'
   | 'BGP'
