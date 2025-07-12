@@ -1,0 +1,80 @@
+name: Test Migrations
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api/db/migrations/**'
+      - 'apps/api/db/schema/**'
+      - 'apps/api/scripts/migrate.ts'
+      - 'apps/api/scripts/validate-migrations.ts'
+
+jobs:
+  test-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.1
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Validate migration files
+        run: |
+          cd apps/api
+          bun run db:migrate:validate
+      
+      - name: Test migrate up (first time)
+        run: |
+          cd apps/api
+          bun run db:migrate:up
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+      
+      - name: Check migration status
+        run: |
+          cd apps/api
+          bun run db:migrate:status
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+      
+      - name: Test migrate down
+        run: |
+          cd apps/api
+          bun run db:migrate:down
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+      
+      - name: Test migrate up again
+        run: |
+          cd apps/api
+          bun run db:migrate:up
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+      
+      - name: Verify idempotency
+        run: |
+          cd apps/api
+          # Running up again should be safe (no-op)
+          bun run db:migrate:up
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test

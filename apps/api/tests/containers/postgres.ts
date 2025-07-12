@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { drizzleMigrate } from '../support/migrations';
 
@@ -16,7 +17,7 @@ async function withMutex<T>(operation: () => Promise<T>): Promise<T> {
   await resetMutex;
 
   // Create a new promise for this operation
-  let resolve: () => void;
+  let resolve!: () => void;
   resetMutex = new Promise<void>((r) => {
     resolve = r;
   });
@@ -27,7 +28,7 @@ async function withMutex<T>(operation: () => Promise<T>): Promise<T> {
     return result;
   } finally {
     // Release the mutex
-    resolve?.();
+    resolve();
   }
 }
 
@@ -246,6 +247,73 @@ export const PostgresSingleton = {
         throw new Error(`Failed to restore snapshot: ${restoreResult.stderr}`);
       }
     });
+  },
+
+  /**
+   * Create a fresh database for migration testing.
+   * Returns the connection URL for the new database.
+   */
+  async createFreshDatabase(): Promise<string> {
+    const container = await getPostgres();
+    const dbName = `test_${randomUUID().replace(/-/g, '')}`;
+
+    // Create new database
+    const createResult = await container.exec([
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      `CREATE DATABASE "${dbName}"`,
+    ]);
+
+    if (createResult.exitCode !== 0) {
+      throw new Error(`Failed to create database ${dbName}: ${createResult.stderr}`);
+    }
+
+    // Create UUID extension
+    await container.exec([
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      dbName,
+      '-c',
+      'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"',
+    ]);
+
+    // Return connection URL for the new database
+    const baseUrl = new URL(container.getConnectionUri());
+    baseUrl.pathname = `/${dbName}`;
+    return baseUrl.toString();
+  },
+
+  /**
+   * Drop a test database.
+   */
+  async dropDatabase(connectionUrl: string): Promise<void> {
+    const container = await getPostgres();
+    const url = new URL(connectionUrl);
+    const dbName = url.pathname.slice(1);
+
+    if (!dbName || dbName === 'postgres' || dbName === 'certquiz_test') {
+      throw new Error(`Refusing to drop protected database: ${dbName}`);
+    }
+
+    const dropResult = await container.exec([
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      `DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`,
+    ]);
+
+    if (dropResult.exitCode !== 0) {
+      throw new Error(`Failed to drop database ${dbName}: ${dropResult.stderr}`);
+    }
   },
 };
 

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -171,6 +171,21 @@
                 "allow": ["warn", "error"]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "apps/api/scripts/**/*.ts",
+        "apps/api/scripts/**/*.js",
+        "apps/api/src/system/migration/**/*.ts",
+        "apps/api/tests/system/migration/**/*.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
           }
         }
       }
