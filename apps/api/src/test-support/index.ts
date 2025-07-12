@@ -4,7 +4,7 @@
  */
 
 // Re-export commonly used types for convenience
-export type { Clock } from '@api/features/quiz/domain/base/Clock';
+export type { Clock } from '@api/shared/clock';
 export { isResultErr, isResultOk, unwrapOrFail } from './helpers';
 export { testIds } from './id-generators';
 export { TestClock } from './TestClock';

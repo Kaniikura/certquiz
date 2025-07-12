@@ -3,7 +3,7 @@
  * @fileoverview Test utility for time-dependent tests
  */
 
-import type { Clock } from '@api/features/quiz/domain/base/Clock';
+import type { Clock } from '@api/shared/clock';
 
 export class TestClock implements Clock {
   constructor(private _currentTime: Date = new Date()) {}

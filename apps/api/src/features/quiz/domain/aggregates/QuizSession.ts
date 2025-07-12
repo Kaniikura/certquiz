@@ -3,9 +3,9 @@
  * @fileoverview Main aggregate for quiz domain with business logic and invariants
  */
 
+import type { Clock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
 import { AggregateRoot } from '../base/AggregateRoot';
-import type { Clock } from '../base/Clock';
 import { Answer } from '../entities/Answer';
 import {
   DuplicateQuestionError,

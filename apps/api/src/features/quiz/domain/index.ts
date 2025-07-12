@@ -3,12 +3,12 @@
  * @fileoverview Main entry point for quiz domain layer
  */
 
+// Base infrastructure
+export type { Clock } from '@api/shared/clock';
+export { SystemClock } from '@api/shared/clock';
 // Aggregates
 export { QuizSession } from './aggregates/QuizSession';
 export { AggregateRoot } from './base/AggregateRoot';
-// Base infrastructure
-export type { Clock } from './base/Clock';
-export { SystemClock } from './base/Clock';
 // Entities
 export { Answer } from './entities/Answer';
 // Errors
