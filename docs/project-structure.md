@@ -106,10 +106,15 @@ certquiz/
 │       │   │       └── domain/
 │       │   │           └── repositories/   # Reuses Quiz domain
 │       │   ├── system/         # System/operational features
-│       │   │   └── health/     # Health check endpoint
-│       │   │       ├── handler.ts
-│       │   │       ├── handler.test.ts
-│       │   │       └── route.ts
+│       │   │   ├── health/     # Health check endpoint
+│       │   │   │   ├── handler.ts
+│       │   │   │   ├── handler.test.ts
+│       │   │   │   └── route.ts
+│       │   │   └── migration/  # Database migration tooling
+│       │   │       ├── file-repository.ts
+│       │   │       ├── db-repository.ts
+│       │   │       ├── migrate.ts
+│       │   │       └── migrate.test.ts
 │       │   ├── infra/          # Infrastructure layer
 │       │   │   ├── db/
 │       │   │   │   ├── client.ts          # Postgres → Drizzle wrapper
