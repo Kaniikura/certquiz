@@ -7,8 +7,12 @@ export type Result<T, E = Error> = { success: true; data: T } | { success: false
 
 function okOverload<T>(data: T): Result<T, never>;
 function okOverload(): Result<void, never>;
-function okOverload<T>(data?: T): Result<T | undefined, never> {
-  return { success: true, data: data as T | undefined };
+function okOverload<T>(...data: [T] | []): Result<T, never> | Result<void, never> {
+  if (data.length === 0) {
+    return { success: true } as Result<void, never>;
+  } else {
+    return { success: true, data: data[0] } as Result<T, never>;
+  }
 }
 
 export const Result = {
