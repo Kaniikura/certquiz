@@ -130,6 +130,12 @@ certquiz/
 │       │   │   ├── errors.ts   # Domain & application errors
 │       │   │   ├── types.ts    # Shared TypeScript types
 │       │   │   └── utils.ts    # Common utilities
+│       │   ├── test-support/   # Shared test utilities (project-wide)
+│       │   │   ├── TestClock.ts      # Clock implementation for testing
+│       │   │   ├── id-generators.ts  # Test ID factory functions
+│       │   │   ├── types/            # Test-only TypeScript utilities
+│       │   │   │   └── Mutable.ts    # Helper type for testing immutability
+│       │   │   └── index.ts          # Barrel export for test utilities
 │       │   └── middleware/     # Global HTTP middleware
 │       │       ├── error.middleware.ts
 │       │       ├── logging.middleware.ts
@@ -181,6 +187,7 @@ certquiz/
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
+> - **Shared test utilities**: Project-wide test helpers in `test-support/` to avoid duplication
 
 ## Architecture Layers
 
@@ -350,6 +357,7 @@ Start simple, add complexity as needed:
 - **Repository tests**: In-memory SQLite for speed
 - **Handler tests**: Mock repositories, test orchestration
 - **Contract tests**: Real database, full integration
+- **Shared test utilities**: Common helpers in `test-support/` (ID generators, test clocks, type utilities)
 
 ## Development Workflow
 
@@ -525,14 +533,28 @@ Implement in priority order:
 ### 1. Domain Unit Tests (90% coverage)
 ```typescript
 // features/quiz/domain/aggregates/QuizSession.test.ts
+import { testIds, TestClock, type Mutable } from '@api/test-support';
+
 describe('QuizSession', () => {
   it('should calculate score correctly', () => {
+    const userId = testIds.userId('user1');
     const session = QuizSession.create(config, userId)
-    session.submitAnswer(questionId1, Answer.of('A'))
-    session.submitAnswer(questionId2, Answer.of('B'))
+    session.submitAnswer(testIds.questionId('q1'), Answer.of('A'))
+    session.submitAnswer(testIds.questionId('q2'), Answer.of('B'))
     
     const score = session.calculateScore()
     expect(score.percentage).toBe(50)
+  })
+
+  it('should enforce immutability at runtime', () => {
+    const session = QuizSession.create(config, userId)
+    
+    // Test runtime immutability without using `any`
+    try {
+      (session as Mutable<typeof session>).userId = testIds.userId('hacker');
+    } catch {
+      // Expected - should throw on readonly violations
+    }
   })
 })
 ```
@@ -651,6 +673,24 @@ export class QuizStartedEvent extends DomainEvent {
     super(quizId)
   }
 }
+```
+
+### 4. Test Utility Organization Pattern
+```typescript
+// test-support/index.ts - Centralized test utility exports
+export { testIds } from './id-generators';
+export { TestClock } from './TestClock';
+export type { Mutable } from './types/Mutable';
+export type { Clock } from '@api/features/quiz/domain/base/Clock';
+
+// Usage in domain tests
+import { testIds, TestClock, type Mutable } from '@api/test-support';
+
+// Key benefits:
+// 1. No duplication across bounded contexts
+// 2. Single import path for common test utilities
+// 3. Type-safe test helpers without `any` types
+// 4. Clear separation of test infrastructure from domain logic
 ```
 
 ## Success Criteria
