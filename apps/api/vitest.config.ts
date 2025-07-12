@@ -8,7 +8,7 @@ export default defineProject({
   resolve: {
     alias: {
       '@api': resolve(__dirname, '../../apps/api/src'),
-      '@api-db': resolve(__dirname, '../../apps/api/db'),
+      '@api-db': resolve(__dirname, '../../apps/api/src/infra/db'),
       '@shared': resolve(__dirname, '../../packages/shared/src'),
     },
   },
