@@ -1,3 +1,4 @@
+import { AppError, AuthenticationError, NotFoundError, ValidationError } from '@api/shared/errors';
 import type { ErrorHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type {
@@ -5,7 +6,6 @@ import type {
   ContentfulStatusCode,
   ServerErrorStatusCode,
 } from 'hono/utils/http-status';
-import { AppError, AuthenticationError, NotFoundError, ValidationError } from '../shared/errors';
 
 type ErrorBody<C extends string = string> = {
   error: {
