@@ -32,6 +32,14 @@ export class QuestionOrder {
   }
 
   static fromPersistence(questionIds: QuestionId[]): QuestionOrder {
+    // Validate integrity of persisted data to prevent invalid state
+    if (questionIds.length === 0) {
+      throw new Error('Question order cannot be empty');
+    }
+    const uniqueIds = new Set(questionIds);
+    if (uniqueIds.size !== questionIds.length) {
+      throw new Error('Question order contains duplicate IDs');
+    }
     return new QuestionOrder(questionIds);
   }
 
