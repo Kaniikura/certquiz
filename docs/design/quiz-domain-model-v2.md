@@ -363,17 +363,16 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizStartedPayload
   
   // Required for event sourcing reconstruction
   static createForReplay(
-    id: QuizSessionId,
-    userId: UserId
+    id: QuizSessionId
   ): QuizSession {
-    // Create minimal instance for event replay
-    return new QuizSession(
-      id,
-      userId,
-      {} as QuizConfig, // Will be set by first event
-      QuestionOrder.create([]), // Will be set by first event
-      new Date() // Will be overwritten by first event
-    );
+    // Create minimal instance with only identity - all other state comes from events
+    // Note: userId and other properties will be set during loadFromHistory() by applying events
+    const instance = Object.create(QuizSession.prototype);
+    instance.id = id;
+    instance._answers = new Map<QuestionId, Answer>();
+    instance._uncommittedEvents = [];
+    instance._version = 0;
+    return instance;
   }
 }
 ```
