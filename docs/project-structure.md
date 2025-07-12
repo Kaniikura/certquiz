@@ -38,19 +38,6 @@ certquiz/
 │   │   └── svelte.config.js
 │   │
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
-│       ├── db/                 # Database layer (centralized infrastructure)
-│       │   ├── schema/         # Drizzle table definitions
-│       │   │   ├── index.ts    # Bounded context exports
-│       │   │   ├── enums.ts    # PostgreSQL enums
-│       │   │   ├── user.ts     # User bounded context tables
-│       │   │   ├── quiz.ts     # Quiz bounded context tables
-│       │   │   ├── question.ts # Question bounded context tables
-│       │   │   ├── exam.ts     # Exam/Category tables
-│       │   │   ├── community.ts # Community tables
-│       │   │   ├── system.ts   # System tables
-│       │   │   └── relations.ts # Drizzle relationships
-│       │   ├── migrations/     # Generated migration files
-│       │   └── seeds/          # Seed data
 │       ├── src/
 │       │   ├── index.ts        # Application entry point
 │       │   ├── routes.ts       # Route composition root
@@ -118,7 +105,16 @@ certquiz/
 │       │   ├── infra/          # Infrastructure layer
 │       │   │   ├── db/
 │       │   │   │   ├── client.ts          # Postgres → Drizzle wrapper
-│       │   │   │   └── unit-of-work.ts    # Transaction helper
+│       │   │   │   ├── unit-of-work.ts    # Transaction helper
+│       │   │   │   ├── schema/            # Drizzle table definitions
+│       │   │   │   │   ├── index.ts       # Bounded context exports
+│       │   │   │   │   ├── enums.ts       # PostgreSQL enums
+│       │   │   │   │   ├── user.ts        # User bounded context tables
+│       │   │   │   │   ├── quiz.ts        # Quiz bounded context tables
+│       │   │   │   │   ├── question.ts    # Question bounded context tables
+│       │   │   │   │   └── system.ts      # System tables
+│       │   │   │   ├── migrations/        # Generated migration files
+│       │   │   │   └── uow.ts             # Unit of work helper
 │       │   │   ├── events/                # Domain event dispatcher
 │       │   │   │   └── EventBus.ts
 │       │   │   ├── keycloak/              # Auth provider
