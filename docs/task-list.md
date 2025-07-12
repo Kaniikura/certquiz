@@ -119,21 +119,33 @@ Complete database foundation with VSA architecture implementation:
 
 > 📁 **Detailed task breakdown**: [docs/completed/03-database-foundation.md](./completed/03-database-foundation.md)
 
-## 4. Quality Gates 🟡
+## 4. Quality Gates ✅
 
-### 4.1 Setup CodeQL Security Scanning
-**Time**: 30 minutes
-**Status**: PLANNED
-**Reason**: Add static security analysis after implementing business logic
-```yaml
-# Tasks:
-- Create .github/workflows/codeql.yml with minimal configuration
-- Configure for JavaScript/TypeScript analysis
-- Set up push (main) and weekly schedule triggers only
-- Exclude test files and generated code
-- Test: CodeQL runs successfully without impacting PR feedback time
-```
-**Timing**: Implement after database foundation when actual business logic exists to scan.
+### 4.1 Setup CodeQL Security Scanning ✅
+**Time**: 30 minutes (actual: ~45 minutes)
+**Status**: COMPLETED
+**Completion Date**: July 12, 2025
+
+### Summary
+CodeQL security scanning successfully implemented:
+- ✅ **Workflow Configuration**: `.github/workflows/codeql.yml` with minimal setup
+- ✅ **Security Focus**: `security-extended` query set for focused analysis
+- ✅ **Performance Optimized**: No PR triggers, 30-minute timeout, concurrency control
+- ✅ **Proper Exclusions**: Test files, generated code, node_modules excluded
+- ✅ **Bun Support**: Compatible with Bun 1.1.0 runtime environment
+- ✅ **Act Testing**: Workflow validated with local testing tools
+
+**Key Achievements**:
+- Zero impact on PR performance (<5min requirement maintained)
+- Comprehensive exclusion patterns for monorepo structure
+- Weekly scheduled scans + main branch push triggers
+- Production-ready configuration following GitHub best practices
+
+**Implementation Details**:
+- Created `.github/codeql/codeql-config.yml` for scan configuration
+- Configured minimal permissions (contents:read + security-events:write)
+- Added proper timeouts and concurrency controls
+- Validated with act dry-run and YAML syntax checking
 
 ## 5. Feature Implementation (VSA + Repository Pattern) 🟡
 
@@ -589,7 +601,7 @@ The following tasks are on the critical path and block other work:
 3. Clean-Slate Architecture Reset (blocks VSA implementation) ✅
 4. Infrastructure Foundation (blocks all features) ✅
 5. First Vertical Slice (validates architecture) ✅
-6. Quality Gates (establishes code quality standards) 🟡
+6. Quality Gates (establishes code quality standards) ✅
 7. Domain/Repository Implementation (blocks business logic) 🟡
 8. API Layer (blocks frontend integration) 🟡
 
