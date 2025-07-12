@@ -429,6 +429,7 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizEventPayloads>
     instance._answers = new Map<QuestionId, Answer>();
     instance._uncommittedEvents = [];
     instance._version = 0;
+    instance._eventSequenceCounter = 1; // Initialize event sequence counter for proper event ordering
     return instance;
   }
 }
