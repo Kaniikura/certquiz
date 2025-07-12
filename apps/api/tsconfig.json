@@ -1,16 +1,11 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "composite": true,
     "outDir": "./dist",
-    "paths": {
-      "@api/*": ["src/*"] /* Application source code */,
-      "@api-db/*": ["db/*"] /* Database schemas and migrations */
-    },
     "rootDirs": ["src", "db"],
     "types": ["node", "@types/bun"]
   },
   "exclude": ["node_modules", "dist"],
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "tests/**/*.ts", "db/**/*.ts", "*.ts"]
+  "include": ["src/**/*", "tests/**/*.ts", "db/**/*.ts", "scripts/**/*", "*.ts"]
 }

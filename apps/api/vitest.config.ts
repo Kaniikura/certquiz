@@ -5,6 +5,14 @@ export default defineProject({
   // Everything is resolved from the directory that contains this file
   root: __dirname,
 
+  resolve: {
+    alias: {
+      '@api': resolve(__dirname, '../../apps/api/src'),
+      '@api-db': resolve(__dirname, '../../apps/api/db'),
+      '@shared': resolve(__dirname, '../../packages/shared/src'),
+    },
+  },
+
   test: {
     clearMocks: true,
     environment: 'node',
