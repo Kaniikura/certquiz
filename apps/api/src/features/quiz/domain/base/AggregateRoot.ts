@@ -1,6 +1,10 @@
 /**
  * Base class for domain aggregates supporting event sourcing
  * @fileoverview Event sourcing aggregate root with versioning and event management
+ *
+ * Note: Auth domain uses a simpler AggregateRoot without event sourcing.
+ * See ADR-004 for architectural decision rationale.
+ * @see docs/adr/004-auth-domain-aggregate-root-decision.md
  */
 
 import { DomainEvent } from '../events/DomainEvent';
