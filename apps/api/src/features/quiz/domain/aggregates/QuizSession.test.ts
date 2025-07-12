@@ -628,8 +628,8 @@ describe('QuizSession', () => {
   });
 });
 
-// QuizState強制変更用のヘルパー
+// Helper to forcibly change the QuizSession state for testing.
 function setQuizSessionState(s: QuizSession, state: QuizState) {
-  // @ts-expect-error テスト用にprivateフィールドを直接変更
+  // @ts-expect-error Directly modifying private field for test purposes.
   s._state = state;
 }
