@@ -1,75 +1,42 @@
 {
-  "model": "opus",
-  "theme": "dark",
   "cleanupPeriodDays": 30,
   "permissions": {
     "allow": [
-      // Package manager and runtime
       "Bash(bun:*)",
-      "Bash(bun run:*)",
-      "Bash(bun test:*)",
       "Bash(bunx:*)",
-      
-      // TypeScript and build tools
       "Bash(node:*)",
       "Bash(tsc:*)",
-      "Bash(tsx:*)",
       "Bash(vite:*)",
       "Bash(vitest:*)",
       "Bash(concurrently:*)",
-
-      // MCP tools
+      "mcp__ide__getDiagnostics",
       "mcp__github-server__get_pull_request_comments",
       "mcp__github-server__get_issue_comments",
       "mcp__github-server__get_pull_request_reviews",
       "mcp__github-server__get_pull_request_files",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-
-      // Code quality tools
       "Bash(biome:*)",
-      
-      // SvelteKit specific
       "Bash(svelte:*)",
       "Bash(sveltekit:*)",
       "Bash(svelte-kit:*)",
       "Bash(svelte-check:*)",
-      
-      // Database tools
       "Bash(drizzle-kit:*)",
       "Bash(psql:*)",
       "Bash(pg_dump:*)",
       "Bash(pg_restore:*)",
-      
-      // API specification
       "Bash(typespec:*)",
       "Bash(tsp:*)",
-      
-      // CSS/Styling
       "Bash(tailwindcss:*)",
       "Bash(postcss:*)",
-      
-      // Testing tools
       "Bash(playwright:*)",
       "Bash(coverage:*)",
-      
-      // Version control
       "Bash(git:*)",
       "Bash(gh:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(gh pr diff:*)",
-      
-      // Container and orchestration
       "Bash(docker:*)",
       "Bash(docker-compose:*)",
       "Bash(kubectl:*)",
-      
-      // Build tools
       "Bash(make:*)",
-      
-      // File system utilities
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(eza:*)",
@@ -86,30 +53,18 @@
       "Bash(pwd)",
       "Bash(cd:*)",
       "Bash(tree:*)",
-      
-      // JSON/YAML processing
       "Bash(jq:*)",
-      
-      // Network utilities
       "Bash(curl:*)",
       "Bash(wget:*)",
-      
-      // Archive utilities
       "Bash(unzip:*)",
       "Bash(tar:*)",
       "Bash(gzip:*)",
       "Bash(gunzip:*)",
-      
-      // Process management
       "Bash(ps:*)",
       "Bash(kill:*)",
       "Bash(lsof:*)",
-      
-      // File permissions
       "Bash(chmod:*)",
       "Bash(ln:*)",
-      
-      // Environment utilities
       "Bash(whoami)",
       "Bash(env)",
       "Bash(export:*)",
@@ -218,6 +173,17 @@
       "Bash(npm publish:*)",
       "Bash(cargo publish:*)",
       "Bash(deno publish:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git stash clear:*)",
+      "Bash(git reset:*)",
+      "Bash(git clean:*)",
+      "Bash(gh pr delete:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh issue delete:*)",
+      "Bash(gh api -X DELETE:*)",
+      "Bash(gh api --method DELETE:*)",
       "Edit(/etc/**)",
       "Edit(/usr/**)",
       "Edit(/var/**)",
@@ -267,7 +233,5 @@
     "UV_CACHE_DIR": "~/.cache/uv",
     "UV_PYTHON_PREFERENCE": "managed",
     "NODE_OPTIONS": "--max-old-space-size=4096"
-  },
-  "apiKeyHelper": null,
-  "preferredNotifChannel": "terminal_bell"
+  }
 }
