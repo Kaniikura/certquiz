@@ -23,10 +23,12 @@ export interface ValidationResult {
 
 // Validation functions
 function validateFileName(filename: string): Result<void, string> {
-  // Allow both up migrations (XXXX_name.sql) and down migrations (XXXX_name.down.sql)
-  const pattern = /^(\d{4})_[a-z0-9_-]+(\.down)?\.sql$/;
+  // Allow up migrations (XXXX_name.sql), down migrations (XXXX_name.down.sql), and irreversible migrations (XXXX_name.irrev.sql)
+  const pattern = /^(\d{4})_[a-z0-9_-]+(\.(?:down|irrev))?\.sql$/;
   if (!pattern.test(filename)) {
-    return Result.err('Invalid filename format. Expected: XXXX_name.sql or XXXX_name.down.sql');
+    return Result.err(
+      'Invalid filename format. Expected: XXXX_name.sql, XXXX_name.down.sql, or XXXX_name.irrev.sql'
+    );
   }
   return Result.ok(undefined);
 }
@@ -57,7 +59,7 @@ export async function validateMigrations(
 
   // Check 1: Every up migration should have a down migration (unless .irrev)
   for (const upMigration of upMigrations) {
-    if (!upMigration.baseName.includes('.irrev') && !downMigrations.has(upMigration.baseName)) {
+    if (!upMigration.filename.includes('.irrev') && !downMigrations.has(upMigration.baseName)) {
       errors.push({
         file: upMigration.filename,
         reason: `Missing down migration: ${upMigration.baseName}.down.sql`,

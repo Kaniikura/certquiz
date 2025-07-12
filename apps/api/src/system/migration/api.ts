@@ -112,16 +112,16 @@ export async function migrateDown(connectionUrl: string): Promise<Result<void, s
         // Execute the entire SQL file as a single statement
         // This correctly handles semicolons in strings and comments
         await tx.execute(sql.raw(downContentResult.data));
-      });
 
-      // Remove migration record
-      const deleteResult = await dbRepo.deleteMigrationRecord(
-        ctx.db,
-        lastMigrationResult.data.hash
-      );
-      if (!deleteResult.success) {
-        return Result.err(`Failed to remove migration record: ${deleteResult.error.type}`);
-      }
+        // Remove migration record within the same transaction
+        if (!lastMigrationResult.data) {
+          throw new Error('Migration data is unexpectedly null');
+        }
+        const deleteResult = await dbRepo.deleteMigrationRecord(tx, lastMigrationResult.data.hash);
+        if (!deleteResult.success) {
+          throw new Error(`Failed to remove migration record: ${deleteResult.error.type}`);
+        }
+      });
 
       return Result.ok(undefined);
     } catch (error) {

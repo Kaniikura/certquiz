@@ -23,7 +23,7 @@ describe('Database Migrations', () => {
     const adminClient = postgres(baseUrl, { max: 1 });
 
     try {
-      await adminClient`CREATE DATABASE ${adminClient(dbName)}`;
+      await adminClient.unsafe(`CREATE DATABASE "${dbName}"`);
       connectionUrl = baseUrl.replace(/\/[^/?]+(\?.*)?$/, `/${dbName}$1`);
     } finally {
       await adminClient.end();
@@ -45,7 +45,7 @@ describe('Database Migrations', () => {
           WHERE pg_stat_activity.datname = ${dbName}
             AND pid <> pg_backend_pid()
         `;
-        await adminClient`DROP DATABASE IF EXISTS ${adminClient(dbName)}`;
+        await adminClient.unsafe(`DROP DATABASE IF EXISTS "${dbName}"`);
       } finally {
         await adminClient.end();
       }
@@ -134,19 +134,27 @@ describe('Database Migrations', () => {
   });
 
   it('should use advisory locks to prevent concurrent migrations', async () => {
-    // Apply migration first
-    await migrateUp(connectionUrl);
+    // Roll back to ensure we have a migration to apply
+    await migrateDown(connectionUrl);
 
-    // Try to run two migrations concurrently
-    const promises = [getMigrationStatus(connectionUrl), getMigrationStatus(connectionUrl)];
+    // Try to run two migrations concurrently - only one should succeed
+    const promises = [migrateUp(connectionUrl), migrateUp(connectionUrl)];
 
     const results = await Promise.all(promises);
 
-    // Both should succeed without errors
+    // One should succeed, one should fail due to lock
     expect(results).toHaveLength(2);
-    results.forEach((result) => {
-      expect(result.success).toBe(true);
-    });
+    const successCount = results.filter((result) => result.success).length;
+    const failureCount = results.filter((result) => !result.success).length;
+
+    expect(successCount).toBe(1);
+    expect(failureCount).toBe(1);
+
+    // The failed one should mention lock or concurrent migration
+    const failedResult = results.find((result) => !result.success);
+    if (failedResult && !failedResult.success) {
+      expect(failedResult.error).toMatch(/already running|lock/i);
+    }
   });
 });
 
@@ -155,7 +163,7 @@ describe('Migration Validation', () => {
     const scriptPath = path.resolve(__dirname, '../../scripts/validate-migrations.ts');
 
     try {
-      const output = execSync(`tsx ${scriptPath}`, {
+      const output = execSync(`bun run ${scriptPath}`, {
         encoding: 'utf8',
       });
 

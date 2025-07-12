@@ -114,18 +114,18 @@ async function runDown(ctx: MigrationContext): Promise<Result<void, string>> {
         if (debug) console.log('[DEBUG] Executing SQL migration file...');
         await tx.execute(sql.raw(downContentResult.data));
         if (debug) console.log('[DEBUG] SQL migration executed successfully');
-      });
 
-      // Remove migration record
-      if (debug) console.log('[DEBUG] Removing migration record from database...');
-      const deleteResult = await dbRepo.deleteMigrationRecord(
-        ctx.db,
-        lastMigrationResult.data.hash
-      );
-      if (!deleteResult.success) {
-        return Result.err(`Failed to remove migration record: ${deleteResult.error.type}`);
-      }
-      if (debug) console.log('[DEBUG] Migration record removed successfully');
+        // Remove migration record within the same transaction
+        if (debug) console.log('[DEBUG] Removing migration record from database...');
+        if (!lastMigrationResult.data) {
+          throw new Error('Migration data is unexpectedly null');
+        }
+        const deleteResult = await dbRepo.deleteMigrationRecord(tx, lastMigrationResult.data.hash);
+        if (!deleteResult.success) {
+          throw new Error(`Failed to remove migration record: ${deleteResult.error.type}`);
+        }
+        if (debug) console.log('[DEBUG] Migration record removed successfully');
+      });
 
       console.log(`✅ Rolled back migration: ${migration.baseName}`);
       return Result.ok(undefined);
