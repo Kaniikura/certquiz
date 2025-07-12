@@ -43,19 +43,19 @@ export class QuizSessionBuilder {
     const config = this.props.config ?? createDefaultQuizConfig();
     const clock = this.props.clock ?? new TestClock();
 
-    // Ensure questionIds match config.questionCount
-    const questionIds = this.props.questionIds ?? testIds.questionIds(config.questionCount);
-
-    if (questionIds.length !== config.questionCount) {
-      // Adjust to match config
-      const adjustedIds = questionIds.slice(0, config.questionCount);
+    // Determine questionIds without side effects
+    let questionIdsToUse = this.props.questionIds;
+    if (questionIdsToUse === undefined) {
+      // If no IDs are provided, generate them based on the config.
+      questionIdsToUse = testIds.questionIds(config.questionCount);
+    } else if (questionIdsToUse.length !== config.questionCount) {
+      // If provided IDs don't match the count, adjust them.
+      const adjustedIds = questionIdsToUse.slice(0, config.questionCount);
       while (adjustedIds.length < config.questionCount) {
         adjustedIds.push(testIds.questionId(`q${adjustedIds.length + 1}`));
       }
-      this.props.questionIds = adjustedIds;
+      questionIdsToUse = adjustedIds;
     }
-
-    const questionIdsToUse = this.props.questionIds || testIds.questionIds(config.questionCount);
 
     const result = QuizSession.startNew(userId, config, questionIdsToUse, clock);
 

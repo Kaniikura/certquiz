@@ -185,8 +185,8 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizEventPayloads>
     // Create answer with validation
     const answerResult = Answer.create(questionId, selectedOptionIds, clock.now());
     if (!answerResult.success) {
-      // Convert InvalidAnswerError to domain error
-      return Result.fail(new InvalidOptionsError(['Invalid answer']));
+      // Propagate the specific error from Answer.create
+      return Result.fail(answerResult.error as QuizDomainError);
     }
     this._answers.set(questionId, answerResult.data);
 
