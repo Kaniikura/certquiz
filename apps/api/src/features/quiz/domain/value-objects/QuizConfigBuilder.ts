@@ -3,6 +3,7 @@
  * @fileoverview Builder pattern for creating test instances
  */
 
+import { Result } from '@api/shared/result';
 import type { Category, Difficulty, ExamType } from './ExamTypes';
 import { QuizConfig } from './QuizConfig';
 
@@ -18,17 +19,33 @@ interface QuizConfigBuilderProps {
   fallbackLimitSeconds?: number;
 }
 
+// Type guard to validate all required properties are set
+function isCompleteQuizConfigProps(
+  props: QuizConfigBuilderProps
+): props is Required<Pick<QuizConfigBuilderProps, 'examType' | 'questionCount'>> &
+  QuizConfigBuilderProps {
+  return typeof props.examType !== 'undefined' && typeof props.questionCount === 'number';
+}
+
 export class QuizConfigBuilder {
-  private props: QuizConfigBuilderProps = {
-    examType: 'CCNA',
-    questionCount: 5,
-    timeLimit: 3600, // 1 hour
-    difficulty: 'MIXED',
-    enforceSequentialAnswering: false,
-    requireAllAnswers: false,
-    autoCompleteWhenAllAnswered: true,
-    fallbackLimitSeconds: 14400, // 4 hours
-  };
+  private props: QuizConfigBuilderProps;
+
+  constructor(withDefaults = true) {
+    if (withDefaults) {
+      this.props = {
+        examType: 'CCNA',
+        questionCount: 5,
+        timeLimit: 3600, // 1 hour
+        difficulty: 'MIXED',
+        enforceSequentialAnswering: false,
+        requireAllAnswers: false,
+        autoCompleteWhenAllAnswered: true,
+        fallbackLimitSeconds: 14400, // 4 hours
+      };
+    } else {
+      this.props = {};
+    }
+  }
 
   withExamType(examType: ExamType): this {
     this.props.examType = examType;
@@ -70,12 +87,16 @@ export class QuizConfigBuilder {
     return this;
   }
 
-  build(): QuizConfig {
-    const result = QuizConfig.create(this.props as Parameters<typeof QuizConfig.create>[0]);
-    if (!result.success) {
-      throw new Error(`Failed to create test QuizConfig: ${result.error.message}`);
+  build(): Result<QuizConfig> {
+    // Validate all required properties are set using type guard
+    if (!isCompleteQuizConfigProps(this.props)) {
+      return Result.fail(
+        new Error('Builder is missing required fields (examType and questionCount)')
+      );
     }
-    return result.data;
+
+    // Now props is properly typed and safe to pass to QuizConfig.create
+    return QuizConfig.create(this.props);
   }
 }
 
