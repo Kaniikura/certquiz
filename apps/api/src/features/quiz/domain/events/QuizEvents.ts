@@ -4,20 +4,8 @@
  */
 
 import type { AnswerId, OptionId, QuestionId, QuizSessionId, UserId } from '../value-objects/Ids';
+import type { QuizConfigDTO } from '../value-objects/QuizConfig';
 import { DomainEvent } from './DomainEvent';
-
-// Event payload types
-export interface QuizConfigDTO {
-  examType: string;
-  category: string | null;
-  questionCount: number;
-  timeLimit: number | null;
-  difficulty: string;
-  enforceSequentialAnswering: boolean;
-  requireAllAnswers: boolean;
-  autoCompleteWhenAllAnswered: boolean;
-  fallbackLimitSeconds: number;
-}
 
 export interface QuizStartedPayload {
   userId: UserId;

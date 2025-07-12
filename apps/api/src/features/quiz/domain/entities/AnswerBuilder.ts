@@ -12,17 +12,17 @@ export class AnswerBuilder {
   private selectedOptionIds: OptionId[] = [testIds.optionId()];
   private answeredAt: Date = new Date('2024-01-01T10:05:00Z');
 
-  withQuestionId(questionId: QuestionId): this {
+  withQuestionId(questionId: QuestionId): AnswerBuilder {
     this.questionId = questionId;
     return this;
   }
 
-  withSelectedOptions(optionIds: OptionId[]): this {
+  withSelectedOptions(optionIds: OptionId[]): AnswerBuilder {
     this.selectedOptionIds = optionIds;
     return this;
   }
 
-  withAnsweredAt(date: Date): this {
+  withAnsweredAt(date: Date): AnswerBuilder {
     this.answeredAt = date;
     return this;
   }
