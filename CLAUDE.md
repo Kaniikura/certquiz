@@ -43,7 +43,7 @@ A web-based quiz application for technical certification exam preparation. Built
 - **Commit Convention**: @.claude/commit-convention.md - Git commit message guidelines
 - **Project Structure**: @docs/project-structure.md - Complete project organization with service layer
 - **Setup Guide**: @docs/project-setup.md - Complete environment setup instructions
-- **Database Schema**: @docs/database-schema.md - Drizzle ORM schemas and relations
+- **Database Schema**: @docs/database-schema-v2.md - Drizzle ORM schemas and relations
 - **API Specification**: @docs/api-specification.md - All endpoint definitions
 - **Task List**: @docs/task-list.md - Phase 1 implementation tasks (revised for new architecture)
 - **Coding Standards**: @docs/coding-standards.md - Development conventions
@@ -128,6 +128,14 @@ See @docs/task-list.md for detailed implementation tasks.
 - Explicit return types on all functions
 - Test files next to source: `feature.ts` → `feature.test.ts`
 - Domain objects use the `Result<T, E>` pattern—use `unwrapOrFail()` in tests
+
+### Domain Layer (VSA + DDD)
+- **Value Objects**: Create `.test.ts` files for all VOs testing business invariants
+- **Error Hierarchy**: Test error classes in dedicated `.test.ts` files
+- **Repository Pattern**: Place interfaces in domain, implementations alongside
+- **AggregateRoot**: Use appropriate complexity per bounded context (see ADR-004)
+- **Branded Types**: Use factory functions (e.g., `UserId.of()`, `UserId.generate()`)
+- **Test Co-location**: Place tests next to source files, include all domain logic
 
 ### Database (Schema-Driven)
 - Schema changes start in `schema.ts`

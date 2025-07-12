@@ -161,7 +161,7 @@ certquiz/
 │
 ├── docs/                      # Documentation
 │   ├── project-structure.md   # THIS FILE
-│   ├── database-schema.md
+│   ├── database-schema-v2.md
 │   ├── api-specification.md
 │   ├── vsa-implementation-plan.md
 │   └── adr/                   # Architecture Decision Records
