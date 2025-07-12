@@ -14,6 +14,9 @@ import * as fileRepo from './file-repository';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Define migrations path as a single constant to avoid duplication
+const MIGRATIONS_PATH = path.join(__dirname, '../../infra/db/migrations');
+
 interface MigrationContext {
   db: PostgresJsDatabase;
   client: postgres.Sql;
@@ -26,9 +29,8 @@ interface MigrationContext {
 export async function migrateUp(connectionUrl: string): Promise<Result<void, string>> {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
 
-  const ctx: MigrationContext = { db, client, migrationsPath };
+  const ctx: MigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
 
   try {
     const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
@@ -55,9 +57,8 @@ export async function migrateUp(connectionUrl: string): Promise<Result<void, str
 export async function migrateDown(connectionUrl: string): Promise<Result<void, string>> {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
 
-  const ctx: MigrationContext = { db, client, migrationsPath };
+  const ctx: MigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
 
   try {
     const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
@@ -149,11 +150,10 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
 > {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
 
   try {
     // Get migration files
-    const filesResult = await fileRepo.listMigrationFiles(migrationsPath);
+    const filesResult = await fileRepo.listMigrationFiles(MIGRATIONS_PATH);
     if (!filesResult.success) {
       return Result.err(`Failed to list migration files: ${filesResult.error.type}`);
     }
@@ -183,7 +183,7 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
     const missingDown: string[] = [];
     for (const file of upMigrations) {
       if (!file.baseName.includes('.irrev')) {
-        const hasDownResult = await fileRepo.hasDownMigration(migrationsPath, file.baseName);
+        const hasDownResult = await fileRepo.hasDownMigration(MIGRATIONS_PATH, file.baseName);
         if (hasDownResult.success && !hasDownResult.data) {
           missingDown.push(`${file.baseName}.down.sql`);
         }

@@ -13,7 +13,7 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
   const connectionUri = container.getConnectionUri();
 
   // Check if migrations directory exists
-  const migrationsDir = path.join(__dirname, '../../db/migrations');
+  const migrationsDir = path.join(__dirname, '../../src/infra/db/migrations');
   let hasMigrations = false;
 
   try {
