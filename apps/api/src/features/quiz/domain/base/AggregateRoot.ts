@@ -3,7 +3,7 @@
  * @fileoverview Event sourcing aggregate root with versioning and event management
  */
 
-import type { DomainEvent } from '../events/DomainEvent';
+import { DomainEvent } from '../events/DomainEvent';
 
 export abstract class AggregateRoot<TId, TEventPayloads extends object = object> {
   private _version: number = 0;
@@ -29,8 +29,9 @@ export abstract class AggregateRoot<TId, TEventPayloads extends object = object>
     }
 
     // Auto-assign sequence number within version
-    event.internalSetSequence(this._eventSequenceCounter++);
-    this._uncommittedEvents.push(event as DomainEvent<TId, TEventPayloads>);
+    DomainEvent.setEventSequence(event, this._eventSequenceCounter++);
+    // Ensure type safety without casting
+    this._uncommittedEvents.push(event);
   }
 
   hasUncommittedEvents(): boolean {
