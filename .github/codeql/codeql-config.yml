@@ -4,6 +4,7 @@ name: certquiz-monorepo-security
 paths:
   - apps
   - packages
+  - scripts
 
 # Exclude tests, generated assets & third-party code
 paths-ignore:
