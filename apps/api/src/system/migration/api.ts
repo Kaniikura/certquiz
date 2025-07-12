@@ -26,7 +26,7 @@ interface MigrationContext {
 export async function migrateUp(connectionUrl: string): Promise<Result<void, string>> {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
+  const migrationsPath = path.join(__dirname, '../../infra/db/migrations');
 
   const ctx: MigrationContext = { db, client, migrationsPath };
 
@@ -55,7 +55,7 @@ export async function migrateUp(connectionUrl: string): Promise<Result<void, str
 export async function migrateDown(connectionUrl: string): Promise<Result<void, string>> {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
+  const migrationsPath = path.join(__dirname, '../../infra/db/migrations');
 
   const ctx: MigrationContext = { db, client, migrationsPath };
 
@@ -149,7 +149,7 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
 > {
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
+  const migrationsPath = path.join(__dirname, '../../infra/db/migrations');
 
   try {
     // Get migration files

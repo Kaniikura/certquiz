@@ -235,7 +235,7 @@ export async function cli(args: string[] = process.argv.slice(2)) {
   if (debug) console.log('[DEBUG] Creating database connection...');
   const client = postgres(databaseUrl, { max: 1 });
   const db = drizzle(client);
-  const migrationsPath = path.join(__dirname, '../../../db/migrations');
+  const migrationsPath = path.join(__dirname, '../../infra/db/migrations');
 
   const ctx: MigrationContext = { db, client, migrationsPath };
 

@@ -41,7 +41,7 @@ function extractSequenceNumber(filename: string): number {
 export async function validateMigrations(
   migrationsPath?: string
 ): Promise<Result<ValidationResult, string>> {
-  const dir = migrationsPath || path.join(__dirname, '../../../db/migrations');
+  const dir = migrationsPath || path.join(__dirname, '../../infra/db/migrations');
 
   // Get all migration files
   const filesResult = await fileRepo.listMigrationFiles(dir);
