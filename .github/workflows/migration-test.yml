@@ -3,10 +3,9 @@ name: Test Migrations
 on:
   pull_request:
     paths:
-      - 'apps/api/db/migrations/**'
-      - 'apps/api/db/schema/**'
-      - 'apps/api/scripts/migrate.ts'
-      - 'apps/api/scripts/validate-migrations.ts'
+      - 'apps/api/src/infra/db/migrations/**'
+      - 'apps/api/src/system/migration/**'
+      - 'apps/api/package.json'
 
 jobs:
   test-migrations:
