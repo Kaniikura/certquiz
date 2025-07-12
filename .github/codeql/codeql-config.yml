@@ -1,0 +1,30 @@
+name: certquiz-monorepo-security
+
+# Scan only real application code
+paths:
+  - apps
+  - packages
+
+# Exclude tests, generated assets & third-party code
+paths-ignore:
+  # test code
+  - '**/__tests__/**'
+  - '**/*.test.*'
+  - '**/*.spec.*'
+  - '**/tests/**'
+
+  # generated or compiled output
+  - '**/*.d.ts'
+  - '**/*.generated.*'
+  - '**/dist/**'
+  - '**/build/**'
+  - '**/.svelte-kit/**'
+  - '**/migrations/**'
+  - '**/coverage/**'
+
+  # vendored or external sources
+  - '**/node_modules/**'
+
+# Run the security query set only (no quality checks)
+queries:
+  - uses: security-extended
