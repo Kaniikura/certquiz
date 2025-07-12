@@ -13,4 +13,4 @@ README.md
 docs/project-structure.md
 docs/task-list.md
 docs/api-specification.md
-docs/database-schema.md
+docs/database-schema-v2.md
