@@ -103,9 +103,9 @@ certquiz/
 │       │   │       ├── migrate.ts
 │       │   │       └── migrate.test.ts
 │       │   ├── infra/          # Infrastructure layer
+│       │   │   ├── unit-of-work.ts    # Transaction facade for application layer
 │       │   │   ├── db/
 │       │   │   │   ├── client.ts          # Postgres → Drizzle wrapper
-│       │   │   │   ├── unit-of-work.ts    # Transaction helper
 │       │   │   │   ├── schema/            # Drizzle table definitions
 │       │   │   │   │   ├── index.ts       # Bounded context exports
 │       │   │   │   │   ├── enums.ts       # PostgreSQL enums
@@ -114,7 +114,7 @@ certquiz/
 │       │   │   │   │   ├── question.ts    # Question bounded context tables
 │       │   │   │   │   └── system.ts      # System tables
 │       │   │   │   ├── migrations/        # Generated migration files
-│       │   │   │   └── uow.ts             # Unit of work helper
+│       │   │   │   └── uow.ts             # Unit of work implementation
 │       │   │   ├── events/                # Domain event dispatcher
 │       │   │   │   └── EventBus.ts
 │       │   │   ├── keycloak/              # Auth provider
@@ -314,10 +314,13 @@ export class DrizzleQuizRepository implements IQuizRepository {
 
 ### 2. Unit of Work via Transaction Wrapper 🔄
 ```typescript
-// infra/unit-of-work.ts
+// infra/unit-of-work.ts (Application layer facade)
 import { db } from './db/client'
 
 export const withTransaction = db.transaction.bind(db)
+
+// infra/db/uow.ts (Database-specific implementation)
+// Contains transaction utilities and helpers specific to Drizzle
 
 // Usage in handler
 export async function handler(c: Context) {
