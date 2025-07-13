@@ -15,6 +15,7 @@
     "check": "tsc --noEmit && biome check --write --unsafe",
     "check:ci": "tsc --noEmit && biome check",
     "db:generate": "bun --env-file=../../.env drizzle-kit generate",
+    "db:generate:test": "drizzle-kit generate --config ./drizzle.config.test.ts",
     "db:migrate": "bun --env-file=../../.env run src/system/migration/migrate.ts up",
     "db:migrate:up": "bun --env-file=../../.env run src/system/migration/migrate.ts up",
     "db:migrate:down": "bun --env-file=../../.env run src/system/migration/migrate.ts down",

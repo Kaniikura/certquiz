@@ -70,6 +70,15 @@ async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
   const client = postgres(databaseUrl, { max: 1 });
 
   try {
+    // Create test_migration table for migration testing
+    await client`
+      CREATE TABLE IF NOT EXISTS test_migration (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+
     // Create test_users table for infrastructure testing
     await client`
       CREATE TABLE IF NOT EXISTS test_users (

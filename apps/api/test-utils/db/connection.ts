@@ -1,5 +1,7 @@
+import path from 'node:path';
 import { sql } from 'drizzle-orm';
 import { drizzle as baseDrizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres, { type Sql } from 'postgres';
 import { getPostgres } from '../../tests/containers/postgres';
 import * as testSchema from './schema';
@@ -7,14 +9,13 @@ import type { TestDb } from './types';
 
 let testDb: PostgresJsDatabase<typeof testSchema> | undefined;
 let sqlClient: postgres.Sql | undefined;
+let initPromise: Promise<PostgresJsDatabase<typeof testSchema>> | undefined;
 
 /**
- * Get or create a Drizzle database instance for tests.
- * Automatically connects to the test container.
+ * Internal function to initialize the test database.
+ * This includes applying test-only schema after migrations.
  */
-export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
-  if (testDb) return testDb;
-
+async function initializeTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
   const container = await getPostgres();
   const connectionUri = container.getConnectionUri();
 
@@ -25,9 +26,41 @@ export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>
     connect_timeout: 10,
   });
 
-  testDb = baseDrizzle(sqlClient, { schema: testSchema });
+  // Apply test-only schema using Drizzle migrations
+  try {
+    const migrationsPath = path.join(__dirname, 'migrations');
+    const tempDb = baseDrizzle(sqlClient);
+    await migrate(tempDb, { migrationsFolder: migrationsPath });
+  } catch (_error) {
+    // Silently ignore if migrations don't exist or fail
+    // This allows tests to run without test-specific tables
+  }
 
-  return testDb;
+  return baseDrizzle(sqlClient, { schema: testSchema });
+}
+
+/**
+ * Get or create a Drizzle database instance for tests.
+ * Automatically connects to the test container.
+ * Thread-safe: concurrent calls will share the same initialization promise.
+ */
+export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
+  if (testDb) return testDb;
+
+  // If initialization is in progress, wait for it
+  if (initPromise) return initPromise;
+
+  // Start initialization and cache the promise
+  initPromise = initializeTestDb();
+
+  try {
+    testDb = await initPromise;
+    return testDb;
+  } catch (error) {
+    // Clear the promise on failure so next call can retry
+    initPromise = undefined;
+    throw error;
+  }
 }
 
 /**
@@ -53,6 +86,7 @@ export async function closeTestDb(): Promise<void> {
     await sqlClient.end();
     sqlClient = undefined;
     testDb = undefined;
+    initPromise = undefined;
   }
 }
 

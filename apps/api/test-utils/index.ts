@@ -17,21 +17,21 @@
 
 // Database utilities - everything that talks to Postgres/Testcontainers
 export {
-  buildDatabaseUrl,
-  checkTestDbHealth,
   closeAllTrackedClients,
-  closeTestDb,
   createTestContext,
   createTestDatabase,
+  createTestDb,
   drizzleMigrate,
-  extractDatabaseName,
-  getTestDb,
   resetMigrationState,
+  seedAdminUser,
   seedUsers,
-  type TestDatabase,
+  type TestDatabaseOptions,
+  type TestDb,
+  type TestTransaction,
   testSchema,
   verifyMigrationTables,
   withRollback,
+  withTestDb,
 } from './db';
 
 // Error utilities - pure utilities with no side effects
