@@ -147,7 +147,9 @@ certquiz/
 │       ├── test-utils/         # Unified test infrastructure package
 │       │   ├── db/             # Database & container utilities
 │       │   │   ├── container.ts       # Testcontainers management
-│       │   │   ├── connection.ts      # Drizzle test connections
+│       │   │   ├── connection.ts      # Test DB helpers (createTestDb, withTestDb)
+│       │   │   ├── core.ts            # Unified createTestDatabase() API
+│       │   │   ├── types.ts           # TestDb type definition
 │       │   │   ├── migrations.ts      # Migration execution & verification
 │       │   │   ├── tx.ts              # Transaction isolation (withRollback)
 │       │   │   ├── seeds.ts           # Test data generation & seeding
@@ -206,6 +208,7 @@ certquiz/
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
 > - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
 > - **Unified test infrastructure**: Consolidated test utilities in `test-utils/` package
+> - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
 - **Domain test utilities**: Feature-specific helpers remain in `test-support/` for co-location
 
 ## Architecture Layers
