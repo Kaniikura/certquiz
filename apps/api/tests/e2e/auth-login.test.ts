@@ -11,6 +11,7 @@ import { StubAuthProvider } from '@api/infra/auth/StubAuthProvider';
 import { unwrapOrFail } from '@api/test-support';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FakeUserRepository } from '../fakes/FakeUserRepository';
+import { fakeLogger } from '../helpers/app';
 
 describe('POST /api/auth/login - E2E', () => {
   let app: ReturnType<typeof buildApp>;
@@ -22,8 +23,13 @@ describe('POST /api/auth/login - E2E', () => {
     fakeUserRepo = new FakeUserRepository();
     stubAuthProvider = new StubAuthProvider();
 
-    // Build app with fake dependencies
+    // Build app with all required dependencies
     app = buildApp({
+      logger: fakeLogger(),
+      clock: () => new Date('2025-01-01T00:00:00Z'),
+      ping: async () => {
+        // No-op for tests
+      },
       userRepository: fakeUserRepo,
       authProvider: stubAuthProvider,
     });
