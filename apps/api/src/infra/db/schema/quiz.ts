@@ -2,7 +2,6 @@
 
 import { eq, inArray, sql } from 'drizzle-orm';
 import {
-  bigint,
   check,
   index,
   integer,
@@ -21,7 +20,7 @@ export const quizSessionEvent = pgTable(
   'quiz_session_event',
   {
     sessionId: uuid('session_id').notNull(),
-    version: bigint('version', { mode: 'number' }).notNull().default(1), // Starts at 1, increments per command
+    version: integer('version').notNull().default(1), // Starts at 1, increments per command
     eventType: text('event_type').notNull(), // 'quiz.started' | 'quiz.answer_submitted' | 'quiz.completed' | 'quiz.expired'
     payload: jsonb('payload').notNull(), // Domain event payload
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
@@ -59,7 +58,7 @@ export const quizSessionSnapshot = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }), // NULL for sessions without time limit
     completedAt: timestamp('completed_at', { withTimezone: true }),
-    version: bigint('version', { mode: 'number' }).notNull(), // Mirrors last applied event version
+    version: integer('version').notNull(), // Mirrors last applied event version
 
     // Serialized domain objects for performance
     config: jsonb('config').notNull(), // QuizConfig value object

@@ -98,16 +98,18 @@ describe('Database Migrations', () => {
       const result = await migrateDown(testDb.connectionUrl);
       expect(result.success).toBe(true);
 
-      // Verify tables were removed using helper function
+      // The test_migration table should still exist since we only rolled back the latest migration
+      // (which was the version field type change, not the initial table creation)
       const verification = await verifyMigrationTables(testDb.connectionUrl);
-      expect(verification.expectedTables.test_migration).toBe(false);
+      expect(verification.expectedTables.test_migration).toBe(true);
 
-      // Verify status shows no applied migrations
+      // Verify status shows one less applied migration
       const statusResult = await getMigrationStatus(testDb.connectionUrl);
       expect(statusResult.success).toBe(true);
 
       if (statusResult.success) {
-        expect(statusResult.data.applied.length).toBe(0);
+        // Should have one migration applied (the one that creates test_migration)
+        expect(statusResult.data.applied.length).toBe(1);
         expect(statusResult.data.pending.length).toBeGreaterThan(0);
       }
     });
