@@ -8,7 +8,19 @@ Analyzes and prioritizes feedback from AI reviewers (Copilot, Gemini, etc.) on p
 /review-ai-feedback [PR-NUMBER]
 ```
 
-If no PR number is provided, follow the automatic detection steps below.
+## 🚨 EXECUTION REQUIREMENT
+
+**ALWAYS execute the provided script first:**
+
+```bash
+# Execute the automation script (auto-detects PR)
+.claude/scripts/review-ai-feedback.sh
+
+# Or for specific PR number
+.claude/scripts/review-ai-feedback.sh 123
+```
+
+**The script handles all data collection automatically. Use its output for analysis.**
 
 ## Resolution Detection
 The command uses heuristics to detect likely resolved comments:
@@ -22,23 +34,16 @@ The command uses heuristics to detect likely resolved comments:
 - `coderabbit` (CodeRabbit AI)
 - `sonar` (SonarQube/SonarCloud bots)
 
-## Step-by-Step Execution
+## ⚡ MANDATORY FIRST STEP
 
-The review process has been automated in a script. Run the following command from the project root:
+**Execute the automation script - this is the ONLY way to collect AI feedback:**
 
-### Quick Usage
 ```bash
-# Review current branch's PR (auto-detects PR number)
+# From project root directory
 .claude/scripts/review-ai-feedback.sh
-
-# Review specific PR
-.claude/scripts/review-ai-feedback.sh 123
 ```
 
-### Script Location
-The script is located at: `.claude/scripts/review-ai-feedback.sh`
-
-### What the Script Does
+### Script Process
 1. **Detects Current Branch** - Gets the current Git branch
 2. **Finds PR Number** - Automatically finds the PR for current branch (or uses provided number)
 3. **Gets Repository Info** - Extracts owner and repository name
@@ -46,6 +51,9 @@ The script is located at: `.claude/scripts/review-ai-feedback.sh`
 5. **Fetches Unresolved AI Comments** - Uses GraphQL to retrieve only unresolved review threads from AI reviewers
 6. **Analyzes Priority** - Categorizes comments by priority level
 7. **Generates Action Plan** - Provides next steps and quick commands
+
+### Script Output
+The script provides formatted analysis ready for review. Work with this output, not raw data.
 
 ## Priority Classification
 
@@ -71,27 +79,24 @@ The script is located at: `.claude/scripts/review-ai-feedback.sh`
 - Keywords: `consider`, `style`, `optional`, `![low]`
 
 
-## Quick Reference
+## Script Execution Guide
 
-### View PR with Comments
+### Standard Usage
 ```bash
-gh pr view --comments
+# Execute from project root
+.claude/scripts/review-ai-feedback.sh
 ```
 
-### View Specific PR
+### With Specific PR Number
 ```bash
-gh pr view 123 --comments
+# When PR auto-detection fails
+.claude/scripts/review-ai-feedback.sh 123
 ```
 
-### Export All Comments (including resolved)
-```bash
-gh api /repos/OWNER/REPO/pulls/123/comments > feedback.json
-```
-
-### Count Comments by Reviewer
-```bash
-gh api /repos/OWNER/REPO/pulls/123/comments --jq 'group_by(.user.login) | map({user: .[0].user.login, count: length})'
-```
+### Script Requirements
+- Must be run from project root directory
+- Requires `gh` CLI to be authenticated
+- Produces formatted output for immediate analysis
 
 ## Response Templates
 
@@ -135,23 +140,35 @@ Thanks, but this is intentional because [reason].
    - Status: Unresolved
 ```
 
-## Important Note for AI Assistants
+## 🤖 Instructions for AI Assistants
 
-**⚠️ After presenting the action plan, DO NOT automatically implement fixes or make changes.**
+### STEP 1: Execute Data Collection Script
+**FIRST and ONLY action - run the automation script:**
 
-Wait for explicit instructions from the user before:
+```bash
+.claude/scripts/review-ai-feedback.sh
+```
+
+**Use the script's output as your data source. The script handles all GitHub API calls.**
+
+### STEP 2: Analyze Script Output
+Parse the script's formatted output to identify:
+- Unresolved AI feedback
+- Priority classifications  
+- Action items
+
+### STEP 3: Present Analysis
+Provide organized analysis based on script output.
+
+### STEP 4: Wait for Instructions
+**After presenting analysis, DO NOT automatically implement fixes.**
+
+Wait for explicit user instructions before:
 - Modifying any files
 - Implementing suggested fixes
 - Creating new files or commits
-- Running any commands that change the codebase
 
-The user needs time to:
-1. Review the prioritized feedback
-2. Decide which items to address
-3. Determine the implementation approach
-4. Consider project-specific constraints
-
-Always ask for confirmation or wait for specific instructions like:
+Always ask for confirmation like:
 - "Please fix the high priority issues"
 - "Implement the transaction wrapper suggestion"
 - "Skip the low priority items for now"
