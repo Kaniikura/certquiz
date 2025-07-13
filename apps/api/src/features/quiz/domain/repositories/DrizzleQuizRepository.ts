@@ -6,6 +6,7 @@
 import { quizSessionEvent, quizSessionSnapshot } from '@api/infra/db/schema/quiz';
 import { and, eq, lt } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
+import { PostgresError } from 'postgres';
 import { QuizSession } from '../aggregates/QuizSession';
 import { OptimisticLockError } from '../errors/QuizErrors';
 import type { DomainEvent } from '../events/DomainEvent';
@@ -67,28 +68,22 @@ export class DrizzleQuizRepository implements IQuizRepository {
         occurredAt: event.occurredAt,
       }));
 
-      const insertResult = await this.trx
-        .insert(quizSessionEvent)
-        .values(eventInserts)
-        .onConflictDoNothing();
-
-      // Verify all events were inserted (optimistic concurrency control)
-      if (insertResult.length !== events.length) {
-        throw new OptimisticLockError(
-          `Expected to insert ${events.length} events, but only ${insertResult.length} were inserted. Session may have been modified by another process.`
-        );
-      }
+      // Insert events - PostgreSQL will automatically detect conflicts
+      await this.trx.insert(quizSessionEvent).values(eventInserts);
 
       // Mark events as committed in aggregate
       session.markChangesAsCommitted();
-    } catch (error) {
-      if (error instanceof OptimisticLockError) {
-        throw error;
+    } catch (error: unknown) {
+      // PostgreSQL raises unique_violation (23505) on conflict
+      if (error instanceof PostgresError && error.code === '23505') {
+        throw new OptimisticLockError(
+          `Concurrent modification detected for session ${session.id}. Another process has already modified this session.`
+        );
       }
 
-      // Re-wrap database errors as OptimisticLockError for consistency
+      // Re-wrap other database errors for consistency
       throw new OptimisticLockError(
-        `Failed to save quiz session due to concurrent modification: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to save quiz session due to database error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
