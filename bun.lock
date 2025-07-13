@@ -9,6 +9,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.0.6",
         "@types/bun": "latest",
+        "@types/uuid": "^10.0.0",
         "@vitest/coverage-v8": "^3.2.4",
         "concurrently": "^8.2.0",
         "dotenv": "^17.0.0",
@@ -393,6 +394,8 @@
     "@types/ssh2": ["@types/ssh2@0.5.52", "", { "dependencies": { "@types/node": "*", "@types/ssh2-streams": "*" } }, "sha512-lbLLlXxdCZOSJMCInKH2+9V/77ET2J6NPQHpFI0kda61Dd1KglJs+fPQBchizmzYSOJBgdTajhPqBO1xxLywvg=="],
 
     "@types/ssh2-streams": ["@types/ssh2-streams@0.1.12", "", { "dependencies": { "@types/node": "*" } }, "sha512-Sy8tpEmCce4Tq0oSOYdfqaBpA3hDM8SoxoFh5vzFsu2oL+znzGz8oVWW7xb4K920yYMUY+PIG31qZnFMfPWNCg=="],
+
+    "@types/uuid": ["@types/uuid@10.0.0", "", {}, "sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ=="],
 
     "@typespec/asset-emitter": ["@typespec/asset-emitter@0.71.0", "", { "peerDependencies": { "@typespec/compiler": "^1.1.0" } }, "sha512-wXDF2kbEPTJksv16mzcEyaz97PUxz1xH/Bl4OFSnvwE5xC1hkb0uKQ2nsunnu4yFzbz6Jmn7aoxM1WlYR5PzkA=="],
 

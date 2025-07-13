@@ -3,20 +3,30 @@
  * @fileoverview Event-sourcing implementation using Drizzle ORM with optimistic locking
  */
 
-import { quizSessionEvent, quizSessionSnapshot } from '@api/infra/db/schema/quiz';
+import {
+  type QuizSessionEventRow,
+  quizSessionEvent,
+  quizSessionSnapshot,
+} from '@api/infra/db/schema/quiz';
 import { and, eq, lt } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import { PostgresError } from 'postgres';
+import { v5 as uuidv5 } from 'uuid';
+import { z } from 'zod';
 import { QuizSession } from '../aggregates/QuizSession';
 import { OptimisticLockError } from '../errors/QuizErrors';
-import type { DomainEvent } from '../events/DomainEvent';
-import type {
-  AnswerSubmittedPayload,
-  QuizCompletedPayload,
-  QuizExpiredPayload,
-  QuizStartedPayload,
+import { DomainEvent } from '../events/DomainEvent';
+import {
+  AnswerSubmittedEvent,
+  type AnswerSubmittedPayload,
+  QuizCompletedEvent,
+  type QuizCompletedPayload,
+  QuizExpiredEvent,
+  type QuizExpiredPayload,
+  QuizStartedEvent,
+  type QuizStartedPayload,
 } from '../events/QuizEvents';
-import type { QuizSessionId, UserId } from '../value-objects/Ids';
+import type { AnswerId, OptionId, QuestionId, QuizSessionId, UserId } from '../value-objects/Ids';
 import type { IQuizRepository } from './IQuizRepository';
 
 type QuizEventPayloads =
@@ -24,6 +34,129 @@ type QuizEventPayloads =
   | AnswerSubmittedPayload
   | QuizCompletedPayload
   | QuizExpiredPayload;
+
+// Constant UUID namespace for deterministic event ID generation
+const EVENT_NAMESPACE = '4b8f1d23-2196-4f1c-8ff0-03162b57c824';
+
+/* ──────────────────────────────────────────────────────────────────
+   Runtime payload validation schemas (zod)
+   Note: These validate raw string/JSON data and cast to branded types in mappers
+   ────────────────────────────────────────────────────────────────── */
+const quizStartedSchema = z.object({
+  userId: z.string().uuid(),
+  questionCount: z.number().int().positive(),
+  questionIds: z.array(z.string().uuid()),
+  configSnapshot: z.any(), // QuizConfigDTO - could be more specific
+  questionSnapshots: z.array(z.any()).optional(),
+});
+
+const answerSubmittedSchema = z.object({
+  answerId: z.string().uuid(),
+  questionId: z.string().uuid(),
+  selectedOptionIds: z.array(z.string().uuid()),
+  answeredAt: z.coerce.date(),
+});
+
+const quizCompletedSchema = z.object({
+  answeredCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().positive(),
+});
+
+const quizExpiredSchema = z.object({
+  expiredAt: z.coerce.date(),
+});
+
+/* ──────────────────────────────────────────────────────────────────
+   Mapper registry for event reconstruction
+   ────────────────────────────────────────────────────────────────── */
+type MapperFn = (
+  row: QuizSessionEventRow,
+  payload: unknown
+) => DomainEvent<QuizSessionId, QuizEventPayloads>;
+
+interface MapperEntry {
+  schema: z.ZodTypeAny;
+  mapper: MapperFn;
+}
+
+const MAPPERS: Record<string, MapperEntry> = {
+  'quiz.started': {
+    schema: quizStartedSchema,
+    mapper: (row, payload) => {
+      const data = payload as z.infer<typeof quizStartedSchema>;
+      return new QuizStartedEvent({
+        aggregateId: row.sessionId as QuizSessionId,
+        version: row.version,
+        payload: {
+          userId: data.userId as UserId,
+          questionCount: data.questionCount,
+          questionIds: data.questionIds as QuestionId[],
+          configSnapshot: data.configSnapshot,
+          questionSnapshots: data.questionSnapshots,
+        },
+        eventId: deterministicEventId(row),
+        occurredAt: row.occurredAt,
+      });
+    },
+  },
+  'quiz.answer_submitted': {
+    schema: answerSubmittedSchema,
+    mapper: (row, payload) => {
+      const data = payload as z.infer<typeof answerSubmittedSchema>;
+      return new AnswerSubmittedEvent({
+        aggregateId: row.sessionId as QuizSessionId,
+        version: row.version,
+        payload: {
+          answerId: data.answerId as AnswerId,
+          questionId: data.questionId as QuestionId,
+          selectedOptionIds: data.selectedOptionIds as OptionId[],
+          answeredAt: data.answeredAt,
+        },
+        eventId: deterministicEventId(row),
+        occurredAt: row.occurredAt,
+      });
+    },
+  },
+  'quiz.completed': {
+    schema: quizCompletedSchema,
+    mapper: (row, payload) => {
+      const data = payload as z.infer<typeof quizCompletedSchema>;
+      return new QuizCompletedEvent({
+        aggregateId: row.sessionId as QuizSessionId,
+        version: row.version,
+        payload: {
+          answeredCount: data.answeredCount,
+          totalCount: data.totalCount,
+        },
+        eventId: deterministicEventId(row),
+        occurredAt: row.occurredAt,
+      });
+    },
+  },
+  'quiz.expired': {
+    schema: quizExpiredSchema,
+    mapper: (row, payload) => {
+      const data = payload as z.infer<typeof quizExpiredSchema>;
+      return new QuizExpiredEvent({
+        aggregateId: row.sessionId as QuizSessionId,
+        version: row.version,
+        payload: {
+          expiredAt: data.expiredAt,
+        },
+        eventId: deterministicEventId(row),
+        occurredAt: row.occurredAt,
+      });
+    },
+  },
+};
+
+/**
+ * Generate deterministic event ID for consistent replay
+ */
+function deterministicEventId(row: QuizSessionEventRow): string {
+  // UUIDv5(sessionId + version + eventSequence, NAMESPACE) → identical ID every replay
+  return uuidv5(`${row.sessionId}:${row.version}:${row.eventSequence}`, EVENT_NAMESPACE);
+}
 
 export class DrizzleQuizRepository implements IQuizRepository {
   constructor(
@@ -136,11 +269,41 @@ export class DrizzleQuizRepository implements IQuizRepository {
    * Helper method for event-sourcing reconstruction
    */
   private mapToDomainEvents(
-    _eventRows: unknown[]
+    eventRows: QuizSessionEventRow[]
   ): DomainEvent<QuizSessionId, QuizEventPayloads>[] {
-    // TODO: Implement proper mapping from database rows to domain events
-    // This requires understanding the exact structure of DomainEvent class
-    // For now, return empty array to avoid TypeScript errors
-    return [];
+    const domainEvents: DomainEvent<QuizSessionId, QuizEventPayloads>[] = [];
+
+    for (const row of eventRows) {
+      const entry = MAPPERS[row.eventType];
+      if (!entry) {
+        // Unknown event type – fail fast (prevents silent data corruption)
+        throw new Error(`QuizSession ${row.sessionId}: unsupported eventType '${row.eventType}'`);
+      }
+
+      // 1. Validate / coerce payload
+      const parsed = entry.schema.safeParse(row.payload);
+      if (!parsed.success) {
+        throw new Error(
+          `QuizSession ${row.sessionId}: invalid payload for '${row.eventType}'.\n${parsed.error}`
+        );
+      }
+
+      // 2. Map to DomainEvent instance
+      const domainEvent = entry.mapper(row, parsed.data);
+
+      // 3. Preserve the original sequence number in the DomainEvent
+      // Use the static method to set sequence properly
+      DomainEvent.setEventSequence(domainEvent, row.eventSequence);
+
+      domainEvents.push(domainEvent);
+    }
+
+    // The DB query should already be ordered, but sort defensively
+    return domainEvents.sort(
+      (a, b) =>
+        a.version - b.version ||
+        a.eventSequence - b.eventSequence ||
+        a.occurredAt.getTime() - b.occurredAt.getTime()
+    );
   }
 }
