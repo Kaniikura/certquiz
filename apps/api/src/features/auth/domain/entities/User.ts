@@ -24,6 +24,22 @@ export class User extends AggregateRoot<UserId> {
   }
 
   /**
+   * Validate username input - extracted for reuse
+   */
+  private static validateUsername(username: string): Result<string, ValidationError> {
+    const cleanUsername = username.trim();
+    if (cleanUsername.length < 2 || cleanUsername.length > 50) {
+      return Result.fail(new ValidationError('Username must be between 2 and 50 characters'));
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanUsername)) {
+      return Result.fail(
+        new ValidationError('Username can only contain letters, numbers, underscores, and hyphens')
+      );
+    }
+    return Result.ok(cleanUsername);
+  }
+
+  /**
    * Factory method for creating new users
    */
   static create(props: {
@@ -39,15 +55,9 @@ export class User extends AggregateRoot<UserId> {
     }
 
     // Validate username
-    const cleanUsername = props.username.trim();
-    if (cleanUsername.length < 2 || cleanUsername.length > 50) {
-      return Result.fail(new ValidationError('Username must be between 2 and 50 characters'));
-    }
-
-    if (!/^[a-zA-Z0-9_-]+$/.test(cleanUsername)) {
-      return Result.fail(
-        new ValidationError('Username can only contain letters, numbers, underscores, and hyphens')
-      );
+    const usernameResult = User.validateUsername(props.username);
+    if (!usernameResult.success) {
+      return Result.fail(usernameResult.error);
     }
 
     const now = new Date();
@@ -56,7 +66,7 @@ export class User extends AggregateRoot<UserId> {
       new User(
         UserId.generate(),
         emailResult.data,
-        cleanUsername,
+        usernameResult.data,
         props.role ?? UserRole.User,
         props.keycloakId ?? null,
         true, // isActive defaults to true
@@ -140,18 +150,11 @@ export class User extends AggregateRoot<UserId> {
     }
 
     if (updates.username) {
-      const cleanUsername = updates.username.trim();
-      if (cleanUsername.length < 2 || cleanUsername.length > 50) {
-        return Result.fail(new ValidationError('Username must be between 2 and 50 characters'));
+      const usernameResult = User.validateUsername(updates.username);
+      if (!usernameResult.success) {
+        return Result.fail(usernameResult.error);
       }
-      if (!/^[a-zA-Z0-9_-]+$/.test(cleanUsername)) {
-        return Result.fail(
-          new ValidationError(
-            'Username can only contain letters, numbers, underscores, and hyphens'
-          )
-        );
-      }
-      newUsername = cleanUsername;
+      newUsername = usernameResult.data;
     }
 
     return Result.ok(
