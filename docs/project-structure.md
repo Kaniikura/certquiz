@@ -96,6 +96,7 @@ certquiz/
 │       │   │   ├── health/     # Health check endpoint
 │       │   │   │   ├── handler.ts
 │       │   │   │   ├── handler.test.ts
+│       │   │   │   ├── health.integration.test.ts
 │       │   │   │   └── route.ts
 │       │   │   └── migration/  # Database migration tooling
 │       │   │       ├── file-repository.ts
@@ -193,6 +194,7 @@ certquiz/
 
 > 📝 **Key Conventions**:
 > - **Co-located tests**: Unit tests use `.test.ts` suffix next to source files
+> - **Integration tests**: Single-slice tests use `.integration.test.ts` co-located, multi-slice tests in `tests/integration/`
 > - **Repository pattern**: Interface in domain, implementation alongside
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
