@@ -27,7 +27,7 @@ export default defineConfig({
         test: {
           name: 'api-unit',
           include: ['src/**/*.test.ts'],
-          exclude: ['**/node_modules/**', '**/dist/**'],
+          exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
           setupFiles: [
             './tests/setup/vitest.shared.setup.ts',
             './tests/setup/vitest.unit.setup.ts',
@@ -45,7 +45,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'api-integration',
-          include: ['tests/integration/**/*.test.ts'],
+          include: ['tests/integration/**/*.test.ts', 'src/**/*.integration.test.ts'],
           setupFiles: [
             './tests/setup/vitest.shared.setup.ts',
             './tests/setup/vitest.integration.setup.ts',
