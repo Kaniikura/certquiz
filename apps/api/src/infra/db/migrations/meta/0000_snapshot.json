@@ -1,6 +1,6 @@
 {
-  "id": "d7630ba7-03c5-41a5-8151-4c1eb1523cb9",
-  "prevId": "8d2212da-fbb6-4788-865a-4e18eaff534e",
+  "id": "6daa4130-9009-47a5-b1d6-25b9b9a5d29c",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -653,7 +653,7 @@
         },
         "ck_has_correct_answer": {
           "name": "ck_has_correct_answer",
-          "value": "options::text LIKE '%\"isCorrect\":true%'"
+          "value": "jsonb_path_exists(options, '$[*] ? (@.isCorrect == true)')"
         }
       },
       "isRLSEnabled": false
@@ -670,7 +670,7 @@
         },
         "version": {
           "name": "version",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 1
@@ -875,7 +875,7 @@
         },
         "version": {
           "name": "version",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -917,7 +917,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"quiz_session_snapshot\".\"state\" = $1",
+          "where": "state = 'IN_PROGRESS'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -996,7 +996,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"quiz_session_snapshot\".\"state\" in ($1, $2)",
+          "where": "state IN ('COMPLETED', 'EXPIRED')",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1012,7 +1012,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"quiz_session_snapshot\".\"state\" = $1",
+          "where": "state = 'IN_PROGRESS'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1499,7 +1499,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"webhook_event\".\"status\" = $1",
+          "where": "status = 'failed'",
           "concurrently": false,
           "method": "btree",
           "with": {}

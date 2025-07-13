@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1752369241364,
-      "tag": "0000_classy_masque",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1752387725000,
-      "tag": "0001_init_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1752406208923,
-      "tag": "0002_noisy_thundra",
+      "when": 1752411532532,
+      "tag": "0000_empty_stark_industries",
       "breakpoints": true
     }
   ]

@@ -27,6 +27,12 @@ CREATE TABLE "bookmarks" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "drizzle_migrations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"hash" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "question" (
 	"question_id" uuid PRIMARY KEY NOT NULL,
 	"current_version" integer DEFAULT 1 NOT NULL,
@@ -53,18 +59,18 @@ CREATE TABLE "question_version" (
 	"difficulty" "difficulty" DEFAULT 'Mixed' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "ck_options_min_count" CHECK (jsonb_array_length(options) >= 2),
-	CONSTRAINT "ck_has_correct_answer" CHECK (options::text LIKE '%"isCorrect":true%')
+	CONSTRAINT "ck_has_correct_answer" CHECK (jsonb_path_exists(options, '$[*] ? (@.isCorrect == true)'))
 );
 --> statement-breakpoint
 CREATE TABLE "quiz_session_event" (
 	"session_id" uuid NOT NULL,
-	"version" bigint DEFAULT 1 NOT NULL,
+	"version" integer DEFAULT 1 NOT NULL,
 	"event_type" text NOT NULL,
 	"payload" jsonb NOT NULL,
 	"occurred_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"event_sequence" integer DEFAULT 1 NOT NULL,
-	CONSTRAINT "ck_event_sequence_positive" CHECK (event_sequence > 0),
-	CONSTRAINT "ck_version_positive" CHECK (version > 0)
+	CONSTRAINT "ck_event_sequence_positive" CHECK ("quiz_session_event"."event_sequence" > 0),
+	CONSTRAINT "ck_version_positive" CHECK ("quiz_session_event"."version" > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "quiz_session_snapshot" (
@@ -76,20 +82,20 @@ CREATE TABLE "quiz_session_snapshot" (
 	"started_at" timestamp with time zone NOT NULL,
 	"expires_at" timestamp with time zone,
 	"completed_at" timestamp with time zone,
-	"version" bigint NOT NULL,
+	"version" integer NOT NULL,
 	"config" jsonb NOT NULL,
 	"question_order" uuid[] NOT NULL,
 	"answers" jsonb,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "ck_session_state_consistency" CHECK (
       CASE 
-        WHEN state = 'IN_PROGRESS' THEN expires_at IS NOT NULL
-        WHEN state = 'COMPLETED' THEN completed_at IS NOT NULL
-        WHEN state = 'EXPIRED' THEN completed_at IS NOT NULL
+        WHEN "quiz_session_snapshot"."state" = 'IN_PROGRESS' THEN "quiz_session_snapshot"."expires_at" IS NOT NULL
+        WHEN "quiz_session_snapshot"."state" = 'COMPLETED' THEN "quiz_session_snapshot"."completed_at" IS NOT NULL
+        WHEN "quiz_session_snapshot"."state" = 'EXPIRED' THEN "quiz_session_snapshot"."completed_at" IS NOT NULL
         ELSE true
       END
     ),
-	CONSTRAINT "ck_question_index_bounds" CHECK (current_question_index >= 0 AND current_question_index < question_count)
+	CONSTRAINT "ck_question_index_bounds" CHECK ("quiz_session_snapshot"."current_question_index" >= 0 AND "quiz_session_snapshot"."current_question_index" < "quiz_session_snapshot"."question_count")
 );
 --> statement-breakpoint
 CREATE TABLE "subscriptions" (
@@ -104,6 +110,12 @@ CREATE TABLE "subscriptions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "test_migration" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "user_progress" (
 	"user_id" uuid PRIMARY KEY NOT NULL,
 	"level" integer DEFAULT 1 NOT NULL,
@@ -116,16 +128,16 @@ CREATE TABLE "user_progress" (
 	"last_study_date" timestamp with time zone,
 	"category_stats" jsonb DEFAULT '{"version":1}'::jsonb NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "ck_progress_accuracy_range" CHECK (accuracy >= 0 AND accuracy <= 100),
+	CONSTRAINT "ck_progress_accuracy_range" CHECK ("user_progress"."accuracy" >= 0 AND "user_progress"."accuracy" <= 100),
 	CONSTRAINT "ck_progress_non_negative_values" CHECK (
-      level >= 1 AND 
-      experience >= 0 AND 
-      total_questions >= 0 AND 
-      correct_answers >= 0 AND
-      study_time_minutes >= 0 AND 
-      current_streak >= 0
+      "user_progress"."level" >= 1 AND 
+      "user_progress"."experience" >= 0 AND 
+      "user_progress"."total_questions" >= 0 AND 
+      "user_progress"."correct_answers" >= 0 AND
+      "user_progress"."study_time_minutes" >= 0 AND 
+      "user_progress"."current_streak" >= 0
     ),
-	CONSTRAINT "ck_correct_answers_not_exceed_total" CHECK (correct_answers <= total_questions)
+	CONSTRAINT "ck_correct_answers_not_exceed_total" CHECK ("user_progress"."correct_answers" <= "user_progress"."total_questions")
 );
 --> statement-breakpoint
 CREATE TABLE "webhook_event" (
@@ -167,7 +179,7 @@ CREATE UNIQUE INDEX "pk_quiz_session_event" ON "quiz_session_event" USING btree 
 CREATE INDEX "ix_quiz_event_session_version" ON "quiz_session_event" USING btree ("session_id","version");--> statement-breakpoint
 CREATE INDEX "ix_quiz_event_occurred" ON "quiz_session_event" USING btree ("occurred_at");--> statement-breakpoint
 CREATE INDEX "ix_quiz_event_type" ON "quiz_session_event" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "ix_quiz_event_payload" ON "quiz_session_event" USING btree ("event_type", "payload");--> statement-breakpoint
+CREATE INDEX "ix_quiz_event_payload" ON "quiz_session_event" USING btree ("event_type","payload");--> statement-breakpoint
 CREATE UNIQUE INDEX "ix_snapshot_active_user" ON "quiz_session_snapshot" USING btree ("owner_id") WHERE state = 'IN_PROGRESS';--> statement-breakpoint
 CREATE INDEX "ix_snapshot_owner_state" ON "quiz_session_snapshot" USING btree ("owner_id","state");--> statement-breakpoint
 CREATE INDEX "ix_snapshot_owner_started" ON "quiz_session_snapshot" USING btree ("owner_id","started_at");--> statement-breakpoint
