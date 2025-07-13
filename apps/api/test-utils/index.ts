@@ -2,7 +2,7 @@
  * Test utilities package - Unified test infrastructure
  *
  * This package consolidates all cross-cutting test concerns into a single,
- * well-organized package following o3's barrel export pattern.
+ * well-organized package following barrel export pattern.
  *
  * Organization:
  * - Each folder has its own barrel (index.ts) that gathers all its files

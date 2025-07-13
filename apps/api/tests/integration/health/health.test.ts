@@ -1,6 +1,6 @@
+import { app } from '@api/index';
+import { shutdownDatabase } from '@api/infra/db/client';
 import { afterAll, describe, expect, it } from 'vitest';
-import { app } from '../../../src/index';
-import { shutdownDatabase } from '../../../src/infra/db/client';
 
 describe('Health check endpoints', () => {
   afterAll(async () => {
