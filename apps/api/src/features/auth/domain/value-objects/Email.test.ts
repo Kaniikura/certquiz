@@ -172,7 +172,7 @@ describe('Email', () => {
       }
     });
 
-    it('should return false when comparing with same instance', () => {
+    it('should return true when comparing with same instance', () => {
       // Arrange
       const email = Email.create('test@example.com');
       expect(email.success).toBe(true);
