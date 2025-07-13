@@ -53,6 +53,15 @@ describe('Testcontainers Infrastructure', () => {
     client = postgres(dbUrl, { max: 10 });
     db = createTestDb(client);
     expect(db).toBeDefined();
+
+    // Verify expected tables exist (fail fast on schema drift)
+    const result = await client`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'test_users'
+    `;
+    expect(result).toHaveLength(1);
   });
 
   afterAll(async () => {

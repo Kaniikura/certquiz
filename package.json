@@ -25,6 +25,7 @@
     "test:api": "vitest run --project api-unit --project api-integration --project api-e2e",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
+    "test:cleanup": "./scripts/cleanup-testcontainers.sh",
     "db:generate": "bun --filter @certquiz/api db:generate",
     "db:migrate": "bun --filter @certquiz/api db:migrate",
     "db:migrate:up": "bun --filter @certquiz/api db:migrate:up",

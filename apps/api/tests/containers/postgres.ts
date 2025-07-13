@@ -44,12 +44,26 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
   if (instancePromise) return instancePromise;
 
   instancePromise = (async () => {
-    const container = await new PostgreSqlContainer('postgres:16-alpine')
+    const builder = new PostgreSqlContainer('postgres:16-alpine')
       .withDatabase('certquiz_test')
       .withUsername('postgres')
       .withPassword('password')
-      .withReuse() // Reuse container across test runs
-      .start();
+      .withLabels({
+        project: 'certquiz',
+        purpose: 'integration-tests',
+        team: 'dev',
+      });
+
+    // Only enable reuse in local development (not in CI)
+    // Respects both CI env var and explicit TESTCONTAINERS_REUSE_ENABLE
+    const shouldReuse =
+      process.env.CI !== 'true' && process.env.TESTCONTAINERS_REUSE_ENABLE !== 'false';
+
+    if (shouldReuse) {
+      builder.withReuse();
+    }
+
+    const container = await builder.start();
 
     // Create UUID extension
     try {
@@ -69,6 +83,10 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
         }`
       );
     }
+
+    // Run migrations on the main database
+    // This ensures test tables exist even in fresh containers (CI)
+    await drizzleMigrate(container.getConnectionUri());
 
     instance = container;
     return container;
@@ -104,6 +122,17 @@ async function _createSnapshot(container: StartedPostgreSqlContainer, name: stri
  */
 export const PostgresSingleton = {
   getInstance: getPostgres, // Use new function
+
+  /**
+   * Stop the container if it exists (useful for CI cleanup)
+   */
+  async stop(): Promise<void> {
+    if (instance) {
+      await instance.stop();
+      instance = undefined;
+      instancePromise = undefined;
+    }
+  },
 
   /**
    * Reset database to a clean state by dropping and recreating.

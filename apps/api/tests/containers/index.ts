@@ -4,7 +4,7 @@ if (typeof Bun !== 'undefined' || process.versions.bun) {
   process.env.TESTCONTAINERS_RYUK_DISABLED ??= 'true';
 }
 
-import { getPostgres } from './postgres';
+import { getPostgres, PostgresSingleton } from './postgres';
 
 /**
  * Global setup function for Vitest.
@@ -30,11 +30,25 @@ export async function setup() {
 
 /**
  * Global teardown function for Vitest.
- * Currently no-op as containers with .withReuse() persist between runs.
+ * Ensures containers are properly stopped in CI environments.
  */
 export async function teardown() {
-  // Containers with .withReuse() are kept running for faster subsequent test runs
-  // They will be automatically cleaned up by Testcontainers/Docker when no longer needed
+  // Only stop containers in CI to ensure cleanup
+  // In local dev, let them persist for faster subsequent runs
+  if (process.env.CI === 'true') {
+    console.log('🧹 CI environment detected - stopping test containers...');
+
+    try {
+      await PostgresSingleton.stop();
+      console.log('✅ Test containers stopped successfully');
+    } catch (_error) {
+      // Container might not have been started, which is fine
+      console.log('ℹ️  No containers to stop or already stopped');
+    }
+  } else {
+    console.log('💡 Local environment - keeping containers for faster reruns');
+    console.log('   Run "bun run test:cleanup" to remove reusable containers');
+  }
 }
 
 // Export utilities for direct use in tests
