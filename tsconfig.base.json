@@ -18,8 +18,8 @@
 
       /* app-local aliases – point at a folder inside the app   */
       "@api/*": ["apps/api/src/*"] /* Application source code */,
-      "@api-db/*": ["apps/api/src/infra/db/*"] /* Database schemas and migrations */,
-      "@api/test-support/*": ["apps/api/src/test-support/*"] /* Test utilities and helpers */,
+      "@api/test-utils": ["apps/api/test-utils/index.ts"] /* Test utilities package */,
+      "@api/test-utils/*": ["apps/api/test-utils/*"],
       "@web/*": ["apps/web/src/*"]
     },
     "resolveJsonModule": true,
