@@ -3,10 +3,9 @@
  * @fileoverview Event-sourcing implementation using Drizzle ORM with optimistic locking
  */
 
+import { quizSessionEvent, quizSessionSnapshot } from '@api/infra/db/schema/quiz';
 import { and, eq, lt } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
-
-import { quizSessionEvent, quizSessionSnapshot } from '../../../../infra/db/schema/quiz';
 import { QuizSession } from '../aggregates/QuizSession';
 import { OptimisticLockError } from '../errors/QuizErrors';
 import type { DomainEvent } from '../events/DomainEvent';

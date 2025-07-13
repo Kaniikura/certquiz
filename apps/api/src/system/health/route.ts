@@ -1,7 +1,7 @@
+import { ping } from '@api/infra/db/client';
+import type { LoggerVariables } from '@api/middleware/logger';
+import type { RequestIdVariables } from '@api/middleware/request-id';
 import { Hono } from 'hono';
-import { ping } from '../../infra/db/client';
-import type { LoggerVariables } from '../../middleware/logger';
-import type { RequestIdVariables } from '../../middleware/request-id';
 import { livenessCheckHandler, readinessCheckHandler } from './handler';
 
 /**
