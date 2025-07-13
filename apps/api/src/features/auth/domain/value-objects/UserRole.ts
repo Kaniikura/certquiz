@@ -6,6 +6,8 @@ export enum UserRole {
 }
 
 export namespace UserRole {
+  const ROLE_HIERARCHY = [UserRole.Guest, UserRole.User, UserRole.Premium, UserRole.Admin] as const;
+
   export function fromString(value: string): UserRole {
     switch (value) {
       case 'guest':
@@ -26,7 +28,6 @@ export namespace UserRole {
   }
 
   export function hasPermission(role: UserRole, requiredRole: UserRole): boolean {
-    const hierarchy = [UserRole.Guest, UserRole.User, UserRole.Premium, UserRole.Admin];
-    return hierarchy.indexOf(role) >= hierarchy.indexOf(requiredRole);
+    return ROLE_HIERARCHY.indexOf(role) >= ROLE_HIERARCHY.indexOf(requiredRole);
   }
 }
