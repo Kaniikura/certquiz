@@ -5,14 +5,8 @@
  * All seed functions return the inserted data for use in test assertions.
  */
 
-import type { ExtractTablesWithRelations } from 'drizzle-orm';
-import type { PostgresJsDatabase, PostgresJsTransaction } from 'drizzle-orm/postgres-js';
-import { type NewTestUser, type testSchema, testUsers } from './schema';
-
-// TODO: Replace with actual schema when implemented
-type Schema = typeof testSchema;
-type Relations = ExtractTablesWithRelations<Schema>;
-type TestDb = PostgresJsDatabase<Schema> | PostgresJsTransaction<Schema, Relations>;
+import { type NewTestUser, testUsers } from './schema';
+import type { TestDb } from './types';
 
 /**
  * Create a fake user for testing.
@@ -39,7 +33,11 @@ export function createFakeUser(overrides?: Partial<NewTestUser>): NewTestUser {
 /**
  * Seed users into the test database
  */
-export async function seedUsers(db: TestDb, count = 3, overrides?: Partial<NewTestUser>) {
+export async function seedUsers<DB extends TestDb>(
+  db: DB,
+  count = 3,
+  overrides?: Partial<NewTestUser>
+) {
   const users = Array.from({ length: count }, () => createFakeUser(overrides));
 
   const inserted = await db.insert(testUsers).values(users).returning();
@@ -50,7 +48,7 @@ export async function seedUsers(db: TestDb, count = 3, overrides?: Partial<NewTe
 /**
  * Seed a single admin user
  */
-export async function seedAdminUser(db: TestDb, overrides?: Partial<NewTestUser>) {
+export async function seedAdminUser<DB extends TestDb>(db: DB, overrides?: Partial<NewTestUser>) {
   const [admin] = await seedUsers(db, 1, {
     name: 'Admin User',
     email: 'admin@example.com',
@@ -63,7 +61,7 @@ export async function seedAdminUser(db: TestDb, overrides?: Partial<NewTestUser>
 /**
  * Clear all users from the test database
  */
-export async function clearUsers(db: TestDb) {
+export async function clearUsers<DB extends TestDb>(db: DB) {
   await db.delete(testUsers);
 }
 

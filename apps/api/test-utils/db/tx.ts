@@ -1,13 +1,5 @@
-import type { ExtractTablesWithRelations } from 'drizzle-orm';
-import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import { getTestDb } from './connection';
-import type { testSchema } from './schema';
-
-// TODO: Replace with actual schema when implemented
-type Schema = typeof testSchema;
-type Relations = ExtractTablesWithRelations<Schema>;
-
-type DrizzleTransaction = PostgresJsTransaction<Schema, Relations>;
+import type { TestTransaction } from './types';
 
 /**
  * Custom error class for intentional test rollbacks.
@@ -44,10 +36,10 @@ class RollbackError extends Error {
  * });
  * ```
  */
-export function withRollback<T>(fn: (tx: DrizzleTransaction) => Promise<T>): Promise<T>;
+export function withRollback<T>(fn: (tx: TestTransaction) => Promise<T>): Promise<T>;
 export function withRollback<T>(fn: () => Promise<T>): Promise<T>;
 export async function withRollback<T>(
-  fn: ((tx: DrizzleTransaction) => Promise<T>) | (() => Promise<T>)
+  fn: ((tx: TestTransaction) => Promise<T>) | (() => Promise<T>)
 ): Promise<T> {
   const db = await getTestDb();
   let result: T | undefined;
@@ -58,7 +50,7 @@ export async function withRollback<T>(
       // Run the test function and capture result
       // Check if function expects transaction parameter
       if (fn.length === 1) {
-        result = await (fn as (tx: DrizzleTransaction) => Promise<T>)(tx);
+        result = await (fn as (tx: TestTransaction) => Promise<T>)(tx);
       } else {
         result = await (fn as () => Promise<T>)();
       }
@@ -105,8 +97,8 @@ export async function createTestContext() {
   let isRolledBack = false;
 
   // Create a promise that resolves when the context is ready
-  let contextReady: (value: { tx: DrizzleTransaction; rollback: () => Promise<void> }) => void;
-  const contextPromise = new Promise<{ tx: DrizzleTransaction; rollback: () => Promise<void> }>(
+  let contextReady: (value: { tx: TestTransaction; rollback: () => Promise<void> }) => void;
+  const contextPromise = new Promise<{ tx: TestTransaction; rollback: () => Promise<void> }>(
     (resolve) => {
       contextReady = resolve;
     }

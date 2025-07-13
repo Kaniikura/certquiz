@@ -1,20 +1,18 @@
 import { sql } from 'drizzle-orm';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle as baseDrizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import postgres, { type Sql } from 'postgres';
 import { getPostgres } from '../../tests/containers/postgres';
 import * as testSchema from './schema';
+import type { TestDb } from './types';
 
-// TODO: Replace with actual schema when implemented
-type Schema = typeof testSchema;
-
-let testDb: PostgresJsDatabase<Schema> | undefined;
+let testDb: PostgresJsDatabase<typeof testSchema> | undefined;
 let sqlClient: postgres.Sql | undefined;
 
 /**
  * Get or create a Drizzle database instance for tests.
  * Automatically connects to the test container.
  */
-export async function getTestDb(): Promise<PostgresJsDatabase<Schema>> {
+export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
   if (testDb) return testDb;
 
   const container = await getPostgres();
@@ -27,7 +25,7 @@ export async function getTestDb(): Promise<PostgresJsDatabase<Schema>> {
     connect_timeout: 10,
   });
 
-  testDb = drizzle(sqlClient, { schema: testSchema });
+  testDb = baseDrizzle(sqlClient, { schema: testSchema });
 
   return testDb;
 }
@@ -68,5 +66,39 @@ export async function checkTestDbHealth(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Create a correctly-typed Drizzle instance for tests.
+ * Injects the testSchema automatically so the result is always compatible with TestDb.
+ *
+ * @param client Optional postgres client to reuse, otherwise creates a new one
+ * @returns TestDb instance with proper schema typing
+ */
+export function createTestDb(client?: Sql): TestDb {
+  const sql = client ?? postgres({ max: 5 });
+  return baseDrizzle(sql, { schema: testSchema });
+}
+
+/**
+ * Loan-pattern helper for test database operations.
+ * Automatically handles client creation and cleanup.
+ *
+ * @example
+ * ```ts
+ * await withTestDb(async (db) => {
+ *   await seedUsers(db, 2);
+ *   // ... test operations
+ * });
+ * ```
+ */
+export async function withTestDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
+  const client = postgres({ max: 5 });
+  try {
+    const db = createTestDb(client);
+    return await fn(db);
+  } finally {
+    await client.end({ timeout: 5 });
   }
 }

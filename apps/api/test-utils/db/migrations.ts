@@ -2,17 +2,16 @@ import { exec } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgres from 'postgres';
 
 const execAsync = promisify(exec);
 
 /**
- * Run Drizzle migrations against a test container
+ * Run Drizzle migrations against a database URL
+ * This runs migrations inside a fresh database, not during container bootstrap
+ * @internal - Use createTestDatabase from core.ts instead
  */
-export async function drizzleMigrate(container: StartedPostgreSqlContainer): Promise<void> {
-  const connectionUri = container.getConnectionUri();
-
+export async function drizzleMigrate(databaseUrl: string): Promise<void> {
   // Check if migrations directory exists
   const migrationsDir = path.join(__dirname, '../../src/infra/db/migrations');
   let hasMigrations = false;
@@ -27,7 +26,7 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
 
   if (!hasMigrations) {
     // No production migrations yet, but create test tables
-    await createTestTables(container);
+    await createTestTablesDirectly(databaseUrl);
     return;
   }
 
@@ -35,7 +34,7 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
     // Set DATABASE_URL for drizzle-kit to use
     const env = {
       ...process.env,
-      DATABASE_URL: connectionUri,
+      DATABASE_URL: databaseUrl,
     };
 
     // Run migrations
@@ -44,12 +43,17 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
       env,
     });
 
-    if (stderr && !stderr.includes('No migrations to run')) {
-      console.log('ℹ️ No migrations to run - database is already up to date');
+    if (stderr) {
+      if (stderr.includes('No migrations to run')) {
+        console.log('ℹ️ No migrations to run - database is already up to date');
+      } else {
+        // Show actual stderr content for genuine warnings/errors
+        console.warn('Migration stderr:', stderr);
+      }
     }
 
     // Also create test-specific tables
-    await createTestTables(container);
+    await createTestTablesDirectly(databaseUrl);
   } catch (error) {
     throw new Error(
       `Failed to run migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -58,53 +62,30 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
 }
 
 /**
- * Check if migrations are up to date
- */
-export async function checkMigrations(container: StartedPostgreSqlContainer): Promise<boolean> {
-  const connectionUri = container.getConnectionUri();
-
-  try {
-    const env = {
-      ...process.env,
-      DATABASE_URL: connectionUri,
-    };
-
-    const { stdout } = await execAsync('bun run drizzle-kit check', {
-      cwd: path.join(__dirname, '../..'),
-      env,
-    });
-
-    return stdout.includes('No migrations to run');
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Create test-specific tables that are not part of production schema
+ * Uses direct postgres connection instead of container.exec()
+ * @internal
  */
-async function createTestTables(container: StartedPostgreSqlContainer): Promise<void> {
+async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
+  const client = postgres(databaseUrl, { max: 1 });
+
   try {
     // Create test_users table for infrastructure testing
-    await container.exec([
-      'psql',
-      '-U',
-      'postgres',
-      '-d',
-      'certquiz_test',
-      '-c',
-      `CREATE TABLE IF NOT EXISTS test_users (
+    await client`
+      CREATE TABLE IF NOT EXISTS test_users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         is_active BOOLEAN NOT NULL DEFAULT true,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`,
-    ]);
+      )
+    `;
   } catch (error) {
     throw new Error(
       `Failed to create test tables: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
+  } finally {
+    await client.end();
   }
 }
 
