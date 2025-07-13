@@ -917,7 +917,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"quiz_session_snapshot\".\"state\" = $1",
+          "where": "\"quiz_session_snapshot\".\"state\" = 'IN_PROGRESS'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -996,7 +996,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"quiz_session_snapshot\".\"state\" in ($1, $2)",
+          "where": "\"quiz_session_snapshot\".\"state\" in ('COMPLETED', 'EXPIRED')",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1012,7 +1012,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"quiz_session_snapshot\".\"state\" = $1",
+          "where": "\"quiz_session_snapshot\".\"state\" = 'IN_PROGRESS'",
           "concurrently": false,
           "method": "btree",
           "with": {}
