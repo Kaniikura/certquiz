@@ -40,6 +40,7 @@ certquiz/
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
 │       │   ├── index.ts        # Application entry point
+│       │   ├── app-factory.ts  # Dependency injection factory
 │       │   ├── routes.ts       # Route composition root
 │       │   ├── features/       # Feature slices (vertical slices)
 │       │   │   ├── quiz/       # Quiz bounded context
@@ -118,11 +119,15 @@ certquiz/
 │       │   │   │   └── uow.ts             # Unit of work implementation
 │       │   │   ├── events/                # Domain event dispatcher
 │       │   │   │   └── EventBus.ts
-│       │   │   ├── keycloak/              # Auth provider
-│       │   │   │   └── KeycloakClient.ts
+│       │   │   ├── logger/                # Centralized logger creation
+│       │   │   │   └── root-logger.ts     # Pino logger factory
+│       │   │   ├── auth/                  # Auth provider implementations
+│       │   │   │   ├── AuthProvider.ts    # Interface & types
+│       │   │   │   ├── KeyCloakAuthProvider.ts # KeyCloak implementation
+│       │   │   │   ├── StubAuthProvider.ts # Test stub
+│       │   │   │   └── AuthProviderFactory.ts # Factory pattern
 │       │   │   └── email/                 # Email service (future)
 │       │   ├── shared/         # Shared kernel
-│       │   │   ├── logger.ts   # Pino structured logging
 │       │   │   ├── result.ts   # Result<T, E> type
 │       │   │   ├── errors.ts   # Domain & application errors
 │       │   │   ├── types.ts    # Shared TypeScript types
@@ -134,11 +139,11 @@ certquiz/
 │       │   │   │   └── Mutable.ts    # Helper type for testing immutability
 │       │   │   └── index.ts          # Barrel export for domain test utilities
 │       │   └── middleware/     # Global HTTP middleware
-│       │       ├── error.middleware.ts
-│       │       ├── logging.middleware.ts
-│       │       ├── request-id.middleware.ts
-│       │       ├── cors.middleware.ts
-│       │       └── rate-limit.middleware.ts
+│       │       ├── on-error.ts         # Error handling
+│       │       ├── logger.ts           # Logger factory middleware
+│       │       ├── request-id.ts       # Request ID generation
+│       │       ├── security.ts         # CORS & security headers
+│       │       └── index.ts            # Middleware exports
 │       ├── test-utils/         # Unified test infrastructure package
 │       │   ├── db/             # Database & container utilities
 │       │   │   ├── container.ts       # Testcontainers management
@@ -199,6 +204,7 @@ certquiz/
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
+> - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
 > - **Unified test infrastructure**: Consolidated test utilities in `test-utils/` package
 - **Domain test utilities**: Feature-specific helpers remain in `test-support/` for co-location
 
@@ -318,6 +324,36 @@ export class DrizzleQuizRepository implements IQuizRepository {
         set: data
       })
   }
+}
+```
+
+### 5. App Factory Pattern (Dependency Injection) 🏭
+Clean dependency injection for testing and production:
+```typescript
+// app-factory.ts
+export function buildApp(deps: AppDependencies): Hono {
+  const app = new Hono();
+  
+  // Middleware with injected dependencies
+  app.use('*', createLoggerMiddleware(deps.logger));
+  
+  // Routes with injected repositories  
+  app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
+  return app;
+}
+
+// Production bootstrap
+export async function buildProductionApp() {
+  const logger = createRootLogger();
+  const authProvider = createAuthProvider();
+  
+  return buildApp({
+    logger,
+    clock: () => new Date(),
+    ping: () => db.ping(),
+    userRepository: withTx(trx => new DrizzleUserRepository(trx), withTransaction),
+    authProvider,
+  });
 }
 ```
 
@@ -611,6 +647,24 @@ describe('POST /quiz/start', () => {
     expect(data.quizId).toBeDefined()
   })
 })
+```
+
+### 4. Test App Factory Pattern
+```typescript
+// tests/helpers/app.ts
+export async function makeHttpApp() {
+  return buildApp({
+    logger: fakeLogger(),
+    clock: () => new Date('2025-01-01T00:00:00Z'),
+    ping: async () => { /* no-op */ },
+    userRepository: fakeUserRepository(),
+    authProvider: fakeAuthProvider(),
+  });
+}
+
+// Usage in tests
+const app = await makeHttpApp();
+const response = await app.request('/api/auth/login', { /* ... */ });
 ```
 
 ## Performance Considerations
