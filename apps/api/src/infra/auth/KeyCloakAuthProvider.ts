@@ -62,7 +62,14 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid credentials', 'INVALID_CREDENTIALS', 401));
       }
 
-      const tokenData = await response.json();
+      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak API response structure varies
+      let tokenData: any;
+      try {
+        tokenData = await response.json();
+      } catch (error) {
+        logger.error('Failed to parse KeyCloak response', { error });
+        return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+      }
 
       const authToken: AuthToken = {
         accessToken: tokenData.access_token,
@@ -104,7 +111,14 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid token', 'INVALID_TOKEN', 401));
       }
 
-      const userInfo = await response.json();
+      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak userinfo response structure varies
+      let userInfo: any;
+      try {
+        userInfo = await response.json();
+      } catch (error) {
+        logger.error('Failed to parse KeyCloak userinfo response', { error });
+        return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+      }
 
       const authUserInfo: AuthUserInfo = {
         id: userInfo.sub,
@@ -158,7 +172,14 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid refresh token', 'INVALID_REFRESH_TOKEN', 401));
       }
 
-      const tokenData = await response.json();
+      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak token response structure varies
+      let tokenData: any;
+      try {
+        tokenData = await response.json();
+      } catch (error) {
+        logger.error('Failed to parse KeyCloak refresh token response', { error });
+        return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+      }
 
       const authToken: AuthToken = {
         accessToken: tokenData.access_token,

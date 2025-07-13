@@ -52,7 +52,9 @@ export const loginRoute = new Hono<{
       success: true,
       data: result.data,
     });
-  } catch (_error) {
+  } catch (error) {
+    // biome-ignore lint/suspicious/noConsole: TODO: Inject logger service and use structured logging
+    console.error('Login route error:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
