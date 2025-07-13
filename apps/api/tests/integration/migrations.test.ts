@@ -11,9 +11,8 @@ import { getMigrationStatus, migrateDown, migrateUp } from '@api/system/migratio
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   closeAllTrackedClients,
-  createTestDatabase,
-  resetMigrationState,
-  type TestDatabase,
+  dropFreshDb,
+  freshDbUrl,
   verifyMigrationTables,
 } from '../../test-utils/db';
 import { type ProcessResult, runBunScript } from '../../test-utils/process';
@@ -22,35 +21,36 @@ import { PostgresSingleton } from '../containers/postgres';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('Database Migrations', () => {
-  let testDb: TestDatabase;
+  let rootConnectionUrl: string;
 
-  // Create a single test database for all migration tests
+  // Get root connection URL for creating fresh databases
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
-    testDb = await createTestDatabase(container, {
-      prefix: 'test_migrations',
-    });
+    rootConnectionUrl = container.getConnectionUri();
   });
 
-  // Clean up the test database and close all pools
+  // Clean up all tracked connections
   afterAll(async () => {
-    if (testDb) {
-      await testDb.cleanup();
-    }
     await closeAllTrackedClients();
   });
 
   describe('🆙 Empty database → apply migrations', () => {
+    let dbUrl: string;
+
     beforeAll(async () => {
-      await resetMigrationState(testDb.connectionUrl);
+      dbUrl = await freshDbUrl(rootConnectionUrl);
+    });
+
+    afterAll(async () => {
+      await dropFreshDb(rootConnectionUrl, dbUrl);
     });
 
     it('should apply migrations successfully (up)', async () => {
-      const result = await migrateUp(testDb.connectionUrl);
+      const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
 
       // Verify tables were created using helper function
-      const verification = await verifyMigrationTables(testDb.connectionUrl);
+      const verification = await verifyMigrationTables(dbUrl);
 
       expect(verification.migrationsTable).toBe(true);
       expect(verification.allTablesExist).toBe(true);
@@ -59,20 +59,26 @@ describe('Database Migrations', () => {
   });
 
   describe('🆙🆙 Already migrated database', () => {
+    let dbUrl: string;
+
     beforeAll(async () => {
-      await resetMigrationState(testDb.connectionUrl);
-      const result = await migrateUp(testDb.connectionUrl);
+      dbUrl = await freshDbUrl(rootConnectionUrl);
+      const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
+    });
+
+    afterAll(async () => {
+      await dropFreshDb(rootConnectionUrl, dbUrl);
     });
 
     it('should be idempotent (running up twice is safe)', async () => {
       // Second run should be no-op
-      const result = await migrateUp(testDb.connectionUrl);
+      const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
     });
 
     it('should show correct status', async () => {
-      const statusResult = await getMigrationStatus(testDb.connectionUrl);
+      const statusResult = await getMigrationStatus(dbUrl);
       expect(statusResult.success).toBe(true);
 
       if (statusResult.success) {
@@ -87,29 +93,36 @@ describe('Database Migrations', () => {
   });
 
   describe('🔄 Rollback operations', () => {
+    let dbUrl: string;
+
     beforeAll(async () => {
-      await resetMigrationState(testDb.connectionUrl);
-      const result = await migrateUp(testDb.connectionUrl);
+      dbUrl = await freshDbUrl(rootConnectionUrl);
+      const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
+    });
+
+    afterAll(async () => {
+      await dropFreshDb(rootConnectionUrl, dbUrl);
     });
 
     it('should rollback migrations (down)', async () => {
       // Roll back the migration
-      const result = await migrateDown(testDb.connectionUrl);
+      const result = await migrateDown(dbUrl);
       expect(result.success).toBe(true);
 
       // The test_migration table should still exist since we only rolled back the latest migration
       // (which was the version field type change, not the initial table creation)
-      const verification = await verifyMigrationTables(testDb.connectionUrl);
+      const verification = await verifyMigrationTables(dbUrl);
       expect(verification.expectedTables.test_migration).toBe(true);
 
       // Verify status shows one less applied migration
-      const statusResult = await getMigrationStatus(testDb.connectionUrl);
+      const statusResult = await getMigrationStatus(dbUrl);
       expect(statusResult.success).toBe(true);
 
       if (statusResult.success) {
-        // Should have one migration applied (the one that creates test_migration)
-        expect(statusResult.data.applied.length).toBe(1);
+        // Should have two migrations applied after rollback (0000 + 0001)
+        // The rollback removes the latest migration (0002)
+        expect(statusResult.data.applied.length).toBe(2);
         expect(statusResult.data.pending.length).toBeGreaterThan(0);
       }
     });
@@ -117,29 +130,23 @@ describe('Database Migrations', () => {
 });
 
 describe('🔒 Concurrency Control', () => {
-  let concurrencyTestDb: TestDatabase;
+  let rootConnectionUrl: string;
+  let dbUrl: string;
 
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
-    concurrencyTestDb = await createTestDatabase(container, {
-      prefix: 'test_concurrency',
-    });
-    await resetMigrationState(concurrencyTestDb.connectionUrl);
+    rootConnectionUrl = container.getConnectionUri();
+    dbUrl = await freshDbUrl(rootConnectionUrl);
   });
 
   afterAll(async () => {
-    if (concurrencyTestDb) {
-      await concurrencyTestDb.cleanup();
-    }
+    await dropFreshDb(rootConnectionUrl, dbUrl);
   });
 
   it('should use advisory locks to prevent concurrent migrations', async () => {
     // Use Promise.allSettled for deterministic testing
     // This prevents the test from failing before we can inspect results
-    const promises = [
-      migrateUp(concurrencyTestDb.connectionUrl),
-      migrateUp(concurrencyTestDb.connectionUrl),
-    ];
+    const promises = [migrateUp(dbUrl), migrateUp(dbUrl)];
 
     const results = await Promise.allSettled(promises);
 

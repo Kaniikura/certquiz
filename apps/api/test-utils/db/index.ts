@@ -11,6 +11,7 @@ export {
   extractDatabaseName,
   type TestDatabase,
 } from './container';
+export { dropFreshDb, freshDbUrl } from './fresh-database';
 export { drizzleMigrate, resetMigrationState, verifyMigrationTables } from './migrations';
 export { testSchema } from './schema';
 export { seedAdminUser, seedUsers } from './seeds';
