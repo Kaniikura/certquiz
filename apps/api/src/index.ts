@@ -1,5 +1,5 @@
-import pino from 'pino';
 import { buildProductionApp } from './app-factory';
+import { createRootLogger } from './infra/logger/root-logger';
 
 // Build production app with real dependencies
 export const app = await buildProductionApp();
@@ -10,21 +10,8 @@ export const app = await buildProductionApp();
 // -----------------------------------------------------------------
 const port = Number(process.env.API_PORT) || 4000;
 
-// Create startup logger
-const startupLogger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  transport:
-    process.env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            ignore: 'pid,hostname',
-            translateTime: 'HH:MM:ss.l',
-          },
-        }
-      : undefined,
-});
+// Create startup logger using centralized factory
+const startupLogger = createRootLogger();
 
 // Log startup info when running as main module
 if (import.meta.main) {

@@ -5,30 +5,61 @@
 
 import { Hono } from 'hono';
 import pkg from '../package.json';
-import type { User } from './features/auth/domain/entities/User';
 import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
-import type { Email } from './features/auth/domain/value-objects/Email';
-import type { UserId } from './features/auth/domain/value-objects/UserId';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
+import type { Logger } from './infra/logger/root-logger';
+import type { TransactionContext } from './infra/unit-of-work';
 import {
+  createLoggerMiddleware,
   errorHandler,
   type LoggerVariables,
-  loggerMiddleware,
   type RequestIdVariables,
   requestIdMiddleware,
   securityMiddleware,
 } from './middleware';
-import { healthRoute } from './system/health/route';
+import { createHealthRoute } from './system/health/route';
 
 /**
  * Dependencies required to build the application
  */
 export interface AppDependencies {
+  // Cross-cutting concerns
+  logger: Logger;
+  clock: () => Date;
+
+  // Health & infrastructure
+  ping: () => Promise<void>;
+
+  // Domain services
   userRepository: IUserRepository;
   authProvider: IAuthProvider;
+}
+
+/**
+ * Helper to wrap repository with automatic transaction handling
+ * Reduces boilerplate for repositories that need transactions
+ */
+function withTx<T extends object>(
+  repoFactory: (trx: TransactionContext) => T,
+  withTransaction: <R>(fn: (trx: TransactionContext) => Promise<R>) => Promise<R>
+): T {
+  // Proxy intercepts any function call on repo interface
+  return new Proxy({} as T, {
+    get(_target, prop: string | symbol) {
+      return async (...args: unknown[]) =>
+        withTransaction(async (trx) => {
+          const repo = repoFactory(trx);
+          const method = repo[prop as keyof T];
+          if (typeof method === 'function') {
+            return method.apply(repo, args);
+          }
+          throw new Error(`Property ${String(prop)} is not a function`);
+        });
+    },
+  });
 }
 
 /**
@@ -45,11 +76,11 @@ export function buildApp(deps: AppDependencies): Hono<{
 
   // Global middleware (order matters!)
   app.use('*', requestIdMiddleware());
-  app.use('*', loggerMiddleware);
+  app.use('*', createLoggerMiddleware(deps.logger));
   app.use('*', securityMiddleware());
 
   // Mount routes with injected dependencies
-  app.route('/health', healthRoute);
+  app.route('/health', createHealthRoute({ ping: deps.ping, clock: deps.clock }));
   app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
 
   // TODO: Add more routes as features are implemented
@@ -99,58 +130,20 @@ export async function buildProductionApp(): Promise<
     './features/auth/domain/repositories/DrizzleUserRepository'
   );
   const { withTransaction } = await import('./infra/unit-of-work');
+  const { ping } = await import('./infra/db/client');
+  const { createRootLogger } = await import('./infra/logger/root-logger');
 
   // Create production dependencies
+  const logger = createRootLogger();
   const authProvider = createAuthProvider();
 
-  // Note: We need to handle repository creation differently since it needs transaction
-  // For now, we'll create a wrapper that handles transaction internally
-  const userRepository: IUserRepository = {
-    async findByEmail(email: Email): Promise<User | null> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.findByEmail(email);
-      });
-    },
-    async findById(id: UserId): Promise<User | null> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.findById(id);
-      });
-    },
-    async findByKeycloakId(keycloakId: string): Promise<User | null> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.findByKeycloakId(keycloakId);
-      });
-    },
-    async findByUsername(username: string): Promise<User | null> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.findByUsername(username);
-      });
-    },
-    async save(user: User): Promise<void> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.save(user);
-      });
-    },
-    async isEmailTaken(email: Email, excludeUserId?: UserId): Promise<boolean> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.isEmailTaken(email, excludeUserId);
-      });
-    },
-    async isUsernameTaken(username: string, excludeUserId?: UserId): Promise<boolean> {
-      return withTransaction(async (trx) => {
-        const repo = new DrizzleUserRepository(trx);
-        return repo.isUsernameTaken(username, excludeUserId);
-      });
-    },
-  };
+  // Use withTx helper to reduce boilerplate
+  const userRepository = withTx((trx) => new DrizzleUserRepository(trx), withTransaction);
 
   return buildApp({
+    logger,
+    clock: () => new Date(),
+    ping,
     userRepository,
     authProvider,
   });
