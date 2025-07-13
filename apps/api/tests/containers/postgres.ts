@@ -70,12 +70,6 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
       );
     }
 
-    // Run Drizzle migrations
-    await drizzleMigrate(container);
-
-    // Create a clean snapshot after migrations for fast resets
-    await createSnapshot(container, 'clean');
-
     instance = container;
     return container;
   })();
@@ -87,7 +81,7 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
  * Create a named snapshot of the current database state.
  * This uses pg_dump internally for fast backup/restore.
  */
-async function createSnapshot(container: StartedPostgreSqlContainer, name: string): Promise<void> {
+async function _createSnapshot(container: StartedPostgreSqlContainer, name: string): Promise<void> {
   // Use pg_dump to create a snapshot
   const dumpResult = await container.exec([
     'pg_dump',
@@ -180,7 +174,7 @@ export const PostgresSingleton = {
       ]);
 
       // Re-run migrations to restore schema
-      await drizzleMigrate(container);
+      await drizzleMigrate(container.getConnectionUri());
     });
   },
 

@@ -1,55 +1,92 @@
-import { sql } from 'drizzle-orm';
+import postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
-  checkTestDbHealth,
-  closeTestDb,
-  getTestDb,
+  createTestDatabase,
+  createTestDb,
   seedAdminUser,
   seedUsers,
+  type TestDb,
   withRollback,
 } from '../../test-utils/db';
 import { testUsers } from '../../test-utils/db/schema';
 import { PostgresSingleton } from '../containers/postgres';
 
+// Helper functions for clean resource management
+async function usingMainDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
+  const url = await PostgresSingleton.getConnectionUrl();
+  const client = postgres(url, { max: 5 });
+  const db = createTestDb(client);
+  try {
+    return await fn(db);
+  } finally {
+    await client.end();
+  }
+}
+
+async function usingIsoDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
+  const container = await PostgresSingleton.getInstance();
+  const { url, drop } = await createTestDatabase({ root: container });
+  const client = postgres(url, { max: 5 });
+  const db = createTestDb(client);
+  try {
+    return await fn(db);
+  } finally {
+    await client.end();
+    await drop(); // Clean up isolated database
+  }
+}
+
 describe('Testcontainers Infrastructure', () => {
+  let dbUrl: string;
+  let cleanup: () => Promise<void>;
+  let db: TestDb;
+  let client: postgres.Sql;
+
   beforeAll(async () => {
-    // Container will be started automatically by getTestDb
-    const db = await getTestDb();
+    // Create fresh test database with migrations
+    const container = await PostgresSingleton.getInstance();
+    const fresh = await createTestDatabase({ root: container });
+    dbUrl = fresh.url;
+    cleanup = fresh.drop;
+
+    // Create Drizzle client for testing
+    client = postgres(dbUrl, { max: 10 });
+    db = createTestDb(client);
     expect(db).toBeDefined();
   });
 
   afterAll(async () => {
-    await closeTestDb();
+    await client.end({ timeout: 5 });
+    await cleanup();
   });
 
   afterEach(async () => {
     // Verify no active transactions are left open
-    const db = await getTestDb();
-    const result = await db.execute(
-      sql`SELECT count(*) as count 
-          FROM pg_stat_activity 
-          WHERE state <> 'idle' 
-          AND datname = 'certquiz_test'
-          AND pid <> pg_backend_pid()`
-    );
+    const result = await client`SELECT count(*) as count 
+        FROM pg_stat_activity 
+        WHERE state <> 'idle' 
+        AND datname = current_database()
+        AND pid <> pg_backend_pid()`;
     const activeConnections = Number(result[0]?.count) || 0;
     expect(activeConnections).toBe(0);
   });
 
   it('should connect to PostgreSQL container', async () => {
-    const healthy = await checkTestDbHealth();
-    expect(healthy).toBe(true);
+    // Test database connection by running a simple query
+    const result = await client`SELECT 1 as test`;
+    expect(result[0].test).toBe(1);
   });
 
   it('should get connection URL', async () => {
     const url = await PostgresSingleton.getConnectionUrl();
     expect(url).toMatch(/^postgres(?:ql)?:\/\/postgres:password@localhost:\d+\/certquiz_test$/);
+
+    // Verify our test database URL is different (has random name)
+    expect(dbUrl).toMatch(/^postgres(?:ql)?:\/\/postgres:password@localhost:\d+\/t_/);
   });
 
   describe('Transaction Isolation', () => {
     it('should rollback changes after test', async () => {
-      const db = await getTestDb();
-
       // Count users before test
       const beforeCount = await db.select().from(testUsers);
 
@@ -105,33 +142,36 @@ describe('Testcontainers Infrastructure', () => {
     });
   });
 
-  describe('Database Reset', () => {
-    it('should reset database to clean state', async () => {
-      let db = await getTestDb();
+  describe('Database Reset (PostgresSingleton.resetToCleanState)', () => {
+    it('should clear the main database', async () => {
+      // Add data to main database
+      await usingMainDb(async (db) => {
+        await seedUsers(db, 2);
+      });
 
-      // Verify database starts empty (for clarity)
-      const initialUsers = await db.select().from(testUsers);
-      expect(initialUsers).toHaveLength(0);
-
-      // Add some data
-      await seedUsers(db, 2);
-
-      // Verify data was added
-      const usersBeforeReset = await db.select().from(testUsers);
-      expect(usersBeforeReset).toHaveLength(2);
-
-      // Close existing connections before reset
-      await closeTestDb();
-
-      // Reset database
+      // Reset main database
       await PostgresSingleton.resetToCleanState();
 
-      // Get a new connection after reset
-      db = await getTestDb();
+      // Verify main database is empty after reset
+      await usingMainDb(async (db) => {
+        const users = await db.select().from(testUsers);
+        expect(users).toHaveLength(0);
+      });
+    });
 
-      // Verify database is empty
-      const users = await db.select().from(testUsers);
-      expect(users).toHaveLength(0);
+    it('should NOT affect isolated databases', async () => {
+      // Test that reset only affects main DB, not isolated ones
+      await usingIsoDb(async (isoDb) => {
+        // Add data to isolated database
+        await seedUsers(isoDb, 2);
+
+        // Reset main database (should not affect isolated)
+        await PostgresSingleton.resetToCleanState();
+
+        // Verify isolated database is untouched
+        const users = await isoDb.select().from(testUsers);
+        expect(users).toHaveLength(2);
+      });
     });
   });
 });

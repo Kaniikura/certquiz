@@ -11,8 +11,7 @@ import { getMigrationStatus, migrateDown, migrateUp } from '@api/system/migratio
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   closeAllTrackedClients,
-  dropFreshDb,
-  freshDbUrl,
+  createTestDatabase,
   verifyMigrationTables,
 } from '../../test-utils/db';
 import { type ProcessResult, runBunScript } from '../../test-utils/process';
@@ -36,13 +35,17 @@ describe('Database Migrations', () => {
 
   describe('🆙 Empty database → apply migrations', () => {
     let dbUrl: string;
+    let cleanup: () => Promise<void>;
 
     beforeAll(async () => {
-      dbUrl = await freshDbUrl(rootConnectionUrl);
+      // Migration tests need empty DB - no auto-migration
+      const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
+      dbUrl = fresh.url;
+      cleanup = fresh.drop;
     });
 
     afterAll(async () => {
-      await dropFreshDb(rootConnectionUrl, dbUrl);
+      await cleanup();
     });
 
     it('should apply migrations successfully (up)', async () => {
@@ -60,15 +63,19 @@ describe('Database Migrations', () => {
 
   describe('🆙🆙 Already migrated database', () => {
     let dbUrl: string;
+    let cleanup: () => Promise<void>;
 
     beforeAll(async () => {
-      dbUrl = await freshDbUrl(rootConnectionUrl);
+      // Start with empty DB, then apply migrations manually
+      const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
+      dbUrl = fresh.url;
+      cleanup = fresh.drop;
       const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
     });
 
     afterAll(async () => {
-      await dropFreshDb(rootConnectionUrl, dbUrl);
+      await cleanup();
     });
 
     it('should be idempotent (running up twice is safe)', async () => {
@@ -94,15 +101,19 @@ describe('Database Migrations', () => {
 
   describe('🔄 Rollback operations', () => {
     let dbUrl: string;
+    let cleanup: () => Promise<void>;
 
     beforeAll(async () => {
-      dbUrl = await freshDbUrl(rootConnectionUrl);
+      // Start with empty DB, then apply migrations manually for rollback testing
+      const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
+      dbUrl = fresh.url;
+      cleanup = fresh.drop;
       const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
     });
 
     afterAll(async () => {
-      await dropFreshDb(rootConnectionUrl, dbUrl);
+      await cleanup();
     });
 
     it('should rollback migrations (down)', async () => {
@@ -110,20 +121,19 @@ describe('Database Migrations', () => {
       const result = await migrateDown(dbUrl);
       expect(result.success).toBe(true);
 
-      // The test_migration table should still exist since we only rolled back the latest migration
-      // (which was the version field type change, not the initial table creation)
+      // After migration history reset, we now have only one migration file
+      // Rolling back completely removes all tables including test_migration
       const verification = await verifyMigrationTables(dbUrl);
-      expect(verification.expectedTables.test_migration).toBe(true);
+      expect(verification.expectedTables.test_migration).toBe(false);
 
-      // Verify status shows one less applied migration
+      // Verify status shows no applied migrations after rollback
       const statusResult = await getMigrationStatus(dbUrl);
       expect(statusResult.success).toBe(true);
 
       if (statusResult.success) {
-        // Should have two migrations applied after rollback (0000 + 0001)
-        // The rollback removes the latest migration (0002)
-        expect(statusResult.data.applied.length).toBe(2);
-        expect(statusResult.data.pending.length).toBeGreaterThan(0);
+        // Should have zero migrations applied after rollback
+        expect(statusResult.data.applied.length).toBe(0);
+        expect(statusResult.data.pending.length).toBe(1); // One pending migration
       }
     });
   });
@@ -132,15 +142,19 @@ describe('Database Migrations', () => {
 describe('🔒 Concurrency Control', () => {
   let rootConnectionUrl: string;
   let dbUrl: string;
+  let cleanup: () => Promise<void>;
 
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
     rootConnectionUrl = container.getConnectionUri();
-    dbUrl = await freshDbUrl(rootConnectionUrl);
+    // Concurrency tests need empty DB for migration testing
+    const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
+    dbUrl = fresh.url;
+    cleanup = fresh.drop;
   });
 
   afterAll(async () => {
-    await dropFreshDb(rootConnectionUrl, dbUrl);
+    await cleanup();
   });
 
   it('should use advisory locks to prevent concurrent migrations', async () => {
