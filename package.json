@@ -33,6 +33,8 @@
     "db:migrate:validate": "bun --filter @certquiz/api db:migrate:validate",
     "db:studio": "bun --filter @certquiz/api db:studio",
     "db:drop": "bun --filter @certquiz/api db:drop",
+    "db:reset": "bun --filter @certquiz/api db:reset",
+    "db:check": "bun --filter @certquiz/api db:check",
     "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
     "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",

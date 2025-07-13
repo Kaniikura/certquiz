@@ -183,4 +183,4 @@ CREATE INDEX "ix_progress_user_stats" ON "user_progress" USING btree ("user_id",
 CREATE INDEX "ix_progress_category_stats_gin" ON "user_progress" USING gin ("category_stats");--> statement-breakpoint
 CREATE INDEX "ix_webhook_status_scheduled" ON "webhook_event" USING btree ("status","scheduled_at");--> statement-breakpoint
 CREATE INDEX "ix_webhook_type" ON "webhook_event" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "ix_webhook_retry" ON "webhook_event" USING btree ("retry_count") WHERE status = 'pending';
+CREATE INDEX "ix_webhook_retry" ON "webhook_event" USING btree ("retry_count") WHERE status = 'failed';

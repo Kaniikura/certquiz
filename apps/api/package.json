@@ -21,7 +21,9 @@
     "db:migrate:status": "bun --env-file=../../.env run src/system/migration/migrate.ts status",
     "db:migrate:validate": "bun --env-file=../../.env run src/system/migration/validate.ts",
     "db:studio": "bun --env-file=../../.env drizzle-kit studio",
-    "db:drop": "bun --env-file=../../.env drizzle-kit drop"
+    "db:drop": "bun --env-file=../../.env drizzle-kit drop",
+    "db:reset": "bun run db:drop && bun run db:generate && bun run db:migrate",
+    "db:check": "bun --env-file=../../.env drizzle-kit check"
   },
   "dependencies": {
     "@certquiz/shared": "workspace:*",
