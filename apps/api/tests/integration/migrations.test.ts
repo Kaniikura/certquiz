@@ -48,16 +48,18 @@ describe('Database Migrations', () => {
       await cleanup();
     });
 
-    it('should apply migrations successfully (up)', async () => {
+    it('should apply production migrations successfully (up)', async () => {
       const result = await migrateUp(dbUrl);
       expect(result.success).toBe(true);
 
-      // Verify tables were created using helper function
-      const verification = await verifyMigrationTables(dbUrl);
-
+      // Verify production tables were created
+      const verification = await verifyMigrationTables(dbUrl, []);
       expect(verification.migrationsTable).toBe(true);
-      expect(verification.allTablesExist).toBe(true);
-      expect(verification.expectedTables.test_migration).toBe(true);
+
+      // Verify test tables are NOT created by production migrations
+      const testTableCheck = await verifyMigrationTables(dbUrl, ['test_migration', 'test_users']);
+      expect(testTableCheck.expectedTables.test_migration).toBe(false);
+      expect(testTableCheck.expectedTables.test_users).toBe(false);
     });
   });
 
@@ -202,6 +204,43 @@ describe('🔒 Concurrency Control', () => {
       }
     }
   }, 15000); // Increase timeout for concurrency test
+});
+
+describe('🧪 Test Infrastructure Setup', () => {
+  let rootConnectionUrl: string;
+
+  beforeAll(async () => {
+    const container = await PostgresSingleton.getInstance();
+    rootConnectionUrl = container.getConnectionUri();
+  });
+
+  afterAll(async () => {
+    await closeAllTrackedClients();
+  });
+
+  it('should create test-specific tables when using drizzleMigrate', async () => {
+    // Create empty database
+    const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
+    const dbUrl = fresh.url;
+
+    try {
+      // Import drizzleMigrate for test infrastructure setup
+      const { drizzleMigrate } = await import('../../test-utils/db/migrations');
+
+      // Run drizzleMigrate which includes both production migrations and test tables
+      await drizzleMigrate(dbUrl);
+
+      // Verify both production and test tables were created
+      const verification = await verifyMigrationTables(dbUrl, ['test_migration', 'test_users']);
+
+      expect(verification.migrationsTable).toBe(true);
+      expect(verification.allTablesExist).toBe(true);
+      expect(verification.expectedTables.test_migration).toBe(true);
+      expect(verification.expectedTables.test_users).toBe(true);
+    } finally {
+      await fresh.drop();
+    }
+  });
 });
 
 describe('📋 Migration Validation', () => {

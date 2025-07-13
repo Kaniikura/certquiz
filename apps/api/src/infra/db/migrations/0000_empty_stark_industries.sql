@@ -110,21 +110,6 @@ CREATE TABLE "subscriptions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "test_migration" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"name" text NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "test_users" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"name" text NOT NULL,
-	"email" text NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "test_users_email_unique" UNIQUE("email")
-);
---> statement-breakpoint
 CREATE TABLE "user_progress" (
 	"user_id" uuid PRIMARY KEY NOT NULL,
 	"level" integer DEFAULT 1 NOT NULL,
@@ -179,9 +164,9 @@ CREATE INDEX "ix_question_premium" ON "question" USING btree ("is_premium","stat
 CREATE UNIQUE INDEX "pk_question_version" ON "question_version" USING btree ("question_id","version");--> statement-breakpoint
 CREATE INDEX "ix_question_version_current" ON "question_version" USING btree ("question_id","version");--> statement-breakpoint
 CREATE INDEX "ix_question_text_search" ON "question_version" USING btree (to_tsvector('english', "question_text"));--> statement-breakpoint
-CREATE INDEX "ix_question_tags" ON "question_version" USING btree ("tags");--> statement-breakpoint
-CREATE INDEX "ix_question_exam_types" ON "question_version" USING btree ("exam_types");--> statement-breakpoint
-CREATE INDEX "ix_question_categories" ON "question_version" USING btree ("categories");--> statement-breakpoint
+CREATE INDEX "ix_question_tags" ON "question_version" USING gin ("tags");--> statement-breakpoint
+CREATE INDEX "ix_question_exam_types" ON "question_version" USING gin ("exam_types");--> statement-breakpoint
+CREATE INDEX "ix_question_categories" ON "question_version" USING gin ("categories");--> statement-breakpoint
 CREATE INDEX "ix_question_options_gin" ON "question_version" USING gin ("options");--> statement-breakpoint
 CREATE INDEX "ix_question_type_difficulty" ON "question_version" USING btree ("question_type","difficulty");--> statement-breakpoint
 CREATE UNIQUE INDEX "pk_quiz_session_event" ON "quiz_session_event" USING btree ("session_id","version","event_sequence");--> statement-breakpoint
@@ -195,7 +180,6 @@ CREATE INDEX "ix_snapshot_owner_started" ON "quiz_session_snapshot" USING btree 
 CREATE INDEX "ix_snapshot_state_started" ON "quiz_session_snapshot" USING btree ("state","started_at");--> statement-breakpoint
 CREATE INDEX "ix_snapshot_expired_cleanup" ON "quiz_session_snapshot" USING btree ("completed_at") WHERE state IN ('COMPLETED', 'EXPIRED');--> statement-breakpoint
 CREATE INDEX "ix_snapshot_active_expiry" ON "quiz_session_snapshot" USING btree ("expires_at") WHERE state = 'IN_PROGRESS';--> statement-breakpoint
-CREATE INDEX "ix_subscriptions_bmac_email" ON "subscriptions" USING btree ("buy_me_a_coffee_email");--> statement-breakpoint
 CREATE INDEX "ix_subscriptions_status" ON "subscriptions" USING btree ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "unq_bmac_email" ON "subscriptions" USING btree ("buy_me_a_coffee_email");--> statement-breakpoint
 CREATE INDEX "ix_progress_experience_desc" ON "user_progress" USING btree ("experience" DESC);--> statement-breakpoint
