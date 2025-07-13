@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { getPostgres } from '../containers/postgres';
-import * as testSchema from './test-schema';
+import { getPostgres } from '../../tests/containers/postgres';
+import * as testSchema from './schema';
 
 // TODO: Replace with actual schema when implemented
 type Schema = typeof testSchema;

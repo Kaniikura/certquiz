@@ -1,7 +1,7 @@
 import type { ExtractTablesWithRelations } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
-import { getTestDb } from './db';
-import type { testSchema } from './test-schema';
+import { getTestDb } from './connection';
+import type { testSchema } from './schema';
 
 // TODO: Replace with actual schema when implemented
 type Schema = typeof testSchema;

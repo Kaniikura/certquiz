@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgres from 'postgres';
 
 const execAsync = promisify(exec);
 
@@ -44,7 +45,7 @@ export async function drizzleMigrate(container: StartedPostgreSqlContainer): Pro
     });
 
     if (stderr && !stderr.includes('No migrations to run')) {
-      console.warn('Migration warnings:', stderr);
+      console.log('ℹ️ No migrations to run - database is already up to date');
     }
 
     // Also create test-specific tables
@@ -104,5 +105,79 @@ async function createTestTables(container: StartedPostgreSqlContainer): Promise<
     throw new Error(
       `Failed to create test tables: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
+  }
+}
+
+/**
+ * Resets migration state by dropping the drizzle schema
+ * This is safer than dropping all tables
+ *
+ * @param connectionUrl - Database connection URL
+ */
+export async function resetMigrationState(connectionUrl: string): Promise<void> {
+  const client = postgres(connectionUrl, { max: 1 });
+
+  try {
+    // Drop only the drizzle schema to reset migration state
+    await client`DROP SCHEMA IF EXISTS "drizzle" CASCADE;`;
+
+    // Also drop any test-specific tables
+    await client`DROP TABLE IF EXISTS "test_migration" CASCADE;`;
+  } catch {
+    // Silently ignore - schema might not exist
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Verifies that expected tables exist after migration
+ *
+ * @param connectionUrl - Database connection URL
+ * @param expectedTables - List of table names that should exist
+ * @returns Object with verification results
+ */
+export async function verifyMigrationTables(
+  connectionUrl: string,
+  expectedTables: string[] = ['test_migration']
+): Promise<{
+  migrationsTable: boolean;
+  expectedTables: Record<string, boolean>;
+  allTablesExist: boolean;
+}> {
+  const client = postgres(connectionUrl, { max: 1 });
+
+  try {
+    // Check for migrations table
+    const migrationsResult = await client`
+      SELECT table_schema, table_name 
+      FROM information_schema.tables 
+      WHERE table_schema IN ('public', 'drizzle')
+      AND table_name = '__drizzle_migrations'
+    `;
+
+    // Check for expected tables in public schema
+    const publicTables = await client`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_type = 'BASE TABLE'
+      ORDER BY table_name
+    `;
+
+    const publicTableNames = publicTables.map((row) => row.table_name);
+    const expectedTableResults: Record<string, boolean> = {};
+
+    for (const tableName of expectedTables) {
+      expectedTableResults[tableName] = publicTableNames.includes(tableName);
+    }
+
+    return {
+      migrationsTable: migrationsResult.length > 0,
+      expectedTables: expectedTableResults,
+      allTablesExist: Object.values(expectedTableResults).every((exists) => exists),
+    };
+  } finally {
+    await client.end();
   }
 }

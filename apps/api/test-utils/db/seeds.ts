@@ -1,6 +1,13 @@
+/**
+ * Test seed data helpers
+ *
+ * Provides utility functions for seeding test data in integration tests.
+ * All seed functions return the inserted data for use in test assertions.
+ */
+
 import type { ExtractTablesWithRelations } from 'drizzle-orm';
 import type { PostgresJsDatabase, PostgresJsTransaction } from 'drizzle-orm/postgres-js';
-import { type NewTestUser, type testSchema, testUsers } from '../test-schema';
+import { type NewTestUser, type testSchema, testUsers } from './schema';
 
 // TODO: Replace with actual schema when implemented
 type Schema = typeof testSchema;
@@ -59,3 +66,9 @@ export async function seedAdminUser(db: TestDb, overrides?: Partial<NewTestUser>
 export async function clearUsers(db: TestDb) {
   await db.delete(testUsers);
 }
+
+// TODO: Add more seed functions as schema is implemented
+// export function createFakeQuiz() { ... }
+// export async function seedQuizzes() { ... }
+// export async function seedQuestions() { ... }
+// export async function seedSessions() { ... }

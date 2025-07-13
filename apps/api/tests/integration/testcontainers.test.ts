@@ -1,14 +1,15 @@
 import { sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { PostgresSingleton } from '../containers/postgres';
 import {
   checkTestDbHealth,
   closeTestDb,
   getTestDb,
-  seeds,
-  testUsers,
+  seedAdminUser,
+  seedUsers,
   withRollback,
-} from '../support';
+} from '../../test-utils/db';
+import { testUsers } from '../../test-utils/db/schema';
+import { PostgresSingleton } from '../containers/postgres';
 
 describe('Testcontainers Infrastructure', () => {
   beforeAll(async () => {
@@ -54,7 +55,7 @@ describe('Testcontainers Infrastructure', () => {
 
       // Run test in transaction that will be rolled back
       await withRollback(async (db) => {
-        const users = await seeds.seedUsers(db, 3);
+        const users = await seedUsers(db, 3);
         expect(users).toHaveLength(3);
 
         const count = await db.select().from(testUsers);
@@ -78,7 +79,7 @@ describe('Testcontainers Infrastructure', () => {
   describe('Seed Helpers', () => {
     it('should create test users', async () => {
       await withRollback(async (db) => {
-        const users = await seeds.seedUsers(db, 5);
+        const users = await seedUsers(db, 5);
 
         expect(users).toHaveLength(5);
         users.forEach((user: (typeof users)[0]) => {
@@ -96,7 +97,7 @@ describe('Testcontainers Infrastructure', () => {
 
     it('should create admin user', async () => {
       await withRollback(async (db) => {
-        const admin = await seeds.seedAdminUser(db);
+        const admin = await seedAdminUser(db);
 
         expect(admin.name).toBe('Admin User');
         expect(admin.email).toBe('admin@example.com');
@@ -113,7 +114,7 @@ describe('Testcontainers Infrastructure', () => {
       expect(initialUsers).toHaveLength(0);
 
       // Add some data
-      await seeds.seedUsers(db, 2);
+      await seedUsers(db, 2);
 
       // Verify data was added
       const usersBeforeReset = await db.select().from(testUsers);
