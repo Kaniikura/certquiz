@@ -60,7 +60,9 @@ describe('readinessCheckHandler', () => {
   it('should return healthy status when database is healthy', async () => {
     // Arrange
     const mockDb = {
-      ping: async () => true,
+      ping: async () => {
+        // Successful ping returns void
+      },
     };
 
     // Act
@@ -73,10 +75,12 @@ describe('readinessCheckHandler', () => {
     expect(result.services.database.status).toBe('healthy');
   });
 
-  it('should return unhealthy status when database is unhealthy', async () => {
+  it('should return unhealthy status when database ping throws error', async () => {
     // Arrange
     const mockDb = {
-      ping: async () => false,
+      ping: async () => {
+        throw new Error('Database connection failed');
+      },
     };
 
     // Act
@@ -88,7 +92,7 @@ describe('readinessCheckHandler', () => {
     expect(result.services.database.status).toBe('unhealthy');
   });
 
-  it('should return unhealthy status when database ping throws error', async () => {
+  it('should handle different error types from database ping', async () => {
     // Arrange
     const mockDb = {
       ping: async () => {
@@ -108,7 +112,9 @@ describe('readinessCheckHandler', () => {
   it('should return valid ISO timestamp', async () => {
     // Arrange
     const mockDb = {
-      ping: async () => true,
+      ping: async () => {
+        // Successful ping returns void
+      },
     };
 
     // Act

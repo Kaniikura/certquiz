@@ -33,9 +33,8 @@ describe('Database client', () => {
 
   describe('health check', () => {
     it('should provide ping functionality', async () => {
-      // Without a real database in test, ping will return false
-      const result = await ping();
-      expect(typeof result).toBe('boolean');
+      // Without a real database in test, ping will throw an error
+      await expect(ping()).rejects.toThrow();
     });
   });
 

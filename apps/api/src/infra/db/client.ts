@@ -139,15 +139,11 @@ export type DrizzleDb = PostgresJsDatabase;
 
 /**
  * Health check function
+ * Throws an error if the database is unreachable
  */
-export async function ping(): Promise<boolean> {
-  try {
-    const pool = getPool();
-    await pool`SELECT 1`;
-    return true;
-  } catch (_error) {
-    return false;
-  }
+export async function ping(): Promise<void> {
+  const pool = getPool();
+  await pool`SELECT 1`; // Will throw if DB is unreachable
 }
 
 /**
