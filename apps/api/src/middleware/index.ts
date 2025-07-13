@@ -10,7 +10,7 @@
  */
 
 export type { LoggerVariables } from './logger';
-export { loggerMiddleware } from './logger';
+export { createLoggerMiddleware } from './logger';
 export { errorHandler, toHttpError } from './on-error';
 export type { RequestIdVariables } from './request-id';
 export { requestIdMiddleware } from './request-id';
