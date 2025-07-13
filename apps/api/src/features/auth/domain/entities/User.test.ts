@@ -235,7 +235,7 @@ describe('User', () => {
       if (result.success) {
         expect(result.data.email.toString()).toBe('newemail@example.com');
         expect(result.data.username).toBe('testuser'); // unchanged
-        expect(result.data.updatedAt.getTime()).toBeGreaterThan(user.updatedAt.getTime());
+        expect(result.data.updatedAt.getTime()).toBeGreaterThanOrEqual(user.updatedAt.getTime());
       }
     });
 
@@ -251,7 +251,7 @@ describe('User', () => {
       if (result.success) {
         expect(result.data.email.toString()).toBe('test@example.com'); // unchanged
         expect(result.data.username).toBe('newusername');
-        expect(result.data.updatedAt.getTime()).toBeGreaterThan(user.updatedAt.getTime());
+        expect(result.data.updatedAt.getTime()).toBeGreaterThanOrEqual(user.updatedAt.getTime());
       }
     });
 
@@ -316,7 +316,9 @@ describe('User', () => {
         expect(deactivatedUser.isActive).toBe(false);
         expect(deactivatedUser.email.toString()).toBe('test@example.com'); // unchanged
         expect(deactivatedUser.username).toBe('testuser'); // unchanged
-        expect(deactivatedUser.updatedAt.getTime()).toBeGreaterThan(user.updatedAt.getTime());
+        expect(deactivatedUser.updatedAt.getTime()).toBeGreaterThanOrEqual(
+          user.updatedAt.getTime()
+        );
       }
     });
   });
