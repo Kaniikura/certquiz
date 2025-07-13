@@ -136,16 +136,16 @@ export async function buildProductionApp(): Promise<
         return repo.save(user);
       });
     },
-    async isEmailTaken(email: Email): Promise<boolean> {
+    async isEmailTaken(email: Email, excludeUserId?: UserId): Promise<boolean> {
       return withTransaction(async (trx) => {
         const repo = new DrizzleUserRepository(trx);
-        return repo.isEmailTaken(email);
+        return repo.isEmailTaken(email, excludeUserId);
       });
     },
-    async isUsernameTaken(username: string): Promise<boolean> {
+    async isUsernameTaken(username: string, excludeUserId?: UserId): Promise<boolean> {
       return withTransaction(async (trx) => {
         const repo = new DrizzleUserRepository(trx);
-        return repo.isUsernameTaken(username);
+        return repo.isUsernameTaken(username, excludeUserId);
       });
     },
   };
