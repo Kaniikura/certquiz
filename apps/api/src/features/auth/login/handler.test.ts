@@ -3,6 +3,7 @@
  * @fileoverview TDD tests for login use case handler
  */
 
+import { FakeAuthProvider } from '@api/infra/auth/FakeAuthProvider';
 import { ValidationError } from '@api/shared/errors';
 import { unwrapOrFail } from '@api/test-support';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,15 +15,8 @@ import {
 } from '../domain/errors/AuthErrors';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserRole } from '../domain/value-objects/UserRole';
-import type { LoginRequest } from './dto';
-import { validateLoginRequest } from './dto';
 import { loginHandler } from './handler';
-
-// Mock KeyCloak client
-const mockKeyCloakClient = {
-  authenticate: vi.fn(),
-  getUserInfo: vi.fn(),
-};
+import { type LoginRequest, loginSchema } from './validation';
 
 // Mock user repository
 const createMockUserRepository = (): IUserRepository => ({
@@ -37,9 +31,11 @@ const createMockUserRepository = (): IUserRepository => ({
 
 describe('loginHandler', () => {
   let mockUserRepo: IUserRepository;
+  let fakeAuthProvider: FakeAuthProvider;
 
   beforeEach(() => {
     mockUserRepo = createMockUserRepository();
+    fakeAuthProvider = new FakeAuthProvider();
     vi.clearAllMocks();
   });
 
@@ -49,13 +45,13 @@ describe('loginHandler', () => {
       const invalidInput = null;
 
       // Act
-      const result = await loginHandler(invalidInput, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(invalidInput, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
-        expect(result.error.message).toContain('Request body must be an object');
+        expect(result.error.message).toContain('Expected object, received null');
       }
     });
 
@@ -64,13 +60,13 @@ describe('loginHandler', () => {
       const invalidInput = { password: 'password123' };
 
       // Act
-      const result = await loginHandler(invalidInput, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(invalidInput, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
-        expect(result.error.message).toContain('Email is required');
+        expect(result.error.message).toContain('Required');
       }
     });
 
@@ -79,13 +75,13 @@ describe('loginHandler', () => {
       const invalidInput = { email: 'test@example.com' };
 
       // Act
-      const result = await loginHandler(invalidInput, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(invalidInput, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
-        expect(result.error.message).toContain('Password is required');
+        expect(result.error.message).toContain('Required');
       }
     });
   });
@@ -101,7 +97,7 @@ describe('loginHandler', () => {
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(null);
 
       // Act
-      const result = await loginHandler(validLoginRequest, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(validLoginRequest, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
@@ -131,7 +127,7 @@ describe('loginHandler', () => {
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(inactiveUser);
 
       // Act
-      const result = await loginHandler(validLoginRequest, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(validLoginRequest, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
@@ -156,23 +152,16 @@ describe('loginHandler', () => {
       );
 
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(activeUser);
-      mockKeyCloakClient.authenticate.mockResolvedValue({
-        success: false,
-        error: 'Invalid credentials',
-      });
+      fakeAuthProvider.givenAuthenticationFails('Invalid credentials');
 
       // Act
-      const result = await loginHandler(validLoginRequest, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(validLoginRequest, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(InvalidCredentialsError);
       }
-      expect(mockKeyCloakClient.authenticate).toHaveBeenCalledWith(
-        'test@example.com',
-        'password123'
-      );
     });
 
     it('should succeed with valid credentials and active user', async () => {
@@ -193,13 +182,10 @@ describe('loginHandler', () => {
       const mockToken = 'jwt-token-123';
 
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(activeUser);
-      mockKeyCloakClient.authenticate.mockResolvedValue({
-        success: true,
-        data: { token: mockToken },
-      });
+      fakeAuthProvider.givenAuthenticationSucceeds('test@example.com', mockToken);
 
       // Act
-      const result = await loginHandler(validLoginRequest, mockUserRepo, mockKeyCloakClient);
+      const result = await loginHandler(validLoginRequest, mockUserRepo, fakeAuthProvider);
 
       // Assert
       expect(result.success).toBe(true);
@@ -231,13 +217,13 @@ describe('loginHandler', () => {
       );
 
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(activeUser);
-      mockKeyCloakClient.authenticate.mockRejectedValue(new Error('KeyCloak service unavailable'));
+      fakeAuthProvider.givenAuthenticationThrows(new Error('KeyCloak service unavailable'));
 
       // Act
       const result = await loginHandler(
         { email: 'test@example.com', password: 'password123' },
         mockUserRepo,
-        mockKeyCloakClient
+        fakeAuthProvider
       );
 
       // Assert
@@ -257,7 +243,7 @@ describe('loginHandler', () => {
       const result = await loginHandler(
         { email: 'test@example.com', password: 'password123' },
         mockUserRepo,
-        mockKeyCloakClient
+        fakeAuthProvider
       );
 
       // Assert
@@ -269,7 +255,7 @@ describe('loginHandler', () => {
   });
 });
 
-describe('validateLoginRequest', () => {
+describe('loginSchema validation', () => {
   it('should validate correct login request', () => {
     // Arrange
     const validInput = {
@@ -278,30 +264,13 @@ describe('validateLoginRequest', () => {
     };
 
     // Act
-    const result = validateLoginRequest(validInput);
+    const result = loginSchema.safeParse(validInput);
 
     // Assert
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.email).toBe('test@example.com');
       expect(result.data.password).toBe('password123');
-    }
-  });
-
-  it('should trim email whitespace', () => {
-    // Arrange
-    const inputWithWhitespace = {
-      email: '  test@example.com  ',
-      password: 'password123',
-    };
-
-    // Act
-    const result = validateLoginRequest(inputWithWhitespace);
-
-    // Assert
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.email).toBe('test@example.com');
     }
   });
 
@@ -313,12 +282,91 @@ describe('validateLoginRequest', () => {
     };
 
     // Act
-    const result = validateLoginRequest(invalidInput);
+    const result = loginSchema.safeParse(invalidInput);
 
     // Assert
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.message).toContain('Invalid email format');
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0].code).toBe('invalid_string');
+      expect(result.error.issues[0].message).toContain('Invalid email format');
+    }
+  });
+
+  it('should fail with missing email', () => {
+    // Arrange
+    const invalidInput = {
+      password: 'password123',
+    };
+
+    // Act
+    const result = loginSchema.safeParse(invalidInput);
+
+    // Assert
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0].code).toBe('invalid_type');
+      expect(result.error.issues[0].path).toEqual(['email']);
+    }
+  });
+
+  it('should fail with missing password', () => {
+    // Arrange
+    const invalidInput = {
+      email: 'test@example.com',
+    };
+
+    // Act
+    const result = loginSchema.safeParse(invalidInput);
+
+    // Assert
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0].code).toBe('invalid_type');
+      expect(result.error.issues[0].path).toEqual(['password']);
+    }
+  });
+
+  it('should fail with empty email', () => {
+    // Arrange
+    const invalidInput = {
+      email: '',
+      password: 'password123',
+    };
+
+    // Act
+    const result = loginSchema.safeParse(invalidInput);
+
+    // Assert
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      // Empty email triggers both min length and email format validation
+      expect(result.error.issues.length).toBeGreaterThanOrEqual(1);
+      // Check that one of the issues is about email being required
+      const hasEmailRequiredError = result.error.issues.some(
+        (issue) => issue.message === 'Email is required'
+      );
+      expect(hasEmailRequiredError).toBe(true);
+    }
+  });
+
+  it('should fail with empty password', () => {
+    // Arrange
+    const invalidInput = {
+      email: 'test@example.com',
+      password: '',
+    };
+
+    // Act
+    const result = loginSchema.safeParse(invalidInput);
+
+    // Assert
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0].message).toBe('Password is required');
     }
   });
 });

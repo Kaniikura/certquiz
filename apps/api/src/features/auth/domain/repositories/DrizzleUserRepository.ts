@@ -1,6 +1,6 @@
 import { authUser } from '@api/infra/db/schema/user';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import { and, eq, ne } from 'drizzle-orm';
-import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import pino from 'pino';
 import { User } from '../entities/User';
 import type { Email } from '../value-objects/Email';
@@ -18,9 +18,7 @@ const logger = pino({
  * Uses transaction for consistency with other repositories
  */
 export class DrizzleUserRepository implements IUserRepository {
-  constructor(
-    private readonly trx: PostgresJsTransaction<Record<string, never>, Record<string, never>>
-  ) {}
+  constructor(private readonly trx: TransactionContext) {}
 
   async findById(id: UserId): Promise<User | null> {
     try {

@@ -3,6 +3,8 @@
  * @fileoverview Business logic for user authentication
  */
 
+import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
+import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import {
   InvalidCredentialsError,
@@ -13,34 +15,22 @@ import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { Email } from '../domain/value-objects/Email';
 import { UserId } from '../domain/value-objects/UserId';
 import type { LoginResponse } from './dto';
-import { validateLoginRequest } from './dto';
-
-// KeyCloak client interface (will be implemented in infrastructure)
-export interface IKeyCloakClient {
-  authenticate(
-    email: string,
-    password: string
-  ): Promise<{
-    success: boolean;
-    data: { token: string };
-    error?: string;
-  }>;
-}
+import { loginSchema } from './validation';
 
 /**
  * Login use case handler
- * Coordinates authentication between domain and KeyCloak
+ * Coordinates authentication between domain and auth provider
  */
 export async function loginHandler(
   input: unknown,
   userRepository: IUserRepository,
-  keyCloakClient: IKeyCloakClient
+  authProvider: IAuthProvider
 ): Promise<Result<LoginResponse>> {
   try {
-    // 1. Validate input
-    const validationResult = validateLoginRequest(input);
+    // 1. Validate input using Zod schema
+    const validationResult = loginSchema.safeParse(input);
     if (!validationResult.success) {
-      return Result.fail(validationResult.error);
+      return Result.fail(new ValidationError(validationResult.error.message));
     }
 
     const { email, password } = validationResult.data;
@@ -61,15 +51,15 @@ export async function loginHandler(
       return Result.fail(new UserNotActiveError());
     }
 
-    // 4. Authenticate with KeyCloak
-    const authResult = await keyCloakClient.authenticate(email, password);
+    // 4. Authenticate with auth provider
+    const authResult = await authProvider.authenticate(email, password);
     if (!authResult.success) {
       return Result.fail(new InvalidCredentialsError());
     }
 
     // 5. Return successful login response
     return Result.ok({
-      token: authResult.data?.token,
+      token: authResult.data.accessToken,
       user: {
         id: UserId.toString(user.id),
         email: user.email.toString(),

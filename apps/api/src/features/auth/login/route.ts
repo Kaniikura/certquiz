@@ -3,6 +3,7 @@
  * @fileoverview HTTP endpoint for user authentication
  */
 
+import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { loginHandler } from './handler';
@@ -10,18 +11,7 @@ import { loginHandler } from './handler';
 // Define context variables for this route
 type LoginVariables = {
   userRepository: IUserRepository;
-};
-
-// KeyCloak client (stub for now - will be implemented in infrastructure)
-const keyCloakClient = {
-  authenticate: async (_email: string, password: string) => {
-    // TODO: Implement actual KeyCloak integration
-    // For now, simple stub that accepts any non-empty password
-    if (password.length > 0) {
-      return { success: true, data: { token: 'mock-jwt-token' } };
-    }
-    return { success: false, data: { token: '' }, error: 'Invalid credentials' };
-  },
+  authProvider: IAuthProvider;
 };
 
 export const loginRoute = new Hono<{
@@ -31,11 +21,12 @@ export const loginRoute = new Hono<{
     // Get request body
     const body = await c.req.json().catch(() => null);
 
-    // Get repository instance from DI container/context
+    // Get dependencies from DI container/context
     const userRepo = c.get('userRepository');
+    const authProvider = c.get('authProvider');
 
     // Delegate to handler
-    const result = await loginHandler(body, userRepo, keyCloakClient);
+    const result = await loginHandler(body, userRepo, authProvider);
 
     if (!result.success) {
       // Map domain errors to appropriate HTTP status codes

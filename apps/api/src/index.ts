@@ -1,59 +1,8 @@
-import { Hono } from 'hono';
 import pino from 'pino';
-import {
-  errorHandler,
-  type LoggerVariables,
-  loggerMiddleware,
-  type RequestIdVariables,
-  requestIdMiddleware,
-  securityMiddleware,
-} from './middleware';
+import { buildProductionApp } from './app-factory';
 
-// Import routes
-import { healthRoute } from './system/health/route';
-
-// Create app with proper type for context variables
-export const app = new Hono<{
-  Variables: LoggerVariables & RequestIdVariables;
-}>();
-
-// Global middleware (order matters!)
-app.use('*', requestIdMiddleware());
-app.use('*', loggerMiddleware);
-app.use('*', securityMiddleware());
-
-// Mount routes
-app.route('/health', healthRoute);
-// TODO: Add more routes as features are implemented
-// app.route('/api/auth', authRoutes);
-// app.route('/api/quiz', quizRoutes);
-
-// Root route
-app.get('/', (c) => {
-  const pkg = require('../package.json');
-  return c.json({
-    message: 'CertQuiz API - VSA Architecture',
-    status: 'ready',
-    version: pkg.version,
-  });
-});
-
-// Install error handler (must be after all routes)
-app.onError(errorHandler);
-
-// 404 handler for unmatched routes - must be last!
-app.all('*', (c) => {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: 'NOT_FOUND',
-        message: `Route ${c.req.method} ${c.req.path} not found`,
-      },
-    },
-    404
-  );
-});
+// Build production app with real dependencies
+export const app = await buildProductionApp();
 
 // -----------------------------------------------------------------
 // Bun automatically starts the server when it sees this default export
