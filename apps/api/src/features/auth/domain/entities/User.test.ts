@@ -182,6 +182,54 @@ describe('User', () => {
         expect(result.error.message).toBe('Invalid email in database: invalid-email');
       }
     });
+
+    it('should return error for invalid username in database', () => {
+      // Arrange
+      const row = {
+        userId: 'test-user-id',
+        email: 'test@example.com',
+        username: 'a', // Too short username
+        role: 'user',
+        keycloakId: null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Act
+      const result = User.fromPersistence(row);
+
+      // Assert
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toBe('Invalid username in database: a');
+      }
+    });
+
+    it('should return error for username with invalid characters in database', () => {
+      // Arrange
+      const row = {
+        userId: 'test-user-id',
+        email: 'test@example.com',
+        username: 'test@user!', // Invalid characters
+        role: 'user',
+        keycloakId: null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Act
+      const result = User.fromPersistence(row);
+
+      // Assert
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toBe('Invalid username in database: test@user!');
+      }
+    });
   });
 
   describe('toPersistence', () => {

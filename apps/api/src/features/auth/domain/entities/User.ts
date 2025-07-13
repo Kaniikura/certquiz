@@ -95,11 +95,17 @@ export class User extends AggregateRoot<UserId> {
       return Result.fail(new ValidationError(`Invalid email in database: ${row.email}`));
     }
 
+    // Validate username from persistence for consistency
+    const usernameResult = User.validateUsername(row.username);
+    if (!usernameResult.success) {
+      return Result.fail(new ValidationError(`Invalid username in database: ${row.username}`));
+    }
+
     return Result.ok(
       new User(
         UserId.of(row.userId),
         email.data,
-        row.username,
+        usernameResult.data,
         UserRole.fromString(row.role),
         row.keycloakId,
         row.isActive,
