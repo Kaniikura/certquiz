@@ -142,6 +142,7 @@ See @docs/task-list.md for detailed implementation tasks.
 - Generate migrations from schema
 - Test database operations with transactions
 - Use Drizzle's type-safe query builder
+- **Dev Environment**: Reset migration history when needed (`TRUNCATE __drizzle_migrations` + `rm migrations/*` + regenerate)
 
 ### API (Schema-First)
 - Define endpoints in TypeSpec first
