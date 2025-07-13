@@ -8,7 +8,6 @@ export default defineProject({
   resolve: {
     alias: {
       '@api': resolve(__dirname, 'src'),
-      '@api-db': resolve(__dirname, 'src/infra/db'),
       '@shared': resolve(__dirname, '../../packages/shared/src'),
     },
   },
@@ -26,6 +25,7 @@ export default defineProject({
     include: [
       'src/**/*.test.ts', // Unit tests co-located with source
       'tests/**/*.test.ts', // Integration tests
+      'test-utils/**/*.test.ts', // Test utilities verification tests
     ],
 
     mockReset: true,

@@ -40,6 +40,7 @@ certquiz/
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
 │       │   ├── index.ts        # Application entry point
+│       │   ├── app-factory.ts  # Dependency injection factory
 │       │   ├── routes.ts       # Route composition root
 │       │   ├── features/       # Feature slices (vertical slices)
 │       │   │   ├── quiz/       # Quiz bounded context
@@ -96,6 +97,7 @@ certquiz/
 │       │   │   ├── health/     # Health check endpoint
 │       │   │   │   ├── handler.ts
 │       │   │   │   ├── handler.test.ts
+│       │   │   │   ├── health.integration.test.ts
 │       │   │   │   └── route.ts
 │       │   │   └── migration/  # Database migration tooling
 │       │   │       ├── file-repository.ts
@@ -117,29 +119,49 @@ certquiz/
 │       │   │   │   └── uow.ts             # Unit of work implementation
 │       │   │   ├── events/                # Domain event dispatcher
 │       │   │   │   └── EventBus.ts
-│       │   │   ├── keycloak/              # Auth provider
-│       │   │   │   └── KeycloakClient.ts
+│       │   │   ├── logger/                # Centralized logger creation
+│       │   │   │   └── root-logger.ts     # Pino logger factory
+│       │   │   ├── auth/                  # Auth provider implementations
+│       │   │   │   ├── AuthProvider.ts    # Interface & types
+│       │   │   │   ├── KeyCloakAuthProvider.ts # KeyCloak implementation
+│       │   │   │   ├── StubAuthProvider.ts # Test stub
+│       │   │   │   └── AuthProviderFactory.ts # Factory pattern
 │       │   │   └── email/                 # Email service (future)
 │       │   ├── shared/         # Shared kernel
-│       │   │   ├── logger.ts   # Pino structured logging
 │       │   │   ├── result.ts   # Result<T, E> type
 │       │   │   ├── errors.ts   # Domain & application errors
 │       │   │   ├── types.ts    # Shared TypeScript types
 │       │   │   └── utils.ts    # Common utilities
-│       │   ├── test-support/   # Shared test utilities (project-wide)
+│       │   ├── test-support/   # Domain test utilities (co-located)
 │       │   │   ├── TestClock.ts      # Clock implementation for testing
 │       │   │   ├── id-generators.ts  # Test ID factory functions
 │       │   │   ├── types/            # Test-only TypeScript utilities
 │       │   │   │   └── Mutable.ts    # Helper type for testing immutability
-│       │   │   └── index.ts          # Barrel export for test utilities
+│       │   │   └── index.ts          # Barrel export for domain test utilities
 │       │   └── middleware/     # Global HTTP middleware
-│       │       ├── error.middleware.ts
-│       │       ├── logging.middleware.ts
-│       │       ├── request-id.middleware.ts
-│       │       ├── cors.middleware.ts
-│       │       └── rate-limit.middleware.ts
-│       ├── tests/              # Cross-cutting tests
-│       │   ├── containers/     # Testcontainers setup
+│       │       ├── on-error.ts         # Error handling
+│       │       ├── logger.ts           # Logger factory middleware
+│       │       ├── request-id.ts       # Request ID generation
+│       │       ├── security.ts         # CORS & security headers
+│       │       └── index.ts            # Middleware exports
+│       ├── test-utils/         # Unified test infrastructure package
+│       │   ├── db/             # Database & container utilities
+│       │   │   ├── container.ts       # Testcontainers management
+│       │   │   ├── connection.ts      # Test DB helpers (createTestDb, withTestDb)
+│       │   │   ├── core.ts            # Unified createTestDatabase() API
+│       │   │   ├── types.ts           # TestDb type definition
+│       │   │   ├── migrations.ts      # Migration execution & verification
+│       │   │   ├── tx.ts              # Transaction isolation (withRollback)
+│       │   │   ├── seeds.ts           # Test data generation & seeding
+│       │   │   └── schema.ts          # Test-only table definitions
+│       │   ├── errors/         # Error type guards & utilities
+│       │   │   └── index.ts           # Error handling utilities
+│       │   ├── process/        # Process execution helpers
+│       │   │   └── exec.ts            # Async process runner (execa wrapper)
+│       │   ├── runtime/        # Environment detection
+│       │   │   └── index.ts           # Runtime detection (Bun vs Node)
+│       │   └── index.ts        # Barrel export for all test utilities
+│       ├── tests/              # Test organization
 │       │   ├── integration/    # Multi-feature tests
 │       │   ├── e2e/            # End-to-end tests
 │       │   └── fixtures/       # Test data factories
@@ -161,7 +183,7 @@ certquiz/
 │
 ├── docs/                      # Documentation
 │   ├── project-structure.md   # THIS FILE
-│   ├── database-schema.md
+│   ├── database-schema-v2.md
 │   ├── api-specification.md
 │   ├── vsa-implementation-plan.md
 │   └── adr/                   # Architecture Decision Records
@@ -179,11 +201,15 @@ certquiz/
 
 > 📝 **Key Conventions**:
 > - **Co-located tests**: Unit tests use `.test.ts` suffix next to source files
+> - **Integration tests**: Single-slice tests use `.integration.test.ts` co-located, multi-slice tests in `tests/integration/`
 > - **Repository pattern**: Interface in domain, implementation alongside
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
-> - **Shared test utilities**: Project-wide test helpers in `test-support/` to avoid duplication
+> - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
+> - **Unified test infrastructure**: Consolidated test utilities in `test-utils/` package
+> - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
+- **Domain test utilities**: Feature-specific helpers remain in `test-support/` for co-location
 
 ## Architecture Layers
 
@@ -304,6 +330,36 @@ export class DrizzleQuizRepository implements IQuizRepository {
 }
 ```
 
+### 5. App Factory Pattern (Dependency Injection) 🏭
+Clean dependency injection for testing and production:
+```typescript
+// app-factory.ts
+export function buildApp(deps: AppDependencies): Hono {
+  const app = new Hono();
+  
+  // Middleware with injected dependencies
+  app.use('*', createLoggerMiddleware(deps.logger));
+  
+  // Routes with injected repositories  
+  app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
+  return app;
+}
+
+// Production bootstrap
+export async function buildProductionApp() {
+  const logger = createRootLogger();
+  const authProvider = createAuthProvider();
+  
+  return buildApp({
+    logger,
+    clock: () => new Date(),
+    ping: () => db.ping(),
+    userRepository: withTx(trx => new DrizzleUserRepository(trx), withTransaction),
+    authProvider,
+  });
+}
+```
+
 ## Key Design Decisions
 
 ### 1. Repository Pattern with Domain Focus 🎯
@@ -356,7 +412,7 @@ Start simple, add complexity as needed:
 - **Repository tests**: In-memory SQLite for speed
 - **Handler tests**: Mock repositories, test orchestration
 - **Contract tests**: Real database, full integration
-- **Shared test utilities**: Common helpers in `test-support/` (ID generators, test clocks, type utilities)
+- **Test infrastructure**: Database utilities in `test-utils/db/`, domain helpers in `test-support/`
 
 ## Development Workflow
 
@@ -561,20 +617,19 @@ describe('QuizSession', () => {
 ### 2. Repository Integration Tests
 ```typescript
 // features/quiz/domain/repositories/DrizzleQuizRepository.test.ts
+import { withRollback, getTestDb } from '@api/test-utils/db';
+
 describe('DrizzleQuizRepository', () => {
-  let repo: DrizzleQuizRepository
-  
-  beforeEach(async () => {
-    const trx = await testDb.transaction()
-    repo = new DrizzleQuizRepository(trx)
-  })
-  
   it('should save and retrieve quiz', async () => {
-    const quiz = Quiz.create(/* ... */)
-    await repo.save(quiz)
-    
-    const retrieved = await repo.findById(quiz.id)
-    expect(retrieved).toEqual(quiz)
+    await withRollback(async (trx) => {
+      const repo = new DrizzleQuizRepository(trx)
+      const quiz = Quiz.create(/* ... */)
+      
+      await repo.save(quiz)
+      const retrieved = await repo.findById(quiz.id)
+      
+      expect(retrieved).toEqual(quiz)
+    })
   })
 })
 ```
@@ -595,6 +650,24 @@ describe('POST /quiz/start', () => {
     expect(data.quizId).toBeDefined()
   })
 })
+```
+
+### 4. Test App Factory Pattern
+```typescript
+// tests/helpers/app.ts
+export async function makeHttpApp() {
+  return buildApp({
+    logger: fakeLogger(),
+    clock: () => new Date('2025-01-01T00:00:00Z'),
+    ping: async () => { /* no-op */ },
+    userRepository: fakeUserRepository(),
+    authProvider: fakeAuthProvider(),
+  });
+}
+
+// Usage in tests
+const app = await makeHttpApp();
+const response = await app.request('/api/auth/login', { /* ... */ });
 ```
 
 ## Performance Considerations
@@ -676,20 +749,30 @@ export class QuizStartedEvent extends DomainEvent {
 
 ### 4. Test Utility Organization Pattern
 ```typescript
-// test-support/index.ts - Centralized test utility exports
+// test-utils/index.ts - Infrastructure test utilities barrel export
+export * from './db';
+export * from './errors';
+export * from './process';
+export * from './runtime';
+
+// test-support/index.ts - Domain test utilities barrel export  
 export { testIds } from './id-generators';
 export { TestClock } from './TestClock';
 export type { Mutable } from './types/Mutable';
-export type { Clock } from '@api/features/quiz/domain/base/Clock';
 
-// Usage in domain tests
+// Usage examples:
+// Database & infrastructure tests
+import { withRollback, getTestDb } from '@api/test-utils/db';
+import { isDbError } from '@api/test-utils/errors';
+
+// Domain tests
 import { testIds, TestClock, type Mutable } from '@api/test-support';
 
 // Key benefits:
-// 1. No duplication across bounded contexts
-// 2. Single import path for common test utilities
+// 1. Clear separation: infrastructure vs domain test utilities
+// 2. No duplication of database/container management code
 // 3. Type-safe test helpers without `any` types
-// 4. Clear separation of test infrastructure from domain logic
+// 4. Single import paths for each concern
 ```
 
 ## Success Criteria

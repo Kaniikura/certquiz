@@ -7,7 +7,7 @@
 - [Project Structure](./project-structure.md) - VSA + Repository Pattern architecture
 - [API Specification](./api-specification.md) - RESTful API endpoints
 - [Coding Standards](./coding-standards.md) - Development conventions with DDD
-- [Database Schema](./database-schema.md) - PostgreSQL schema with Drizzle ORM
+- [Database Schema](./database-schema-v2.md) - PostgreSQL schema with Drizzle ORM
 - [GitHub Actions Strategy](./github-actions-strategy.md) - CI/CD implementation plan
 
 ### Architecture Decision Records (ADRs)

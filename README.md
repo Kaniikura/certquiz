@@ -67,7 +67,7 @@ bun run db:generate       # Generate migrations
 
 - [Task List](docs/task-list.md) - Current development tasks
 - [API Specification](docs/api-specification.md) - Endpoint docs
-- [Database Schema](docs/database-schema.md) - Data models
+- [Database Schema](docs/database-schema-v2.md) - Data models
 - [Coding Standards](docs/coding-standards.md) - Code conventions
 - [Commit Convention](.claude/commit-convention.md) - Git commit guidelines
 - [GitHub Actions Strategy](docs/github-actions-strategy.md) - CI/CD pipeline design

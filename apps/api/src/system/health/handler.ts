@@ -77,12 +77,13 @@ export function livenessCheckHandler(): LivenessResponse {
  * The handler accepts dependencies for proper testing.
  */
 export async function readinessCheckHandler(deps: {
-  db: { ping: () => Promise<boolean> };
+  db: { ping: () => Promise<void> };
 }): Promise<ReadinessResponse> {
   // Check database health
   let dbHealthy = false;
   try {
-    dbHealthy = await deps.db.ping();
+    await deps.db.ping();
+    dbHealthy = true;
   } catch {
     dbHealthy = false;
   }

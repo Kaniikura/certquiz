@@ -2,6 +2,10 @@
   "name": "cert-quiz",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.1.0"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -21,6 +25,7 @@
     "test:api": "vitest run --project api-unit --project api-integration --project api-e2e",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
+    "test:cleanup": "./scripts/cleanup-testcontainers.sh",
     "db:generate": "bun --filter @certquiz/api db:generate",
     "db:migrate": "bun --filter @certquiz/api db:migrate",
     "db:migrate:up": "bun --filter @certquiz/api db:migrate:up",
@@ -29,6 +34,8 @@
     "db:migrate:validate": "bun --filter @certquiz/api db:migrate:validate",
     "db:studio": "bun --filter @certquiz/api db:studio",
     "db:drop": "bun --filter @certquiz/api db:drop",
+    "db:reset": "bun --filter @certquiz/api db:reset",
+    "db:check": "bun --filter @certquiz/api db:check",
     "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
     "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
@@ -45,6 +52,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",
     "@types/bun": "latest",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^8.2.0",
     "dotenv": "^17.0.0",
