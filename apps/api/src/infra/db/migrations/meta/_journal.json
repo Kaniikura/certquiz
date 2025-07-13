@@ -12,6 +12,13 @@
     {
       "idx": 1,
       "version": "7",
+      "when": 1752387725000,
+      "tag": "0001_init_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
       "when": 1752406208923,
       "tag": "0002_noisy_thundra",
       "breakpoints": true
