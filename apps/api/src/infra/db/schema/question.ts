@@ -88,7 +88,14 @@ export const questionVersion = pgTable(
 
     // Check constraints for data integrity
     check('ck_options_min_count', sql`jsonb_array_length(options) >= 2`),
-    check('ck_has_correct_answer', sql`options::text LIKE '%"isCorrect":true%'`),
+    check(
+      'ck_has_correct_answer',
+      sql`EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(options) AS opt
+        WHERE (opt->>'isCorrect')::boolean = true
+      )`
+    ),
   ]
 );
 

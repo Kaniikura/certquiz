@@ -3,9 +3,11 @@
  * @fileoverview Real KeyCloak authentication provider
  */
 
+import { createHash } from 'node:crypto';
 import { AppError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import pino from 'pino';
+import { z } from 'zod';
 import type { AuthProviderConfig, AuthToken, AuthUserInfo, IAuthProvider } from './AuthProvider';
 
 // Create logger for KeyCloak operations
@@ -13,6 +15,55 @@ const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   name: 'KeyCloakAuthProvider',
 });
+
+// Validation schemas
+const authenticateSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const validateTokenSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
+const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
+});
+
+// Type guards for KeyCloak responses
+function isValidTokenResponse(data: unknown): data is {
+  access_token: string;
+  token_type?: string;
+  expires_in?: number;
+  refresh_token?: string;
+} {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'access_token' in data &&
+    typeof (data as Record<string, unknown>).access_token === 'string'
+  );
+}
+
+function isValidUserInfoResponse(data: unknown): data is {
+  sub: string;
+  email?: string;
+  preferred_username?: string;
+  realm_access?: { roles: string[] };
+  enabled?: boolean;
+} {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'sub' in data &&
+    typeof (data as Record<string, unknown>).sub === 'string'
+  );
+}
+
+// Helper to hash email for logging
+function hashEmail(email: string): string {
+  return createHash('sha256').update(email).digest('hex').substring(0, 8);
+}
 
 /**
  * KeyCloak authentication provider
@@ -24,6 +75,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
   constructor(private readonly config: NonNullable<AuthProviderConfig['keycloak']>) {}
 
   async authenticate(email: string, password: string): Promise<Result<AuthToken>> {
+    // Validate input
+    const validation = authenticateSchema.safeParse({ email, password });
+    if (!validation.success) {
+      return Result.fail(new AppError('Invalid input parameters', 'INVALID_INPUT', 400));
+    }
+
     try {
       const tokenUrl = `${this.config.url}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
@@ -42,7 +99,7 @@ export class KeyCloakAuthProvider implements IAuthProvider {
       logger.info('Authenticating with KeyCloak', {
         url: tokenUrl,
         clientId: this.config.clientId,
-        username: email,
+        emailHash: hashEmail(email),
       });
 
       const response = await fetch(tokenUrl, {
@@ -62,10 +119,15 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid credentials', 'INVALID_CREDENTIALS', 401));
       }
 
-      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak API response structure varies
-      let tokenData: any;
+      let tokenData: unknown;
       try {
         tokenData = await response.json();
+
+        // Type guard for KeyCloak token response
+        if (!isValidTokenResponse(tokenData)) {
+          logger.error('Invalid KeyCloak token response structure');
+          return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+        }
       } catch (error) {
         logger.error('Failed to parse KeyCloak response', { error });
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
@@ -95,6 +157,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
   }
 
   async validateToken(token: string): Promise<Result<AuthUserInfo>> {
+    // Validate input
+    const validation = validateTokenSchema.safeParse({ token });
+    if (!validation.success) {
+      return Result.fail(new AppError('Invalid token parameter', 'INVALID_INPUT', 400));
+    }
+
     try {
       const userInfoUrl = `${this.config.url}/realms/${this.config.realm}/protocol/openid-connect/userinfo`;
 
@@ -111,10 +179,15 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid token', 'INVALID_TOKEN', 401));
       }
 
-      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak userinfo response structure varies
-      let userInfo: any;
+      let userInfo: unknown;
       try {
         userInfo = await response.json();
+
+        // Type guard for KeyCloak userinfo response
+        if (!isValidUserInfoResponse(userInfo)) {
+          logger.error('Invalid KeyCloak userinfo response structure');
+          return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+        }
       } catch (error) {
         logger.error('Failed to parse KeyCloak userinfo response', { error });
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
@@ -122,8 +195,8 @@ export class KeyCloakAuthProvider implements IAuthProvider {
 
       const authUserInfo: AuthUserInfo = {
         id: userInfo.sub,
-        email: userInfo.email,
-        username: userInfo.preferred_username || userInfo.email,
+        email: userInfo.email || '',
+        username: userInfo.preferred_username || userInfo.email || '',
         roles: userInfo.realm_access?.roles || [],
         // now coming from the userinfo claim (falls back to true if unset)
         isActive: typeof userInfo.enabled === 'boolean' ? userInfo.enabled : true,
@@ -142,6 +215,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
   }
 
   async refreshToken(refreshToken: string): Promise<Result<AuthToken>> {
+    // Validate input
+    const validation = refreshTokenSchema.safeParse({ refreshToken });
+    if (!validation.success) {
+      return Result.fail(new AppError('Invalid refresh token parameter', 'INVALID_INPUT', 400));
+    }
+
     try {
       const tokenUrl = `${this.config.url}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
@@ -172,10 +251,15 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         return Result.fail(new AppError('Invalid refresh token', 'INVALID_REFRESH_TOKEN', 401));
       }
 
-      // biome-ignore lint/suspicious/noExplicitAny: KeyCloak token response structure varies
-      let tokenData: any;
+      let tokenData: unknown;
       try {
         tokenData = await response.json();
+
+        // Type guard for KeyCloak token response (reuse the same function from authenticate)
+        if (!isValidTokenResponse(tokenData)) {
+          logger.error('Invalid KeyCloak refresh token response structure');
+          return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
+        }
       } catch (error) {
         logger.error('Failed to parse KeyCloak refresh token response', { error });
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
