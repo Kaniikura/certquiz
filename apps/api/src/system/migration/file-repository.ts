@@ -7,7 +7,7 @@ import { Result } from '@api/shared/result';
 export interface MigrationFile {
   filename: string;
   path: string;
-  type: 'up' | 'down';
+  type: 'up' | 'down' | 'irreversible';
   baseName: string;
   sequenceNumber: number;
 }
@@ -15,24 +15,46 @@ export interface MigrationFile {
 export type FileError =
   | { type: 'FileSystemError'; path: string; reason: unknown }
   | { type: 'PathTraversalError'; path: string }
-  | { type: 'InvalidFilename'; filename: string };
+  | { type: 'InvalidFilename'; filename: string }
+  | { type: 'InvalidSequence'; filename: string; sequence: string };
 
 // Value object helpers (inline to keep it simple)
-function validateMigrationFilename(
-  filename: string
-): Result<{ baseName: string; type: 'up' | 'down'; sequenceNumber: number }, FileError> {
-  const pattern = /^(\d{4}_[a-z0-9_]+)(\.down)?\.sql$/;
-  const match = filename.match(pattern);
+type MigrationType = 'up' | 'down' | 'irreversible';
 
+type ValidatedMigration = {
+  baseName: string; // e.g. 0001_create_users
+  type: MigrationType; // up | down | irreversible
+  sequenceNumber: number; // 1 … 9999
+};
+
+const typeMap: Record<string, MigrationType> = {
+  down: 'down',
+  irrev: 'irreversible',
+  '': 'up', // "no suffix" → up migration
+};
+
+// Compile the regex once – faster & avoids recompilation on every call.
+const MIGRATION_RE = /^(?<seq>\d{4})_(?<name>[a-z0-9_]+)(?:\.(?<suffix>down|irrev))?\.sql$/i;
+
+function validateMigrationFilename(filename: string): Result<ValidatedMigration, FileError> {
+  const match = filename.match(MIGRATION_RE)?.groups;
   if (!match) {
     return Result.err({ type: 'InvalidFilename', filename });
   }
 
-  const baseName = match[1];
-  const type = match[2] ? 'down' : 'up';
-  const sequenceNumber = parseInt(baseName.substring(0, 4), 10);
+  const { seq, name, suffix = '' } = match;
+  const sequenceNumber = Number(seq);
 
-  return Result.ok({ baseName, type, sequenceNumber });
+  // Extra defensive check - sequence numbers should be valid 4-digit numbers (0000-9999)
+  if (Number.isNaN(sequenceNumber) || sequenceNumber < 0 || sequenceNumber > 9999) {
+    return Result.err({ type: 'InvalidSequence', filename, sequence: seq });
+  }
+
+  return Result.ok({
+    baseName: `${seq}_${name}`, // keeps original 0-padding
+    type: typeMap[suffix], // '', 'down', or 'irrev'
+    sequenceNumber,
+  });
 }
 
 function validatePath(inputPath: string, allowedRoot: string): Result<string, FileError> {
