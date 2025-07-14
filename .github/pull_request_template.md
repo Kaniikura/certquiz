@@ -57,13 +57,13 @@ Closes #
 ### Checklist
 - [ ] **TDD followed**: Tests written BEFORE implementation
 - [ ] **Type safety**: No `any` types used
-- [ ] Tests pass: `bun test`
+- [ ] Tests pass: `bun run test`
 - [ ] Type check passes: `bun run typecheck`
 - [ ] Code follows project standards
 
 ### Testing Evidence
 ```bash
-bun test --coverage
+bun run test --coverage
 ```
 
 ---
