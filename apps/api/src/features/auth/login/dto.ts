@@ -24,7 +24,7 @@ export interface LoginResponse {
  * Login error types for domain error mapping
  */
 export interface LoginError {
-  code: 'INVALID_CREDENTIALS' | 'USER_NOT_ACTIVE' | 'USER_NOT_FOUND' | 'KEYCLOAK_ERROR';
+  code: 'INVALID_CREDENTIALS' | 'USER_NOT_ACTIVE' | 'USER_NOT_FOUND' | 'AUTH_PROVIDER_ERROR';
   message: string;
 }
 
