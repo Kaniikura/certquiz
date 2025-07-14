@@ -34,7 +34,7 @@ const typeMap: Record<string, MigrationType> = {
 };
 
 // Compile the regex once – faster & avoids recompilation on every call.
-const MIGRATION_RE = /^(?<seq>\d{4})_(?<name>[a-z0-9_]+)(?:\.(?<suffix>down|irrev))?\.sql$/i;
+const MIGRATION_RE = /^(?<seq>\d{4})_(?<name>[a-z0-9_-]+)(?:\.(?<suffix>down|irrev))?\.sql$/i;
 
 function validateMigrationFilename(filename: string): Result<ValidatedMigration, FileError> {
   const match = filename.match(MIGRATION_RE)?.groups;
@@ -50,9 +50,12 @@ function validateMigrationFilename(filename: string): Result<ValidatedMigration,
     return Result.err({ type: 'InvalidSequence', filename, sequence: seq });
   }
 
+  // Normalize suffix to lowercase for case-insensitive matching
+  const normalizedSuffix = suffix.toLowerCase();
+
   return Result.ok({
     baseName: `${seq}_${name}`, // keeps original 0-padding
-    type: typeMap[suffix], // '', 'down', or 'irrev'
+    type: typeMap[normalizedSuffix], // '', 'down', or 'irrev' (case-insensitive)
     sequenceNumber,
   });
 }
