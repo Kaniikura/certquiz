@@ -37,8 +37,8 @@ export async function analyzeMigrations(
   }
   const files = filesResult.data;
 
-  // Step 2: Filter and process up migrations
-  const upFiles = files.filter((f) => f.type === 'up');
+  // Step 2: Filter and process up migrations (including irreversible)
+  const upFiles = files.filter((f) => f.type === 'up' || f.type === 'irreversible');
   const hashByFile = new Map<string, string>();
   const fileByHash = new Map<string, string>();
 
