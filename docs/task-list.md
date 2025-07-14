@@ -251,6 +251,113 @@ Production-ready auth implementation with comprehensive VSA + Repository Pattern
 - Complete VSA implementation with co-located tests
 - Multiple auth provider implementations (production, fake, stub)
 
+### 5.2.0 Rename Provider-Specific Fields ✅
+**Status**: COMPLETED
+**Time**: 30 minutes (actual: ~30 minutes)
+**Completion Date**: July 14, 2025
+**Priority**: HIGH
+**Reason**: Remove vendor-specific naming from domain model
+
+### Summary
+Rename `keycloakId` to `identityProviderId` throughout the codebase to maintain provider-agnostic domain model:
+- ✅ **Domain Independence**: Remove "keycloak" from domain entities
+- ✅ **Future-Proof**: Clear naming for potential multi-provider support
+- ✅ **DDD Best Practice**: Keep infrastructure details out of domain
+- ✅ **Simple Change**: One migration + IDE refactoring
+
+### Tasks:
+```typescript
+// Database Migration:
+ALTER TABLE auth_user 
+  RENAME COLUMN keycloak_id TO identity_provider_id;
+
+// Domain Model Update:
+- Rename User.keycloakId → User.identityProviderId
+- Update all references in domain layer
+
+// Repository Updates:
+- Update DrizzleUserRepository schema
+- Rename findByKeycloakId → findByIdentityProviderId
+
+// Infrastructure Updates:
+- Update auth provider implementations
+- Update login handler references
+
+// Testing:
+- Update all test fixtures
+- Ensure all tests pass
+```
+
+**Acceptance Criteria**:
+- No "keycloak" references in domain layer
+- All tests passing
+- Zero functional changes
+- Clean git history with atomic commit
+
+### 5.2.1 Implement Authentication Middleware 🔴
+**Status**: PENDING
+**Time**: 2 hours (estimated)
+**Priority**: BLOCKER
+**Reason**: Critical security gap - API endpoints are unprotected
+
+### Summary
+Implement JWT authentication middleware for Hono to protect API endpoints:
+- ✅ **JWT Verification**: Validate tokens against KeyCloak JWKS
+- ✅ **Context Injection**: Add authenticated user to request context
+- ✅ **Role-Based Auth**: Support role requirements for endpoints
+- ✅ **Public Routes**: Allow optional authentication
+- ✅ **Clean Architecture**: Maintain separation of concerns
+
+### Tasks:
+```typescript
+// Context Types:
+- Define AuthUser type for JWT claims
+- Extend Hono's ContextVariableMap for type safety
+
+// JWT Verification:
+- Implement KeyCloakJwtVerifier with JWKS support
+- Add token validation and role extraction
+- Configure KeyCloak endpoints
+
+// Middleware Implementation:
+- Create auth() middleware function
+- Support required/optional authentication
+- Add role-based authorization checks
+- Handle token errors gracefully
+
+// Route Updates:
+- Protect /api/* routes by default
+- Mark public endpoints explicitly
+- Add role requirements for admin routes
+
+// Handler Updates:
+- Access user context via c.get('user')
+- Add findByIdentityProviderId to UserRepository
+- Maintain existing transaction patterns
+
+// Testing:
+- Unit tests for JWT verification
+- Middleware tests with various scenarios
+- Integration tests with real KeyCloak
+- E2E tests for protected endpoints
+```
+
+**Dependencies**: 
+- Uses existing IAuthProvider interface
+- Works with current identity_provider_id schema
+- No database schema changes needed
+
+**Acceptance Criteria**:
+- All API endpoints protected by default
+- Public endpoints explicitly marked
+- JWT tokens validated against KeyCloak
+- User context available in handlers
+- Role-based authorization works
+- 90%+ test coverage
+- Performance impact < 10ms per request
+
+> 📁 **Detailed implementation plan**: [docs/planning/0003-auth-middleware-implementation.md](./planning/0003-auth-middleware-implementation.md)
+
 ### 5.3 Run Migrations and Seed Data 🟡
 **Time**: 30 minutes
 **Status**: PENDING
@@ -640,17 +747,20 @@ Each task is complete when:
   - Day 1-2: Clean-slate reset & infrastructure foundation ✅
   - Day 3-4: First vertical slice (Health) ✅
   - Day 5: Quality Gates setup
-- **Week 3**: Tasks 4 + 5.1-5.3 (Quality Gates + Domain Design + Auth + Migrations)
+- **Week 3**: Tasks 4 + 5.1-5.2.1 (Quality Gates + Domain Design + Auth + Middleware)
   - Day 1: Quality Gates ✅
   - Day 2-3: Quiz domain model & repository ✅
   - Day 4: Auth slice with minimal User aggregate ✅
-  - Day 5: Migrations and seed data
-- **Week 4**: Tasks 5.4-6 (Quiz Features + User/Question Features + API Layer)
-  - Day 1-2: Quiz feature slices with TDD
-  - Day 3: User domain evolution & features
-  - Day 4: Question features
-  - Day 5: API layer completion
-- **Week 5**: Tasks 7-9 (Basic Features + Frontend Foundation + Core UI)
+  - Day 5 AM: Provider field rename (30 min) ✅
+  - Day 5 PM: Authentication middleware implementation 🔴
+- **Week 4**: Tasks 5.3-5.6 (Migrations + Quiz Features + User/Question Features)
+  - Day 1: Migrations and seed data
+  - Day 2-3: Quiz feature slices with auth middleware
+  - Day 4: User domain evolution & features
+  - Day 5: Question features
+- **Week 5**: Tasks 6 + 7-9 (API Layer + Basic Features + Frontend Foundation + Core UI)
+  - Day 1: API layer completion
+  - Day 2-5: Basic features + Frontend foundation + Core UI
 - **Week 6**: Tasks 10-12 (Admin Interface + Testing + DevOps)
 
 **Architecture Migration Summary**:
@@ -672,7 +782,9 @@ The following tasks are on the critical path and block other work:
 5. First Vertical Slice (validates architecture) ✅
 6. Quality Gates (establishes code quality standards) ✅
 7. Domain/Repository Implementation (blocks business logic) ✅
-8. API Layer (blocks frontend integration) 🟡
+8. **Provider Field Rename (blocks clean domain model)** ✅
+9. **Authentication Middleware (blocks API layer security)** 🔴
+10. API Layer (blocks frontend integration) 🟡
 
 ## Risk Mitigation
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-RESTful API built with Hono framework, featuring type-safe endpoints with Zod validation and JWT authentication via KeyCloak.
+RESTful API built with Hono framework, featuring type-safe endpoints with Zod validation and JWT authentication via identity provider.
 
 Base URL: `http://localhost:4000/api`
 
@@ -45,7 +45,7 @@ Authorization: Bearer <jwt_token>
 ### Authentication Endpoints
 
 #### POST /auth/login
-Login with KeyCloak credentials.
+Login with identity provider credentials.
 
 ```typescript
 // Route definition
@@ -59,7 +59,7 @@ app.post('/auth/login',
   })),
   async (c) => {
     const { email, password } = c.req.valid('json');
-    // KeyCloak authentication logic
+    // Identity provider authentication logic
     return c.json({ success: true, data: { token, user } });
   }
 );

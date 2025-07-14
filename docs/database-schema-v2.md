@@ -16,7 +16,7 @@ This document covers the **physical PostgreSQL schema** that persists the CertQu
 | TypeScript (Domain) | PostgreSQL | Notes |
 |---------------------|------------|-------|
 | `QuizSessionId` | `uuid` | Branded string type |
-| `UserId` | `uuid` | Maps to KeyCloak user ID |
+| `UserId` | `uuid` | Maps to identity provider user ID |
 | `QuestionId` | `uuid` | Branded string type |
 | `OptionId` | `uuid` | Branded string type |
 | `AnswerId` | `uuid` | Branded string type |
@@ -172,17 +172,17 @@ ON CONFLICT (session_id, version, event_sequence) DO NOTHING;
 3. **Snapshot Consistency**: Always rebuilt from event stream, never directly updated
 4. **Event Retention**: Keep events indefinitely for audit trail, compress old partitions
 
-## User Bounded Context (KeyCloak Integration)
+## User Bounded Context (Identity Provider Integration)
 
 ### Tables & Columns
 
 ```sql
--- Local user table synchronized with KeyCloak
+-- Local user table synchronized with identity provider
 CREATE TABLE auth_user (
-    user_id uuid PRIMARY KEY,          -- Maps to KeyCloak user ID
+    user_id uuid PRIMARY KEY,          -- Internal user ID
     email text NOT NULL UNIQUE,
     username text NOT NULL UNIQUE,
-    keycloak_id text UNIQUE,           -- External KeyCloak reference
+    identity_provider_id text UNIQUE,  -- External identity provider reference
     role text NOT NULL DEFAULT 'user', -- 'guest' | 'user' | 'premium' | 'admin'
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -222,7 +222,7 @@ CREATE TABLE user_progress (
 ```sql
 -- User lookup indexes
 CREATE INDEX CONCURRENTLY ix_user_email ON auth_user (email);
-CREATE INDEX CONCURRENTLY ix_user_keycloak ON auth_user (keycloak_id);
+CREATE INDEX CONCURRENTLY ix_user_identity_provider ON auth_user (identity_provider_id);
 CREATE INDEX CONCURRENTLY ix_user_role_active ON auth_user (role, is_active);
 
 -- Progress query indexes
