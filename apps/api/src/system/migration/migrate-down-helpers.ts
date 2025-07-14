@@ -2,18 +2,107 @@
  * Helper functions for migration rollback operations
  */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { withTransaction } from '@api/infra/unit-of-work';
-import { Result } from '@api/shared/result';
+import { isResult, Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as dbRepo from './db-repository';
 import * as fileRepo from './file-repository';
 import type { MigrationContext } from './runtime';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Migration constants
+export const MIGRATIONS_PATH = path.join(__dirname, '../../infra/db/migrations');
+
+// SQL execution abstraction for different transaction contexts
+export type SqlRunner = (sql: string) => Promise<void>;
 
 export interface MigrationMeta {
   hash: string;
   filename: string;
   baseName: string;
   downPath: string;
+}
+
+/**
+ * Manages database connection lifecycle for migration operations
+ * Overload 1: For operations that return a Result (more specific, must come first)
+ */
+export async function withDatabaseConnection<T, E>(
+  connectionUrl: string,
+  operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<Result<T, E>>
+): Promise<Result<T, string | E>>;
+
+/**
+ * Manages database connection lifecycle for migration operations
+ * Overload 2: For operations that return a plain value
+ */
+export async function withDatabaseConnection<T>(
+  connectionUrl: string,
+  operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<T>
+): Promise<Result<T, string>>;
+
+/**
+ * Implementation that handles both plain values and Results
+ */
+export async function withDatabaseConnection(
+  connectionUrl: string,
+  operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<unknown>
+): Promise<Result<unknown, string>> {
+  let client: postgres.Sql | undefined;
+
+  try {
+    client = postgres(connectionUrl, { max: 1 });
+    const db = drizzle(client);
+    const ctx = { db, client, migrationsPath: MIGRATIONS_PATH };
+
+    const value = await operation(ctx);
+
+    // Auto-flatten if the callback returns a Result
+    if (isResult(value)) {
+      return value as Result<unknown, string>;
+    }
+
+    return Result.ok(value);
+  } catch (e) {
+    return Result.err(e instanceof Error ? e.message : String(e));
+  } finally {
+    // Never let a failed shutdown clobber the real error
+    try {
+      if (client) await client.end();
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
+}
+
+/**
+ * Manages migration lock acquisition and release
+ */
+export async function withMigrationLock<T>(
+  ctx: MigrationContext,
+  operation: () => Promise<T>
+): Promise<Result<T, string>> {
+  const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
+  if (!lockResult.success) {
+    return Result.err('Another migration is already running');
+  }
+
+  try {
+    const result = await operation();
+    return Result.ok(result);
+  } catch (error) {
+    return Result.err(error instanceof Error ? error.message : String(error));
+  } finally {
+    try {
+      await dbRepo.releaseMigrationLock(ctx.db);
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
 }
 
 /**
@@ -96,31 +185,62 @@ export async function validateDownMigration(
 
 /**
  * Execute the rollback within a transaction
+ * CLI version: uses withTransaction from infra layer
  */
 export async function executeRollback(
   meta: MigrationMeta,
   sqlContent: string,
   debug: boolean
+): Promise<Result<void, string>>;
+
+/**
+ * Execute the rollback with custom SQL runner
+ * API version: uses provided SqlRunner for transaction handling
+ */
+export async function executeRollback(
+  meta: MigrationMeta,
+  sqlContent: string,
+  debug: boolean,
+  run: SqlRunner
+): Promise<Result<void, string>>;
+
+/**
+ * Implementation of executeRollback with overloads
+ */
+export async function executeRollback(
+  meta: MigrationMeta,
+  sqlContent: string,
+  debug: boolean,
+  run?: SqlRunner
 ): Promise<Result<void, string>> {
   if (debug) console.log('[DEBUG] Starting rollback transaction...');
 
   try {
-    await withTransaction(async (tx) => {
-      // Execute the entire SQL file as a single statement
-      if (debug) console.log('[DEBUG] Executing SQL migration file...');
-      await tx.execute(sql.raw(sqlContent));
-      if (debug) console.log('[DEBUG] SQL migration executed successfully');
+    if (run) {
+      // API version: use provided SqlRunner for custom transaction handling
+      if (debug) console.log('[DEBUG] Using provided SqlRunner...');
+      await run(sqlContent);
+      if (debug) console.log('[DEBUG] SQL migration executed via SqlRunner');
+      // Note: API version handles migration record deletion in its own transaction
+    } else {
+      // CLI version: use withTransaction with complete rollback logic
+      await withTransaction(async (tx) => {
+        // Execute the entire SQL file as a single statement
+        if (debug) console.log('[DEBUG] Executing SQL migration file...');
+        await tx.execute(sql.raw(sqlContent));
+        if (debug) console.log('[DEBUG] SQL migration executed successfully');
 
-      // Remove migration record within the same transaction
-      if (debug) console.log('[DEBUG] Removing migration record from database...');
-      const deleteResult = await dbRepo.deleteMigrationRecord(tx, meta.hash);
-      if (!deleteResult.success) {
-        throw new Error(`Failed to remove migration record: ${deleteResult.error.type}`);
-      }
-      if (debug) console.log('[DEBUG] Migration record removed successfully');
-    });
+        // Remove migration record within the same transaction
+        if (debug) console.log('[DEBUG] Removing migration record from database...');
+        const deleteResult = await dbRepo.deleteMigrationRecord(tx, meta.hash);
+        if (!deleteResult.success) {
+          throw new Error(`Failed to remove migration record: ${deleteResult.error.type}`);
+        }
+        if (debug) console.log('[DEBUG] Migration record removed successfully');
+      });
+    }
 
-    console.log(`✅ Rolled back migration: ${meta.baseName}`);
+    if (debug) console.log(`✅ Rolled back migration: ${meta.baseName}`);
     return Result.ok(undefined);
   } catch (error) {
     if (debug) console.log(`[DEBUG] Rollback failed with error: ${error}`);
