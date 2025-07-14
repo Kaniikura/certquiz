@@ -34,9 +34,11 @@ export async function validateMigrations(
 ): Promise<Result<ValidationResult, string>> {
   const dir = migrationsPath || path.join(__dirname, '../../infra/db/migrations');
 
-  // Use a dummy database connection for the analyzer
-  // (we only need file analysis, not DB queries)
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://dummy';
+  // Require DATABASE_URL for proper validation
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    return Result.err('DATABASE_URL environment variable is required for migration validation');
+  }
   const client = postgres(databaseUrl, { max: 1 });
   const db = drizzle(client);
 

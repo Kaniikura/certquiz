@@ -65,13 +65,13 @@ export async function analyzeMigrations(
     }
   }
 
-  // Step 5: Check for missing down migrations
+  // Step 5: Check for missing down migrations (optimized)
+  const downBaseNames = new Set(files.filter((f) => f.type === 'down').map((f) => f.baseName));
   const missingDownFiles: string[] = [];
   for (const file of upFiles) {
     // Skip irreversible migrations
     if (file.type !== 'irreversible') {
-      const hasDownResult = await fileRepo.hasDownMigration(ctx.migrationsPath, file.baseName);
-      if (hasDownResult.success && !hasDownResult.data) {
+      if (!downBaseNames.has(file.baseName)) {
         missingDownFiles.push(`${file.baseName}.down.sql`);
       }
     }
