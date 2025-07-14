@@ -4,7 +4,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withTransaction } from '@api/infra/unit-of-work';
-import { Result } from '@api/shared/result';
+import { isResult, Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -29,11 +29,29 @@ export interface MigrationMeta {
 
 /**
  * Manages database connection lifecycle for migration operations
+ * Overload 1: For operations that return a Result (more specific, must come first)
+ */
+export async function withDatabaseConnection<T, E>(
+  connectionUrl: string,
+  operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<Result<T, E>>
+): Promise<Result<T, string | E>>;
+
+/**
+ * Manages database connection lifecycle for migration operations
+ * Overload 2: For operations that return a plain value
  */
 export async function withDatabaseConnection<T>(
   connectionUrl: string,
   operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<T>
-): Promise<Result<T, string>> {
+): Promise<Result<T, string>>;
+
+/**
+ * Implementation that handles both plain values and Results
+ */
+export async function withDatabaseConnection(
+  connectionUrl: string,
+  operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<unknown>
+): Promise<Result<unknown, string>> {
   let client: postgres.Sql | undefined;
 
   try {
@@ -42,6 +60,12 @@ export async function withDatabaseConnection<T>(
     const ctx = { db, client, migrationsPath: MIGRATIONS_PATH };
 
     const value = await operation(ctx);
+
+    // Auto-flatten if the callback returns a Result
+    if (isResult(value)) {
+      return value as Result<unknown, string>;
+    }
+
     return Result.ok(value);
   } catch (e) {
     return Result.err(e instanceof Error ? e.message : String(e));

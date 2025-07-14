@@ -19,30 +19,23 @@ import { analyzeMigrations } from './runtime';
  * Run migrations up (apply all pending migrations)
  */
 export async function migrateUp(connectionUrl: string): Promise<Result<void, string>> {
-  const connectionResult = await withDatabaseConnection(connectionUrl, async (ctx) => {
-    const lockResult = await withMigrationLock(ctx, async () => {
+  return withDatabaseConnection(connectionUrl, async (ctx): Promise<Result<void, string>> => {
+    return withMigrationLock(ctx, async () => {
       try {
         await migrate(ctx.db, { migrationsFolder: ctx.migrationsPath });
       } catch (error) {
         throw new Error(`Migration failed: ${error}`);
       }
     });
-    return lockResult;
   });
-
-  if (!connectionResult.success) {
-    return connectionResult;
-  }
-
-  return connectionResult.data;
 }
 
 /**
  * Run migration down (rollback last migration)
  */
 export async function migrateDown(connectionUrl: string): Promise<Result<void, string>> {
-  const connectionResult = await withDatabaseConnection(connectionUrl, async (ctx) => {
-    const lockResult = await withMigrationLock(ctx, async () => {
+  return withDatabaseConnection(connectionUrl, async (ctx): Promise<Result<void, string>> => {
+    return withMigrationLock(ctx, async () => {
       // Use helper to find last migration
       const lastResult = await findLastMigration(ctx, false); // debug = false for API
       if (!lastResult.success) {
@@ -82,14 +75,7 @@ export async function migrateDown(connectionUrl: string): Promise<Result<void, s
         }
       });
     });
-    return lockResult;
   });
-
-  if (!connectionResult.success) {
-    return connectionResult;
-  }
-
-  return connectionResult.data;
 }
 
 /**
