@@ -78,12 +78,12 @@ export class DrizzleUserRepository implements IUserRepository {
     }
   }
 
-  async findByKeycloakId(keycloakId: string): Promise<User | null> {
+  async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
     try {
       const row = await this.trx
         .select()
         .from(authUser)
-        .where(eq(authUser.keycloakId, keycloakId))
+        .where(eq(authUser.identityProviderId, identityProviderId))
         .limit(1);
 
       if (row.length === 0) {
@@ -93,7 +93,7 @@ export class DrizzleUserRepository implements IUserRepository {
       const result = User.fromPersistence(row[0]);
       if (!result.success) {
         logger.error('Invalid user data in database:', {
-          keycloakId,
+          identityProviderId,
           error: result.error.message,
         });
         return null;
@@ -101,8 +101,8 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return result.data;
     } catch (error) {
-      logger.error('Failed to find user by KeyCloak ID:', {
-        keycloakId,
+      logger.error('Failed to find user by identity provider ID:', {
+        identityProviderId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
@@ -157,7 +157,7 @@ export class DrizzleUserRepository implements IUserRepository {
             email: data.email,
             username: data.username,
             role: data.role as 'guest' | 'user' | 'premium' | 'admin',
-            keycloakId: data.keycloakId,
+            identityProviderId: data.identityProviderId,
             isActive: data.isActive,
             updatedAt: data.updatedAt,
           },

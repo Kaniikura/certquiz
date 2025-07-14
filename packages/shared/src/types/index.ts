@@ -3,7 +3,7 @@ export interface User {
   email: string;
   username: string;
   role: 'guest' | 'user' | 'premium' | 'admin';
-  keycloakId?: string;
+  identityProviderId?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
