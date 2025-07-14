@@ -44,7 +44,7 @@ ALTER TABLE auth_user
 export class User extends AggregateRoot<UserId> {
   constructor(
     // ...
-    public readonly identityProviderId: string,
+    public readonly keycloakId: string,
     // ...
   ) {}
 }
@@ -63,7 +63,7 @@ export class User extends AggregateRoot<UserId> {
 
 ```typescript
 // Rename method
-- async findByIdentityProviderId(identityProviderId: string): Promise<User | null>
+- async findByKeycloakId(keycloakId: string): Promise<User | null>
 + async findByIdentityProviderId(identityProviderId: string): Promise<User | null>
 ```
 
