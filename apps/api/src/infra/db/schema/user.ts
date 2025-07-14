@@ -15,14 +15,14 @@ import {
 } from 'drizzle-orm/pg-core';
 import { subscriptionPlanEnum, subscriptionStatusEnum, userRoleEnum } from './enums';
 
-// Local user table synchronized with KeyCloak
+// Local user table synchronized with identity provider
 export const authUser = pgTable(
   'auth_user',
   {
     userId: uuid('user_id').primaryKey(),
     email: text('email').notNull().unique(),
     username: text('username').notNull().unique(),
-    keycloakId: text('keycloak_id').unique(),
+    identityProviderId: text('identity_provider_id').unique(),
     role: userRoleEnum('role').notNull().default('user'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -30,7 +30,7 @@ export const authUser = pgTable(
   },
   (table) => [
     index('ix_user_email').on(table.email),
-    index('ix_user_keycloak').on(table.keycloakId),
+    index('ix_user_identity_provider').on(table.identityProviderId),
     index('ix_user_role_active').on(table.role, table.isActive),
   ]
 );

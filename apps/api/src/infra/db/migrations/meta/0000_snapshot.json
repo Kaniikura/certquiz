@@ -26,8 +26,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "keycloak_id": {
-          "name": "keycloak_id",
+        "identity_provider_id": {
+          "name": "identity_provider_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -78,11 +78,11 @@
           "method": "btree",
           "with": {}
         },
-        "ix_user_keycloak": {
-          "name": "ix_user_keycloak",
+        "ix_user_identity_provider": {
+          "name": "ix_user_identity_provider",
           "columns": [
             {
-              "expression": "keycloak_id",
+              "expression": "identity_provider_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -128,10 +128,10 @@
           "nullsNotDistinct": false,
           "columns": ["username"]
         },
-        "auth_user_keycloak_id_unique": {
-          "name": "auth_user_keycloak_id_unique",
+        "auth_user_identity_provider_id_unique": {
+          "name": "auth_user_identity_provider_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["keycloak_id"]
+          "columns": ["identity_provider_id"]
         }
       },
       "policies": {},
