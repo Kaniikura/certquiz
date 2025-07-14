@@ -33,15 +33,25 @@ export interface MigrationMeta {
 export async function withDatabaseConnection<T>(
   connectionUrl: string,
   operation: (ctx: MigrationContext & { client: postgres.Sql }) => Promise<T>
-): Promise<T> {
-  const client = postgres(connectionUrl, { max: 1 });
-  const db = drizzle(client);
-  const ctx = { db, client, migrationsPath: MIGRATIONS_PATH };
+): Promise<Result<T, string>> {
+  let client: postgres.Sql | undefined;
 
   try {
-    return await operation(ctx);
+    client = postgres(connectionUrl, { max: 1 });
+    const db = drizzle(client);
+    const ctx = { db, client, migrationsPath: MIGRATIONS_PATH };
+
+    const value = await operation(ctx);
+    return Result.ok(value);
+  } catch (e) {
+    return Result.err(e instanceof Error ? e.message : String(e));
   } finally {
-    await client.end();
+    // Never let a failed shutdown clobber the real error
+    try {
+      if (client) await client.end();
+    } catch {
+      /* ignore cleanup errors */
+    }
   }
 }
 

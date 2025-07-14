@@ -2,7 +2,7 @@
  * Programmatic API for database migrations.
  * This allows tests to run migrations without spawning child processes.
  */
-import { Result } from '@api/shared/result';
+import type { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import * as dbRepo from './db-repository';
@@ -19,23 +19,30 @@ import { analyzeMigrations } from './runtime';
  * Run migrations up (apply all pending migrations)
  */
 export async function migrateUp(connectionUrl: string): Promise<Result<void, string>> {
-  return withDatabaseConnection(connectionUrl, async (ctx) => {
-    return withMigrationLock(ctx, async () => {
+  const connectionResult = await withDatabaseConnection(connectionUrl, async (ctx) => {
+    const lockResult = await withMigrationLock(ctx, async () => {
       try {
         await migrate(ctx.db, { migrationsFolder: ctx.migrationsPath });
       } catch (error) {
         throw new Error(`Migration failed: ${error}`);
       }
     });
+    return lockResult;
   });
+
+  if (!connectionResult.success) {
+    return connectionResult;
+  }
+
+  return connectionResult.data;
 }
 
 /**
  * Run migration down (rollback last migration)
  */
 export async function migrateDown(connectionUrl: string): Promise<Result<void, string>> {
-  return withDatabaseConnection(connectionUrl, async (ctx) => {
-    return withMigrationLock(ctx, async () => {
+  const connectionResult = await withDatabaseConnection(connectionUrl, async (ctx) => {
+    const lockResult = await withMigrationLock(ctx, async () => {
       // Use helper to find last migration
       const lastResult = await findLastMigration(ctx, false); // debug = false for API
       if (!lastResult.success) {
@@ -75,7 +82,14 @@ export async function migrateDown(connectionUrl: string): Promise<Result<void, s
         }
       });
     });
+    return lockResult;
   });
+
+  if (!connectionResult.success) {
+    return connectionResult;
+  }
+
+  return connectionResult.data;
 }
 
 /**
@@ -91,32 +105,26 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
     string
   >
 > {
-  try {
-    return await withDatabaseConnection(connectionUrl, async (ctx) => {
-      const analysisResult = await analyzeMigrations(ctx);
+  return withDatabaseConnection(connectionUrl, async (ctx) => {
+    const analysisResult = await analyzeMigrations(ctx);
 
-      if (!analysisResult.success) {
-        return Result.err(analysisResult.error);
-      }
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error);
+    }
 
-      const analysis = analysisResult.data;
+    const analysis = analysisResult.data;
 
-      // Map applied hashes to filenames
-      const appliedFilenames = analysis.appliedRecords.map(
-        (record) =>
-          analysis.hashByFile.get(record.hash) ||
-          `<unknown - hash: ${record.hash.substring(0, 8)}...>`
-      );
-
-      return Result.ok({
-        applied: appliedFilenames,
-        pending: analysis.pendingFiles,
-        missingDown: analysis.missingDownFiles,
-      });
-    });
-  } catch (error) {
-    return Result.err(
-      `Failed to get migration status: ${error instanceof Error ? error.message : String(error)}`
+    // Map applied hashes to filenames
+    const appliedFilenames = analysis.appliedRecords.map(
+      (record) =>
+        analysis.hashByFile.get(record.hash) ||
+        `<unknown - hash: ${record.hash.substring(0, 8)}...>`
     );
-  }
+
+    return {
+      applied: appliedFilenames,
+      pending: analysis.pendingFiles,
+      missingDown: analysis.missingDownFiles,
+    };
+  });
 }
