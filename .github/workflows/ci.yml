@@ -31,12 +31,9 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
+        id: setup-bun
         with:
           bun-version: latest
-
-      - name: Get Bun version for cache key
-        id: bun-version
-        run: echo "BUN_VERSION=$(bun --version)" >> $GITHUB_ENV
 
       - name: Cache Bun dependencies
         uses: actions/cache@v4
@@ -44,9 +41,9 @@ jobs:
           path: |
             ~/.bun/install/cache
             **/node_modules
-          key: ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-
+            ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
@@ -85,12 +82,9 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
+        id: setup-bun
         with:
           bun-version: latest
-
-      - name: Get Bun version for cache key
-        id: bun-version
-        run: echo "BUN_VERSION=$(bun --version)" >> $GITHUB_ENV
 
       - name: Cache Bun dependencies
         uses: actions/cache@v4
@@ -98,9 +92,9 @@ jobs:
           path: |
             ~/.bun/install/cache
             **/node_modules
-          key: ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-bun-${{ env.BUN_VERSION }}-
+            ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
@@ -130,6 +124,7 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
+        id: setup-bun
         with:
           bun-version: latest
 
@@ -139,7 +134,10 @@ jobs:
           path: |
             ~/.bun/install/cache
             **/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -206,6 +204,7 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
+        id: setup-bun
         with:
           bun-version: latest
 
@@ -215,7 +214,10 @@ jobs:
           path: |
             ~/.bun/install/cache
             **/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-${{ steps.setup-bun.outputs.bun-version }}-
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
