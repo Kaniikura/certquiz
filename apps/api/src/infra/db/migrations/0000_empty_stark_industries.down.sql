@@ -37,7 +37,7 @@ DROP INDEX IF EXISTS "ix_question_status_active";
 DROP INDEX IF EXISTS "ix_bookmarks_user";
 DROP INDEX IF EXISTS "pk_bookmarks";
 DROP INDEX IF EXISTS "ix_user_role_active";
-DROP INDEX IF EXISTS "ix_user_keycloak";
+DROP INDEX IF EXISTS "ix_user_identity_provider";
 DROP INDEX IF EXISTS "ix_user_email";
 
 -- Drop all tables (CASCADE will handle foreign key dependencies)

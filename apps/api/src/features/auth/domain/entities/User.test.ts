@@ -31,24 +31,24 @@ describe('User', () => {
         expect(result.data.username).toBe('testuser');
         expect(result.data.role).toBe(UserRole.User);
         expect(result.data.isActive).toBe(true);
-        expect(result.data.keycloakId).toBeNull();
+        expect(result.data.identityProviderId).toBeNull();
       }
     });
 
-    it('should create a user with optional role and keycloakId', () => {
+    it('should create a user with optional role and identityProviderId', () => {
       // Arrange & Act
       const result = User.create({
         email: 'admin@example.com',
         username: 'admin',
         role: UserRole.Admin,
-        keycloakId: 'kc-123',
+        identityProviderId: 'kc-123',
       });
 
       // Assert
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.role).toBe(UserRole.Admin);
-        expect(result.data.keycloakId).toBe('kc-123');
+        expect(result.data.identityProviderId).toBe('kc-123');
       }
     });
 
@@ -135,7 +135,7 @@ describe('User', () => {
         email: 'test@example.com',
         username: 'testuser',
         role: 'user',
-        keycloakId: 'kc-123',
+        identityProviderId: 'kc-123',
         isActive: true,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
@@ -152,7 +152,7 @@ describe('User', () => {
         expect(user.email.toString()).toBe('test@example.com');
         expect(user.username).toBe('testuser');
         expect(user.role).toBe(UserRole.User);
-        expect(user.keycloakId).toBe('kc-123');
+        expect(user.identityProviderId).toBe('kc-123');
         expect(user.isActive).toBe(true);
         expect(user.createdAt).toEqual(new Date('2024-01-01'));
         expect(user.updatedAt).toEqual(new Date('2024-01-02'));
@@ -166,7 +166,7 @@ describe('User', () => {
         email: 'invalid-email',
         username: 'testuser',
         role: 'user',
-        keycloakId: null,
+        identityProviderId: null,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -190,7 +190,7 @@ describe('User', () => {
         email: 'test@example.com',
         username: 'a', // Too short username
         role: 'user',
-        keycloakId: null,
+        identityProviderId: null,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -214,7 +214,7 @@ describe('User', () => {
         email: 'test@example.com',
         username: 'test@user!', // Invalid characters
         role: 'user',
-        keycloakId: null,
+        identityProviderId: null,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -240,7 +240,7 @@ describe('User', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: UserRole.Premium,
-          keycloakId: 'kc-123',
+          identityProviderId: 'kc-123',
         })
       );
 
@@ -252,7 +252,7 @@ describe('User', () => {
       expect(row.email).toBe('test@example.com');
       expect(row.username).toBe('testuser');
       expect(row.role).toBe('premium');
-      expect(row.keycloakId).toBe('kc-123');
+      expect(row.identityProviderId).toBe('kc-123');
       expect(row.isActive).toBe(true);
       expect(row.createdAt).toBeInstanceOf(Date);
       expect(row.updatedAt).toBeInstanceOf(Date);
@@ -518,7 +518,7 @@ describe('User', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: 'user',
-          keycloakId: null,
+          identityProviderId: null,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),

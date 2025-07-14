@@ -15,7 +15,7 @@ export class User extends AggregateRoot<UserId> {
     public readonly email: Email,
     public readonly username: string,
     public readonly role: UserRole,
-    public readonly keycloakId: string | null,
+    public readonly identityProviderId: string | null,
     public readonly isActive: boolean,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
@@ -45,7 +45,7 @@ export class User extends AggregateRoot<UserId> {
   static create(props: {
     email: string;
     username: string;
-    keycloakId?: string;
+    identityProviderId?: string;
     role?: UserRole;
   }): Result<User, ValidationError> {
     // Validate email
@@ -68,7 +68,7 @@ export class User extends AggregateRoot<UserId> {
         emailResult.data,
         usernameResult.data,
         props.role ?? UserRole.User,
-        props.keycloakId ?? null,
+        props.identityProviderId ?? null,
         true, // isActive defaults to true
         now, // createdAt
         now // updatedAt
@@ -84,7 +84,7 @@ export class User extends AggregateRoot<UserId> {
     email: string;
     username: string;
     role: string;
-    keycloakId: string | null;
+    identityProviderId: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -107,7 +107,7 @@ export class User extends AggregateRoot<UserId> {
         email.data,
         usernameResult.data,
         UserRole.fromString(row.role),
-        row.keycloakId,
+        row.identityProviderId,
         row.isActive,
         row.createdAt,
         row.updatedAt
@@ -123,7 +123,7 @@ export class User extends AggregateRoot<UserId> {
     email: string;
     username: string;
     role: string;
-    keycloakId: string | null;
+    identityProviderId: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -133,7 +133,7 @@ export class User extends AggregateRoot<UserId> {
       email: this.email.toString(),
       username: this.username,
       role: UserRole.roleToString(this.role),
-      keycloakId: this.keycloakId,
+      identityProviderId: this.identityProviderId,
       isActive: this.isActive,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
@@ -169,7 +169,7 @@ export class User extends AggregateRoot<UserId> {
         newEmail,
         newUsername,
         this.role,
-        this.keycloakId,
+        this.identityProviderId,
         this.isActive,
         this.createdAt,
         new Date() // Updated timestamp
@@ -187,7 +187,7 @@ export class User extends AggregateRoot<UserId> {
         this.email,
         this.username,
         this.role,
-        this.keycloakId,
+        this.identityProviderId,
         false, // isActive = false
         this.createdAt,
         new Date() // Updated timestamp

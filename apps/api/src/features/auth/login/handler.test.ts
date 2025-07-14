@@ -22,7 +22,7 @@ import { type LoginRequest, loginSchema } from './validation';
 const createMockUserRepository = (): IUserRepository => ({
   findByEmail: vi.fn(),
   findById: vi.fn(),
-  findByKeycloakId: vi.fn(),
+  findByIdentityProviderId: vi.fn(),
   findByUsername: vi.fn(),
   save: vi.fn(),
   isEmailTaken: vi.fn(),
@@ -117,7 +117,7 @@ describe('loginHandler', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: 'user',
-          keycloakId: 'kc-123',
+          identityProviderId: 'kc-123',
           isActive: false, // Inactive user
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -136,7 +136,7 @@ describe('loginHandler', () => {
       }
     });
 
-    it('should fail when KeyCloak authentication fails', async () => {
+    it('should fail when identity provider authentication fails', async () => {
       // Arrange
       const activeUser = unwrapOrFail(
         User.fromPersistence({
@@ -144,7 +144,7 @@ describe('loginHandler', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: 'user',
-          keycloakId: 'kc-123',
+          identityProviderId: 'kc-123',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -172,7 +172,7 @@ describe('loginHandler', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: 'premium',
-          keycloakId: 'kc-123',
+          identityProviderId: 'kc-123',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -201,7 +201,7 @@ describe('loginHandler', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle KeyCloak client errors gracefully', async () => {
+    it('should handle identity provider client errors gracefully', async () => {
       // Arrange
       const activeUser = unwrapOrFail(
         User.fromPersistence({
@@ -209,7 +209,7 @@ describe('loginHandler', () => {
           email: 'test@example.com',
           username: 'testuser',
           role: 'user',
-          keycloakId: 'kc-123',
+          identityProviderId: 'kc-123',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -217,7 +217,9 @@ describe('loginHandler', () => {
       );
 
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(activeUser);
-      fakeAuthProvider.givenAuthenticationThrows(new Error('KeyCloak service unavailable'));
+      fakeAuthProvider.givenAuthenticationThrows(
+        new Error('Identity provider service unavailable')
+      );
 
       // Act
       const result = await loginHandler(
@@ -229,7 +231,7 @@ describe('loginHandler', () => {
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.message).toContain('KeyCloak service unavailable');
+        expect(result.error.message).toContain('Identity provider service unavailable');
       }
     });
 

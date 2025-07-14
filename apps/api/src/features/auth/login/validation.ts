@@ -15,7 +15,7 @@ export const loginSchema = z.object({
     .min(1, 'Email is required')
     .email('Invalid email format')
     .max(255, 'Email too long'),
-  password: z.string().min(1, 'Password is required').max(128, 'Password too long'), // Don't enforce min length here - KeyCloak handles that
+  password: z.string().min(1, 'Password is required').max(128, 'Password too long'), // Don't enforce min length here - identity provider handles that
 });
 
 /**

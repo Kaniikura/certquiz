@@ -11,14 +11,14 @@ CREATE TABLE "auth_user" (
 	"user_id" uuid PRIMARY KEY NOT NULL,
 	"email" text NOT NULL,
 	"username" text NOT NULL,
-	"keycloak_id" text,
+	"identity_provider_id" text,
 	"role" "user_role" DEFAULT 'user' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "auth_user_email_unique" UNIQUE("email"),
 	CONSTRAINT "auth_user_username_unique" UNIQUE("username"),
-	CONSTRAINT "auth_user_keycloak_id_unique" UNIQUE("keycloak_id")
+	CONSTRAINT "auth_user_identity_provider_id_unique" UNIQUE("identity_provider_id")
 );
 --> statement-breakpoint
 CREATE TABLE "bookmarks" (
@@ -154,7 +154,7 @@ ALTER TABLE "quiz_session_snapshot" ADD CONSTRAINT "quiz_session_snapshot_owner_
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_user_id_auth_user_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_progress" ADD CONSTRAINT "user_progress_user_id_auth_user_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ix_user_email" ON "auth_user" USING btree ("email");--> statement-breakpoint
-CREATE INDEX "ix_user_keycloak" ON "auth_user" USING btree ("keycloak_id");--> statement-breakpoint
+CREATE INDEX "ix_user_identity_provider" ON "auth_user" USING btree ("identity_provider_id");--> statement-breakpoint
 CREATE INDEX "ix_user_role_active" ON "auth_user" USING btree ("role","is_active");--> statement-breakpoint
 CREATE UNIQUE INDEX "pk_bookmarks" ON "bookmarks" USING btree ("user_id","question_id");--> statement-breakpoint
 CREATE INDEX "ix_bookmarks_user" ON "bookmarks" USING btree ("user_id");--> statement-breakpoint

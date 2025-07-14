@@ -18,9 +18,9 @@ export interface IUserRepository {
   findByEmail(email: Email): Promise<User | null>;
 
   /**
-   * Find user by KeyCloak ID
+   * Find user by identity provider ID
    */
-  findByKeycloakId(keycloakId: string): Promise<User | null>;
+  findByIdentityProviderId(identityProviderId: string): Promise<User | null>;
 
   /**
    * Find user by username

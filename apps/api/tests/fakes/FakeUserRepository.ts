@@ -28,9 +28,9 @@ export class FakeUserRepository implements IUserRepository {
     return null;
   }
 
-  async findByKeycloakId(keycloakId: string): Promise<User | null> {
+  async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
     for (const user of this.users.values()) {
-      if (user.keycloakId === keycloakId) {
+      if (user.identityProviderId === identityProviderId) {
         return user;
       }
     }

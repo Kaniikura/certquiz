@@ -24,7 +24,7 @@ export function fakeUserRepository(): IUserRepository {
     async findById(_id: UserId): Promise<User | null> {
       return null;
     },
-    async findByKeycloakId(_keycloakId: string): Promise<User | null> {
+    async findByIdentityProviderId(_identityProviderId: string): Promise<User | null> {
       return null;
     },
     async findByUsername(_username: string): Promise<User | null> {
