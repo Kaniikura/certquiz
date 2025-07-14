@@ -60,6 +60,8 @@ export async function withMigrationLock<T>(
   try {
     const result = await operation();
     return Result.ok(result);
+  } catch (error) {
+    return Result.err(error instanceof Error ? error.message : String(error));
   } finally {
     await dbRepo.releaseMigrationLock(ctx.db);
   }
@@ -200,7 +202,7 @@ export async function executeRollback(
       });
     }
 
-    if (debug) console.log(`✅ Rolled back migration: ${meta.baseName}`);
+    console.log(`✅ Rolled back migration: ${meta.baseName}`);
     return Result.ok(undefined);
   } catch (error) {
     if (debug) console.log(`[DEBUG] Rollback failed with error: ${error}`);

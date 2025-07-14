@@ -91,26 +91,32 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
     string
   >
 > {
-  return withDatabaseConnection(connectionUrl, async (ctx) => {
-    const analysisResult = await analyzeMigrations(ctx);
+  try {
+    return await withDatabaseConnection(connectionUrl, async (ctx) => {
+      const analysisResult = await analyzeMigrations(ctx);
 
-    if (!analysisResult.success) {
-      throw new Error(analysisResult.error);
-    }
+      if (!analysisResult.success) {
+        return Result.err(analysisResult.error);
+      }
 
-    const analysis = analysisResult.data;
+      const analysis = analysisResult.data;
 
-    // Map applied hashes to filenames
-    const appliedFilenames = analysis.appliedRecords.map(
-      (record) =>
-        analysis.hashByFile.get(record.hash) ||
-        `<unknown - hash: ${record.hash.substring(0, 8)}...>`
-    );
+      // Map applied hashes to filenames
+      const appliedFilenames = analysis.appliedRecords.map(
+        (record) =>
+          analysis.hashByFile.get(record.hash) ||
+          `<unknown - hash: ${record.hash.substring(0, 8)}...>`
+      );
 
-    return Result.ok({
-      applied: appliedFilenames,
-      pending: analysis.pendingFiles,
-      missingDown: analysis.missingDownFiles,
+      return Result.ok({
+        applied: appliedFilenames,
+        pending: analysis.pendingFiles,
+        missingDown: analysis.missingDownFiles,
+      });
     });
-  });
+  } catch (error) {
+    return Result.err(
+      `Failed to get migration status: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
