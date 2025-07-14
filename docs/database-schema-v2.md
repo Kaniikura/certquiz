@@ -16,7 +16,7 @@ This document covers the **physical PostgreSQL schema** that persists the CertQu
 | TypeScript (Domain) | PostgreSQL | Notes |
 |---------------------|------------|-------|
 | `QuizSessionId` | `uuid` | Branded string type |
-| `UserId` | `uuid` | Maps to identity provider user ID |
+| `UserId` | `uuid` | Internal application-specific user ID |
 | `QuestionId` | `uuid` | Branded string type |
 | `OptionId` | `uuid` | Branded string type |
 | `AnswerId` | `uuid` | Branded string type |

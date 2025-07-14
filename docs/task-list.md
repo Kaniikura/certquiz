@@ -277,7 +277,7 @@ ALTER TABLE auth_user
 
 // Repository Updates:
 - Update DrizzleUserRepository schema
-- Rename findByKeycloakId → findByIdentityProviderId
+- Renamed findByKeycloakId → findByIdentityProviderId
 
 // Infrastructure Updates:
 - Update auth provider implementations

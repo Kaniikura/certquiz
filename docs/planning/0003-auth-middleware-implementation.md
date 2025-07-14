@@ -14,7 +14,7 @@ Based on architectural review, we will maintain the current simple database sche
 - ✅ **IAuthProvider interface** with methods for authenticate/validateToken/refreshToken
 - ✅ **KeyCloakAuthProvider** implementation for KeyCloak integration
 - ✅ **Simple UserId** as branded string type
-- ✅ **User aggregate** with keycloakId property
+- ✅ **User aggregate** with identityProviderId property
 - ✅ **Clean repository pattern** with transaction support
 - ✅ **Login handler** that authenticates and returns tokens
 
@@ -44,7 +44,7 @@ ALTER TABLE auth_user
 export class User extends AggregateRoot<UserId> {
   constructor(
     // ...
-    public readonly keycloakId: string,
+    public readonly identityProviderId: string,
     // ...
   ) {}
 }
@@ -63,7 +63,7 @@ export class User extends AggregateRoot<UserId> {
 
 ```typescript
 // Rename method
-- async findByKeycloakId(keycloakId: string): Promise<User | null>
+- async findByIdentityProviderId(identityProviderId: string): Promise<User | null>
 + async findByIdentityProviderId(identityProviderId: string): Promise<User | null>
 ```
 
@@ -81,10 +81,10 @@ export class User extends AggregateRoot<UserId> {
 
 ```typescript
 export type AuthUser = {
-  sub: string;          // KeyCloak user id
+  sub: string;          // Identity provider user id
   email?: string;
   preferred_username?: string;
-  roles: string[];      // Flattened from KeyCloak claims
+  roles: string[];      // Flattened from JWT claims
 };
 
 declare module 'hono' {
@@ -98,16 +98,16 @@ declare module 'hono' {
 
 #### 2.2 JWT Verification Service
 
-**File**: `apps/api/src/infra/auth/KeyCloakJwtVerifier.ts`
+**File**: `apps/api/src/infra/auth/JwtVerifier.ts`
 
 ```typescript
 import jwks from 'jwks-rsa';
 import jwt from 'jsonwebtoken';
 import type { AuthUser } from '@api/lib/context-types';
 
-export class KeyCloakJwtVerifier {
+export class JwtVerifier {
   private client = jwks({
-    jwksUri: `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/certs`,
+    jwksUri: `${config.auth.jwksUri}`,
   });
 
   async verifyToken(token: string): Promise<AuthUser> {
@@ -121,14 +121,14 @@ export class KeyCloakJwtVerifier {
     const pubKey = key.getPublicKey();
 
     const payload = jwt.verify(token, pubKey, {
-      audience: config.keycloak.clientId,
-      issuer: `${config.keycloak.url}/realms/${config.keycloak.realm}`,
+      audience: config.auth.clientId,
+      issuer: config.auth.issuer,
     }) as jwt.JwtPayload;
 
-    // Flatten roles from KeyCloak structure
+    // Flatten roles from JWT structure
     const roles = [
       ...(payload.realm_access?.roles ?? []),
-      ...(payload.resource_access?.[config.keycloak.clientId]?.roles ?? []),
+      ...(payload.resource_access?.[config.auth.clientId]?.roles ?? []),
     ] as string[];
 
     return {
@@ -147,9 +147,9 @@ export class KeyCloakJwtVerifier {
 
 ```typescript
 import type { Context, Next } from 'hono';
-import { KeyCloakJwtVerifier } from '@api/infra/auth/KeyCloakJwtVerifier';
+import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
 
-const verifier = new KeyCloakJwtVerifier();
+const verifier = new JwtVerifier();
 
 type AuthOptions = {
   required?: boolean;    // Default: true
@@ -252,7 +252,7 @@ export async function startQuizHandler(c: Context) {
 
 ### Phase 1: Provider Field Rename (30 minutes)
 1. Create database migration for column rename
-2. Update User domain entity (keycloakId → identityProviderId)
+2. Update User domain entity (identityProviderId is now used)
 3. Update DrizzleUserRepository schema and methods
 4. Update all references in handlers and tests
 5. Run all tests to ensure no breakage
@@ -262,8 +262,8 @@ export async function startQuizHandler(c: Context) {
 
 #### Day 1: Context Types & JWT Verifier
 1. Create context type definitions
-2. Implement KeyCloakJwtVerifier with JWKS support
-3. Add configuration for KeyCloak endpoints
+2. Implement JwtVerifier with JWKS support
+3. Add configuration for auth provider endpoints
 4. Write unit tests for JWT verification
 
 #### Day 2: Authentication Middleware
@@ -279,7 +279,7 @@ export async function startQuizHandler(c: Context) {
 4. Integration tests for auth flow
 
 #### Day 4: Testing & Documentation
-1. End-to-end tests with real KeyCloak
+1. End-to-end tests with real identity provider
 2. Update API documentation
 3. Add auth examples
 4. Performance testing
@@ -308,10 +308,10 @@ CREATE TABLE user_id_mappings (
 
 -- Migrate existing data
 INSERT INTO user_id_mappings (user_id, provider, provider_user_id)
-SELECT user_id, 'keycloak', keycloak_id FROM auth_user;
+SELECT user_id, 'keycloak', identity_provider_id FROM auth_user;
 
--- Eventually drop keycloak_id column
-ALTER TABLE auth_user DROP COLUMN keycloak_id;
+-- Eventually drop old column if migrating from legacy schema
+-- ALTER TABLE auth_user DROP COLUMN old_provider_id;
 ```
 
 ## Testing Strategy
@@ -322,7 +322,7 @@ ALTER TABLE auth_user DROP COLUMN keycloak_id;
 - Role-based authorization checks
 
 ### Integration Tests
-- Full auth flow with test KeyCloak realm
+- Full auth flow with test identity provider
 - Protected endpoint access
 - Token refresh flows
 
@@ -350,7 +350,7 @@ ALTER TABLE auth_user DROP COLUMN keycloak_id;
 ### Phase 2: Authentication Middleware
 - [ ] All API endpoints are protected by default
 - [ ] Public endpoints are explicitly marked
-- [ ] JWT tokens are validated against KeyCloak
+- [ ] JWT tokens are validated against the identity provider
 - [ ] User context is available in all handlers
 - [ ] Role-based authorization works
 - [ ] Tests achieve 90%+ coverage
