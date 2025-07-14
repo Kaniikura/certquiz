@@ -172,7 +172,7 @@ jobs:
           cd "$WORKSPACE_PATH"
           bun run lint && bun run typecheck
           # Fast unit tests without coverage for speed
-          bun test --exclude="**/*.e2e.test.ts" --reporter=dot
+          bun run test --exclude="**/*.e2e.test.ts" --reporter=dot
         env:
           VITEST_MAX_THREADS: 4  # Increased for faster execution
           BUN_JSC_forceRAMSize: 2048
@@ -318,11 +318,11 @@ jobs:
       # Run complete test suite with coverage and thresholds
       - run: |
           # API workspace - 90% threshold
-          cd apps/api && bun test --coverage --coverage.thresholds.statements=90 && cd -
+          cd apps/api && bun run test --coverage --coverage.thresholds.statements=90 && cd -
           # Web workspace - 80% threshold  
-          cd apps/web && bun test --coverage --coverage.thresholds.statements=80 && cd -
+          cd apps/web && bun run test --coverage --coverage.thresholds.statements=80 && cd -
           # Shared workspace - 80% threshold
-          cd packages/shared && bun test --coverage --coverage.thresholds.statements=80 && cd -
+          cd packages/shared && bun run test --coverage --coverage.thresholds.statements=80 && cd -
         env:
           VITEST_MAX_THREADS: 4
           BUN_JSC_forceRAMSize: 2048
@@ -545,10 +545,10 @@ permissions:
 - run: |
     if [ "${{ github.event_name }}" = "pull_request" ]; then
       # Fast PR tests without coverage
-      bun test --exclude="**/*.e2e.test.ts" --reporter=dot
+      bun run test --exclude="**/*.e2e.test.ts" --reporter=dot
     else
       # Full post-merge tests with coverage and thresholds
-      bun test --coverage --coverage.thresholds.statements=80
+      bun run test --coverage --coverage.thresholds.statements=80
     fi
   env:
     VITEST_MAX_THREADS: 4

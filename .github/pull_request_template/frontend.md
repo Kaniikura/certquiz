@@ -33,7 +33,7 @@ Closes #
 ### Test Evidence
 ```bash
 # Test output from apps/web
-cd apps/web && bun test --coverage
+cd apps/web && bun run test --coverage
 
 # Coverage report:
 # File             | % Stmts | % Branch | % Funcs | % Lines |

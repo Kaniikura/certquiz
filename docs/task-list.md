@@ -515,7 +515,7 @@ Production-ready auth implementation with comprehensive VSA + Repository Pattern
 - Setup test utilities
 - Create test factories
 - Add coverage reporting
-- Test: `bun test` runs all tests
+- Test: `bun run test` runs all tests
 ```
 
 ### 11.2 Integration Test Suite

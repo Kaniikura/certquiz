@@ -62,7 +62,7 @@ Closes #123
 
 ### Test Evidence
 \`\`\`bash
-cd apps/api && bun test --coverage
+cd apps/api && bun run test --coverage
 # Coverage: 85%
 \`\`\`
 
@@ -70,7 +70,7 @@ cd apps/api && bun test --coverage
 - [x] TDD followed: Tests written BEFORE implementation
 - [x] Schema-first: TypeSpec schemas updated
 - [x] Type safety: No any types used
-- [x] Tests pass: bun test
+- [x] Tests pass: bun run test
 EOF
 )" --base main --draft
 ```
@@ -118,10 +118,10 @@ Always include actual test output:
 
 ```bash
 # Backend
-cd apps/api && bun test --coverage
+cd apps/api && bun run test --coverage
 
 # Frontend
-cd apps/web && bun test --coverage
+cd apps/web && bun run test --coverage
 ```
 
 ### 4. **Draft PRs**

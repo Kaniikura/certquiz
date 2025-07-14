@@ -6,21 +6,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as dbRepo from './db-repository';
 import * as fileRepo from './file-repository';
+import { analyzeMigrations, type MigrationContext } from './runtime';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Define migrations path as a single constant to avoid duplication
 const MIGRATIONS_PATH = path.join(__dirname, '../../infra/db/migrations');
 
-interface MigrationContext {
-  db: PostgresJsDatabase;
+interface ApiMigrationContext extends MigrationContext {
   client: postgres.Sql;
-  migrationsPath: string;
 }
 
 /**
@@ -30,7 +29,7 @@ export async function migrateUp(connectionUrl: string): Promise<Result<void, str
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
 
-  const ctx: MigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
+  const ctx: ApiMigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
 
   try {
     const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
@@ -58,7 +57,7 @@ export async function migrateDown(connectionUrl: string): Promise<Result<void, s
   const client = postgres(connectionUrl, { max: 1 });
   const db = drizzle(client);
 
-  const ctx: MigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
+  const ctx: ApiMigrationContext = { db, client, migrationsPath: MIGRATIONS_PATH };
 
   try {
     const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
@@ -152,54 +151,26 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
   const db = drizzle(client);
 
   try {
-    // Get migration files
-    const filesResult = await fileRepo.listMigrationFiles(MIGRATIONS_PATH);
-    if (!filesResult.success) {
-      return Result.err(`Failed to list migration files: ${filesResult.error.type}`);
+    const ctx: MigrationContext = { db, migrationsPath: MIGRATIONS_PATH };
+    const analysisResult = await analyzeMigrations(ctx);
+
+    if (!analysisResult.success) {
+      return Result.err(analysisResult.error);
     }
 
-    const upMigrations = filesResult.data.filter((f) => f.type === 'up');
+    const analysis = analysisResult.data;
 
-    // Get applied migrations
-    const appliedResult = await dbRepo.getAllAppliedMigrations(db);
-    const applied = appliedResult.success ? appliedResult.data : [];
-    const appliedHashes = new Set(applied.map((a) => a.hash));
-
-    // Build file hash map
-    const fileHashMap = new Map<string, string>();
-    const pending: string[] = [];
-
-    for (const file of upMigrations) {
-      const hashResult = await fileRepo.calculateFileHash(file.path);
-      if (hashResult.success) {
-        fileHashMap.set(hashResult.data, file.filename);
-        if (!appliedHashes.has(hashResult.data)) {
-          pending.push(file.filename);
-        }
-      }
-    }
-
-    // Check for missing down migrations
-    const missingDown: string[] = [];
-    for (const file of upMigrations) {
-      if (!file.baseName.includes('.irrev')) {
-        const hasDownResult = await fileRepo.hasDownMigration(MIGRATIONS_PATH, file.baseName);
-        if (hasDownResult.success && !hasDownResult.data) {
-          missingDown.push(`${file.baseName}.down.sql`);
-        }
-      }
-    }
-
-    // Map applied migrations to filenames
-    const appliedFilenames = applied.map(
-      (migration) =>
-        fileHashMap.get(migration.hash) || `<unknown - hash: ${migration.hash.substring(0, 8)}...>`
+    // Map applied hashes to filenames
+    const appliedFilenames = analysis.appliedRecords.map(
+      (record) =>
+        analysis.hashByFile.get(record.hash) ||
+        `<unknown - hash: ${record.hash.substring(0, 8)}...>`
     );
 
     return Result.ok({
       applied: appliedFilenames,
-      pending,
-      missingDown,
+      pending: analysis.pendingFiles,
+      missingDown: analysis.missingDownFiles,
     });
   } finally {
     await client.end();
