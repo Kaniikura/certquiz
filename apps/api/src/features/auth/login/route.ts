@@ -27,7 +27,10 @@ export const loginRoute = new Hono<{
     const body = await safeJson(c);
 
     // Log login attempt (without password)
-    const email = body?.email;
+    const email =
+      body && typeof body === 'object' && 'email' in body
+        ? (body as { email?: unknown }).email
+        : undefined;
     logger.info('Login attempt', { email });
 
     // Get dependencies from DI container/context
