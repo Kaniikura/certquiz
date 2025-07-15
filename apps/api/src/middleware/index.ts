@@ -9,6 +9,8 @@
  * 5. Error handler (catches all errors)
  */
 
+export type { AuthOptions } from './auth';
+export { auth } from './auth';
 export type { LoggerVariables } from './logger';
 export { createLoggerMiddleware } from './logger';
 export { errorHandler, toHttpError } from './on-error';
