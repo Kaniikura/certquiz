@@ -1,5 +1,6 @@
 import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
-import type { Context, MiddlewareHandler } from 'hono';
+import type { Context } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import type { AuthUser } from './auth/auth-user';
 
 export interface AuthOptions {
@@ -106,12 +107,10 @@ function isAuthError(err: unknown): err is Error {
  * @param options.roles - Required roles for authorization
  * @returns Hono middleware handler
  */
-export const auth = (
-  options?: AuthOptions
-): MiddlewareHandler<{ Variables: { user?: AuthUser } }> => {
+export const auth = (options?: AuthOptions) => {
   const { required = true, roles = [] } = options ?? {};
 
-  return async (c, next) => {
+  return createMiddleware<{ Variables: { user?: AuthUser } }>(async (c, next) => {
     try {
       /* 1. Header checks --------------------------------------------------- */
       const rawHeader = resolveHeader(c, required);
@@ -142,5 +141,5 @@ export const auth = (
       /* Everything else ---------------------------------------------------- */
       return c.json({ error: 'Internal server error' }, 500);
     }
-  };
+  });
 };

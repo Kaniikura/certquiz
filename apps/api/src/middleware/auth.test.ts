@@ -392,6 +392,11 @@ describe('auth() middleware', () => {
     it('should instantiate JwtVerifier with correct options', async () => {
       // Arrange
       mockVerify(validUser);
+
+      // Reset the cache to force new instantiation
+      const { resetJwtVerifierCache } = await import('./auth');
+      resetJwtVerifierCache();
+
       app.use(auth());
       app.get('/test', (c) => c.text('OK'));
 
