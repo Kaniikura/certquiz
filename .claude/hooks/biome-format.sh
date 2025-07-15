@@ -3,6 +3,9 @@
 
 read json
 
+# Get repository root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+
 # Try to extract file path from different possible locations
 file_path=$(echo "$json" | jq -r '.tool_input.file_path // .tool_response.filePath // empty' 2>/dev/null)
 
@@ -10,19 +13,18 @@ file_path=$(echo "$json" | jq -r '.tool_input.file_path // .tool_response.filePa
 if [ -n "$file_path" ]; then
   case "$file_path" in
     *.ts|*.tsx|*.js|*.jsx|*.json|*.jsonc|*.svelte)
-      cd /home/ubuntu/Projects/certquiz && biome check --write "$file_path"
+      cd "$REPO_ROOT" && biome check --write "$file_path"
       ;;
   esac
 else
   # Try MultiEdit format
-  file_paths=$(echo "$json" | jq -r '.tool_input.edits[]?.file_path // empty' 2>/dev/null | sort -u)
-  if [ -n "$file_paths" ]; then
-    for file_path in $file_paths; do
+  echo "$json" | jq -r '.tool_input.edits[]?.file_path // empty' 2>/dev/null | sort -u | while IFS= read -r file_path; do
+    if [ -n "$file_path" ]; then
       case "$file_path" in
         *.ts|*.tsx|*.js|*.jsx|*.json|*.jsonc|*.svelte)
-          cd /home/ubuntu/Projects/certquiz && biome check --write "$file_path"
+          cd "$REPO_ROOT" && biome check --write "$file_path"
           ;;
       esac
-    done
-  fi
+    fi
+  done
 fi

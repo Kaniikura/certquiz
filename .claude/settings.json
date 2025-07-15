@@ -264,7 +264,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/ubuntu/Projects/certquiz/.claude/hooks/pre-git-add.sh"
+            "command": "./.claude/hooks/pre-git-add.sh"
           }
         ]
       }
@@ -275,7 +275,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/ubuntu/Projects/certquiz/.claude/hooks/biome-format.sh"
+            "command": "./.claude/hooks/biome-format.sh"
           }
         ]
       }
