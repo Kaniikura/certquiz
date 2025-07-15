@@ -1,5 +1,7 @@
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import type { IRoleMapper } from './RoleMapper';
 
 export interface JwtVerifierOptions {
   jwksUri: string;
@@ -10,9 +12,11 @@ export interface JwtVerifierOptions {
 export class JwtVerifier {
   private jwks: ReturnType<typeof createRemoteJWKSet>;
   private options: JwtVerifierOptions;
+  private roleMapper: IRoleMapper;
 
-  constructor(options: JwtVerifierOptions) {
+  constructor(options: JwtVerifierOptions, roleMapper: IRoleMapper) {
     this.options = options;
+    this.roleMapper = roleMapper;
     this.jwks = createRemoteJWKSet(new URL(options.jwksUri));
   }
 
@@ -36,12 +40,21 @@ export class JwtVerifier {
         throw new Error('Missing required claim: sub');
       }
 
+      // Extract raw roles from KeyCloak token
+      const rawRoles = this.extractRoles(payload);
+
+      // Convert to domain roles using the mapper
+      const domainRoles = this.roleMapper.toDomain(rawRoles);
+
+      // Convert UserRole enum values to strings for AuthUser
+      const roleStrings = domainRoles.map((role) => UserRole.roleToString(role));
+
       const authUser: AuthUser = {
         sub,
         email: typeof payload.email === 'string' ? payload.email : undefined,
         preferred_username:
           typeof payload.preferred_username === 'string' ? payload.preferred_username : undefined,
-        roles: this.extractRoles(payload),
+        roles: roleStrings,
       };
 
       return authUser;

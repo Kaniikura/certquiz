@@ -1,4 +1,5 @@
 import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
+import { DEFAULT_ROLE_MAPPING, RoleMapper } from '@api/infra/auth/RoleMapper';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AuthUser } from './auth/auth-user';
@@ -21,11 +22,20 @@ function getJwtVerifier(): JwtVerifier {
     const keycloakUrl = process.env.KEYCLOAK_URL || 'http://localhost:8080';
     const keycloakRealm = process.env.KEYCLOAK_REALM || 'certquiz';
 
-    jwtVerifier = new JwtVerifier({
-      jwksUri: `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/certs`,
-      audience: 'certquiz',
-      issuer: `${keycloakUrl}/realms/${keycloakRealm}`,
-    });
+    // Create role mapper with default or configured mapping
+    const roleMapping = process.env.ROLE_MAPPING_JSON
+      ? JSON.parse(process.env.ROLE_MAPPING_JSON)
+      : DEFAULT_ROLE_MAPPING;
+    const roleMapper = new RoleMapper(roleMapping);
+
+    jwtVerifier = new JwtVerifier(
+      {
+        jwksUri: `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/certs`,
+        audience: 'certquiz',
+        issuer: `${keycloakUrl}/realms/${keycloakRealm}`,
+      },
+      roleMapper
+    );
   }
   return jwtVerifier;
 }

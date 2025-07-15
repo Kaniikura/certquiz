@@ -407,11 +407,14 @@ describe('auth() middleware', () => {
 
       // Assert
       expect(res.status).toBe(200);
-      expect(mockJwtVerifierConstructor).toHaveBeenCalledWith({
-        jwksUri: expect.any(String),
-        audience: expect.any(String),
-        issuer: expect.any(String),
-      });
+      expect(mockJwtVerifierConstructor).toHaveBeenCalledWith(
+        {
+          jwksUri: expect.any(String),
+          audience: expect.any(String),
+          issuer: expect.any(String),
+        },
+        expect.any(Object) // RoleMapper instance
+      );
     });
   });
 
