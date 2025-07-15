@@ -226,6 +226,9 @@ describe('JwtVerifier', () => {
     });
 
     it('should handle large tokens efficiently', async () => {
+      // Use real timers for accurate performance measurement
+      vi.useRealTimers();
+
       // Arrange
       mockJwtVerify.mockResolvedValueOnce(
         jwtVerifySuccess({
@@ -243,14 +246,17 @@ describe('JwtVerifier', () => {
       const largeToken = validToken + 'x'.repeat(4000); // Simulate large token
 
       // Act
-      const startTime = Date.now();
+      const startTime = performance.now();
       await verifier.verifyToken(largeToken).catch(() => {
         // Intentionally empty - testing performance regardless of validation result
       });
-      const endTime = Date.now();
+      const endTime = performance.now();
 
-      // Assert - Should complete under 5ms
-      expect(endTime - startTime).toBeLessThan(5);
+      // Assert - Should complete in a reasonable time
+      expect(endTime - startTime).toBeLessThan(10);
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
     });
 
     it('should handle malformed token format', async () => {

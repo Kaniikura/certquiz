@@ -89,12 +89,12 @@ export class JwtVerifier {
       { pattern: 'JWS signature verification failed', message: 'Invalid token signature' },
       { pattern: 'Unable to find a key', message: 'Key not found in JWKS' },
       { pattern: 'failed to fetch JWKS', message: 'Failed to fetch JWKS' },
-      { pattern: 'alg', message: 'Unsupported algorithm' }, // jose throws errors containing 'alg' for algorithm issues
+      { pattern: 'alg "', message: 'Unsupported algorithm' }, // jose throws errors like 'alg "HS256" is not allowed'
     ];
 
     for (const { pattern, message } of errorMappings) {
       if (error.message.includes(pattern)) {
-        return new Error(message);
+        return new Error(message, { cause: error });
       }
     }
 
