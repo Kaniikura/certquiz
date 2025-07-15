@@ -1,3 +1,14 @@
+/**
+ * Database repository for migration operations
+ * @fileoverview Handles database operations for migration system
+ *
+ * Log Level Management:
+ * - Uses conditional debug logging to prevent production log volume
+ * - Debug logs are enabled only in development or when LOG_LEVEL=debug
+ * - Important events (lock acquired/released, errors) remain at info/warn/error levels
+ * - Frequent operations (getting migrations, lock attempts) use conditional debug logging
+ */
+
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
@@ -29,6 +40,10 @@ const MIGRATION_LOCK_ID = 974652;
 
 // Create logger for migration database operations
 const logger = createDomainLogger('migration.db-repository');
+
+// Environment-based debug logging control for production optimization
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isDebugEnabled = process.env.LOG_LEVEL === 'debug' || isDevelopment;
 
 // Helper to parse dates from various formats
 function parseDate(value: string | number | Date): Date {
@@ -71,7 +86,10 @@ function isTableNotExistsError(error: unknown): boolean {
 export async function getLastAppliedMigration(
   db: PostgresJsDatabase
 ): Promise<Result<MigrationRecord | null, DbError>> {
-  logger.debug('Getting last applied migration');
+  // Conditional debug logging to reduce production volume
+  if (isDebugEnabled) {
+    logger.debug('Getting last applied migration');
+  }
 
   try {
     const rows = await db.execute<{ hash: string; created_at: string | number | Date }>(
@@ -91,10 +109,13 @@ export async function getLastAppliedMigration(
       createdAt: parseDate(rows[0].created_at),
     };
 
-    logger.debug('Found last migration', {
-      hash: record.hash,
-      createdAt: record.createdAt.toISOString(),
-    });
+    // Log migration details only in debug mode to avoid production noise
+    if (isDebugEnabled) {
+      logger.debug('Found last migration', {
+        hash: record.hash,
+        createdAt: record.createdAt.toISOString(),
+      });
+    }
     return Result.ok(record);
   } catch (error) {
     if (isTableNotExistsError(error)) {
@@ -166,7 +187,10 @@ export async function tableExists(db: PostgresJsDatabase): Promise<Result<boolea
 }
 
 export async function acquireMigrationLock(db: PostgresJsDatabase): Promise<Result<void, DbError>> {
-  logger.debug('Attempting to acquire migration lock', { lockId: MIGRATION_LOCK_ID });
+  // Conditional debug logging for lock operations to reduce production volume
+  if (isDebugEnabled) {
+    logger.debug('Attempting to acquire migration lock', { lockId: MIGRATION_LOCK_ID });
+  }
 
   try {
     const rows = await db.execute<{ acquired: boolean }>(
@@ -191,7 +215,10 @@ export async function acquireMigrationLock(db: PostgresJsDatabase): Promise<Resu
 }
 
 export async function releaseMigrationLock(db: PostgresJsDatabase): Promise<Result<void, DbError>> {
-  logger.debug('Releasing migration lock', { lockId: MIGRATION_LOCK_ID });
+  // Conditional debug logging for lock operations to reduce production volume
+  if (isDebugEnabled) {
+    logger.debug('Releasing migration lock', { lockId: MIGRATION_LOCK_ID });
+  }
 
   try {
     await db.execute(sql`SELECT pg_advisory_unlock(${MIGRATION_LOCK_ID})`);
