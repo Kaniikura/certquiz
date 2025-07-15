@@ -4,7 +4,7 @@
  */
 
 import type { LoggerPort } from '@api/shared/logger';
-import { getCorrelationId, getRootLogger, type Logger } from './root-logger';
+import { getRootLogger, type Logger } from './root-logger';
 
 /**
  * Adapts Pino logger to the domain LoggerPort interface
@@ -37,11 +37,6 @@ export class PinoLoggerAdapter implements LoggerPort {
     }
 
     // Correlation ID will be automatically added by the formatter
-    // but we can also add it explicitly here for child logger context
-    const correlationId = getCorrelationId();
-    if (correlationId) {
-      bindings.correlationId = correlationId;
-    }
 
     this.logger = Object.keys(bindings).length > 0 ? rootLogger.child(bindings) : rootLogger;
   }
