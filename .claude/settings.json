@@ -256,5 +256,29 @@
     "UV_CACHE_DIR": "~/.cache/uv",
     "UV_PYTHON_PREFERENCE": "managed",
     "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/pre-git-add.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/biome-format.sh"
+          }
+        ]
+      }
+    ]
   }
 }
