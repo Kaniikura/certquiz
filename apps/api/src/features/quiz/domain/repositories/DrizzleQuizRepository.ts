@@ -8,6 +8,8 @@ import {
   quizSessionEvent,
   quizSessionSnapshot,
 } from '@api/infra/db/schema/quiz';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import { PostgresError } from 'postgres';
@@ -158,39 +160,63 @@ function deterministicEventId(row: QuizSessionEventRow): string {
   return uuidv5(`${row.sessionId}:${row.version}:${row.eventSequence}`, EVENT_NAMESPACE);
 }
 
-export class DrizzleQuizRepository implements IQuizRepository {
+export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
-    private readonly trx: PostgresJsTransaction<Record<string, never>, Record<string, never>>
-  ) {}
+    private readonly trx: PostgresJsTransaction<Record<string, never>, Record<string, never>>,
+    logger: LoggerPort
+  ) {
+    super(logger);
+  }
 
   async findById(id: QuizSessionId): Promise<QuizSession | null> {
-    // Load all events for the session (event-sourcing approach)
-    const events = await this.trx
-      .select()
-      .from(quizSessionEvent)
-      .where(eq(quizSessionEvent.sessionId, id))
-      .orderBy(quizSessionEvent.version, quizSessionEvent.eventSequence);
+    try {
+      this.logger.debug('Finding quiz session by ID', { sessionId: id });
 
-    if (events.length === 0) {
-      return null;
+      // Load all events for the session (event-sourcing approach)
+      const events = await this.trx
+        .select()
+        .from(quizSessionEvent)
+        .where(eq(quizSessionEvent.sessionId, id))
+        .orderBy(quizSessionEvent.version, quizSessionEvent.eventSequence);
+
+      if (events.length === 0) {
+        this.logger.debug('Quiz session not found', { sessionId: id });
+        return null;
+      }
+
+      // Reconstruct aggregate from events
+      const session = QuizSession.createForReplay(id);
+      const domainEvents = this.mapToDomainEvents(events);
+      session.loadFromHistory(domainEvents);
+
+      this.logger.debug('Quiz session loaded successfully', {
+        sessionId: id,
+        eventCount: events.length,
+      });
+      return session;
+    } catch (error) {
+      this.logger.error('Failed to find quiz session', {
+        sessionId: id,
+        error: this.getErrorMessage(error),
+      });
+      throw error;
     }
-
-    // Reconstruct aggregate from events
-    const session = QuizSession.createForReplay(id);
-    const domainEvents = this.mapToDomainEvents(events);
-    session.loadFromHistory(domainEvents);
-
-    return session;
   }
 
   async save(session: QuizSession): Promise<void> {
     const events = session.pullUncommittedEvents();
 
     if (events.length === 0) {
+      this.logger.debug('No events to persist for session', { sessionId: session.id });
       return; // No changes to persist
     }
 
     try {
+      this.logger.info('Saving quiz session events', {
+        sessionId: session.id,
+        eventCount: events.length,
+      });
+
       // Insert events with optimistic locking for conflict detection
       const eventInserts = events.map((event) => ({
         sessionId: session.id,
@@ -206,17 +232,30 @@ export class DrizzleQuizRepository implements IQuizRepository {
 
       // Mark events as committed in aggregate
       session.markChangesAsCommitted();
+
+      this.logger.info('Quiz session saved successfully', {
+        sessionId: session.id,
+        eventCount: events.length,
+      });
     } catch (error: unknown) {
       // PostgreSQL raises unique_violation (23505) on conflict
       if (error instanceof PostgresError && error.code === '23505') {
+        this.logger.warn('Optimistic lock conflict detected', {
+          sessionId: session.id,
+          errorCode: error.code,
+        });
         throw new OptimisticLockError(
           `Concurrent modification detected for session ${session.id}. Another process has already modified this session.`
         );
       }
 
       // Re-wrap other database errors for consistency
+      this.logger.error('Failed to save quiz session', {
+        sessionId: session.id,
+        error: this.getErrorMessage(error),
+      });
       throw new OptimisticLockError(
-        `Failed to save quiz session due to database error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to save quiz session due to database error: ${this.getErrorMessage(error)}`
       );
     }
   }
