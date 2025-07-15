@@ -4,8 +4,11 @@
  */
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
+import { getRootLogger } from '@api/infra/logger';
 import { Hono } from 'hono';
 import type { IUserRepository } from './domain/repositories/IUserRepository';
+import { mapAuthError } from './http/error-mapper';
+import { safeJson } from './http/request-helpers';
 import { loginHandler } from './login/handler';
 
 /**
@@ -17,36 +20,19 @@ export function createAuthRoutes(
   authProvider: IAuthProvider
 ): Hono {
   const authRoutes = new Hono();
+  const logger = getRootLogger().child({ module: 'auth.routes' });
 
   /**
    * POST /login - User authentication
    */
   authRoutes.post('/login', async (c) => {
     try {
-      // Get request body
-      const body = await c.req.json().catch(() => null);
-
-      // Delegate to handler with injected dependencies
+      const body = await safeJson(c);
       const result = await loginHandler(body, userRepository, authProvider);
 
       if (!result.success) {
-        // Map domain errors to appropriate HTTP status codes
-        const error = result.error;
-
-        if (error.name === 'ValidationError') {
-          return c.json({ error: error.message }, 400);
-        }
-
-        if (error.name === 'UserNotFoundError' || error.name === 'InvalidCredentialsError') {
-          return c.json({ error: 'Invalid credentials' }, 401);
-        }
-
-        if (error.name === 'UserNotActiveError') {
-          return c.json({ error: 'Account is not active' }, 403);
-        }
-
-        // Generic error
-        return c.json({ error: 'Authentication failed' }, 500);
+        const { status, body: errorBody } = mapAuthError(result.error);
+        return c.json(errorBody, status);
       }
 
       return c.json({
@@ -54,8 +40,10 @@ export function createAuthRoutes(
         data: result.data,
       });
     } catch (error) {
-      // biome-ignore lint/suspicious/noConsole: TODO: Inject logger service and use structured logging
-      console.error('Login route error:', error);
+      logger.error('Login route error', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: 'Internal server error' }, 500);
     }
   });
