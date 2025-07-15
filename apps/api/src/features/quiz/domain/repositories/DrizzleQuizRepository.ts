@@ -8,7 +8,7 @@ import {
   quizSessionEvent,
   quizSessionSnapshot,
 } from '@api/infra/db/schema/quiz';
-import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import type { LoggerPort } from '@api/shared/logger';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
 import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
