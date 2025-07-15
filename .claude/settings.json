@@ -258,6 +258,17 @@
     "NODE_OPTIONS": "--max-old-space-size=4096"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/ubuntu/Projects/certquiz/.claude/hooks/pre-git-add.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
