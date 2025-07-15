@@ -5,6 +5,7 @@
 
 import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { ALS, getCorrelationId, getRootLogger, runWithCorrelationId } from './root-logger';
 
 describe('Root Logger', () => {
@@ -12,13 +13,13 @@ describe('Root Logger', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalLogLevel = process.env.LOG_LEVEL;
 
-  beforeEach(() => {
+  beforeEach((): void => {
     // Reset environment for each test
     process.env.NODE_ENV = 'test';
     process.env.LOG_LEVEL = 'silent';
   });
 
-  afterEach(() => {
+  afterEach((): void => {
     // Restore original environment
     process.env.NODE_ENV = originalNodeEnv;
     process.env.LOG_LEVEL = originalLogLevel;
@@ -29,7 +30,7 @@ describe('Root Logger', () => {
   });
 
   describe('getRootLogger', () => {
-    it('should return a logger instance', () => {
+    it('should return a logger instance', (): void => {
       const logger = getRootLogger();
       expect(logger).toBeDefined();
       expect(logger.info).toBeInstanceOf(Function);
@@ -38,32 +39,29 @@ describe('Root Logger', () => {
       expect(logger.debug).toBeInstanceOf(Function);
     });
 
-    it('should return the same singleton instance', () => {
+    it('should return the same singleton instance', (): void => {
       const logger1 = getRootLogger();
       const logger2 = getRootLogger();
       expect(logger1).toBe(logger2);
     });
 
-    it('should respect LOG_LEVEL environment variable on first creation', () => {
-      // This test demonstrates that LOG_LEVEL is only read on first creation
-      // In a real app, the logger is created once at startup
-      // For testing, we can't easily reset the singleton without hacks
-
-      // Since we're in test environment, logger is already created with 'silent'
+    it('should use LOG_LEVEL from environment on first creation', (): void => {
+      // Since we reset modules in afterEach and set LOG_LEVEL in beforeEach,
+      // this verifies the logger respects the LOG_LEVEL environment variable
       const logger = getRootLogger();
-      expect(logger.level).toBe('silent');
 
-      // Note: In production, LOG_LEVEL would be read on first getRootLogger() call
+      // In test environment, LOG_LEVEL is set to 'silent' and respected
+      expect(logger.level).toBe('silent');
     });
 
-    it('should use silent level in test environment', () => {
+    it('should use silent level in test environment', (): void => {
       const logger = getRootLogger();
       expect(logger.level).toBe('silent');
     });
   });
 
   describe('Correlation ID with AsyncLocalStorage', () => {
-    it('should run function with correlation ID', async () => {
+    it('should run function with correlation ID', async (): Promise<void> => {
       const correlationId = 'test-correlation-123';
       let capturedId: string | undefined;
 
@@ -74,12 +72,12 @@ describe('Root Logger', () => {
       expect(capturedId).toBe(correlationId);
     });
 
-    it('should return undefined when not in correlation context', () => {
+    it('should return undefined when not in correlation context', (): void => {
       const id = getCorrelationId();
       expect(id).toBeUndefined();
     });
 
-    it('should maintain correlation ID in async operations', async () => {
+    it('should maintain correlation ID in async operations', async (): Promise<void> => {
       const correlationId = 'async-test-456';
       const capturedIds: (string | undefined)[] = [];
 
@@ -97,7 +95,7 @@ describe('Root Logger', () => {
       expect(capturedIds).toEqual([correlationId, correlationId, correlationId]);
     });
 
-    it('should isolate correlation IDs between contexts', async () => {
+    it('should isolate correlation IDs between contexts', async (): Promise<void> => {
       const id1 = 'context-1';
       const id2 = 'context-2';
       const capturedIds: string[] = [];
@@ -120,7 +118,7 @@ describe('Root Logger', () => {
       expect(capturedIds).toHaveLength(2);
     });
 
-    it('should handle nested correlation contexts', async () => {
+    it('should handle nested correlation contexts', async (): Promise<void> => {
       const outerCorrelationId = 'outer-123';
       const innerCorrelationId = 'inner-456';
       let outerCaptured: string | undefined;
@@ -144,9 +142,8 @@ describe('Root Logger', () => {
   });
 
   describe('Logger formatters', () => {
-    it('should include correlation ID in log output when in context', async () => {
-      let capturedLog: Record<string, unknown> | null = null;
-      let capturedLogWithoutCorrelation: Record<string, unknown> | null = null;
+    it('should include correlation ID in log output when in context', async (): Promise<void> => {
+      const capturedLogs: Record<string, unknown>[] = [];
 
       // Mock the formatter behavior to capture what would be logged
       const mockFormatter = vi.fn((obj) => {
@@ -154,27 +151,16 @@ describe('Root Logger', () => {
         const correlationId = store?.get('correlationId');
         const result = correlationId ? { ...obj, correlationId } : obj;
 
-        // Capture the formatted log objects for verification
-        if (capturedLog) {
-          capturedLogWithoutCorrelation = result;
-        } else {
-          capturedLog = result;
-        }
-
+        capturedLogs.push(result);
         return result;
       });
 
-      // Create a test logger with our mock formatter
-      const testLogger = pino(
-        {
-          level: 'info',
-          base: undefined,
-          formatters: {
-            log: mockFormatter,
-          },
-        },
-        pino.destination({ sync: false })
-      ); // Use non-blocking destination
+      // Create a test logger with sync destination to avoid timing issues
+      const testLogger = pino({
+        level: 'info',
+        base: undefined,
+        formatters: { log: mockFormatter },
+      });
 
       // Test with correlation ID context
       await runWithCorrelationId('test-correlation-123', () => {
@@ -184,23 +170,29 @@ describe('Root Logger', () => {
       // Test without correlation ID context
       testLogger.info('test message without correlation');
 
-      // Wait for async logging to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       // Verify formatter was called
       expect(mockFormatter).toHaveBeenCalledTimes(2);
 
       // Verify correlation ID is included when in context
-      expect(capturedLog).toHaveProperty('correlationId', 'test-correlation-123');
+      expect(capturedLogs[0]).toHaveProperty('correlationId', 'test-correlation-123');
 
       // Verify correlation ID is not included when not in context
-      expect(capturedLogWithoutCorrelation).not.toHaveProperty('correlationId');
+      expect(capturedLogs[1]).not.toHaveProperty('correlationId');
     });
 
-    it('should verify root logger has formatter configured', () => {
-      // Verify the root logger is properly configured with formatters
+    it('should have proper logger configuration', (): void => {
       const logger = getRootLogger();
-      expect(logger).toHaveProperty('bindings');
+
+      // Verify the root logger is properly configured and functional
+      expect(logger).toBeDefined();
+      expect(logger).toHaveProperty('level');
+      expect(logger.level).toBe('silent'); // In test environment
+
+      // Verify logger has all expected methods
+      expect(logger.info).toBeInstanceOf(Function);
+      expect(logger.warn).toBeInstanceOf(Function);
+      expect(logger.error).toBeInstanceOf(Function);
+      expect(logger.debug).toBeInstanceOf(Function);
     });
   });
 });
