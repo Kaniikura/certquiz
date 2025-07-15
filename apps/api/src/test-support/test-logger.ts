@@ -51,7 +51,15 @@ export function createNoopLogger(): LoggerPort {
  * });
  * ```
  */
-export function createSpyLogger() {
+export function createSpyLogger(): {
+  logger: LoggerPort;
+  logs: {
+    info: Array<{ message: string; meta?: Record<string, unknown> }>;
+    warn: Array<{ message: string; meta?: Record<string, unknown> }>;
+    error: Array<{ message: string; meta?: Record<string, unknown> }>;
+    debug: Array<{ message: string; meta?: Record<string, unknown> }>;
+  };
+} {
   const logs = {
     info: [] as Array<{ message: string; meta?: Record<string, unknown> }>,
     warn: [] as Array<{ message: string; meta?: Record<string, unknown> }>,
