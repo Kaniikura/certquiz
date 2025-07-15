@@ -3,6 +3,7 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getRootLogger } from '@api/infra/logger';
 import { withTransaction } from '@api/infra/unit-of-work';
 import { isResult, Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
@@ -13,6 +14,9 @@ import * as fileRepo from './file-repository';
 import type { MigrationContext } from './runtime';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Create logger for migration helpers
+const logger = getRootLogger().child({ module: 'migration.helpers' });
 
 // Migration constants
 export const MIGRATIONS_PATH = path.join(__dirname, '../../infra/db/migrations');
@@ -112,7 +116,7 @@ export async function findLastMigration(
   ctx: MigrationContext,
   debug: boolean
 ): Promise<Result<MigrationMeta | null, string>> {
-  if (debug) console.log('[DEBUG] Getting last applied migration...');
+  if (debug) logger.debug('Getting last applied migration');
 
   const lastMigrationResult = await dbRepo.getLastAppliedMigration(ctx.db);
   if (!lastMigrationResult.success) {
@@ -123,14 +127,14 @@ export async function findLastMigration(
   }
 
   if (!lastMigrationResult.data) {
-    console.log('ℹ️  No migrations to roll back');
+    logger.info('No migrations to roll back');
     return Result.ok(null);
   }
 
-  if (debug) console.log(`[DEBUG] Found migration to rollback: ${lastMigrationResult.data.hash}`);
+  if (debug) logger.debug('Found migration to rollback', { hash: lastMigrationResult.data.hash });
 
   // Find migration file by hash
-  if (debug) console.log('[DEBUG] Finding migration file by hash...');
+  if (debug) logger.debug('Finding migration file by hash');
   const fileResult = await fileRepo.findMigrationByHash(
     ctx.migrationsPath,
     lastMigrationResult.data.hash
@@ -147,7 +151,7 @@ export async function findLastMigration(
   }
 
   const migration = fileResult.data;
-  if (debug) console.log(`[DEBUG] Found migration file: ${migration.filename}`);
+  if (debug) logger.debug('Found migration file', { filename: migration.filename });
 
   const downPath = path.join(ctx.migrationsPath, `${migration.baseName}.down.sql`);
 
@@ -166,7 +170,7 @@ export async function validateDownMigration(
   meta: MigrationMeta,
   debug: boolean
 ): Promise<Result<string, string>> {
-  if (debug) console.log(`[DEBUG] Checking for down migration at: ${meta.downPath}`);
+  if (debug) logger.debug('Checking for down migration', { downPath: meta.downPath });
 
   const downExistsResult = await fileRepo.fileExists(meta.downPath);
   if (!downExistsResult.success || !downExistsResult.data) {
@@ -174,7 +178,7 @@ export async function validateDownMigration(
   }
 
   // Read down migration content
-  if (debug) console.log('[DEBUG] Reading down migration content...');
+  if (debug) logger.debug('Reading down migration content');
   const downContentResult = await fileRepo.readFileContent(meta.downPath);
   if (!downContentResult.success) {
     return Result.err(`Failed to read down migration: ${downContentResult.error.type}`);
@@ -213,37 +217,40 @@ export async function executeRollback(
   debug: boolean,
   run?: SqlRunner
 ): Promise<Result<void, string>> {
-  if (debug) console.log('[DEBUG] Starting rollback transaction...');
+  if (debug) logger.debug('Starting rollback transaction');
 
   try {
     if (run) {
       // API version: use provided SqlRunner for custom transaction handling
-      if (debug) console.log('[DEBUG] Using provided SqlRunner...');
+      if (debug) logger.debug('Using provided SqlRunner');
       await run(sqlContent);
-      if (debug) console.log('[DEBUG] SQL migration executed via SqlRunner');
+      if (debug) logger.debug('SQL migration executed via SqlRunner');
       // Note: API version handles migration record deletion in its own transaction
     } else {
       // CLI version: use withTransaction with complete rollback logic
       await withTransaction(async (tx) => {
         // Execute the entire SQL file as a single statement
-        if (debug) console.log('[DEBUG] Executing SQL migration file...');
+        if (debug) logger.debug('Executing SQL migration file');
         await tx.execute(sql.raw(sqlContent));
-        if (debug) console.log('[DEBUG] SQL migration executed successfully');
+        if (debug) logger.debug('SQL migration executed successfully');
 
         // Remove migration record within the same transaction
-        if (debug) console.log('[DEBUG] Removing migration record from database...');
+        if (debug) logger.debug('Removing migration record from database');
         const deleteResult = await dbRepo.deleteMigrationRecord(tx, meta.hash);
         if (!deleteResult.success) {
           throw new Error(`Failed to remove migration record: ${deleteResult.error.type}`);
         }
-        if (debug) console.log('[DEBUG] Migration record removed successfully');
+        if (debug) logger.debug('Migration record removed successfully');
       });
     }
 
-    if (debug) console.log(`✅ Rolled back migration: ${meta.baseName}`);
+    logger.info('Rolled back migration successfully', { baseName: meta.baseName });
     return Result.ok(undefined);
   } catch (error) {
-    if (debug) console.log(`[DEBUG] Rollback failed with error: ${error}`);
+    logger.error('Rollback failed', {
+      baseName: meta.baseName,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return Result.err(`Rollback failed: ${error}`);
   }
 }
