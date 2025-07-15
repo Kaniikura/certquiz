@@ -41,7 +41,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to find user by ID', {
         userId: id,
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -72,7 +72,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to find user by email:', {
         email: email.toString(),
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -103,7 +103,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to find user by identity provider ID:', {
         identityProviderId,
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -134,7 +134,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to find user by username:', {
         username,
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -170,7 +170,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to save user:', {
         userId: user.id,
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -194,7 +194,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to check if email is taken:', {
         email: email.toString(),
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
@@ -218,7 +218,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
     } catch (error) {
       this.logger.error('Failed to check if username is taken:', {
         username,
-        error: this.getErrorMessage(error),
+        error: this.getErrorDetails(error),
       });
       throw error;
     }
