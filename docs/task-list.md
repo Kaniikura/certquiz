@@ -294,19 +294,84 @@ ALTER TABLE auth_user
 - Zero functional changes
 - Clean git history with atomic commit
 
-### 5.2.1 Implement Authentication Middleware 🔴
+### 5.2.1 Implement Logging Infrastructure 🟡
+**Status**: PENDING
+**Time**: 3 hours (estimated)
+**Priority**: HIGH
+**Reason**: Essential for debugging and monitoring all features
+
+### Summary
+Implement comprehensive logging infrastructure based on Pino with clean architecture principles:
+- **Root Logger**: Single Pino instance with environment-specific configuration
+- **Correlation IDs**: AsyncLocalStorage for request tracing
+- **Domain Purity**: Port/adapter pattern for domain logging
+- **HTTP Middleware**: Request logging with correlation
+- **Structured Logging**: JSON in production, pretty in development
+
+### Tasks:
+```typescript
+// Root Logger Setup:
+- Create infra/logger/root-logger.ts with Pino configuration
+- Environment-specific log levels (silent/debug/info)
+- Pretty printing for development, JSON for production
+- Export single rootLogger instance
+
+// Correlation Tracking:
+- Implement infra/logger/correlation.ts with AsyncLocalStorage
+- runWithCorrelationId() and getCorrelationId() helpers
+- Support for HTTP requests, jobs, and migrations
+
+// Domain Logger Port:
+- Define DomainLogger interface in domain layer
+- Methods: debug, info, warn, error with optional metadata
+- Keep domain pure - no framework dependencies
+
+// Logger Adapters:
+- Create infra/logger/adapters/domain-logger.ts
+- Adapt rootLogger to DomainLogger interface
+- Inject correlation ID automatically
+
+// HTTP Middleware:
+- Implement middleware/logger.ts for request logging
+- Generate/extract correlation IDs (x-request-id header)
+- Create child logger per request
+- Log access info (method, path, status, duration)
+- Attach logger to Hono context
+
+// Integration:
+- Update existing health endpoint to use logging
+- Add logging to auth login handler
+- Configure test environment for silent logging
+- Update vitest.setup.ts to silence logs
+
+// Documentation:
+- Add logging patterns to coding-standards.md
+- Document correlation ID usage
+- Provide examples for each layer
+```
+
+**Acceptance Criteria**:
+- All layers can log without importing Pino directly
+- Every log line contains correlation ID
+- Domain layer remains pure (uses interface only)
+- Tests run silently by default
+- Pretty logs in development, JSON in production
+- HTTP requests automatically tracked
+- 90%+ test coverage for logging infrastructure
+
+### 5.2.2 Implement Authentication Middleware 🟡
 **Status**: PENDING
 **Time**: 2 hours (estimated)
-**Priority**: BLOCKER
-**Reason**: Critical security gap - API endpoints are unprotected
+**Priority**: HIGH
+**Reason**: Required for API security before production
 
 ### Summary
 Implement JWT authentication middleware for Hono to protect API endpoints:
-- ✅ **JWT Verification**: Validate tokens against KeyCloak JWKS
-- ✅ **Context Injection**: Add authenticated user to request context
-- ✅ **Role-Based Auth**: Support role requirements for endpoints
-- ✅ **Public Routes**: Allow optional authentication
-- ✅ **Clean Architecture**: Maintain separation of concerns
+- **JWT Verification**: Validate tokens against KeyCloak JWKS
+- **Context Injection**: Add authenticated user to request context
+- **Role-Based Auth**: Support role requirements for endpoints
+- **Public Routes**: Allow optional authentication
+- **Clean Architecture**: Maintain separation of concerns
 
 ### Tasks:
 ```typescript
@@ -346,6 +411,7 @@ Implement JWT authentication middleware for Hono to protect API endpoints:
 - Uses existing IAuthProvider interface
 - Works with current identity_provider_id schema
 - No database schema changes needed
+- Benefits from logging infrastructure for debugging
 
 **Acceptance Criteria**:
 - All API endpoints protected by default
@@ -747,15 +813,16 @@ Each task is complete when:
   - Day 1-2: Clean-slate reset & infrastructure foundation ✅
   - Day 3-4: First vertical slice (Health) ✅
   - Day 5: Quality Gates setup
-- **Week 3**: Tasks 4 + 5.1-5.2.1 (Quality Gates + Domain Design + Auth + Middleware)
+- **Week 3**: Tasks 4 + 5.1-5.2.1 (Quality Gates + Domain Design + Auth + Logging)
   - Day 1: Quality Gates ✅
   - Day 2-3: Quiz domain model & repository ✅
   - Day 4: Auth slice with minimal User aggregate ✅
   - Day 5 AM: Provider field rename (30 min) ✅
-  - Day 5 PM: Authentication middleware implementation 🔴
-- **Week 4**: Tasks 5.3-5.6 (Migrations + Quiz Features + User/Question Features)
-  - Day 1: Migrations and seed data
-  - Day 2-3: Quiz feature slices with auth middleware
+  - Day 5 PM: Logging infrastructure implementation 🟡
+- **Week 4**: Tasks 5.2.2-5.6 (Auth Middleware + Migrations + Features)
+  - Day 1 AM: Authentication middleware implementation (2hr)
+  - Day 1 PM: Migrations and seed data
+  - Day 2-3: Quiz feature slices
   - Day 4: User domain evolution & features
   - Day 5: Question features
 - **Week 5**: Tasks 6 + 7-9 (API Layer + Basic Features + Frontend Foundation + Core UI)
@@ -783,8 +850,9 @@ The following tasks are on the critical path and block other work:
 6. Quality Gates (establishes code quality standards) ✅
 7. Domain/Repository Implementation (blocks business logic) ✅
 8. **Provider Field Rename (blocks clean domain model)** ✅
-9. **Authentication Middleware (blocks API layer security)** 🔴
-10. API Layer (blocks frontend integration) 🟡
+9. **Logging Infrastructure (essential for debugging)** 🟡
+10. **Authentication Middleware (required before production)** 🟡
+11. API Layer (blocks frontend integration) 🟡
 
 ## Risk Mitigation
 
