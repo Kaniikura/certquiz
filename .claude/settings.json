@@ -256,5 +256,18 @@
     "UV_CACHE_DIR": "~/.cache/uv",
     "UV_PYTHON_PREFERENCE": "managed",
     "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/ubuntu/Projects/certquiz/.claude/hooks/biome-format.sh"
+          }
+        ]
+      }
+    ]
   }
 }
