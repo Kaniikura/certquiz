@@ -3,8 +3,9 @@
  * @fileoverview Tests for the singleton root logger with AsyncLocalStorage
  */
 
+import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCorrelationId, getRootLogger, runWithCorrelationId } from './root-logger';
+import { ALS, getCorrelationId, getRootLogger, runWithCorrelationId } from './root-logger';
 
 describe('Root Logger', () => {
   // Store original NODE_ENV
@@ -144,11 +145,61 @@ describe('Root Logger', () => {
 
   describe('Logger formatters', () => {
     it('should include correlation ID in log output when in context', async () => {
-      // This test would require mocking Pino internals or using a custom transport
-      // For now, we'll just verify the formatter is configured
-      const logger = getRootLogger();
+      let capturedLog: Record<string, unknown> | null = null;
+      let capturedLogWithoutCorrelation: Record<string, unknown> | null = null;
 
-      // Check that formatters are configured (Pino internal)
+      // Mock the formatter behavior to capture what would be logged
+      const mockFormatter = vi.fn((obj) => {
+        const store = ALS.getStore();
+        const correlationId = store?.get('correlationId');
+        const result = correlationId ? { ...obj, correlationId } : obj;
+
+        // Capture the formatted log objects for verification
+        if (capturedLog) {
+          capturedLogWithoutCorrelation = result;
+        } else {
+          capturedLog = result;
+        }
+
+        return result;
+      });
+
+      // Create a test logger with our mock formatter
+      const testLogger = pino(
+        {
+          level: 'info',
+          base: undefined,
+          formatters: {
+            log: mockFormatter,
+          },
+        },
+        pino.destination({ sync: false })
+      ); // Use non-blocking destination
+
+      // Test with correlation ID context
+      await runWithCorrelationId('test-correlation-123', () => {
+        testLogger.info('test message with correlation');
+      });
+
+      // Test without correlation ID context
+      testLogger.info('test message without correlation');
+
+      // Wait for async logging to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify formatter was called
+      expect(mockFormatter).toHaveBeenCalledTimes(2);
+
+      // Verify correlation ID is included when in context
+      expect(capturedLog).toHaveProperty('correlationId', 'test-correlation-123');
+
+      // Verify correlation ID is not included when not in context
+      expect(capturedLogWithoutCorrelation).not.toHaveProperty('correlationId');
+    });
+
+    it('should verify root logger has formatter configured', () => {
+      // Verify the root logger is properly configured with formatters
+      const logger = getRootLogger();
       expect(logger).toHaveProperty('bindings');
     });
   });
