@@ -3,6 +3,7 @@
  * @fileoverview Tests for the singleton root logger with AsyncLocalStorage
  */
 
+import { PassThrough } from 'node:stream';
 import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -143,24 +144,32 @@ describe('Root Logger', () => {
 
   describe('Logger formatters', () => {
     it('should include correlation ID in log output when in context', async (): Promise<void> => {
-      const capturedLogs: Record<string, unknown>[] = [];
+      const lines: unknown[] = [];
 
-      // Mock the formatter behavior to capture what would be logged
-      const mockFormatter = vi.fn((obj) => {
-        const store = ALS.getStore();
-        const correlationId = store?.get('correlationId');
-        const result = correlationId ? { ...obj, correlationId } : obj;
-
-        capturedLogs.push(result);
-        return result;
+      // Create a stream that captures log output
+      const capture = new PassThrough();
+      capture.setEncoding('utf8');
+      capture.on('data', (chunk: string) => {
+        for (const line of chunk.split('\n').filter(Boolean)) {
+          lines.push(JSON.parse(line));
+        }
       });
 
-      // Create a test logger with sync destination to avoid timing issues
-      const testLogger = pino({
-        level: 'info',
-        base: undefined,
-        formatters: { log: mockFormatter },
-      });
+      // Create a test logger with the same configuration as the root logger
+      const testLogger = pino(
+        {
+          level: 'info',
+          base: undefined, // Don't add pid/hostname; we set our own context
+          formatters: {
+            log: (obj) => {
+              const store = ALS.getStore();
+              const correlationId = store?.get('correlationId');
+              return correlationId ? { ...obj, correlationId } : obj;
+            },
+          },
+        },
+        capture // Use our custom stream
+      );
 
       // Test with correlation ID context
       await runWithCorrelationId('test-correlation-123', () => {
@@ -170,14 +179,22 @@ describe('Root Logger', () => {
       // Test without correlation ID context
       testLogger.info('test message without correlation');
 
-      // Verify formatter was called
-      expect(mockFormatter).toHaveBeenCalledTimes(2);
+      // Give the stream a moment to process
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Verify we captured the logs
+      expect(lines.length).toBe(2);
+
+      const log1 = lines[0] as Record<string, unknown>;
+      const log2 = lines[1] as Record<string, unknown>;
 
       // Verify correlation ID is included when in context
-      expect(capturedLogs[0]).toHaveProperty('correlationId', 'test-correlation-123');
+      expect(log1).toHaveProperty('correlationId', 'test-correlation-123');
+      expect(log1).toHaveProperty('msg', 'test message with correlation');
 
       // Verify correlation ID is not included when not in context
-      expect(capturedLogs[1]).not.toHaveProperty('correlationId');
+      expect(log2).toHaveProperty('msg', 'test message without correlation');
+      expect(log2).not.toHaveProperty('correlationId');
     });
 
     it('should have proper logger configuration', (): void => {
