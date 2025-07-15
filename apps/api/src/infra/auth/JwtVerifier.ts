@@ -19,42 +19,30 @@ export class JwtVerifier {
   async verifyToken(token: string): Promise<AuthUser> {
     try {
       // Basic token format validation
-      if (!token || !token.includes('.')) {
+      if (!token || token.split('.').length !== 3) {
         throw new Error('Invalid token format');
       }
 
-      // Check algorithm from header
-      const [header] = token.split('.');
-      let decodedHeader: { alg?: string };
-
-      try {
-        decodedHeader = JSON.parse(atob(header));
-      } catch {
-        throw new Error('Invalid token format');
-      }
-
-      if (decodedHeader.alg !== 'RS256') {
-        throw new Error('Unsupported algorithm');
-      }
-
-      // Verify the JWT
+      // Verify the JWT - jose handles all validation including algorithm checks
       const { payload } = await jwtVerify(token, this.jwks, {
         issuer: this.options.issuer,
         audience: this.options.audience,
+        algorithms: ['RS256'], // Restrict to RS256 only
       });
 
-      // Extract user information
-      const authUser: AuthUser = {
-        sub: payload.sub as string,
-        email: payload.email as string,
-        preferred_username: payload.preferred_username as string,
-        roles: this.extractRoles(payload),
-      };
-
-      // Validate required claims
-      if (!authUser.sub) {
+      // Validate and extract user information
+      const sub = payload.sub;
+      if (typeof sub !== 'string' || !sub) {
         throw new Error('Missing required claim: sub');
       }
+
+      const authUser: AuthUser = {
+        sub,
+        email: typeof payload.email === 'string' ? payload.email : undefined,
+        preferred_username:
+          typeof payload.preferred_username === 'string' ? payload.preferred_username : undefined,
+        roles: this.extractRoles(payload),
+      };
 
       return authUser;
     } catch (error) {
@@ -89,11 +77,7 @@ export class JwtVerifier {
     }
 
     // Handle our own domain errors first
-    const domainErrors = [
-      'Missing required claim',
-      'Invalid token format',
-      'Unsupported algorithm',
-    ];
+    const domainErrors = ['Missing required claim', 'Invalid token format'];
     if (domainErrors.some((msg) => error.message.includes(msg))) {
       return error;
     }
@@ -105,6 +89,7 @@ export class JwtVerifier {
       { pattern: 'JWS signature verification failed', message: 'Invalid token signature' },
       { pattern: 'Unable to find a key', message: 'Key not found in JWKS' },
       { pattern: 'failed to fetch JWKS', message: 'Failed to fetch JWKS' },
+      { pattern: 'alg', message: 'Unsupported algorithm' }, // jose throws errors containing 'alg' for algorithm issues
     ];
 
     for (const { pattern, message } of errorMappings) {

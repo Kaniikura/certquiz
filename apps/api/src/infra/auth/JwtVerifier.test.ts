@@ -15,7 +15,6 @@ const mockCreateRemoteJWKSet = vi.mocked(jose.createRemoteJWKSet);
 describe('JwtVerifier', () => {
   let verifier: JwtVerifier;
   let validToken: string;
-  let invalidToken: string;
   let expiredToken: string;
   let notYetValidToken: string;
   let mockJwks: ReturnType<typeof jose.createRemoteJWKSet>;
@@ -53,7 +52,6 @@ describe('JwtVerifier', () => {
       'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LWlkIn0.eyJzdWIiOiJ1c2VyLTEyMyIsImV4cCI6MTczNTY4NTk5OSwiaWF0IjoxNzM1Njg1OTk5fQ.expired-signature';
     notYetValidToken =
       'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LWlkIn0.eyJzdWIiOiJ1c2VyLTEyMyIsIm5iZiI6MTczNTY4NjAwMSwiaWF0IjoxNzM1Njg1OTk5fQ.not-yet-valid-signature';
-    invalidToken = 'invalid.token.format';
 
     verifier = new JwtVerifier({
       jwksUri: 'https://auth.example.com/.well-known/jwks.json',
@@ -221,6 +219,7 @@ describe('JwtVerifier', () => {
     it('should handle tokens signed with unsupported algorithm', async () => {
       // Arrange
       const hs256Token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMyJ9.signature';
+      mockJwtVerify.mockRejectedValueOnce(new Error('alg "HS256" is not allowed'));
 
       // Act & Assert
       await expect(verifier.verifyToken(hs256Token)).rejects.toThrow('Unsupported algorithm');
@@ -255,8 +254,11 @@ describe('JwtVerifier', () => {
     });
 
     it('should handle malformed token format', async () => {
+      // Arrange - Use a token with wrong number of parts
+      const malformedToken = 'invalid.token'; // Only 2 parts instead of 3
+
       // Act & Assert
-      await expect(verifier.verifyToken(invalidToken)).rejects.toThrow('Invalid token format');
+      await expect(verifier.verifyToken(malformedToken)).rejects.toThrow('Invalid token format');
     });
   });
 });
