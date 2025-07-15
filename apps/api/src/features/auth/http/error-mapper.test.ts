@@ -3,13 +3,18 @@
  * @fileoverview Unit tests for auth error mapping functionality
  */
 
+import { ValidationError } from '@api/shared/errors';
 import { describe, expect, it } from 'vitest';
+import {
+  InvalidCredentialsError,
+  UserNotActiveError,
+  UserNotFoundError,
+} from '../domain/errors/AuthErrors';
 import { mapAuthError } from './error-mapper';
 
 describe('mapAuthError', () => {
   it('should map ValidationError to 400 with original message', () => {
-    const error = new Error('Invalid email format');
-    error.name = 'ValidationError';
+    const error = new ValidationError('Invalid email format');
 
     const result = mapAuthError(error);
 
@@ -20,8 +25,7 @@ describe('mapAuthError', () => {
   });
 
   it('should map UserNotFoundError to 401 with generic message', () => {
-    const error = new Error('User not found');
-    error.name = 'UserNotFoundError';
+    const error = new UserNotFoundError();
 
     const result = mapAuthError(error);
 
@@ -32,8 +36,7 @@ describe('mapAuthError', () => {
   });
 
   it('should map InvalidCredentialsError to 401 with generic message', () => {
-    const error = new Error('Wrong password');
-    error.name = 'InvalidCredentialsError';
+    const error = new InvalidCredentialsError();
 
     const result = mapAuthError(error);
 
@@ -44,8 +47,7 @@ describe('mapAuthError', () => {
   });
 
   it('should map UserNotActiveError to 403 with account message', () => {
-    const error = new Error('User account disabled');
-    error.name = 'UserNotActiveError';
+    const error = new UserNotActiveError();
 
     const result = mapAuthError(error);
 
@@ -57,7 +59,6 @@ describe('mapAuthError', () => {
 
   it('should map unknown errors to 500 with generic message', () => {
     const error = new Error('Database connection failed');
-    error.name = 'DatabaseError';
 
     const result = mapAuthError(error);
 
@@ -67,9 +68,8 @@ describe('mapAuthError', () => {
     });
   });
 
-  it('should handle errors without name property', () => {
+  it('should handle generic errors to 500 with generic message', () => {
     const error = new Error('Some error');
-    // error.name is 'Error' by default
 
     const result = mapAuthError(error);
 
