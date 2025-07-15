@@ -1,15 +1,19 @@
 #!/usr/bin/env bun
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getRootLogger } from '@api/infra/logger';
 import { Result } from '@api/shared/result';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as dbRepo from './db-repository';
 import { executeRollback, findLastMigration, validateDownMigration } from './migrate-down-helpers';
-import { analyzeMigrations, formatList, type MigrationContext } from './runtime';
+import { analyzeMigrations, type MigrationContext } from './runtime';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Create logger for migration operations
+const logger = getRootLogger().child({ module: 'migration' });
 
 // Types
 type MigrationCommand = 'up' | 'down' | 'status';
@@ -20,18 +24,23 @@ interface CliMigrationContext extends MigrationContext {
 
 // Command implementations
 async function runUp(ctx: CliMigrationContext): Promise<Result<void, string>> {
-  console.log('🚀 Running migrations...');
+  logger.info('Running database migrations', { path: ctx.migrationsPath });
 
   const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
   if (!lockResult.success) {
+    logger.warn('Failed to acquire migration lock - another migration is already running');
     return Result.err('Another migration is already running');
   }
 
   try {
     await migrate(ctx.db, { migrationsFolder: ctx.migrationsPath });
-    console.log('✅ Migrations completed successfully');
+    logger.info('Migrations completed successfully');
     return Result.ok(undefined);
   } catch (error) {
+    logger.error('Migration failed', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return Result.err(`Migration failed: ${error}`);
   } finally {
     await dbRepo.releaseMigrationLock(ctx.db);
@@ -39,12 +48,13 @@ async function runUp(ctx: CliMigrationContext): Promise<Result<void, string>> {
 }
 
 async function runDown(ctx: CliMigrationContext): Promise<Result<void, string>> {
-  console.log('🔄 Rolling back last migration...');
+  logger.info('Rolling back last migration');
   const debug = process.env.DEBUG_MIGRATION === 'true';
-  if (debug) console.log('[DEBUG] Acquiring migration lock...');
+  if (debug) logger.debug('Acquiring migration lock');
 
   const lockResult = await dbRepo.acquireMigrationLock(ctx.db);
   if (!lockResult.success) {
+    logger.warn('Failed to acquire migration lock - another migration is already running');
     return Result.err('Another migration is already running');
   }
 
@@ -75,43 +85,60 @@ async function runDown(ctx: CliMigrationContext): Promise<Result<void, string>> 
 
     return Result.ok(undefined);
   } finally {
-    if (debug) console.log('[DEBUG] Releasing migration lock...');
+    if (debug) logger.debug('[DEBUG] Releasing migration lock...');
     await dbRepo.releaseMigrationLock(ctx.db);
-    if (debug) console.log('[DEBUG] Migration lock released');
+    if (debug) logger.debug('[DEBUG] Migration lock released');
   }
 }
 
 async function runStatus(ctx: MigrationContext): Promise<Result<void, string>> {
-  console.log('📊 Migration Status\n');
+  logger.info('Checking migration status');
 
   const analysisResult = await analyzeMigrations(ctx);
   if (!analysisResult.success) {
+    logger.error('Failed to analyze migrations', { error: analysisResult.error });
     return Result.err(analysisResult.error);
   }
 
   const analysis = analysisResult.data;
 
-  // Display applied migrations
-  console.log('✅ Applied migrations:');
+  // Log status summary
+  logger.info('Migration status summary', {
+    applied: analysis.appliedRecords.length,
+    pending: analysis.pendingFiles.length,
+    missingDown: analysis.missingDownFiles.length,
+  });
+
+  // Applied migrations
   if (analysis.appliedRecords.length === 0) {
-    console.log('   (none)');
+    logger.info('No migrations have been applied');
   } else {
-    for (const record of analysis.appliedRecords) {
+    const appliedList = analysis.appliedRecords.map((record) => {
       const filename =
         analysis.hashByFile.get(record.hash) ||
         `<unknown - hash: ${record.hash.substring(0, 8)}...>`;
-      const date = record.createdAt.toLocaleString();
-      console.log(`   - ${filename.replace('.sql', '')} (applied: ${date})`);
-    }
+      return {
+        migration: filename.replace('.sql', ''),
+        appliedAt: record.createdAt.toISOString(),
+        hash: record.hash,
+      };
+    });
+    logger.info('Applied migrations', { migrations: appliedList });
   }
 
-  // Display pending migrations
-  console.log('\n⏳ Pending migrations:');
-  console.log(formatList(analysis.pendingFiles.map((f) => f.replace('.sql', ''))));
+  // Pending migrations
+  if (analysis.pendingFiles.length > 0) {
+    logger.info('Pending migrations', {
+      migrations: analysis.pendingFiles.map((f) => f.replace('.sql', '')),
+    });
+  }
 
-  // Display missing down migrations
-  console.log('\n⚠️  Missing down migrations:');
-  console.log(formatList(analysis.missingDownFiles));
+  // Missing down migrations
+  if (analysis.missingDownFiles.length > 0) {
+    logger.warn('Missing down migrations', {
+      migrations: analysis.missingDownFiles,
+    });
+  }
 
   return Result.ok(undefined);
 }
@@ -122,18 +149,18 @@ export async function cli(args: string[] = process.argv.slice(2)) {
   const command = args[0] as MigrationCommand;
 
   if (!command || !['up', 'down', 'status'].includes(command)) {
-    console.error('Usage: migrate [up|down|status]');
+    logger.error('Invalid command provided', { command, validCommands: ['up', 'down', 'status'] });
     throw new Error('Invalid command');
   }
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.error('Error: DATABASE_URL environment variable is required');
+    logger.error('DATABASE_URL environment variable is required');
     throw new Error('DATABASE_URL not set');
   }
 
   // Setup context
-  if (debug) console.log('[DEBUG] Creating database connection...');
+  if (debug) logger.debug('[DEBUG] Creating database connection...');
   const client = postgres(databaseUrl, { max: 1 });
   const db = drizzle(client);
   const migrationsPath = path.join(__dirname, '../../infra/db/migrations');
@@ -143,7 +170,7 @@ export async function cli(args: string[] = process.argv.slice(2)) {
   try {
     let result: Result<void, string>;
 
-    if (debug) console.log(`[DEBUG] Executing command: ${command}`);
+    if (debug) logger.debug(`[DEBUG] Executing command: ${command}`);
     switch (command) {
       case 'up':
         result = await runUp(ctx);
@@ -161,18 +188,21 @@ export async function cli(args: string[] = process.argv.slice(2)) {
     if (!result.success) {
       throw new Error(result.error);
     }
-    if (debug) console.log('[DEBUG] Command completed successfully');
+    if (debug) logger.debug('[DEBUG] Command completed successfully');
   } finally {
-    if (debug) console.log('[DEBUG] Closing database connection...');
+    if (debug) logger.debug('[DEBUG] Closing database connection...');
     await client.end();
-    if (debug) console.log('[DEBUG] Database connection closed');
+    if (debug) logger.debug('[DEBUG] Database connection closed');
   }
 }
 
 // Support direct execution for development
 if (import.meta.url === `file://${process.argv[1]}`) {
   cli().catch((err) => {
-    console.error('❌ Error:', err.message);
+    logger.error('Migration CLI error', {
+      error: err.message,
+      stack: err.stack,
+    });
     process.exit(1);
   });
 }
