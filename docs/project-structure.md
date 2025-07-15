@@ -119,8 +119,10 @@ certquiz/
 │       │   │   │   └── uow.ts             # Unit of work implementation
 │       │   │   ├── events/                # Domain event dispatcher
 │       │   │   │   └── EventBus.ts
-│       │   │   ├── logger/                # Centralized logger creation
-│       │   │   │   └── root-logger.ts     # Pino logger factory
+│       │   │   ├── logger/                # Logging infrastructure
+│       │   │   │   ├── root-logger.ts     # Singleton logger with AsyncLocalStorage
+│       │   │   │   ├── PinoLoggerAdapter.ts # Domain adapter for LoggerPort
+│       │   │   │   └── index.ts          # Logger exports
 │       │   │   ├── auth/                  # Auth provider implementations
 │       │   │   │   ├── AuthProvider.ts    # Interface & types
 │       │   │   │   ├── KeyCloakAuthProvider.ts # KeyCloak implementation
@@ -131,16 +133,21 @@ certquiz/
 │       │   │   ├── result.ts   # Result<T, E> type
 │       │   │   ├── errors.ts   # Domain & application errors
 │       │   │   ├── types.ts    # Shared TypeScript types
-│       │   │   └── utils.ts    # Common utilities
+│       │   │   ├── utils.ts    # Common utilities
+│       │   │   ├── logger/     # Domain logging interface
+│       │   │   │   └── LoggerPort.ts  # Pure domain interface
+│       │   │   └── repository/
+│       │   │       └── BaseRepository.ts  # Base class with logging
 │       │   ├── test-support/   # Domain test utilities (co-located)
 │       │   │   ├── TestClock.ts      # Clock implementation for testing
 │       │   │   ├── id-generators.ts  # Test ID factory functions
+│       │   │   ├── test-logger.ts      # Logger stubs for testing
 │       │   │   ├── types/            # Test-only TypeScript utilities
 │       │   │   │   └── Mutable.ts    # Helper type for testing immutability
 │       │   │   └── index.ts          # Barrel export for domain test utilities
 │       │   └── middleware/     # Global HTTP middleware
 │       │       ├── on-error.ts         # Error handling
-│       │       ├── logger.ts           # Logger factory middleware
+│       │       ├── logger.ts           # HTTP logger with correlation tracking
 │       │       ├── request-id.ts       # Request ID generation
 │       │       ├── security.ts         # CORS & security headers
 │       │       └── index.ts            # Middleware exports
@@ -298,8 +305,13 @@ export class QuizSession {
 Implements domain interfaces with external services:
 ```typescript
 // features/quiz/domain/repositories/DrizzleQuizRepository.ts
-export class DrizzleQuizRepository implements IQuizRepository {
-  constructor(private readonly trx: PostgresJsTransaction) {}
+export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
+  constructor(
+    private readonly trx: PostgresJsTransaction,
+    logger: LoggerPort
+  ) {
+    super(logger);
+  }
 
   async findActiveSession(userId: UserId): Promise<QuizSession | null> {
     const row = await this.trx.query.quizSessions.findFirst({
@@ -514,8 +526,13 @@ export interface IQuizRepository {
 
 // 2. Implement with Drizzle
 // features/quiz/domain/repositories/DrizzleQuizRepository.ts
-export class DrizzleQuizRepository implements IQuizRepository {
-  constructor(private readonly trx: PostgresJsTransaction) {}
+export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
+  constructor(
+    private readonly trx: PostgresJsTransaction,
+    logger: LoggerPort
+  ) {
+    super(logger);
+  }
   
   async findById(id: QuizId): Promise<Quiz | null> {
     const row = await this.trx.query.quizzes.findFirst({

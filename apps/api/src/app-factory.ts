@@ -132,13 +132,18 @@ export async function buildProductionApp(): Promise<
   const { withTransaction } = await import('./infra/unit-of-work');
   const { ping } = await import('./infra/db/client');
   const { getRootLogger } = await import('./infra/logger/root-logger');
+  const { createDomainLogger } = await import('./infra/logger/PinoLoggerAdapter');
 
   // Create production dependencies
   const logger = getRootLogger();
   const authProvider = createAuthProvider();
+  const userRepositoryLogger = createDomainLogger('auth.repository.user');
 
   // Use withTx helper to reduce boilerplate
-  const userRepository = withTx((trx) => new DrizzleUserRepository(trx), withTransaction);
+  const userRepository = withTx(
+    (trx) => new DrizzleUserRepository(trx, userRepositoryLogger),
+    withTransaction
+  );
 
   return buildApp({
     logger,

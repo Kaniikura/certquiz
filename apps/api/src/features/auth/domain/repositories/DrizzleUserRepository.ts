@@ -1,24 +1,24 @@
 import { authUser } from '@api/infra/db/schema/user';
 import type { TransactionContext } from '@api/infra/unit-of-work';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
-import pino from 'pino';
 import { User } from '../entities/User';
 import type { Email } from '../value-objects/Email';
 import type { UserId } from '../value-objects/UserId';
 import type { IUserRepository } from './IUserRepository';
 
-// Create logger for repository operations
-const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  name: 'DrizzleUserRepository',
-});
-
 /**
  * Drizzle implementation of User repository
  * Uses transaction for consistency with other repositories
  */
-export class DrizzleUserRepository implements IUserRepository {
-  constructor(private readonly trx: TransactionContext) {}
+export class DrizzleUserRepository extends BaseRepository implements IUserRepository {
+  constructor(
+    private readonly trx: TransactionContext,
+    logger: LoggerPort
+  ) {
+    super(logger);
+  }
 
   async findById(id: UserId): Promise<User | null> {
     try {
@@ -30,7 +30,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
       const result = User.fromPersistence(row[0]);
       if (!result.success) {
-        logger.error('Invalid user data in database:', {
+        this.logger.error('Invalid user data in database', {
           userId: id,
           error: result.error.message,
         });
@@ -39,9 +39,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return result.data;
     } catch (error) {
-      logger.error('Failed to find user by ID:', {
+      this.logger.error('Failed to find user by ID', {
         userId: id,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -61,7 +61,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
       const result = User.fromPersistence(row[0]);
       if (!result.success) {
-        logger.error('Invalid user data in database:', {
+        this.logger.error('Invalid user data in database:', {
           email: email.toString(),
           error: result.error.message,
         });
@@ -70,9 +70,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return result.data;
     } catch (error) {
-      logger.error('Failed to find user by email:', {
+      this.logger.error('Failed to find user by email:', {
         email: email.toString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -92,7 +92,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
       const result = User.fromPersistence(row[0]);
       if (!result.success) {
-        logger.error('Invalid user data in database:', {
+        this.logger.error('Invalid user data in database:', {
           identityProviderId,
           error: result.error.message,
         });
@@ -101,9 +101,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return result.data;
     } catch (error) {
-      logger.error('Failed to find user by identity provider ID:', {
+      this.logger.error('Failed to find user by identity provider ID:', {
         identityProviderId,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -123,7 +123,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
       const result = User.fromPersistence(row[0]);
       if (!result.success) {
-        logger.error('Invalid user data in database:', {
+        this.logger.error('Invalid user data in database:', {
           username,
           error: result.error.message,
         });
@@ -132,9 +132,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return result.data;
     } catch (error) {
-      logger.error('Failed to find user by username:', {
+      this.logger.error('Failed to find user by username:', {
         username,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -163,14 +163,14 @@ export class DrizzleUserRepository implements IUserRepository {
           },
         });
 
-      logger.info('User saved successfully:', {
+      this.logger.info('User saved successfully', {
         userId: data.userId,
         username: data.username,
       });
     } catch (error) {
-      logger.error('Failed to save user:', {
+      this.logger.error('Failed to save user:', {
         userId: user.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -192,9 +192,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return row.length > 0;
     } catch (error) {
-      logger.error('Failed to check if email is taken:', {
+      this.logger.error('Failed to check if email is taken:', {
         email: email.toString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
@@ -216,9 +216,9 @@ export class DrizzleUserRepository implements IUserRepository {
 
       return row.length > 0;
     } catch (error) {
-      logger.error('Failed to check if username is taken:', {
+      this.logger.error('Failed to check if username is taken:', {
         username,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.getErrorMessage(error),
       });
       throw error;
     }
