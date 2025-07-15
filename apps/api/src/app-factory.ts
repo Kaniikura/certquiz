@@ -10,7 +10,7 @@ import type { IUserRepository } from './features/auth/domain/repositories/IUserR
 import { createAuthRoutes } from './features/auth/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
-import type { Logger } from './infra/logger/root-logger';
+import type { Logger } from './infra/logger';
 import type { TransactionContext } from './infra/unit-of-work';
 import {
   createLoggerMiddleware,
@@ -131,10 +131,10 @@ export async function buildProductionApp(): Promise<
   );
   const { withTransaction } = await import('./infra/unit-of-work');
   const { ping } = await import('./infra/db/client');
-  const { createRootLogger } = await import('./infra/logger/root-logger');
+  const { getRootLogger } = await import('./infra/logger/root-logger');
 
   // Create production dependencies
-  const logger = createRootLogger();
+  const logger = getRootLogger();
   const authProvider = createAuthProvider();
 
   // Use withTx helper to reduce boilerplate

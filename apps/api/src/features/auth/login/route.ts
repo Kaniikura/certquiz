@@ -4,6 +4,7 @@
  */
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
+import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { loginHandler } from './handler';
@@ -12,14 +13,20 @@ import { loginHandler } from './handler';
 type LoginVariables = {
   userRepository: IUserRepository;
   authProvider: IAuthProvider;
-};
+} & LoggerVariables;
 
 export const loginRoute = new Hono<{
   Variables: LoginVariables;
 }>().post('/login', async (c) => {
+  const logger = c.get('logger');
+
   try {
     // Get request body
     const body = await c.req.json().catch(() => null);
+
+    // Log login attempt (without password)
+    const email = body?.email;
+    logger.info('Login attempt', { email });
 
     // Get dependencies from DI container/context
     const userRepo = c.get('userRepository');
@@ -31,6 +38,13 @@ export const loginRoute = new Hono<{
     if (!result.success) {
       // Map domain errors to appropriate HTTP status codes
       const error = result.error;
+
+      // Log authentication failure
+      logger.warn('Login failed', {
+        email,
+        errorType: error.name,
+        errorMessage: error.message,
+      });
 
       if (error.name === 'ValidationError') {
         return c.json({ error: error.message }, 400);
@@ -48,13 +62,22 @@ export const loginRoute = new Hono<{
       return c.json({ error: 'Authentication failed' }, 500);
     }
 
+    // Log successful login
+    logger.info('Login successful', {
+      userId: result.data.user.id,
+      email: result.data.user.email,
+      role: result.data.user.role,
+    });
+
     return c.json({
       success: true,
       data: result.data,
     });
   } catch (error) {
-    // biome-ignore lint/suspicious/noConsole: TODO: Inject logger service and use structured logging
-    console.error('Login route error:', error);
+    logger.error('Login route error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
