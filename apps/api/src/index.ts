@@ -1,5 +1,5 @@
 import { buildProductionApp } from './app-factory';
-import { createRootLogger } from './infra/logger/root-logger';
+import { getRootLogger } from './infra/logger/root-logger';
 
 // Build production app with real dependencies
 export const app = await buildProductionApp();
@@ -11,7 +11,7 @@ export const app = await buildProductionApp();
 const port = Number(process.env.API_PORT) || 4000;
 
 // Create startup logger using centralized factory
-const startupLogger = createRootLogger();
+const startupLogger = getRootLogger();
 
 // Log startup info when running as main module
 if (import.meta.main) {

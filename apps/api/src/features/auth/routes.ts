@@ -5,6 +5,7 @@
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import { createAuthProvider } from '@api/infra/auth/AuthProviderFactory';
+import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
 import { Hono } from 'hono';
 import { DrizzleUserRepository } from './domain/repositories/DrizzleUserRepository';
@@ -28,6 +29,9 @@ export const authRoutes = new Hono<{
 // Create auth provider instance (singleton for request lifecycle)
 const authProvider = createAuthProvider();
 
+// Create logger for user repository
+const userRepositoryLogger = createDomainLogger('auth.repository.user');
+
 /**
  * Dependency injection middleware
  * Creates transaction-scoped repository instances for each request
@@ -35,8 +39,8 @@ const authProvider = createAuthProvider();
 authRoutes.use('*', async (c, next) => {
   // Use withTransaction to ensure all auth operations are transactional
   await withTransaction(async (trx: TransactionContext) => {
-    // Create repository instance with transaction
-    const userRepository = new DrizzleUserRepository(trx);
+    // Create repository instance with transaction and logger
+    const userRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
 
     // Inject dependencies into context
     c.set('userRepository', userRepository);

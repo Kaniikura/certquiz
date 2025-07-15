@@ -154,6 +154,14 @@ Use `Result<T, E>` type for fallible operations instead of throwing exceptions.
 ### Component Pattern (Svelte)
 Order: props → state → reactive → functions → template → styles.
 
+### Logging Pattern
+Use domain-pure `LoggerPort` interface with structured logging:
+- HTTP routes: `c.get('logger')` - includes request metadata
+- Domain services: `createDomainLogger('service.name')` 
+- Repositories: Accept `LoggerPort` in constructor
+- Tests: Use `silentLoggerStub()` or `visibleLoggerStub()` for debugging
+- Correlation tracking: Automatic via AsyncLocalStorage middleware
+
 ## VSA Implementation Patterns
 
 ### Creating a New Feature Slice
@@ -270,8 +278,13 @@ export interface IQuizRepository {
 }
 
 // domain/repositories/DrizzleQuizRepository.ts
-export class DrizzleQuizRepository implements IQuizRepository {
-  constructor(private readonly trx: PostgresJsTransaction) {}
+export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
+  constructor(
+    private readonly trx: PostgresJsTransaction,
+    logger: LoggerPort
+  ) {
+    super(logger);
+  }
   
   async findById(id: QuizId): Promise<QuizSession | null> {
     const row = await this.trx.query.quizSessions.findFirst({
