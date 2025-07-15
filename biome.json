@@ -180,8 +180,6 @@
       "includes": [
         "apps/api/scripts/**/*.ts",
         "apps/api/scripts/**/*.js",
-        "apps/api/src/system/migration/**/*.ts",
-        "apps/api/tests/system/migration/**/*.ts",
         "apps/api/tests/containers/index.ts",
         "apps/api/tests/integration/migrations.test.ts",
         "apps/api/test-utils/db/migrations.ts"
