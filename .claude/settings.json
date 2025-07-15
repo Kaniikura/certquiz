@@ -255,7 +255,8 @@
     "BASH_MAX_TIMEOUT_MS": "1200000",
     "UV_CACHE_DIR": "~/.cache/uv",
     "UV_PYTHON_PREFERENCE": "managed",
-    "NODE_OPTIONS": "--max-old-space-size=4096"
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1"
   },
   "hooks": {
     "PreToolUse": [
@@ -264,7 +265,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/pre-git-add.sh"
+            "command": "~/.claude/hooks/run-at-root.sh .claude/hooks/pre-git-add.sh"
           }
         ]
       }
@@ -275,7 +276,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/biome-format.sh"
+            "command": "~/.claude/hooks/run-at-root.sh .claude/hooks/biome-format.sh"
           }
         ]
       }
