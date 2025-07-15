@@ -9,6 +9,16 @@ export interface MigrationRecord {
   createdAt: Date;
 }
 
+export class InvalidDateError extends Error {
+  constructor(value: unknown, reason?: string) {
+    const message = reason
+      ? `Invalid date value: ${String(value)} (${reason})`
+      : `Invalid date value: ${String(value)}`;
+    super(message);
+    this.name = 'InvalidDateError';
+  }
+}
+
 export type DbError =
   | { type: 'DatabaseError'; operation: string; reason: unknown }
   | { type: 'TableNotFound' }
@@ -38,12 +48,12 @@ function parseDate(value: string | number | Date): Date {
       return date;
     }
     logger.error('Invalid date string', { value });
-    throw new Error(`Invalid date string: ${value}`);
+    throw new InvalidDateError(value, 'string format not recognized');
   }
   const date = new Date(Number(value));
   if (Number.isNaN(date.getTime())) {
     logger.error('Invalid date number', { value });
-    throw new Error(`Invalid date number: ${value}`);
+    throw new InvalidDateError(value, 'number cannot be converted to valid date');
   }
   return date;
 }
