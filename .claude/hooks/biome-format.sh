@@ -1,9 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 # Biome hook for Claude Code - runs biome on individual files
+# Abort on error, unset vars, or failed pipeline
+set -euo pipefail
 
-read json
+# Read entire STDIN payload, including newlines
+json=$(cat)
 
-# Get repository root
+# Get repository root - silently exit if not in a git repo (formatting is optional)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 
 # Try to extract file path from different possible locations
