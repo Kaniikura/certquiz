@@ -13,8 +13,8 @@ export interface AuthOptions {
 // Cache JwtVerifier instance
 let jwtVerifier: JwtVerifier | null = null;
 
-// Export for testing purposes only
-export function resetJwtVerifierCache(): void {
+// Internal function for testing purposes only - do not use in production code
+export function _resetJwtVerifierCache(): void {
   jwtVerifier = null;
 }
 
@@ -64,19 +64,19 @@ function getJwtVerifier(): JwtVerifier {
 function resolveHeader(
   c: Context<{ Variables: { user?: AuthUser } }>,
   required: boolean
-): string | null {
+): string | Response | null {
   const header = c.req.header('Authorization');
 
   // (a) Missing header
   if (header == null) {
-    if (required) throw c.json({ error: 'Authentication required' }, 401);
+    if (required) return c.json({ error: 'Authentication required' }, 401);
     c.set('user', undefined);
     return null;
   }
 
   // (b) Empty string = invalid
   if (header.trim() === '') {
-    if (required) throw c.json({ error: 'Invalid authorization format' }, 401);
+    if (required) return c.json({ error: 'Invalid authorization format' }, 401);
     c.set('user', undefined);
     return null;
   }
