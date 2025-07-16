@@ -127,8 +127,12 @@ export class JwtVerifier {
     if (error.message.includes('failed to fetch')) {
       return new Error('Failed to fetch JWKS', { cause: error });
     }
+    // Preserve safe network-related errors
+    if (error.message === 'Network error') {
+      return error;
+    }
 
-    // Re-throw other errors as-is
-    return error;
+    // Wrap other errors to avoid exposing internal details
+    return new Error('Token verification failed', { cause: error });
   }
 }
