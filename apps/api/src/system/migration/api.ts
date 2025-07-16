@@ -133,8 +133,23 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
 
     // If migration table exists, determine applied vs pending
     if (appliedMigrations.length > 0) {
-      const applied = allMigrationFiles.slice(0, appliedMigrations.length);
-      const pending = allMigrationFiles.slice(appliedMigrations.length);
+      // Extract hashes from applied migrations for O(1) lookup
+      const appliedHashes = new Set(appliedMigrations.map((m) => m.hash));
+
+      // Categorize files based on hash matching
+      const applied: string[] = [];
+      const pending: string[] = [];
+
+      for (const file of allMigrationFiles) {
+        // Extract hash from filename (format: "0001_hash_description.sql")
+        const hash = file.split('_')[0];
+
+        if (appliedHashes.has(hash)) {
+          applied.push(file);
+        } else {
+          pending.push(file);
+        }
+      }
 
       return Result.ok({
         applied,
