@@ -1,5 +1,7 @@
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import type { IRoleMapper } from './RoleMapper';
 
 export interface JwtVerifierOptions {
   jwksUri: string;
@@ -10,9 +12,11 @@ export interface JwtVerifierOptions {
 export class JwtVerifier {
   private jwks: ReturnType<typeof createRemoteJWKSet>;
   private options: JwtVerifierOptions;
+  private roleMapper: IRoleMapper;
 
-  constructor(options: JwtVerifierOptions) {
+  constructor(options: JwtVerifierOptions, roleMapper: IRoleMapper) {
     this.options = options;
+    this.roleMapper = roleMapper;
     this.jwks = createRemoteJWKSet(new URL(options.jwksUri));
   }
 
@@ -36,12 +40,21 @@ export class JwtVerifier {
         throw new Error('Missing required claim: sub');
       }
 
+      // Extract raw roles from KeyCloak token
+      const rawRoles = this.extractRoles(payload);
+
+      // Convert to domain roles using the mapper
+      const domainRoles = this.roleMapper.toDomain(rawRoles);
+
+      // Convert UserRole enum values to strings for AuthUser
+      const roleStrings = domainRoles.map((role) => UserRole.roleToString(role));
+
       const authUser: AuthUser = {
         sub,
         email: typeof payload.email === 'string' ? payload.email : undefined,
         preferred_username:
           typeof payload.preferred_username === 'string' ? payload.preferred_username : undefined,
-        roles: this.extractRoles(payload),
+        roles: roleStrings,
       };
 
       return authUser;
@@ -82,23 +95,44 @@ export class JwtVerifier {
       return error;
     }
 
-    // Map JWT library errors to user-friendly messages
-    const errorMappings = [
-      { pattern: 'JWT expired', message: 'Token expired' },
-      { pattern: 'JWT not active', message: 'Token not yet valid' },
-      { pattern: 'JWS signature verification failed', message: 'Invalid token signature' },
-      { pattern: 'Unable to find a key', message: 'Key not found in JWKS' },
-      { pattern: 'failed to fetch JWKS', message: 'Failed to fetch JWKS' },
-      { pattern: 'alg "', message: 'Unsupported algorithm' }, // jose throws errors like 'alg "HS256" is not allowed'
-    ];
-
-    for (const { pattern, message } of errorMappings) {
-      if (error.message.includes(pattern)) {
-        return new Error(message, { cause: error });
+    // Use error codes for jose errors (more reliable than message patterns)
+    if ('code' in error && typeof error.code === 'string') {
+      switch (error.code) {
+        case 'ERR_JWT_EXPIRED':
+          return new Error('Token expired', { cause: error });
+        case 'ERR_JWT_CLAIM_VALIDATION_FAILED':
+          // Check specific claim for better error message
+          if ('claim' in error && error.claim === 'nbf') {
+            return new Error('Token not yet valid', { cause: error });
+          }
+          return new Error('Token validation failed', { cause: error });
+        case 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED':
+          return new Error('Invalid token signature', { cause: error });
+        case 'ERR_JWS_INVALID':
+          return new Error('Invalid token format', { cause: error });
+        case 'ERR_JOSE_ALG_NOT_ALLOWED':
+          return new Error('Unsupported algorithm', { cause: error });
+        case 'ERR_JWKS_NO_MATCHING_KEY':
+        case 'ERR_JWKS_MULTIPLE_MATCHING_KEYS':
+          return new Error('Key not found in JWKS', { cause: error });
+        case 'ERR_JWKS_TIMEOUT':
+          return new Error('Failed to fetch JWKS', { cause: error });
       }
     }
 
-    // Re-throw other errors as-is
-    return error;
+    // Handle other known patterns that don't have error codes
+    if (error.message.includes('no applicable key found')) {
+      return new Error('Key not found in JWKS', { cause: error });
+    }
+    if (error.message.includes('failed to fetch')) {
+      return new Error('Failed to fetch JWKS', { cause: error });
+    }
+    // Preserve safe network-related errors
+    if (error.message === 'Network error') {
+      return error;
+    }
+
+    // Wrap other errors to avoid exposing internal details
+    return new Error('Token verification failed', { cause: error });
   }
 }

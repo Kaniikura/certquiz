@@ -1,7 +1,9 @@
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { jwtVerifySuccess } from '@api/test-support/jwt-helpers';
 import * as jose from 'jose';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JwtVerifier } from './JwtVerifier';
+import type { IRoleMapper } from './RoleMapper';
 
 // Mock the jose library
 vi.mock('jose', () => ({
@@ -18,6 +20,7 @@ describe('JwtVerifier', () => {
   let expiredToken: string;
   let notYetValidToken: string;
   let mockJwks: ReturnType<typeof jose.createRemoteJWKSet>;
+  let mockRoleMapper: IRoleMapper;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,11 +56,26 @@ describe('JwtVerifier', () => {
     notYetValidToken =
       'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LWlkIn0.eyJzdWIiOiJ1c2VyLTEyMyIsIm5iZiI6MTczNTY4NjAwMSwiaWF0IjoxNzM1Njg1OTk5fQ.not-yet-valid-signature';
 
-    verifier = new JwtVerifier({
-      jwksUri: 'https://auth.example.com/.well-known/jwks.json',
-      audience: 'certquiz',
-      issuer: 'test-issuer',
-    });
+    // Mock role mapper
+    mockRoleMapper = {
+      toDomain: vi.fn().mockImplementation((roles: string[]) => {
+        // Default mapping for tests - deduplicate roles
+        const mapped = new Set<UserRole>();
+        if (roles.includes('user')) mapped.add(UserRole.User);
+        if (roles.includes('student')) mapped.add(UserRole.User);
+        const result = Array.from(mapped);
+        return result.length > 0 ? result : [UserRole.Guest];
+      }),
+    };
+
+    verifier = new JwtVerifier(
+      {
+        jwksUri: 'https://auth.example.com/.well-known/jwks.json',
+        audience: 'certquiz',
+        issuer: 'test-issuer',
+      },
+      mockRoleMapper
+    );
   });
 
   afterEach(() => {
@@ -85,7 +103,7 @@ describe('JwtVerifier', () => {
         sub: 'user-123',
         email: 'test@test.com',
         preferred_username: 'testuser',
-        roles: ['user', 'student'],
+        roles: ['user'], // Mapped from ['user', 'student']
       });
     });
 
@@ -115,6 +133,8 @@ describe('JwtVerifier', () => {
 
       // Assert - createRemoteJWKSet should be called only once during initialization
       expect(mockCreateRemoteJWKSet).toHaveBeenCalledTimes(1);
+      // Assert - roleMapper should be called 5 times (once per token verification)
+      expect(mockRoleMapper.toDomain).toHaveBeenCalledTimes(5);
     });
 
     it('should validate aud and iss fields when configured', async () => {
@@ -137,7 +157,7 @@ describe('JwtVerifier', () => {
         sub: 'user-123',
         email: 'test@test.com',
         preferred_username: 'testuser',
-        roles: ['user', 'student'],
+        roles: ['user'], // Mapped from ['user', 'student']
       });
     });
   });
@@ -145,7 +165,9 @@ describe('JwtVerifier', () => {
   describe('Error Paths', () => {
     it('should reject when signature is invalid', async () => {
       // Arrange
-      mockJwtVerify.mockRejectedValueOnce(new Error('JWS signature verification failed'));
+      const sigError = new Error('signature verification failed');
+      Object.assign(sigError, { code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' });
+      mockJwtVerify.mockRejectedValueOnce(sigError);
 
       const tokenWithInvalidSignature = validToken.replace(/signature$/, 'wrong-signature');
 
@@ -157,7 +179,9 @@ describe('JwtVerifier', () => {
 
     it('should reject when token is expired', async () => {
       // Arrange
-      mockJwtVerify.mockRejectedValueOnce(new Error('JWT expired'));
+      const expError = new Error('"exp" claim timestamp check failed');
+      Object.assign(expError, { code: 'ERR_JWT_EXPIRED' });
+      mockJwtVerify.mockRejectedValueOnce(expError);
 
       // Act & Assert
       await expect(verifier.verifyToken(expiredToken)).rejects.toThrow('Token expired');
@@ -165,7 +189,9 @@ describe('JwtVerifier', () => {
 
     it('should reject when token is not yet valid', async () => {
       // Arrange
-      mockJwtVerify.mockRejectedValueOnce(new Error('JWT not active'));
+      const nbfError = new Error('"nbf" claim timestamp check failed');
+      Object.assign(nbfError, { code: 'ERR_JWT_CLAIM_VALIDATION_FAILED', claim: 'nbf' });
+      mockJwtVerify.mockRejectedValueOnce(nbfError);
 
       // Act & Assert
       await expect(verifier.verifyToken(notYetValidToken)).rejects.toThrow('Token not yet valid');
@@ -189,7 +215,9 @@ describe('JwtVerifier', () => {
 
     it('should reject when key id (kid) not found in JWKS', async () => {
       // Arrange
-      mockJwtVerify.mockRejectedValueOnce(new Error('Unable to find a key'));
+      const keyError = new Error('no applicable key found in the JSON Web Key Set');
+      // This error doesn't have a code in jose, handled by message pattern
+      mockJwtVerify.mockRejectedValueOnce(keyError);
 
       // Act & Assert
       await expect(verifier.verifyToken(validToken)).rejects.toThrow('Key not found in JWKS');
@@ -219,7 +247,9 @@ describe('JwtVerifier', () => {
     it('should handle tokens signed with unsupported algorithm', async () => {
       // Arrange
       const hs256Token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMyJ9.signature';
-      mockJwtVerify.mockRejectedValueOnce(new Error('alg "HS256" is not allowed'));
+      const algError = new Error('"alg" (Algorithm) Header Parameter value not allowed');
+      Object.assign(algError, { code: 'ERR_JOSE_ALG_NOT_ALLOWED' });
+      mockJwtVerify.mockRejectedValueOnce(algError);
 
       // Act & Assert
       await expect(verifier.verifyToken(hs256Token)).rejects.toThrow('Unsupported algorithm');

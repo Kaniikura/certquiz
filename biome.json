@@ -43,7 +43,7 @@
         "noUnusedVariables": "error",
         "noUnusedImports": {
           "level": "error",
-          "fix": "safe"
+          "fix": "none"
         },
         "useExhaustiveDependencies": "warn",
         "useHookAtTopLevel": "error",
@@ -79,7 +79,10 @@
         }
       },
       "suspicious": {
-        "noConsole": "warn",
+        "noConsole": {
+          "level": "warn",
+          "fix": "none"
+        },
         "noDebugger": "error",
         "noDoubleEquals": "warn",
         "noExplicitAny": "error",

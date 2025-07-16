@@ -5,9 +5,12 @@
 
 import { Hono } from 'hono';
 import pkg from '../package.json';
+import { createAdminRoutes } from './features/admin/routes-factory';
 import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
+import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
+import { createQuizRoutes } from './features/quiz/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
 import type { Logger } from './infra/logger';
@@ -35,6 +38,7 @@ export interface AppDependencies {
 
   // Domain services
   userRepository: IUserRepository;
+  quizRepository: IQuizRepository;
   authProvider: IAuthProvider;
 }
 
@@ -81,10 +85,21 @@ export function buildApp(deps: AppDependencies): Hono<{
 
   // Mount routes with injected dependencies
   app.route('/health', createHealthRoute({ ping: deps.ping, clock: deps.clock }));
+
+  // Public auth routes (login, register, etc.)
   app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
 
-  // TODO: Add more routes as features are implemented
-  // app.route('/api/quiz', createQuizRoutes(deps.quizRepository));
+  // Quiz routes (public + protected sections)
+  app.route('/api/quiz', createQuizRoutes(deps.quizRepository));
+
+  // Admin routes (all protected with admin role)
+  app.route(
+    '/api/admin',
+    createAdminRoutes({
+      userRepository: deps.userRepository,
+      quizRepository: deps.quizRepository,
+    })
+  );
 
   // Root route
   app.get('/', (c) => {
@@ -129,6 +144,9 @@ export async function buildProductionApp(): Promise<
   const { DrizzleUserRepository } = await import(
     './features/auth/domain/repositories/DrizzleUserRepository'
   );
+  const { DrizzleQuizRepository } = await import(
+    './features/quiz/domain/repositories/DrizzleQuizRepository'
+  );
   const { withTransaction } = await import('./infra/unit-of-work');
   const { ping } = await import('./infra/db/client');
   const { getRootLogger } = await import('./infra/logger/root-logger');
@@ -138,10 +156,16 @@ export async function buildProductionApp(): Promise<
   const logger = getRootLogger();
   const authProvider = createAuthProvider();
   const userRepositoryLogger = createDomainLogger('auth.repository.user');
+  const quizRepositoryLogger = createDomainLogger('quiz.repository');
 
   // Use withTx helper to reduce boilerplate
   const userRepository = withTx(
     (trx) => new DrizzleUserRepository(trx, userRepositoryLogger),
+    withTransaction
+  );
+
+  const quizRepository = withTx(
+    (trx) => new DrizzleQuizRepository(trx, quizRepositoryLogger),
     withTransaction
   );
 
@@ -150,6 +174,7 @@ export async function buildProductionApp(): Promise<
     clock: () => new Date(),
     ping,
     userRepository,
+    quizRepository,
     authProvider,
   });
 }
