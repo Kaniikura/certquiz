@@ -98,6 +98,8 @@ export class JwtVerifier {
     // Map JWT library errors to user-friendly messages
     const errorMappings = [
       { pattern: 'JWT expired', message: 'Token expired' },
+      { pattern: 'JWTExpired', message: 'Token expired' }, // jose also uses this format
+      { pattern: '"exp" claim timestamp check failed', message: 'Token expired' },
       { pattern: 'JWT not active', message: 'Token not yet valid' },
       { pattern: 'JWS signature verification failed', message: 'Invalid token signature' },
       { pattern: 'Unable to find a key', message: 'Key not found in JWKS' },
