@@ -19,7 +19,7 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
   publicRoutes.get('/', async (c) => {
     // TODO: Implement public quiz catalog functionality
     // Epic: Public Quiz Catalog Implementation
-    // Story: https://github.com/Kaniikura/certquiz/issues/43
+    // Story: Implement public quiz catalog functionality (Issue #43)
     //
     // Required Implementation:
     // - Create IQuestionRepository implementation with DrizzleQuestionRepository
@@ -43,7 +43,7 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
         code: 'NOT_IMPLEMENTED',
         message:
           'This endpoint requires full Question catalog implementation with pagination, caching, and filtering. See TODO comments for requirements.',
-        documentation: 'https://github.com/Kaniikura/certquiz/issues/43',
+        documentation: 'Issue #43: Implement public quiz catalog functionality',
       },
       501
     );
@@ -54,7 +54,7 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
     const id = c.req.param('id');
     // TODO: Implement public quiz preview functionality
     // Part of: Public Quiz Catalog Implementation
-    // Story: https://github.com/Kaniikura/certquiz/issues/43
+    // Story: Implement public quiz catalog functionality (Issue #43)
     //
     // Required Implementation:
     // - Use IQuestionRepository.findQuestionById()
@@ -69,7 +69,7 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
         error: 'Quiz preview not yet implemented',
         code: 'NOT_IMPLEMENTED',
         message: `Quiz preview for ID ${id} requires Question catalog implementation. See TODO comments for requirements.`,
-        documentation: 'https://github.com/Kaniikura/certquiz/issues/43',
+        documentation: 'Issue #43: Implement public quiz catalog functionality',
       },
       501
     );
