@@ -1,4 +1,5 @@
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { getRootLogger } from '@api/infra/logger';
 
 /**
  * Maps external identity provider roles to domain UserRole values.
@@ -26,17 +27,17 @@ export class RoleMapper implements IRoleMapper {
 
   public toDomain(externalRoles: string[]): UserRole[] {
     const domainRoles = new Set<UserRole>();
+    const logger = getRootLogger().child({ module: 'RoleMapper' });
 
     // Map each external role to domain role
     for (const role of externalRoles) {
       const mappedRole = this.roleMapping[role];
       if (mappedRole !== undefined) {
         domainRoles.add(mappedRole);
+      } else if (process.env.NODE_ENV !== 'test') {
+        // Log unmapped roles for monitoring
+        logger.warn('Unmapped role encountered', { unmappedRole: role });
       }
-      // Optionally log unmapped roles for monitoring
-      // if (!mappedRole && process.env.NODE_ENV !== 'test') {
-      //   console.warn(`Unmapped role encountered: ${role}`);
-      // }
     }
 
     // Ensure at least Guest role is present
