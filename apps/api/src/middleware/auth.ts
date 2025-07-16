@@ -1,5 +1,6 @@
 import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
 import { DEFAULT_ROLE_MAPPING, RoleMapper } from '@api/infra/auth/RoleMapper';
+import { getRootLogger } from '@api/infra/logger';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AuthUser } from './auth/auth-user';
@@ -23,9 +24,26 @@ function getJwtVerifier(): JwtVerifier {
     const keycloakRealm = process.env.KEYCLOAK_REALM || 'certquiz';
 
     // Create role mapper with default or configured mapping
-    const roleMapping = process.env.ROLE_MAPPING_JSON
-      ? JSON.parse(process.env.ROLE_MAPPING_JSON)
-      : DEFAULT_ROLE_MAPPING;
+    // Safely parse ROLE_MAPPING_JSON with fallback to prevent service failure
+    const roleMapping = (() => {
+      if (!process.env.ROLE_MAPPING_JSON) {
+        return DEFAULT_ROLE_MAPPING;
+      }
+      try {
+        return JSON.parse(process.env.ROLE_MAPPING_JSON);
+      } catch (e) {
+        // Use project standard logger for error reporting
+        const logger = getRootLogger().child({ module: 'auth.middleware' });
+        logger.error(
+          'Failed to parse ROLE_MAPPING_JSON environment variable. Falling back to default role mapping.',
+          {
+            error: e instanceof Error ? e.message : String(e),
+            envVar: 'ROLE_MAPPING_JSON',
+          }
+        );
+        return DEFAULT_ROLE_MAPPING;
+      }
+    })();
     const roleMapper = new RoleMapper(roleMapping);
 
     jwtVerifier = new JwtVerifier(
