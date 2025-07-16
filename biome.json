@@ -79,7 +79,10 @@
         }
       },
       "suspicious": {
-        "noConsole": "warn",
+        "noConsole": {
+          "level": "warn",
+          "fix": "none"
+        },
         "noDebugger": "error",
         "noDoubleEquals": "warn",
         "noExplicitAny": "error",
