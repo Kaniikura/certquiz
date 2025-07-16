@@ -95,22 +95,37 @@ export class JwtVerifier {
       return error;
     }
 
-    // Map JWT library errors to user-friendly messages
-    const errorMappings = [
-      { pattern: 'JWT expired', message: 'Token expired' },
-      { pattern: 'JWTExpired', message: 'Token expired' }, // jose also uses this format
-      { pattern: '"exp" claim timestamp check failed', message: 'Token expired' },
-      { pattern: 'JWT not active', message: 'Token not yet valid' },
-      { pattern: 'JWS signature verification failed', message: 'Invalid token signature' },
-      { pattern: 'Unable to find a key', message: 'Key not found in JWKS' },
-      { pattern: 'failed to fetch JWKS', message: 'Failed to fetch JWKS' },
-      { pattern: 'alg "', message: 'Unsupported algorithm' }, // jose throws errors like 'alg "HS256" is not allowed'
-    ];
-
-    for (const { pattern, message } of errorMappings) {
-      if (error.message.includes(pattern)) {
-        return new Error(message, { cause: error });
+    // Use error codes for jose errors (more reliable than message patterns)
+    if ('code' in error && typeof error.code === 'string') {
+      switch (error.code) {
+        case 'ERR_JWT_EXPIRED':
+          return new Error('Token expired', { cause: error });
+        case 'ERR_JWT_CLAIM_VALIDATION_FAILED':
+          // Check specific claim for better error message
+          if ('claim' in error && error.claim === 'nbf') {
+            return new Error('Token not yet valid', { cause: error });
+          }
+          return new Error('Token validation failed', { cause: error });
+        case 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED':
+          return new Error('Invalid token signature', { cause: error });
+        case 'ERR_JWS_INVALID':
+          return new Error('Invalid token format', { cause: error });
+        case 'ERR_JOSE_ALG_NOT_ALLOWED':
+          return new Error('Unsupported algorithm', { cause: error });
+        case 'ERR_JWKS_NO_MATCHING_KEY':
+        case 'ERR_JWKS_MULTIPLE_MATCHING_KEYS':
+          return new Error('Key not found in JWKS', { cause: error });
+        case 'ERR_JWKS_TIMEOUT':
+          return new Error('Failed to fetch JWKS', { cause: error });
       }
+    }
+
+    // Handle other known patterns that don't have error codes
+    if (error.message.includes('no applicable key found')) {
+      return new Error('Key not found in JWKS', { cause: error });
+    }
+    if (error.message.includes('failed to fetch')) {
+      return new Error('Failed to fetch JWKS', { cause: error });
     }
 
     // Re-throw other errors as-is
