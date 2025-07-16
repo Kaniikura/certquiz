@@ -146,16 +146,8 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
   const quizRoutes = new Hono();
 
   // IMPORTANT: Mount more specific routes first (Hono matches in order)
-  // Mount premium routes BEFORE other routes to ensure they take precedence
-  quizRoutes.route('/premium', premiumRoutes);
 
-  // Mount public routes
-  quizRoutes.route('/', publicRoutes);
-
-  // Mount protected routes (includes generic /:id routes)
-  quizRoutes.route('/', protectedRoutes);
-
-  // Health check for quiz service
+  // Health check MUST be defined before wildcard routes like /:id
   quizRoutes.get('/health', (c) => {
     return c.json({
       service: 'quiz',
@@ -163,6 +155,15 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
       timestamp: new Date().toISOString(),
     });
   });
+
+  // Mount premium routes BEFORE other routes to ensure they take precedence
+  quizRoutes.route('/premium', premiumRoutes);
+
+  // Mount public routes (contains /:id wildcard)
+  quizRoutes.route('/', publicRoutes);
+
+  // Mount protected routes (includes generic /:id routes)
+  quizRoutes.route('/', protectedRoutes);
 
   return quizRoutes;
 }

@@ -242,4 +242,36 @@ describe('Authentication Protected Routes Integration', () => {
       expect(body.error).toBe('Token expired');
     });
   });
+
+  describe('Route Ordering (Regression Test)', () => {
+    it('should return quiz health status without authentication', async () => {
+      const res = await app.request('/api/quiz/health');
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body).toMatchObject({
+        service: 'quiz',
+        status: 'healthy',
+      });
+      expect(body.timestamp).toBeDefined();
+    });
+
+    it('should not confuse health endpoint with :id parameter', async () => {
+      // Test that /health is not captured by /:id route
+      const healthRes = await app.request('/api/quiz/health');
+      expect(healthRes.status).toBe(200);
+
+      const healthBody = await healthRes.json();
+      expect(healthBody.service).toBe('quiz');
+      expect(healthBody.error).toBeUndefined();
+
+      // Test that actual :id route still works
+      const idRes = await app.request('/api/quiz/some-quiz-id');
+      expect(idRes.status).toBe(501);
+
+      const idBody = await idRes.json();
+      expect(idBody.error).toBe('Quiz preview not yet implemented');
+      expect(idBody.message).toContain('some-quiz-id');
+    });
+  });
 });
