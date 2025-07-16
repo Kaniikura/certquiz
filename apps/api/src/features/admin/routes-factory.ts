@@ -18,6 +18,7 @@ interface AdminDependencies {
  * Create admin routes - all require admin role
  */
 export function createAdminRoutes(
+  // TODO: Remove underscore when implementing admin features (currently unused but will be needed)
   _deps: AdminDependencies
 ): Hono<{ Variables: { user: AuthUser } }> {
   const adminRoutes = new Hono<{ Variables: { user: AuthUser } }>();
