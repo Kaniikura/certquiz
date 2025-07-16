@@ -12,8 +12,12 @@ import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
-import { PostgresError } from 'postgres';
+import postgres from 'postgres';
 import { v5 as uuidv5 } from 'uuid';
+
+// Extract PostgresError using property access to avoid CJS/ESM interop issues
+const { PostgresError } = postgres;
+
 import { z } from 'zod';
 import { QuizSession } from '../aggregates/QuizSession';
 import { OptimisticLockError } from '../errors/QuizErrors';
