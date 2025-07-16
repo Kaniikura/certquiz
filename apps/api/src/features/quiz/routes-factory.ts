@@ -17,27 +17,62 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
 
   // GET /api/quiz - List available quizzes (public browsing)
   publicRoutes.get('/', async (c) => {
-    // TODO: Implement public quiz listing
-    return c.json({
-      success: true,
-      data: {
-        quizzes: [],
-        message: 'Public quiz listing coming soon',
+    // TODO: Implement public quiz catalog functionality
+    // Epic: Public Quiz Catalog Implementation
+    // Story: https://github.com/Kaniikura/certquiz/issues/43
+    //
+    // Required Implementation:
+    // - Create IQuestionRepository implementation with DrizzleQuestionRepository
+    // - Add efficient pagination (limit/offset or cursor-based)
+    // - Implement Redis caching layer for 200ms P95 response time
+    // - Add filtering by examType, category, difficulty, isPremium
+    // - Full-text search using PostgreSQL tsvector
+    // - Premium content access control based on user roles
+    // - Comprehensive integration tests covering performance requirements
+    //
+    // Dependencies:
+    // - Question bounded context (separate from QuizSession)
+    // - Database tables: question, questionVersion
+    // - Redis cache configuration
+    // - Performance monitoring and alerting
+    //
+    // See: /features/question/domain/repositories/IQuestionRepository.ts
+    return c.json(
+      {
+        error: 'Public quiz catalog not yet implemented',
+        code: 'NOT_IMPLEMENTED',
+        message:
+          'This endpoint requires full Question catalog implementation with pagination, caching, and filtering. See TODO comments for requirements.',
+        documentation: 'https://github.com/Kaniikura/certquiz/issues/43',
       },
-    });
+      501
+    );
   });
 
   // GET /api/quiz/:id - Get quiz details (public preview)
   publicRoutes.get('/:id', async (c) => {
     const id = c.req.param('id');
-    // TODO: Implement public quiz preview
-    return c.json({
-      success: true,
-      data: {
-        id,
-        message: 'Public quiz preview coming soon',
+    // TODO: Implement public quiz preview functionality
+    // Part of: Public Quiz Catalog Implementation
+    // Story: https://github.com/Kaniikura/certquiz/issues/43
+    //
+    // Required Implementation:
+    // - Use IQuestionRepository.findQuestionById()
+    // - Return question summary without correct answers
+    // - Implement premium access control
+    // - Add Redis caching for performance
+    // - Proper error handling for not found questions
+    //
+    // See: /features/question/domain/repositories/IQuestionRepository.ts
+    return c.json(
+      {
+        error: 'Quiz preview not yet implemented',
+        code: 'NOT_IMPLEMENTED',
+        message: `Quiz preview for ID ${id} requires Question catalog implementation. See TODO comments for requirements.`,
+        documentation: 'https://github.com/Kaniikura/certquiz/issues/43',
       },
-    });
+      501
+    );
   });
 
   // Protected routes - authentication required

@@ -74,18 +74,23 @@ describe('Authentication Protected Routes Integration', () => {
       expect([400, 401]).toContain(res.status);
     });
 
-    it('GET /api/quiz should be accessible without authentication (public browsing)', async () => {
+    it('GET /api/quiz should return 501 Not Implemented (quiz catalog not yet built)', async () => {
       const res = await app.request('/api/quiz');
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(501);
       const body = await res.json();
-      expect(body.success).toBe(true);
+      expect(body.error).toBe('Public quiz catalog not yet implemented');
+      expect(body.code).toBe('NOT_IMPLEMENTED');
+      expect(body.message).toContain('Question catalog implementation');
     });
 
-    it('GET /api/quiz/:id should be accessible without authentication (public preview)', async () => {
+    it('GET /api/quiz/:id should return 501 Not Implemented (quiz preview not yet built)', async () => {
       const res = await app.request('/api/quiz/test-quiz-123');
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(501);
       const body = await res.json();
-      expect(body.success).toBe(true);
+      expect(body.error).toBe('Quiz preview not yet implemented');
+      expect(body.code).toBe('NOT_IMPLEMENTED');
+      expect(body.message).toContain('test-quiz-123');
+      expect(body.message).toContain('Question catalog implementation');
     });
   });
 
