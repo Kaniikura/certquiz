@@ -194,7 +194,7 @@ export async function up(db: DB, logger: LoggerPort): Promise<Result<void, Error
       studyTimeMinutes: progress.studyTimeMinutes,
       currentStreak: progress.currentStreak,
       lastStudyDate: progress.lastStudyDate ?? null,
-      categoryStats: progress.categoryStats ?? { version: 1 },
+      categoryStats: progress.categoryStats ?? { version: 1, categories: {} },
       updatedAt: new Date(),
     }));
 
