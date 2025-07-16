@@ -37,43 +37,40 @@ jobs:
       - name: Install dependencies
         run: bun install
       
-      - name: Validate migration files
+      - name: Check migration files
         run: |
           cd apps/api
-          bun run db:migrate:validate
+          bun run db:check
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
       
       - name: Test migrate up (first time)
         run: |
           cd apps/api
-          bun run db:migrate:up
+          bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
       
-      - name: Check migration status
+      - name: Test migrate down (drop schema)
         run: |
           cd apps/api
-          bun run db:migrate:status
+          # Uses db-drop.ts script which detects CI=true and drops migrations table directly
+          bun run db:drop
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-      
-      - name: Test migrate down
-        run: |
-          cd apps/api
-          bun run db:migrate:down
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+          CI: true
       
       - name: Test migrate up again
         run: |
           cd apps/api
-          bun run db:migrate:up
+          bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
       
       - name: Verify idempotency
         run: |
           cd apps/api
-          # Running up again should be safe (no-op)
-          bun run db:migrate:up
+          # Running migrate again should be safe (no-op)
+          bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test

@@ -19,7 +19,7 @@
     "db:push": "bun --env-file=../../.env drizzle-kit push",
     "db:check": "bun --env-file=../../.env drizzle-kit check",
     "db:studio": "bun --env-file=../../.env drizzle-kit studio",
-    "db:drop": "bun --env-file=../../.env drizzle-kit drop",
+    "db:drop": "bun --env-file=../../.env run scripts/db-drop.ts",
     "db:reset": "bun run db:seed reset",
     "db:seed": "bun --env-file=../../.env run scripts/seed.ts seed",
     "db:seed:clear": "bun --env-file=../../.env run scripts/seed.ts clear",
