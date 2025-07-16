@@ -89,10 +89,10 @@ function extractBearerToken(
   header: string,
   c: Context<{ Variables: { user?: AuthUser } }>,
   required: boolean
-): string | null {
+): string | Response | null {
   const [scheme, ...rest] = header.trim().split(' ');
   if (scheme !== 'Bearer' || rest.join(' ').trim() === '') {
-    if (required) throw c.json({ error: 'Invalid authorization format' }, 401);
+    if (required) return c.json({ error: 'Invalid authorization format' }, 401);
     c.set('user', undefined);
     return null;
   }
@@ -100,13 +100,15 @@ function extractBearerToken(
 }
 
 // 3. Role authorization
-function ensureRoles(user: AuthUser, roles: string[]): void {
+function ensureRoles(
+  user: AuthUser,
+  roles: string[],
+  c: Context<{ Variables: { user?: AuthUser } }>
+): Response | null {
   if (roles.length > 0 && !roles.some((role) => user.roles.includes(role))) {
-    throw new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
-      status: 403,
-      headers: { 'content-type': 'application/json' },
-    });
+    return c.json({ error: 'Insufficient permissions' }, 403);
   }
+  return null;
 }
 
 // 4. Auth-library error whitelist
@@ -143,24 +145,24 @@ export const auth = (options?: AuthOptions) => {
       /* 1. Header checks --------------------------------------------------- */
       const rawHeader = resolveHeader(c, required);
       if (!rawHeader) return next(); // optional & no header
+      if (rawHeader instanceof Response) return rawHeader; // error response
 
       const token = extractBearerToken(rawHeader, c, required);
       if (!token) return next(); // optional & bad header
+      if (token instanceof Response) return token; // error response
 
       /* 2. Token verification --------------------------------------------- */
       const verifier = getJwtVerifier();
       const user = await verifier.verifyToken(token);
 
       /* 3. Role check ------------------------------------------------------ */
-      ensureRoles(user, roles);
+      const roleError = ensureRoles(user, roles, c);
+      if (roleError) return roleError;
 
       /* 4. Success --------------------------------------------------------- */
       c.set('user', user);
       return next();
     } catch (err) {
-      /* Responses deliberately thrown by helpers -------------------------- */
-      if (err instanceof Response) return err;
-
       /* JWT-lib known failures -------------------------------------------- */
       if (isAuthError(err)) {
         return c.json({ error: err.message }, 401);
