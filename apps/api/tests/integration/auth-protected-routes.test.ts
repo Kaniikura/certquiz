@@ -1,0 +1,240 @@
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// Global variables for test keys (will be initialized in beforeAll)
+let testPrivateKey: CryptoKey;
+let testPublicKey: CryptoKey;
+
+// Create the spy outside the mock so it can access testPublicKey at runtime
+const getKeySpy = vi.fn(async () => testPublicKey);
+
+// Mock only createRemoteJWKSet
+vi.mock('jose', async () => {
+  const actual = await vi.importActual<typeof import('jose')>('jose');
+
+  const mockCreateRemoteJWKSet = vi.fn(() => getKeySpy);
+
+  return {
+    ...actual,
+    createRemoteJWKSet: mockCreateRemoteJWKSet,
+  };
+});
+
+import { app } from '@api/index';
+import { shutdownDatabase } from '@api/infra/db/client';
+import { generateKeyPair, SignJWT } from 'jose';
+
+describe('Authentication Protected Routes Integration', () => {
+  let privateKey: CryptoKey;
+  const issuer = 'http://localhost:8080/realms/certquiz';
+  const audience = 'certquiz';
+
+  beforeAll(async () => {
+    // Generate test key pair
+    const keyPair = await generateKeyPair('RS256');
+    testPrivateKey = keyPair.privateKey;
+    testPublicKey = keyPair.publicKey;
+    privateKey = testPrivateKey;
+  });
+
+  afterAll(async () => {
+    await shutdownDatabase();
+  });
+
+  // Helper to create test tokens
+  async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
+    return new SignJWT({
+      sub: 'test-user-123',
+      email: 'test@example.com',
+      realm_access: { roles: ['certquiz-user'] },
+      ...claims,
+    })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .sign(privateKey);
+  }
+
+  describe('Public Routes', () => {
+    it('GET /health should be accessible without authentication', async () => {
+      const res = await app.request('/health/live');
+      expect(res.status).toBe(200);
+    });
+
+    it('POST /api/auth/login should be accessible without authentication', async () => {
+      const res = await app.request('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', password: 'password' }),
+      });
+      // Login will fail with invalid credentials (401) or validation error (400)
+      // but it should NOT require an Authorization header
+      // We just need to ensure it's accessible, not that it succeeds
+      expect([400, 401]).toContain(res.status);
+    });
+
+    it('GET /api/quiz should be accessible without authentication (public browsing)', async () => {
+      const res = await app.request('/api/quiz');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+    });
+
+    it('GET /api/quiz/:id should be accessible without authentication (public preview)', async () => {
+      const res = await app.request('/api/quiz/test-quiz-123');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+    });
+  });
+
+  describe('Protected Routes', () => {
+    it('POST /api/quiz should require authentication', async () => {
+      const res = await app.request('/api/quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Quiz' }),
+      });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).toBeDefined();
+    });
+
+    it('POST /api/quiz should allow authenticated users', async () => {
+      const token = await createTestToken();
+      const res = await app.request('/api/quiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: 'New Quiz' }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.createdBy).toBe('test-user-123');
+    });
+
+    it('POST /api/quiz/:id/start should require authentication', async () => {
+      const res = await app.request('/api/quiz/test-quiz-123/start', {
+        method: 'POST',
+      });
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Premium Routes', () => {
+    it('GET /api/quiz/premium should require premium role', async () => {
+      // User without premium role
+      const token = await createTestToken();
+      const res = await app.request('/api/quiz/premium', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.error).toBe('Insufficient permissions');
+    });
+
+    it('GET /api/quiz/premium should allow premium users', async () => {
+      const token = await createTestToken({
+        realm_access: { roles: ['certquiz-premium'] },
+      });
+      const res = await app.request('/api/quiz/premium', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.roles).toContain('premium');
+    });
+
+    it('GET /api/quiz/premium should allow admin users', async () => {
+      const token = await createTestToken({
+        realm_access: { roles: ['certquiz-admin'] },
+      });
+      const res = await app.request('/api/quiz/premium', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.roles).toContain('admin');
+    });
+  });
+
+  describe('Admin Routes', () => {
+    it('GET /api/admin/stats should require admin role', async () => {
+      // Regular user
+      const token = await createTestToken();
+      const res = await app.request('/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('GET /api/admin/stats should allow admin users', async () => {
+      const token = await createTestToken({
+        sub: 'admin-user',
+        realm_access: { roles: ['certquiz-admin'] },
+      });
+      const res = await app.request('/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.lastCheckedBy).toBe('admin-user');
+    });
+
+    it('DELETE /api/admin/quiz/:id should require admin role', async () => {
+      const token = await createTestToken({
+        realm_access: { roles: ['certquiz-user'] },
+      });
+      const res = await app.request('/api/admin/quiz/test-quiz', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should return 401 for invalid tokens on protected routes', async () => {
+      const res = await app.request('/api/quiz', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer invalid.token.here',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: 'Test' }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 401 for expired tokens on protected routes', async () => {
+      const expiredToken = await new SignJWT({
+        sub: 'test-user',
+        realm_access: { roles: ['certquiz-user'] },
+      })
+        .setProtectedHeader({ alg: 'RS256' })
+        .setExpirationTime(0) // Already expired
+        .setIssuer(issuer)
+        .setAudience(audience)
+        .sign(privateKey);
+
+      const res = await app.request('/api/quiz', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${expiredToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: 'Test' }),
+      });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).toBe('Token expired');
+    });
+  });
+});
