@@ -73,7 +73,11 @@ export async function resetDatabaseForTesting(
 
   try {
     // Drop and recreate the entire public schema
-    // This ensures a completely clean state for testing
+    // CASCADE will automatically drop ALL dependent objects including:
+    // - All tables, views, indexes, sequences, functions, and types
+    // - All foreign key constraints and dependencies
+    // - All triggers, stored procedures, and user-defined data types
+    // This ensures a completely clean state for testing with no orphaned objects
     await client.unsafe('DROP SCHEMA public CASCADE');
     await client.unsafe('CREATE SCHEMA public');
     await client.unsafe('GRANT ALL ON SCHEMA public TO public');
