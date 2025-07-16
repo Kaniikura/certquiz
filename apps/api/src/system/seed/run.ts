@@ -66,23 +66,43 @@ export async function clearSeed(db: DB, logger?: LoggerPort): Promise<Result<voi
   try {
     log.info('Starting seed data cleanup');
 
-    // Get all table names from schema
-    const tableNames = Object.keys(schema).filter(
-      (key) =>
-        // biome-ignore lint/performance/noDynamicNamespaceImportAccess: Dev-only script. Dynamic lookup keeps the file
-        typeof schema[key as keyof typeof schema] === 'object' &&
-        // biome-ignore lint/performance/noDynamicNamespaceImportAccess: Dev-only script. Dynamic lookup keeps the file
-        'tableName' in schema[key as keyof typeof schema]
-    );
+    // Define explicit truncation order respecting foreign key dependencies
+    // Order: from leaf tables (most dependent) to root tables (no dependencies)
+    const truncationOrder = [
+      // Leaf tables - depend on multiple other tables
+      schema.bookmarks, // depends on authUser and question
 
-    // Truncate tables in reverse dependency order
+      // Tables that depend on question
+      schema.questionVersion, // depends on question
+
+      // Tables that depend only on authUser
+      schema.quizSessionSnapshot, // depends on authUser
+      schema.userProgress, // depends on authUser
+      schema.subscriptions, // depends on authUser
+      schema.question, // depends on authUser (createdById)
+
+      // Event sourcing table (no FK dependencies)
+      schema.quizSessionEvent,
+
+      // Root table
+      schema.authUser, // no dependencies
+
+      // System tables (only truncate if explicitly needed)
+      // webhookEvent, drizzleMigrations, testMigration are typically not seeded
+    ];
+
+    // Truncate tables in the defined order
     await db.transaction(async (trx) => {
-      // Disable foreign key checks temporarily
+      // Disable foreign key checks temporarily by setting session_replication_role to 'replica'
+      // This PostgreSQL-specific setting disables triggers including foreign key constraint checks
+      // While the CASCADE option in TRUNCATE handles dependencies, disabling FK checks ensures:
+      // 1. No constraint violations during truncation even with circular dependencies
+      // 2. Faster execution as constraint checks are skipped
+      // 3. The ability to truncate in any order (though we still follow dependency order as best practice)
+      // Note: This is safe in a controlled seed/test environment but should never be used in production
       await trx.execute(sql`SET session_replication_role = 'replica'`);
 
-      for (const tableName of tableNames.reverse()) {
-        // biome-ignore lint/performance/noDynamicNamespaceImportAccess: Dev-only script. Dynamic lookup keeps the file
-        const table = schema[tableName as keyof typeof schema];
+      for (const table of truncationOrder) {
         if ('tableName' in table && typeof table.tableName === 'string') {
           log.debug(`Truncating table: ${table.tableName}`);
           await trx.execute(sql`TRUNCATE TABLE ${sql.identifier(table.tableName)} CASCADE`);

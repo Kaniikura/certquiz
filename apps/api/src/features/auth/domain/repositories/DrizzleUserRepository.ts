@@ -12,12 +12,12 @@ import type { IUserRepository } from './IUserRepository';
  * Drizzle implementation of User repository
  * Uses Queryable interface to work with both DB client and transactions
  */
-export class DrizzleUserRepository<C extends Queryable>
+export class DrizzleUserRepository<TConnection extends Queryable>
   extends BaseRepository
   implements IUserRepository
 {
   constructor(
-    private readonly conn: C,
+    private readonly conn: TConnection,
     logger: LoggerPort
   ) {
     super(logger);

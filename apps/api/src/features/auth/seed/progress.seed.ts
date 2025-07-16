@@ -7,7 +7,7 @@ import type { DB } from '@api/infra/db/client';
 import { userProgress } from '@api/infra/db/schema';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
-import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 import { getActiveSeededUsers, seedUuid } from './users.seed';
 
@@ -164,37 +164,43 @@ export async function up(db: DB, logger: LoggerPort): Promise<Result<void, Error
     const progressData = generateProgressData();
     logger.info(`Seeding progress for ${progressData.length} users`);
 
-    for (const progress of progressData) {
-      logger.debug(`Creating progress for user: ${progress.userId}`);
+    // Batch check for existing progress records
+    const userIds = progressData.map((p) => p.userId);
+    const existingProgress = await db.query.userProgress.findMany({
+      where: sql`${userProgress.userId} = ANY(${userIds})`,
+      columns: { userId: true },
+    });
 
-      // Check if progress already exists
-      const existing = await db.query.userProgress.findFirst({
-        where: eq(userProgress.userId, progress.userId),
-      });
+    const existingUserIds = new Set(existingProgress.map((p) => p.userId));
 
-      if (existing) {
-        logger.debug(`Progress for user ${progress.userId} already exists, skipping`);
-        continue;
-      }
+    // Filter out users that already have progress
+    const newProgressData = progressData.filter(
+      (progress) => !existingUserIds.has(progress.userId)
+    );
 
-      await db.insert(userProgress).values({
-        userId: progress.userId,
-        level: progress.level,
-        experience: progress.experience,
-        totalQuestions: progress.totalQuestions,
-        correctAnswers: progress.correctAnswers,
-        accuracy: progress.accuracy.toFixed(1), // stored as decimal string
-        studyTimeMinutes: progress.studyTimeMinutes,
-        currentStreak: progress.currentStreak,
-        lastStudyDate: progress.lastStudyDate ?? null,
-        categoryStats: progress.categoryStats ?? { version: 1 },
-        updatedAt: new Date(),
-      });
-
-      logger.debug(`Created progress for user: ${progress.userId}`);
+    if (newProgressData.length === 0) {
+      logger.info('All users already have progress data, skipping');
+      return Result.ok(undefined);
     }
 
-    logger.info('User progress seeding completed');
+    // Batch insert all new progress records
+    const valuesToInsert = newProgressData.map((progress) => ({
+      userId: progress.userId,
+      level: progress.level,
+      experience: progress.experience,
+      totalQuestions: progress.totalQuestions,
+      correctAnswers: progress.correctAnswers,
+      accuracy: progress.accuracy.toFixed(1), // stored as decimal string
+      studyTimeMinutes: progress.studyTimeMinutes,
+      currentStreak: progress.currentStreak,
+      lastStudyDate: progress.lastStudyDate ?? null,
+      categoryStats: progress.categoryStats ?? { version: 1 },
+      updatedAt: new Date(),
+    }));
+
+    await db.insert(userProgress).values(valuesToInsert);
+
+    logger.info(`Created progress for ${newProgressData.length} users`);
     return Result.ok(undefined);
   } catch (error) {
     logger.error('Failed to seed user progress', {
@@ -214,12 +220,18 @@ export async function down(db: DB, logger: LoggerPort): Promise<Result<void, Err
     // Get all seed user IDs
     const seedUserIds = getActiveSeededUsers().map((u) => u.id);
 
-    for (const userId of seedUserIds) {
-      await db.delete(userProgress).where(eq(userProgress.userId, userId));
-      logger.debug(`Removed progress for user: ${userId}`);
+    if (seedUserIds.length === 0) {
+      logger.info('No seeded users to remove progress for');
+      return Result.ok(undefined);
     }
 
-    logger.info('User progress cleanup completed');
+    // Batch delete all seeded progress records
+    const deleted = await db
+      .delete(userProgress)
+      .where(sql`${userProgress.userId} = ANY(${seedUserIds})`)
+      .returning({ userId: userProgress.userId });
+
+    logger.info(`Removed progress for ${deleted.length} users`);
     return Result.ok(undefined);
   } catch (error) {
     logger.error('Failed to remove seeded user progress', {
