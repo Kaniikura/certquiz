@@ -22,6 +22,9 @@ export function createAuthRoutes(
   const authRoutes = new Hono();
   const logger = getRootLogger().child({ module: 'auth.routes' });
 
+  // All auth routes are public (login, register, etc.)
+  // Protected user profile routes would go in a separate user feature
+
   /**
    * POST /login - User authentication
    */
