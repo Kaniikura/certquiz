@@ -8,10 +8,10 @@ import {
   quizSessionEvent,
   quizSessionSnapshot,
 } from '@api/infra/db/schema/quiz';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
-import type { PostgresJsTransaction } from 'drizzle-orm/postgres-js';
 import { PostgresError } from 'postgres';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
@@ -162,7 +162,7 @@ function deterministicEventId(row: QuizSessionEventRow): string {
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
-    private readonly trx: PostgresJsTransaction<Record<string, never>, Record<string, never>>,
+    private readonly trx: TransactionContext,
     logger: LoggerPort
   ) {
     super(logger);
