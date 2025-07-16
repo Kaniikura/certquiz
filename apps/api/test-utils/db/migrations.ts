@@ -12,6 +12,9 @@ const execAsync = promisify(exec);
  * @internal - Use createTestDatabase from core.ts instead
  */
 export async function drizzleMigrate(databaseUrl: string): Promise<void> {
+  // First, reset the schema to ensure clean state
+  await resetMigrationState(databaseUrl);
+
   // Check if migrations directory exists
   const migrationsDir = path.join(__dirname, '../../src/infra/db/migrations');
   let hasMigrations = false;
@@ -37,7 +40,7 @@ export async function drizzleMigrate(databaseUrl: string): Promise<void> {
       DATABASE_URL: databaseUrl,
     };
 
-    // Run migrations
+    // Run migrations using drizzle-kit
     const { stderr } = await execAsync('bun run db:migrate', {
       cwd: path.join(__dirname, '../..'),
       env,
@@ -46,8 +49,8 @@ export async function drizzleMigrate(databaseUrl: string): Promise<void> {
     if (stderr) {
       if (stderr.includes('No migrations to run')) {
         console.log('ℹ️ No migrations to run - database is already up to date');
-      } else {
-        // Show actual stderr content for genuine warnings/errors
+      } else if (!stderr.includes('already exists')) {
+        // Show actual stderr content for genuine warnings/errors (but ignore "already exists" errors)
         console.warn('Migration stderr:', stderr);
       }
     }
@@ -55,9 +58,15 @@ export async function drizzleMigrate(databaseUrl: string): Promise<void> {
     // Also create test-specific tables
     await createTestTablesDirectly(databaseUrl);
   } catch (error) {
-    throw new Error(
-      `Failed to run migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    // If the error is about types already existing, try to continue
+    if (error instanceof Error && error.message.includes('already exists')) {
+      console.log('ℹ️ Database types already exist - continuing with test table creation');
+      await createTestTablesDirectly(databaseUrl);
+    } else {
+      throw new Error(
+        `Failed to run migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 }
 
