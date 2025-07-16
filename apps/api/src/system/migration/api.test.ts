@@ -3,7 +3,7 @@ import { resetDatabaseForTesting } from './api';
 
 describe('Migration API', () => {
   describe('resetDatabaseForTesting', () => {
-    it('should prevent execution in production environment', async () => {
+    it('should prevent execution in production environment', async (): Promise<void> => {
       // Mock process.env.NODE_ENV to production
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
@@ -22,7 +22,7 @@ describe('Migration API', () => {
       }
     });
 
-    it('should allow execution in development environment', async () => {
+    it('should allow execution in development environment', async (): Promise<void> => {
       // Mock process.env.NODE_ENV to development
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
@@ -43,7 +43,7 @@ describe('Migration API', () => {
       }
     });
 
-    it('should allow execution in test environment', async () => {
+    it('should allow execution in test environment', async (): Promise<void> => {
       // Mock process.env.NODE_ENV to test
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'test';
