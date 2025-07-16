@@ -183,7 +183,7 @@ export async function up(db: DB, logger: LoggerPort): Promise<Result<void, Error
         experience: progress.experience,
         totalQuestions: progress.totalQuestions,
         correctAnswers: progress.correctAnswers,
-        accuracy: progress.accuracy.toString(1), // stored as decimal string
+        accuracy: progress.accuracy.toFixed(1), // stored as decimal string
         studyTimeMinutes: progress.studyTimeMinutes,
         currentStreak: progress.currentStreak,
         lastStudyDate: progress.lastStudyDate ?? null,
