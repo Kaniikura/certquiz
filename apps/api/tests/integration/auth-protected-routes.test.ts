@@ -71,7 +71,7 @@ describe('Authentication Protected Routes Integration', () => {
       // Login will fail with invalid credentials (401) or validation error (400)
       // but it should NOT require an Authorization header
       // We just need to ensure it's accessible, not that it succeeds
-      expect([400, 401]).toContain(res.status);
+      expect(res.status === 400 || res.status === 401).toBe(true);
     });
 
     it('GET /api/quiz should return 501 Not Implemented (quiz catalog not yet built)', async () => {
