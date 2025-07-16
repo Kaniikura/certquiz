@@ -273,11 +273,28 @@ describe('auth() middleware', () => {
       expect(body).toEqual({ error: 'Insufficient permissions' });
     });
 
-    it('should return 403 when user lacks any of multiple required roles', async () => {
+    it('should return 403 when user lacks all of multiple required roles', async () => {
+      // Arrange
+      mockVerify(validUser); // Has 'user' role only
+      app.use(auth({ roles: ['admin', 'superadmin'] }));
+      app.get('/test', (c) => c.text('Should not reach here'));
+
+      // Act
+      const res = await app.request('/test', {
+        headers: { Authorization: 'Bearer user.jwt.token' },
+      });
+
+      // Assert
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body).toEqual({ error: 'Insufficient permissions' });
+    });
+
+    it('should allow access when user has any of multiple required roles', async () => {
       // Arrange
       mockVerify(adminUser); // Has 'user' and 'admin'
       app.use(auth({ roles: ['admin', 'superadmin'] }));
-      app.get('/test', (c) => c.text('Should not reach here'));
+      app.get('/test', (c) => c.text('Success'));
 
       // Act
       const res = await app.request('/test', {
@@ -285,9 +302,8 @@ describe('auth() middleware', () => {
       });
 
       // Assert
-      expect(res.status).toBe(403);
-      const body = await res.json();
-      expect(body).toEqual({ error: 'Insufficient permissions' });
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('Success');
     });
   });
 

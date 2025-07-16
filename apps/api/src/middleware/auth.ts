@@ -83,7 +83,7 @@ function extractBearerToken(
 
 // 3. Role authorization
 function ensureRoles(user: AuthUser, roles: string[]): void {
-  if (roles.length > 0 && !roles.every((role) => user.roles.includes(role))) {
+  if (roles.length > 0 && !roles.some((role) => user.roles.includes(role))) {
     throw new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
       status: 403,
       headers: { 'content-type': 'application/json' },
