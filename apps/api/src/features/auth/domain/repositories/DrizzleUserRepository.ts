@@ -1,5 +1,5 @@
+import type { Queryable } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
-import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
@@ -10,11 +10,14 @@ import type { IUserRepository } from './IUserRepository';
 
 /**
  * Drizzle implementation of User repository
- * Uses transaction for consistency with other repositories
+ * Uses Queryable interface to work with both DB client and transactions
  */
-export class DrizzleUserRepository extends BaseRepository implements IUserRepository {
+export class DrizzleUserRepository<C extends Queryable>
+  extends BaseRepository
+  implements IUserRepository
+{
   constructor(
-    private readonly trx: TransactionContext,
+    private readonly conn: C,
     logger: LoggerPort
   ) {
     super(logger);
@@ -22,7 +25,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
 
   async findById(id: UserId): Promise<User | null> {
     try {
-      const row = await this.trx.select().from(authUser).where(eq(authUser.userId, id)).limit(1);
+      const row = await this.conn.select().from(authUser).where(eq(authUser.userId, id)).limit(1);
 
       if (row.length === 0) {
         return null;
@@ -49,17 +52,17 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
 
   async findByEmail(email: Email): Promise<User | null> {
     try {
-      const row = await this.trx
+      const rows = await this.conn
         .select()
         .from(authUser)
         .where(eq(authUser.email, email.toString()))
         .limit(1);
 
-      if (row.length === 0) {
+      if (rows.length === 0) {
         return null;
       }
 
-      const result = User.fromPersistence(row[0]);
+      const result = User.fromPersistence(rows[0]);
       if (!result.success) {
         this.logger.error('Invalid user data in database:', {
           email: email.toString(),
@@ -80,7 +83,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
 
   async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
     try {
-      const row = await this.trx
+      const row = await this.conn
         .select()
         .from(authUser)
         .where(eq(authUser.identityProviderId, identityProviderId))
@@ -111,7 +114,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
 
   async findByUsername(username: string): Promise<User | null> {
     try {
-      const row = await this.trx
+      const row = await this.conn
         .select()
         .from(authUser)
         .where(eq(authUser.username, username))
@@ -145,7 +148,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
       const data = user.toPersistence();
 
       // Upsert: insert on conflict do update
-      await this.trx
+      await this.conn
         .insert(authUser)
         .values({
           ...data,
@@ -184,7 +187,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
         conditions.push(ne(authUser.userId, excludeUserId));
       }
 
-      const row = await this.trx
+      const row = await this.conn
         .select({ count: authUser.userId })
         .from(authUser)
         .where(and(...conditions))
@@ -208,7 +211,7 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
         conditions.push(ne(authUser.userId, excludeUserId));
       }
 
-      const row = await this.trx
+      const row = await this.conn
         .select({ count: authUser.userId })
         .from(authUser)
         .where(and(...conditions))
