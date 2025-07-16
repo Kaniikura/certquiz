@@ -1,5 +1,5 @@
 /**
  * Migration system exports
  */
-export { getMigrationStatus, migrateDown, migrateUp } from './api';
+export { getMigrationStatus, migrateUp, resetDatabaseForTesting } from './api';
 export { formatValidationResult, validateMigrations } from './validate';

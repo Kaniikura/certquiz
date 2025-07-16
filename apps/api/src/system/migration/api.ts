@@ -47,40 +47,41 @@ export async function migrateUp(connectionUrl: string): Promise<Result<void, str
 }
 
 /**
- * Run migration down (rollback) - Safe implementation for development/testing
+ * Reset database schema for testing purposes
  *
- * IMPORTANT: This is a simplified rollback that only clears migration tracking.
- * For production, implement proper down migrations with individual SQL files.
+ * IMPORTANT: This function completely drops and recreates the public schema,
+ * removing ALL database objects (tables, types, etc.). This is intended
+ * ONLY for development/testing environments.
+ *
+ * For production rollbacks, implement proper down migrations with individual SQL files.
  *
  * @param connectionUrl - Database connection string
  * @returns Result indicating success or failure
  */
-export async function migrateDown(connectionUrl: string): Promise<Result<void, string>> {
+export async function resetDatabaseForTesting(
+  connectionUrl: string
+): Promise<Result<void, string>> {
   // SAFETY: Prevent execution in production environment
   if (process.env.NODE_ENV === 'production') {
     return Result.err(
-      'Migration rollback is not allowed in production environment. ' +
-        'Implement proper down migrations with individual SQL files for production use.'
+      'Database reset is not allowed in production environment. ' +
+        'For production rollbacks, implement proper down migrations with individual SQL files.'
     );
   }
 
   const client = postgres(connectionUrl, { max: 1 });
 
   try {
-    // Only drop the migration tracking table, not the entire schema
-    // This is safer than dropping the entire public schema
-    await client.unsafe('DROP TABLE IF EXISTS __drizzle_migrations CASCADE');
-
-    // Note: In a proper implementation, you would:
-    // 1. Read down migration files (e.g., 0001_rollback.sql)
-    // 2. Execute them in reverse order
-    // 3. Remove migration records from tracking table
-    // 4. Maintain data integrity throughout the process
+    // Drop and recreate the entire public schema
+    // This ensures a completely clean state for testing
+    await client.unsafe('DROP SCHEMA public CASCADE');
+    await client.unsafe('CREATE SCHEMA public');
+    await client.unsafe('GRANT ALL ON SCHEMA public TO public');
 
     return Result.ok(undefined);
   } catch (error) {
     return Result.err(
-      `Migration rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Database reset failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   } finally {
     await client.end();
@@ -133,23 +134,18 @@ export async function getMigrationStatus(connectionUrl: string): Promise<
 
     // If migration table exists, determine applied vs pending
     if (appliedMigrations.length > 0) {
-      // Extract hashes from applied migrations for O(1) lookup
-      const appliedHashes = new Set(appliedMigrations.map((m) => m.hash));
-
-      // Categorize files based on hash matching
-      const applied: string[] = [];
-      const pending: string[] = [];
-
-      for (const file of allMigrationFiles) {
-        // Extract hash from filename (format: "0001_hash_description.sql")
-        const hash = file.split('_')[0];
-
-        if (appliedHashes.has(hash)) {
-          applied.push(file);
-        } else {
-          pending.push(file);
-        }
-      }
+      // Use array slicing approach because:
+      // 1. drizzle-kit stores SHA256 hashes in the database, not migration tags/filenames
+      // 2. drizzle-kit always applies migrations in alphabetical order
+      // 3. The order of files in the migrations directory matches the order in the database
+      //
+      // While hash-based matching would be ideal, it would require either:
+      // - Reading the _journal.json file for hash-to-filename mapping
+      // - Computing SHA256 hashes of migration files
+      // Both approaches add complexity without significant benefit given drizzle-kit's
+      // guaranteed ordering behavior.
+      const applied = allMigrationFiles.slice(0, appliedMigrations.length);
+      const pending = allMigrationFiles.slice(appliedMigrations.length);
 
       return Result.ok({
         applied,

@@ -7,7 +7,7 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getMigrationStatus, migrateDown, migrateUp } from '@api/system/migration/api';
+import { getMigrationStatus, migrateUp, resetDatabaseForTesting } from '@api/system/migration/api';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   closeAllTrackedClients,
@@ -118,9 +118,9 @@ describe('Database Migrations', () => {
       await cleanup();
     });
 
-    it('should rollback migrations (down) using schema reset', async () => {
-      // Roll back the migration using schema-level reset
-      const result = await migrateDown(dbUrl);
+    it('should reset database for testing (complete schema drop and recreate)', async () => {
+      // Reset the entire database schema for a clean state
+      const result = await resetDatabaseForTesting(dbUrl);
       expect(result.success).toBe(true);
 
       // After schema reset, all tables should be removed
