@@ -6,7 +6,7 @@
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import { createAuthProvider } from '@api/infra/auth/AuthProviderFactory';
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
+import { type TransactionContext, withTransaction, withUnitOfWork } from '@api/infra/unit-of-work';
 import { Hono } from 'hono';
 import { DrizzleUserRepository } from './domain/repositories/DrizzleUserRepository';
 import type { IUserRepository } from './domain/repositories/IUserRepository';
@@ -35,20 +35,32 @@ const userRepositoryLogger = createDomainLogger('auth.repository.user');
 /**
  * Dependency injection middleware
  * Creates transaction-scoped repository instances for each request
+ * 
+ * Note: This demonstrates both the legacy and new Unit of Work patterns.
+ * New handlers should prefer the withUnitOfWork pattern for better repository coordination.
  */
 authRoutes.use('*', async (c, next) => {
-  // Use withTransaction to ensure all auth operations are transactional
-  await withTransaction(async (trx: TransactionContext) => {
-    // Create repository instance with transaction and logger
-    const userRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
-
-    // Inject dependencies into context
-    c.set('userRepository', userRepository);
+  // Enhanced Unit of Work pattern (recommended for new code)
+  await withUnitOfWork(async (uow) => {
+    // Repositories are automatically available through UnitOfWork
+    // All operations share the same transaction context
+    c.set('userRepository', uow.users);
     c.set('authProvider', authProvider);
 
     // Continue to route handlers
     await next();
+  }, userRepositoryLogger);
+
+  /* Legacy pattern (kept for reference):
+  await withTransaction(async (trx: TransactionContext) => {
+    // Manual repository instantiation required
+    const userRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
+    
+    c.set('userRepository', userRepository);
+    c.set('authProvider', authProvider);
+    await next();
   });
+  */
 });
 
 // Mount individual auth routes
