@@ -1,3 +1,9 @@
+// Set up DATABASE_URL before any imports that might use it
+// This ensures the database client doesn't fail validation during module loading
+import { baseTestEnv } from '../../test-env';
+
+process.env.DATABASE_URL = baseTestEnv.DATABASE_URL;
+
 import { describe, expect, it } from 'vitest';
 import { DrizzleUnitOfWork } from './db/DrizzleUnitOfWork';
 import type { IUnitOfWork } from './db/IUnitOfWork';
