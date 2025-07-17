@@ -15,6 +15,7 @@
  * but perform no actual transaction control in this implementation.
  */
 
+import { randomUUID } from 'node:crypto';
 import { DrizzleUserRepository } from '@api/features/auth/domain/repositories/DrizzleUserRepository';
 import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
 import { DrizzleQuizRepository } from '@api/features/quiz/domain/repositories/DrizzleQuizRepository';
@@ -116,12 +117,10 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
   }
 
   /**
-   * Generate a simple transaction ID for logging purposes
-   * In production, this could be replaced with a proper UUID
+   * Generate a UUID-based transaction ID for logging purposes
+   * Uses crypto.randomUUID() for secure, unique identifier generation
    */
   private generateTransactionId(): string {
-    // Simple ID based on timestamp and random number
-    // In production, consider using a UUID library
-    return `tx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    return `tx_${randomUUID()}`;
   }
 }

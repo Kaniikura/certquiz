@@ -69,7 +69,9 @@ describe('DrizzleUnitOfWork', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
         expect.stringContaining('Transaction started'),
         expect.objectContaining({
-          transactionId: expect.stringMatching(/^tx_\d+_[a-z0-9]+$/),
+          transactionId: expect.stringMatching(
+            /^tx_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+          ),
         })
       );
 
@@ -137,7 +139,9 @@ describe('DrizzleUnitOfWork', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'User repository created',
         expect.objectContaining({
-          transactionId: expect.stringMatching(/^tx_\d+_[a-z0-9]+$/),
+          transactionId: expect.stringMatching(
+            /^tx_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+          ),
           repository: 'user',
         })
       );
@@ -146,7 +150,9 @@ describe('DrizzleUnitOfWork', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Quiz repository created',
         expect.objectContaining({
-          transactionId: expect.stringMatching(/^tx_\d+_[a-z0-9]+$/),
+          transactionId: expect.stringMatching(
+            /^tx_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+          ),
           repository: 'quiz',
         })
       );
@@ -193,7 +199,7 @@ describe('DrizzleUnitOfWork', () => {
       const call = mockLogger.debug.mock.calls[0];
       const txId = call?.[1]?.transactionId;
 
-      expect(txId).toMatch(/^tx_\d+_[a-z0-9]+$/);
+      expect(txId).toMatch(/^tx_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     });
   });
 

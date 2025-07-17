@@ -42,7 +42,9 @@ describe('UnitOfWorkFactory', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'DrizzleUnitOfWork created',
         expect.objectContaining({
-          transactionId: expect.stringMatching(/^tx_\d+_[a-z0-9]+$/),
+          transactionId: expect.stringMatching(
+            /^tx_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+          ),
         })
       );
     });
