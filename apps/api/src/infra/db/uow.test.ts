@@ -5,7 +5,7 @@
 
 import { NoopLogger } from '@api/shared/logger/LoggerPort';
 import { describe, expect, it, vi } from 'vitest';
-import { UnitOfWork, withUnitOfWork, withTransaction } from './uow';
+import { UnitOfWork, withTransaction, withUnitOfWork } from './uow';
 
 // Mock the database client
 vi.mock('./client', () => ({
@@ -20,8 +20,9 @@ describe('UnitOfWork', () => {
 
   describe('constructor', () => {
     it('should create UnitOfWork with transaction and logger', () => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test requires casting to any
       const uow = new UnitOfWork(mockTransaction as any, logger);
-      
+
       expect(uow).toBeInstanceOf(UnitOfWork);
       expect(uow.transaction).toBe(mockTransaction);
     });
@@ -29,16 +30,18 @@ describe('UnitOfWork', () => {
 
   describe('transaction access', () => {
     it('should provide access to underlying transaction', () => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test requires casting to any
       const uow = new UnitOfWork(mockTransaction as any, logger);
-      
+
       expect(uow.transaction).toBe(mockTransaction);
     });
   });
 
   describe('repository access', () => {
     it('should handle missing repository gracefully', () => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test requires casting to any
       const uow = new UnitOfWork(mockTransaction as any, logger);
-      
+
       // Should throw when repository modules are not available
       expect(() => uow.users).toThrow(/Cannot find module/);
       expect(() => uow.quizzes).toThrow(/Cannot find module/);
@@ -50,8 +53,9 @@ describe('withUnitOfWork', () => {
   it('should create UnitOfWork and pass it to function', async () => {
     const { db } = await import('./client');
     const mockTransaction = { query: vi.fn(), select: vi.fn() };
-    
+
     // Mock db.transaction to call the callback with mock transaction
+    // biome-ignore lint/suspicious/noExplicitAny: Mock function requires any type
     vi.mocked(db.transaction).mockImplementation(async (fn: any) => {
       return fn(mockTransaction);
     });
@@ -73,7 +77,8 @@ describe('withUnitOfWork', () => {
   it('should propagate errors from function', async () => {
     const { db } = await import('./client');
     const mockTransaction = { query: vi.fn(), select: vi.fn() };
-    
+    // biome-ignore lint/suspicious/noExplicitAny: Mock function requires any type
+
     vi.mocked(db.transaction).mockImplementation(async (fn: any) => {
       return fn(mockTransaction);
     });

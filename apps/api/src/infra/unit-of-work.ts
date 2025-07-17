@@ -46,12 +46,12 @@
  * ```
  */
 
-export { 
-  type TransactionContext, 
-  withTransaction, 
-  withUnitOfWork,
+export {
+  type RepositoryFactory,
+  type TransactionContext,
   UnitOfWork,
-  type RepositoryFactory
+  withTransaction,
+  withUnitOfWork,
 } from './db/uow';
 
 // Note: RepositoryFactory is re-exported from the implementation for convenience

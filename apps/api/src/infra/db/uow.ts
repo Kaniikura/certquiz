@@ -1,5 +1,5 @@
-import { db } from './client';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import { db } from './client';
 
 /**
  * Unit of Work pattern for transaction management
@@ -39,14 +39,18 @@ export type RepositoryFactory<T> = (tx: TransactionContext, logger: LoggerPort) 
  * ```
  */
 export class UnitOfWork {
-  private _users?: import('@api/features/auth/domain/repositories/DrizzleUserRepository').DrizzleUserRepository;
-  private _quizzes?: import('@api/features/quiz/domain/repositories/DrizzleQuizRepository').DrizzleQuizRepository;
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic import requires flexible typing
+  private _users?: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic import requires flexible typing
+  private _quizzes?: any;
 
   constructor(
     private readonly tx: TransactionContext,
     private readonly logger: LoggerPort,
     private readonly repositoryFactories?: {
+      // biome-ignore lint/suspicious/noExplicitAny: Repository factory needs flexible typing
       userRepository?: RepositoryFactory<any>;
+      // biome-ignore lint/suspicious/noExplicitAny: Repository factory needs flexible typing
       quizRepository?: RepositoryFactory<any>;
     }
   ) {}
@@ -54,25 +58,39 @@ export class UnitOfWork {
   /**
    * Get User repository instance tied to this transaction
    */
-  get users(): import('@api/features/auth/domain/repositories/DrizzleUserRepository').DrizzleUserRepository {
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic repository access requires flexible typing
+  get users(): any {
     if (!this._users) {
-      // Lazy import to avoid circular dependencies
-      const { DrizzleUserRepository } = require('../../features/auth/domain/repositories/DrizzleUserRepository');
-      this._users = new DrizzleUserRepository(this.tx, this.logger);
+      if (this.repositoryFactories?.userRepository) {
+        this._users = this.repositoryFactories.userRepository(this.tx, this.logger);
+      } else {
+        // Lazy import to avoid circular dependencies
+        const {
+          DrizzleUserRepository,
+        } = require('../../features/auth/domain/repositories/DrizzleUserRepository');
+        this._users = new DrizzleUserRepository(this.tx, this.logger);
+      }
     }
-    return this._users!;
+    return this._users;
   }
 
   /**
    * Get Quiz repository instance tied to this transaction
    */
-  get quizzes(): import('@api/features/quiz/domain/repositories/DrizzleQuizRepository').DrizzleQuizRepository {
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic repository access requires flexible typing
+  get quizzes(): any {
     if (!this._quizzes) {
-      // Lazy import to avoid circular dependencies
-      const { DrizzleQuizRepository } = require('../../features/quiz/domain/repositories/DrizzleQuizRepository');
-      this._quizzes = new DrizzleQuizRepository(this.tx, this.logger);
+      if (this.repositoryFactories?.quizRepository) {
+        this._quizzes = this.repositoryFactories.quizRepository(this.tx, this.logger);
+      } else {
+        // Lazy import to avoid circular dependencies
+        const {
+          DrizzleQuizRepository,
+        } = require('../../features/quiz/domain/repositories/DrizzleQuizRepository');
+        this._quizzes = new DrizzleQuizRepository(this.tx, this.logger);
+      }
     }
-    return this._quizzes!;
+    return this._quizzes;
   }
 
   /**
@@ -101,7 +119,9 @@ export async function withUnitOfWork<T>(
   fn: (uow: UnitOfWork) => Promise<T>,
   logger: LoggerPort,
   repositoryFactories?: {
+    // biome-ignore lint/suspicious/noExplicitAny: Repository factory needs flexible typing
     userRepository?: RepositoryFactory<any>;
+    // biome-ignore lint/suspicious/noExplicitAny: Repository factory needs flexible typing
     quizRepository?: RepositoryFactory<any>;
   }
 ): Promise<T> {

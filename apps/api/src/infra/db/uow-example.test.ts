@@ -11,13 +11,13 @@ describe('Unit of Work Example Handlers', () => {
   const logger = new NoopLogger();
   const mockCommand = {
     userId: 'test-user-123',
-    action: 'start-quiz'
+    action: 'start-quiz',
   };
 
   describe('exampleUnitOfWorkHandler', () => {
     it('should process command successfully with UnitOfWork pattern', async () => {
       const result = await exampleUnitOfWorkHandler(mockCommand, logger);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.message).toContain('UnitOfWork pattern');
@@ -29,9 +29,9 @@ describe('Unit of Work Example Handlers', () => {
 
     it('should handle repository errors gracefully', async () => {
       const command = { userId: '', action: 'invalid' };
-      
+
       const result = await exampleUnitOfWorkHandler(command, logger);
-      
+
       // Should still succeed in demonstration mode
       expect(result.success).toBe(true);
       if (result.success) {
@@ -43,7 +43,7 @@ describe('Unit of Work Example Handlers', () => {
   describe('exampleLegacyHandler', () => {
     it('should process command successfully with legacy pattern', async () => {
       const result = await exampleLegacyHandler(mockCommand, logger);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.message).toContain('processed');
@@ -57,13 +57,13 @@ describe('Unit of Work Example Handlers', () => {
     it('should show both patterns work but UnitOfWork is cleaner', async () => {
       const [uowResult, legacyResult] = await Promise.all([
         exampleUnitOfWorkHandler(mockCommand, logger),
-        exampleLegacyHandler(mockCommand, logger)
+        exampleLegacyHandler(mockCommand, logger),
       ]);
-      
+
       // Both patterns should work
       expect(uowResult.success).toBe(true);
       expect(legacyResult.success).toBe(true);
-      
+
       // The UnitOfWork pattern is demonstrated to be working
       if (uowResult.success && legacyResult.success) {
         expect(uowResult.data.timestamp).toBeInstanceOf(Date);
