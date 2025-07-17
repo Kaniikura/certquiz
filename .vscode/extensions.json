@@ -3,6 +3,9 @@
     // Biome - Linter and Formatter
     "biomejs.biome",
 
+    // Red Hat YAML - YAML support
+    "redhat.vscode-yaml",
+
     // SvelteKit development
     "svelte.svelte-vscode",
 
