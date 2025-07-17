@@ -9,22 +9,22 @@ paths:
 # Exclude tests, generated assets & third-party code
 paths-ignore:
   # test code
-  - '**/__tests__/**'
-  - '**/*.test.*'
-  - '**/*.spec.*'
-  - '**/tests/**'
+  - "**/__tests__/**"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/tests/**"
 
   # generated or compiled output
-  - '**/*.d.ts'
-  - '**/*.generated.*'
-  - '**/dist/**'
-  - '**/build/**'
-  - '**/.svelte-kit/**'
-  - '**/migrations/**'
-  - '**/coverage/**'
+  - "**/*.d.ts"
+  - "**/*.generated.*"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.svelte-kit/**"
+  - "**/migrations/**"
+  - "**/coverage/**"
 
   # vendored or external sources
-  - '**/node_modules/**'
+  - "**/node_modules/**"
 
 # Run the security query set only (no quality checks)
 queries:

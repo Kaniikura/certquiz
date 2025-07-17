@@ -2,20 +2,20 @@ name: CodeQL (JS/TS security)
 
 on:
   push:
-    branches: [main]              # 1️⃣ run only after merge to main
+    branches: [main] # 1️⃣ run only after merge to main
   schedule:
-    - cron: '0 6 * * 1'           # 2️⃣ Monday 06:00 UTC weekly scan
+    - cron: "0 6 * * 1" # 2️⃣ Monday 06:00 UTC weekly scan
   # (no pull_request trigger → zero impact on PR latency)
 
 permissions:
   contents: read
-  security-events: write          # required for SARIF upload
+  security-events: write # required for SARIF upload
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    timeout-minutes: 30           # keeps worst-case runtime <30 min
-    concurrency:                  # prevents queue build-up on force-pushes
+    timeout-minutes: 30 # keeps worst-case runtime <30 min
+    concurrency: # prevents queue build-up on force-pushes
       group: codeql-${{ github.ref }}
       cancel-in-progress: false
 
@@ -32,9 +32,9 @@ jobs:
       - name: Init CodeQL (JS/TS only)
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript          # covers both JS & TS
+          languages: javascript # covers both JS & TS
           config-file: ./.github/codeql/codeql-config.yml
-          queries: security-extended     # security-only → faster
+          queries: security-extended # security-only → faster
 
       # For JS/TS the "autobuild" step works without a full compile;
       # it just runs package-manager install & any default build script.

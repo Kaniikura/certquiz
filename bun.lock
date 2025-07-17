@@ -7,7 +7,7 @@
         "es-toolkit": "^1.39.5",
       },
       "devDependencies": {
-        "@biomejs/biome": "^2.0.6",
+        "@biomejs/biome": "^2.1.1",
         "@types/bun": "latest",
         "@types/uuid": "^10.0.0",
         "@vitest/coverage-v8": "^3.2.4",
