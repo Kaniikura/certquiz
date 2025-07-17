@@ -6,7 +6,31 @@
  * application code should import from this facade rather than directly
  * from the db module.
  *
- * @example
+ * The Unit of Work pattern provides:
+ * - Transaction boundary management
+ * - Repository instance management per transaction
+ * - Consistent interface for future migration to full Clean Architecture
+ *
+ * @example Using the new Unit of Work pattern:
+ * ```typescript
+ * import { withUnitOfWork, unitOfWorkFactory, type IUnitOfWork } from '@/infra/unit-of-work';
+ *
+ * export async function handler(cmd: StartQuizCommand) {
+ *   return withUnitOfWork(db, unitOfWorkFactory, async (uow: IUnitOfWork) => {
+ *     const userRepo = uow.getUserRepository();
+ *     const quizRepo = uow.getQuizRepository();
+ *
+ *     const user = await userRepo.findById(cmd.userId);
+ *     const quiz = await quizRepo.findById(cmd.quizId);
+ *
+ *     // Business logic here
+ *     await userRepo.save(user);
+ *     await quizRepo.save(quiz);
+ *   });
+ * }
+ * ```
+ *
+ * @example Legacy transaction pattern (for backward compatibility):
  * ```typescript
  * import { withTransaction } from '@/infra/unit-of-work';
  *
@@ -19,4 +43,29 @@
  * ```
  */
 
-export { type TransactionContext, withTransaction } from './db/uow';
+import { db } from './db/client';
+import type { IUnitOfWork } from './db/IUnitOfWork';
+import { UnitOfWorkFactory, withUnitOfWork } from './db/UnitOfWorkFactory';
+import { createDomainLogger } from './logger/PinoLoggerAdapter';
+
+export type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+export type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+// Export types and interfaces
+export type { IUnitOfWork } from './db/IUnitOfWork';
+// Re-export the factory and helper for external use
+export { UnitOfWorkFactory, withUnitOfWork };
+export type { TransactionContext } from './db/uow';
+
+// Create a singleton factory instance for the application
+const logger = createDomainLogger('unit-of-work');
+export const unitOfWorkFactory = new UnitOfWorkFactory(logger);
+
+// Export the legacy transaction pattern for backward compatibility
+export { withTransaction } from './db/uow';
+
+// Export a convenience function that uses the singleton factory
+export async function executeInUnitOfWork<T>(
+  callback: (uow: IUnitOfWork) => Promise<T>
+): Promise<T> {
+  return withUnitOfWork(db, unitOfWorkFactory, callback);
+}
