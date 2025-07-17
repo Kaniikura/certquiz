@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  actions: write  # Required for cache uploads
+  actions: write # Required for cache uploads
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -52,10 +52,10 @@ jobs:
     name: Test (${{ matrix.test-type }})
     runs-on: ubuntu-latest
     timeout-minutes: 8
-    needs: lint  # Ensure lint passes before running tests
-    
+    needs: lint # Ensure lint passes before running tests
+
     # No services needed - testcontainers will handle everything!
-    
+
     strategy:
       matrix:
         include:
@@ -118,7 +118,6 @@ jobs:
           if [ -f "package.json" ] && bun run --silent build 2>/dev/null; then
             echo "✅ Built shared package"
           fi
-
 
       - name: Build API Docker image
         run: |
@@ -186,7 +185,7 @@ jobs:
         run: |
           # Run bun audit and check for vulnerabilities
           echo "🔍 Checking for dependency vulnerabilities..."
-          
+
           # Run bun audit and capture output
           if bun audit 2>&1 | tee audit-output.txt; then
             # Check if there are any moderate or higher vulnerabilities

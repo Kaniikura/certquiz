@@ -3,9 +3,9 @@ name: Test Migrations
 on:
   pull_request:
     paths:
-      - 'apps/api/src/infra/db/migrations/**'
-      - 'apps/api/src/system/migration/**'
-      - 'apps/api/package.json'
+      - "apps/api/src/infra/db/migrations/**"
+      - "apps/api/src/system/migration/**"
+      - "apps/api/package.json"
 
 jobs:
   test-migrations:
@@ -24,33 +24,33 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      
+
       - name: Install dependencies
         run: bun install
-      
+
       - name: Check migration files
         run: |
           cd apps/api
           bun run db:check
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-      
+
       - name: Test migrate up (first time)
         run: |
           cd apps/api
           bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-      
+
       - name: Test migrate down (drop schema)
         run: |
           cd apps/api
@@ -59,14 +59,14 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
           CI: true
-      
+
       - name: Test migrate up again
         run: |
           cd apps/api
           bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-      
+
       - name: Verify idempotency
         run: |
           cd apps/api
