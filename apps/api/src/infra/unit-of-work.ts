@@ -48,8 +48,6 @@ import type { IUnitOfWork } from './db/IUnitOfWork';
 import { UnitOfWorkFactory, withUnitOfWork } from './db/UnitOfWorkFactory';
 import { createDomainLogger } from './logger/PinoLoggerAdapter';
 
-export type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-export type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
 // Export types and interfaces
 export type { IUnitOfWork } from './db/IUnitOfWork';
 // Re-export the factory and helper for external use
