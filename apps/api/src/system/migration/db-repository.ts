@@ -9,6 +9,7 @@
  * - Frequent operations (getting migrations, lock attempts) use conditional debug logging
  */
 
+import type { Queryable } from '@api/infra/db/client';
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
@@ -154,7 +155,7 @@ export async function getAllAppliedMigrations(
 }
 
 export async function deleteMigrationRecord(
-  db: PostgresJsDatabase,
+  db: Queryable,
   hash: string
 ): Promise<Result<void, DbError>> {
   try {

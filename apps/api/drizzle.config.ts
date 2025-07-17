@@ -6,14 +6,18 @@ if (!databaseUrl) {
 }
 
 export default defineConfig({
-  // Schema will be added incrementally as we implement vertical slices
-  // For now, we'll use a placeholder that will be updated in Day 2+
-  schema: './src/infra/db/schema/*.ts',
+  schema: './src/infra/db/schema/index.ts',
   out: './src/infra/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: databaseUrl,
   },
+  migrations: {
+    prefix: 'timestamp',
+    table: '__drizzle_migrations',
+    schema: 'public',
+  },
+  tablesFilter: ['*'],
   verbose: true,
   strict: true,
 });

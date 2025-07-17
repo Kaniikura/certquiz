@@ -1,8 +1,13 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import * as schema from './schema';
 
-// Type alias for Drizzle client without schema (Day 1 infrastructure)
-type DrizzleClient = PostgresJsDatabase;
+// Type aliases for Drizzle database and transaction
+export type DB = PostgresJsDatabase<typeof schema>;
+export type Tx = Parameters<DB['transaction']>[0] extends (tx: infer T) => unknown ? T : never;
+
+// Queryable interface for repositories to work with both DB and Tx
+export type Queryable = Pick<DB, 'select' | 'insert' | 'update' | 'delete' | 'execute' | 'query'>;
 
 /**
  * Connection pool configuration based on environment
@@ -65,13 +70,13 @@ function validateDatabaseUrl(url: string | undefined): void {
 
 // Lazy initialization variables
 let _pool: postgres.Sql | undefined;
-let _db: PostgresJsDatabase | undefined;
+let _db: DB | undefined;
 
 /**
  * Initialize the database connection
  * Called lazily on first use or explicitly from composition root
  */
-function initializeDatabase(): { pool: postgres.Sql; db: PostgresJsDatabase } {
+function initializeDatabase(): { pool: postgres.Sql; db: DB } {
   if (!_pool || !_db) {
     const databaseUrl = process.env.DATABASE_URL;
     const nodeEnv = process.env.NODE_ENV || 'development';
@@ -86,16 +91,16 @@ function initializeDatabase(): { pool: postgres.Sql; db: PostgresJsDatabase } {
     const poolConfig = getPoolConfig(nodeEnv);
     _pool = postgres(validDatabaseUrl, poolConfig);
 
-    // Create Drizzle instance without schema for now (Day 1 infrastructure)
-    // Schema will be added incrementally as we implement slices
+    // Create Drizzle instance with schema
     _db = drizzle(_pool, {
       logger: nodeEnv === 'development',
+      schema,
     });
   }
 
   // TypeScript doesn't understand that _pool and _db are guaranteed to be non-null here
   // due to the lazy initialization pattern. We'll cast them safely.
-  return { pool: _pool as postgres.Sql, db: _db as DrizzleClient };
+  return { pool: _pool as postgres.Sql, db: _db as DB };
 }
 
 /**
@@ -111,7 +116,7 @@ export function getPool(): postgres.Sql {
  * Get the Drizzle database instance
  * Initializes on first use
  */
-export function getDb(): PostgresJsDatabase {
+export function getDb(): DB {
   const { db } = initializeDatabase();
   return db;
 }
@@ -126,7 +131,7 @@ export const pool = new Proxy({} as postgres.Sql, {
   },
 });
 
-export const db = new Proxy({} as PostgresJsDatabase, {
+export const db = new Proxy({} as DB, {
   get(_target, prop, receiver) {
     const actualDb = getDb();
     const value = Reflect.get(actualDb, prop, receiver);
@@ -135,7 +140,7 @@ export const db = new Proxy({} as PostgresJsDatabase, {
 });
 
 // Export the database type
-export type DrizzleDb = PostgresJsDatabase;
+export type DrizzleDb = DB;
 
 /**
  * Health check function
