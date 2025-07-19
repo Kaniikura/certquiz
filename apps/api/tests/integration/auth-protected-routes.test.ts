@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { app } from '@api/index';
+import { createTestApp, setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey;
@@ -19,11 +21,13 @@ vi.mock('jose', async () => {
   };
 });
 
-import { app } from '@api/index';
-import { shutdownDatabase } from '@api/infra/db/client';
 import { generateKeyPair, SignJWT } from 'jose';
 
 describe('Authentication Protected Routes Integration', () => {
+  // Setup isolated test database
+  setupTestDatabase();
+  const testApp = createTestApp(app);
+
   let privateKey: CryptoKey;
   const issuer = 'http://localhost:8080/realms/certquiz';
   const audience = 'certquiz';
@@ -34,10 +38,6 @@ describe('Authentication Protected Routes Integration', () => {
     testPrivateKey = keyPair.privateKey;
     testPublicKey = keyPair.publicKey;
     privateKey = testPrivateKey;
-  });
-
-  afterAll(async () => {
-    await shutdownDatabase();
   });
 
   // Helper to create test tokens
@@ -58,12 +58,12 @@ describe('Authentication Protected Routes Integration', () => {
 
   describe('Public Routes', () => {
     it('GET /health should be accessible without authentication', async () => {
-      const res = await app.request('/health/live');
+      const res = await testApp.request('/health/live');
       expect(res.status).toBe(200);
     });
 
     it('POST /api/auth/login should be accessible without authentication', async () => {
-      const res = await app.request('/api/auth/login', {
+      const res = await testApp.request('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test@example.com', password: 'password' }),
@@ -75,7 +75,7 @@ describe('Authentication Protected Routes Integration', () => {
     });
 
     it('GET /api/quiz should return 501 Not Implemented (quiz catalog not yet built)', async () => {
-      const res = await app.request('/api/quiz');
+      const res = await testApp.request('/api/quiz');
       expect(res.status).toBe(501);
       const body = await res.json();
       expect(body.error).toBe('Public quiz catalog not yet implemented');
@@ -84,7 +84,7 @@ describe('Authentication Protected Routes Integration', () => {
     });
 
     it('GET /api/quiz/:id should return 501 Not Implemented (quiz preview not yet built)', async () => {
-      const res = await app.request('/api/quiz/test-quiz-123');
+      const res = await testApp.request('/api/quiz/test-quiz-123');
       expect(res.status).toBe(501);
       const body = await res.json();
       expect(body.error).toBe('Quiz preview not yet implemented');
@@ -96,7 +96,7 @@ describe('Authentication Protected Routes Integration', () => {
 
   describe('Protected Routes', () => {
     it('POST /api/quiz should require authentication', async () => {
-      const res = await app.request('/api/quiz', {
+      const res = await testApp.request('/api/quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'New Quiz' }),
@@ -108,7 +108,7 @@ describe('Authentication Protected Routes Integration', () => {
 
     it('POST /api/quiz should allow authenticated users', async () => {
       const token = await createTestToken();
-      const res = await app.request('/api/quiz', {
+      const res = await testApp.request('/api/quiz', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +123,7 @@ describe('Authentication Protected Routes Integration', () => {
     });
 
     it('POST /api/quiz/:id/start should require authentication', async () => {
-      const res = await app.request('/api/quiz/test-quiz-123/start', {
+      const res = await testApp.request('/api/quiz/test-quiz-123/start', {
         method: 'POST',
       });
       expect(res.status).toBe(401);
@@ -134,7 +134,7 @@ describe('Authentication Protected Routes Integration', () => {
     it('GET /api/quiz/premium should require premium role', async () => {
       // User without premium role
       const token = await createTestToken();
-      const res = await app.request('/api/quiz/premium', {
+      const res = await testApp.request('/api/quiz/premium', {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(res.status).toBe(403);
@@ -146,7 +146,7 @@ describe('Authentication Protected Routes Integration', () => {
       const token = await createTestToken({
         realm_access: { roles: ['certquiz-premium'] },
       });
-      const res = await app.request('/api/quiz/premium', {
+      const res = await testApp.request('/api/quiz/premium', {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(res.status).toBe(200);
@@ -159,7 +159,7 @@ describe('Authentication Protected Routes Integration', () => {
       const token = await createTestToken({
         realm_access: { roles: ['certquiz-admin'] },
       });
-      const res = await app.request('/api/quiz/premium', {
+      const res = await testApp.request('/api/quiz/premium', {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(res.status).toBe(200);
@@ -173,7 +173,7 @@ describe('Authentication Protected Routes Integration', () => {
     it('GET /api/admin/stats should require admin role', async () => {
       // Regular user
       const token = await createTestToken();
-      const res = await app.request('/api/admin/stats', {
+      const res = await testApp.request('/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(res.status).toBe(403);
@@ -184,7 +184,7 @@ describe('Authentication Protected Routes Integration', () => {
         sub: 'admin-user',
         realm_access: { roles: ['certquiz-admin'] },
       });
-      const res = await app.request('/api/admin/stats', {
+      const res = await testApp.request('/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(res.status).toBe(200);
@@ -197,7 +197,7 @@ describe('Authentication Protected Routes Integration', () => {
       const token = await createTestToken({
         realm_access: { roles: ['certquiz-user'] },
       });
-      const res = await app.request('/api/admin/quiz/test-quiz', {
+      const res = await testApp.request('/api/admin/quiz/test-quiz', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -207,7 +207,7 @@ describe('Authentication Protected Routes Integration', () => {
 
   describe('Error Handling', () => {
     it('should return 401 for invalid tokens on protected routes', async () => {
-      const res = await app.request('/api/quiz', {
+      const res = await testApp.request('/api/quiz', {
         method: 'POST',
         headers: {
           Authorization: 'Bearer invalid.token.here',
@@ -229,7 +229,7 @@ describe('Authentication Protected Routes Integration', () => {
         .setAudience(audience)
         .sign(privateKey);
 
-      const res = await app.request('/api/quiz', {
+      const res = await testApp.request('/api/quiz', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${expiredToken}`,
@@ -245,7 +245,7 @@ describe('Authentication Protected Routes Integration', () => {
 
   describe('Route Ordering (Regression Test)', () => {
     it('should return quiz health status without authentication', async () => {
-      const res = await app.request('/api/quiz/health');
+      const res = await testApp.request('/api/quiz/health');
       expect(res.status).toBe(200);
 
       const body = await res.json();
@@ -258,7 +258,7 @@ describe('Authentication Protected Routes Integration', () => {
 
     it('should not confuse health endpoint with :id parameter', async () => {
       // Test that /health is not captured by /:id route
-      const healthRes = await app.request('/api/quiz/health');
+      const healthRes = await testApp.request('/api/quiz/health');
       expect(healthRes.status).toBe(200);
 
       const healthBody = await healthRes.json();
@@ -266,7 +266,7 @@ describe('Authentication Protected Routes Integration', () => {
       expect(healthBody.error).toBeUndefined();
 
       // Test that actual :id route still works
-      const idRes = await app.request('/api/quiz/some-quiz-id');
+      const idRes = await testApp.request('/api/quiz/some-quiz-id');
       expect(idRes.status).toBe(501);
 
       const idBody = await idRes.json();

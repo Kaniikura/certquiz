@@ -3,31 +3,13 @@ import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { db } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
-import { createTestDatabase } from '@api/test-utils/db';
+import { setupTestDatabase } from '@api/test-utils/integration-helpers';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { PostgresSingleton } from '../../containers';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Unit of Work Integration Tests', () => {
-  let dbUrl: string;
-  let cleanup: () => Promise<void>;
-
-  beforeAll(async () => {
-    const container = await PostgresSingleton.getInstance();
-    const result = await createTestDatabase({
-      root: container.getConnectionUri(),
-      migrate: true,
-    });
-    dbUrl = result.url;
-    cleanup = result.drop;
-
-    // Set DATABASE_URL for the application
-    process.env.DATABASE_URL = dbUrl;
-  });
-
-  afterAll(async () => {
-    await cleanup();
-  });
+  // Setup isolated test database
+  setupTestDatabase();
 
   beforeEach(async () => {
     // Clean up users table before each test
