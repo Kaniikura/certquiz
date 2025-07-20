@@ -395,6 +395,20 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizEventPayloads>
   }
 
   /**
+   * Public getter for answered question count (used by application services)
+   */
+  getAnsweredQuestionCount(): number {
+    return this._answers.size;
+  }
+
+  /**
+   * Public getter for answers (used by application services for result calculation)
+   */
+  getAnswers(): ReadonlyMap<QuestionId, Answer> {
+    return new Map(this._answers);
+  }
+
+  /**
    * Private constructor enforces factory method usage
    */
   private constructor(
