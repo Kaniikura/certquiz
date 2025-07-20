@@ -66,13 +66,3 @@ export interface StartQuizResponse {
   /** Total number of questions */
   totalQuestions: number;
 }
-
-/**
- * Question selection parameters for question service
- */
-export interface QuestionSelectionParams {
-  examType: string;
-  category?: string;
-  questionCount: number;
-  difficulty?: string;
-}
