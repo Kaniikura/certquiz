@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => {
   const testEnv = loadEnv(mode ?? 'test', __dirname, 'TEST_');
 
   // Map TEST_* variables to their expected names for the application code
-  mapTestEnvironmentVariables(testEnv);
+  const mappedEnv = mapTestEnvironmentVariables(testEnv);
+  Object.assign(process.env, mappedEnv);
 
   return {
     root: __dirname,

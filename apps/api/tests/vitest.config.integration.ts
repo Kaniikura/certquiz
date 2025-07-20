@@ -26,7 +26,8 @@ export default defineConfig(({ mode }) => {
   const testEnv = loadEnv(mode ?? 'integration', rootDir, 'TEST_');
 
   // Map TEST_* variables to their expected names for the application code
-  mapTestEnvironmentVariables(testEnv);
+  const mappedEnv = mapTestEnvironmentVariables(testEnv);
+  Object.assign(process.env, mappedEnv);
 
   return {
     root: rootDir,
@@ -57,6 +58,8 @@ export default defineConfig(({ mode }) => {
       },
 
       // Configure file parallelism - disable for integration tests
+      // This prevents database conflicts when multiple test files try to access
+      // the shared testcontainer database instance concurrently
       fileParallelism: false,
 
       // Only include integration tests
