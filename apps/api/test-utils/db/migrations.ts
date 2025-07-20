@@ -33,8 +33,10 @@ function maskDatabaseUrl(databaseUrl: string): string {
  * Uses atomic promise chaining to avoid race conditions
  */
 export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
-  // Use TypeScript's definite assignment assertion to ensure resolveMutex is assigned before use
-  let resolveMutex!: () => void;
+  // Initialize resolveMutex with a default no-op function to ensure it is always defined
+  let resolveMutex: () => void = () => {
+    // No-op function to ensure resolveMutex is never undefined
+  };
 
   // Create a new promise that will resolve when this migration completes
   const thisOperationPromise = new Promise<void>((resolve) => {
