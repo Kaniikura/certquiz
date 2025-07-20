@@ -8,7 +8,7 @@ describe('Drizzle Setup', () => {
     expect(config.default).toBeDefined();
     expect(config.default.dialect).toBe('postgresql');
     // Schema will be added incrementally as we implement vertical slices
-    expect(config.default.schema).toBe('./src/infra/db/schema/*.ts');
+    expect(config.default.schema).toBe('./src/infra/db/schema/index.ts');
     expect(config.default.out).toBe('./src/infra/db/migrations');
     expect(config.default.verbose).toBe(true);
     expect(config.default.strict).toBe(true);
