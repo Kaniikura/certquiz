@@ -19,7 +19,7 @@ import { db } from './client';
  * });
  * ```
  */
-export const withTransaction = db.transaction.bind(db);
+export const withTransaction: typeof db.transaction = async (fn, opts?) => db.transaction(fn, opts);
 
 // Export the transaction type for use in repositories
 export type TransactionContext = Parameters<typeof withTransaction>[0] extends (

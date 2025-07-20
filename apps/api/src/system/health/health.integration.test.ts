@@ -1,12 +1,10 @@
 import { app } from '@api/index';
-import { shutdownDatabase } from '@api/infra/db/client';
-import { afterAll, describe, expect, it } from 'vitest';
+import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { describe, expect, it } from 'vitest';
 
 describe('Health check endpoints', () => {
-  afterAll(async () => {
-    // Shutdown database connections
-    await shutdownDatabase();
-  });
+  // Setup isolated test database
+  setupTestDatabase();
 
   describe('GET /health/live (liveness probe)', () => {
     it('returns healthy status with system information', async () => {

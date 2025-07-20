@@ -1,12 +1,10 @@
 import { app } from '@api/index';
-import { shutdownDatabase } from '@api/infra/db/client';
-import { afterAll, describe, expect, it } from 'vitest';
+import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { describe, expect, it } from 'vitest';
 
 describe('App Integration Tests', () => {
-  afterAll(async () => {
-    // Shutdown database connections
-    await shutdownDatabase();
-  });
+  // Setup isolated test database
+  setupTestDatabase();
 
   describe('Error handling', () => {
     it('returns 404 for non-existent endpoints', async () => {

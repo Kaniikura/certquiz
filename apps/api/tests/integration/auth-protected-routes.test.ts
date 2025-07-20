@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { app } from '@api/index';
+import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey;
@@ -19,11 +21,12 @@ vi.mock('jose', async () => {
   };
 });
 
-import { app } from '@api/index';
-import { shutdownDatabase } from '@api/infra/db/client';
 import { generateKeyPair, SignJWT } from 'jose';
 
 describe('Authentication Protected Routes Integration', () => {
+  // Setup isolated test database
+  setupTestDatabase();
+
   let privateKey: CryptoKey;
   const issuer = 'http://localhost:8080/realms/certquiz';
   const audience = 'certquiz';
@@ -34,10 +37,6 @@ describe('Authentication Protected Routes Integration', () => {
     testPrivateKey = keyPair.privateKey;
     testPublicKey = keyPair.publicKey;
     privateKey = testPrivateKey;
-  });
-
-  afterAll(async () => {
-    await shutdownDatabase();
   });
 
   // Helper to create test tokens
