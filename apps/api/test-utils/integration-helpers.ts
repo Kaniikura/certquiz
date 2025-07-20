@@ -49,7 +49,7 @@ export function setupTestDatabase() {
 
     // Set DATABASE_URL for the application
     process.env.DATABASE_URL = dbUrl;
-  });
+  }, 30000); // 30 second timeout for database setup
 
   afterAll(async () => {
     // Shutdown database connections first
@@ -59,7 +59,7 @@ export function setupTestDatabase() {
     if (cleanup) {
       await cleanup();
     }
-  });
+  }, 30000); // 30 second timeout for cleanup
 
   return {
     /**

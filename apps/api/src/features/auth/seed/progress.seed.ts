@@ -3,8 +3,8 @@
  * @fileoverview Seed data for user progress tracking
  */
 
-import type { DB } from '@api/infra/db/client';
 import { userProgress } from '@api/infra/db/schema';
+import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
