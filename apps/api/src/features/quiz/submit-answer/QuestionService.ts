@@ -3,8 +3,7 @@
  * @fileoverview Service for loading question references and validation data
  */
 
-import { testIds } from '@api/test-support';
-import type { QuestionId } from '../domain/value-objects/Ids';
+import { OptionId, type QuestionId } from '../domain/value-objects/Ids';
 import { QuestionReference } from '../domain/value-objects/QuestionReference';
 
 /**
@@ -25,10 +24,10 @@ export class StubQuestionService implements IQuestionService {
   async getQuestionReference(questionId: QuestionId): Promise<QuestionReference | null> {
     // Return mock question reference for testing
     const validOptionIds = [
-      testIds.optionId(`${questionId.toString()}-opt1`),
-      testIds.optionId(`${questionId.toString()}-opt2`),
-      testIds.optionId(`${questionId.toString()}-opt3`),
-      testIds.optionId(`${questionId.toString()}-opt4`),
+      OptionId.of(`${questionId.toString()}-opt1`),
+      OptionId.of(`${questionId.toString()}-opt2`),
+      OptionId.of(`${questionId.toString()}-opt3`),
+      OptionId.of(`${questionId.toString()}-opt4`),
     ];
 
     return new QuestionReference(questionId, validOptionIds);

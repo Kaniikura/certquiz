@@ -3,8 +3,7 @@
  * @fileoverview Service for loading question details including correct answers
  */
 
-import { testIds } from '@api/test-support';
-import type { OptionId, QuestionId } from '../domain/value-objects/Ids';
+import { OptionId, type QuestionId } from '../domain/value-objects/Ids';
 
 /**
  * Detailed question information including correct answers
@@ -49,22 +48,22 @@ export class StubQuestionDetailsService implements IQuestionDetailsService {
     // Return mock question details for testing
     const options: QuestionOption[] = [
       {
-        id: testIds.optionId(`${questionId.toString()}-opt1`),
+        id: OptionId.of(`${questionId.toString()}-opt1`),
         text: `Option A for ${questionId.toString()}`,
         isCorrect: true, // First option is correct in our mock
       },
       {
-        id: testIds.optionId(`${questionId.toString()}-opt2`),
+        id: OptionId.of(`${questionId.toString()}-opt2`),
         text: `Option B for ${questionId.toString()}`,
         isCorrect: false,
       },
       {
-        id: testIds.optionId(`${questionId.toString()}-opt3`),
+        id: OptionId.of(`${questionId.toString()}-opt3`),
         text: `Option C for ${questionId.toString()}`,
         isCorrect: false,
       },
       {
-        id: testIds.optionId(`${questionId.toString()}-opt4`),
+        id: OptionId.of(`${questionId.toString()}-opt4`),
         text: `Option D for ${questionId.toString()}`,
         isCorrect: false,
       },
