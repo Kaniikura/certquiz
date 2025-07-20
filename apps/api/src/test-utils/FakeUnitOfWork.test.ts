@@ -14,6 +14,38 @@ import {
 } from '@api/test-utils/db/FakeUnitOfWork';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+// Test helper function to create test users with less boilerplate
+function createTestUser(
+  overrides: Partial<{
+    userId: string;
+    email: string;
+    username: string;
+    role: 'user' | 'admin' | 'premium';
+    identityProviderId: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {}
+): User {
+  const userData = {
+    userId: UserId.generate(),
+    email: 'test@example.com',
+    username: 'testuser',
+    role: 'user' as const,
+    identityProviderId: null,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+
+  const result = User.fromPersistence(userData);
+  if (!result.success) {
+    throw new Error('Failed to create test user');
+  }
+  return result.data;
+}
+
 describe('FakeUnitOfWork', () => {
   let factory: FakeUnitOfWorkFactory;
   let uow: FakeUnitOfWork;
@@ -86,24 +118,7 @@ describe('FakeUnitOfWork', () => {
 
     beforeEach(() => {
       userRepo = factory.getUserRepository();
-
-      // Create a test user
-      const userData = {
-        userId: UserId.generate(),
-        email: 'test@example.com',
-        username: 'testuser',
-        role: 'user' as const,
-        identityProviderId: null,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const result = User.fromPersistence(userData);
-      if (!result.success) {
-        throw new Error('Failed to create test user');
-      }
-      testUser = result.data;
+      testUser = createTestUser();
     });
 
     it('should save and retrieve user by id', async () => {
@@ -201,22 +216,10 @@ describe('FakeUnitOfWork', () => {
 
     it('should persist data across unit of work instances', async () => {
       // Save a user in one UoW
-      const userData = {
-        userId: UserId.generate(),
+      const user = createTestUser({
         email: 'persist@example.com',
         username: 'persistuser',
-        role: 'user' as const,
-        identityProviderId: null,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const userResult = User.fromPersistence(userData);
-      if (!userResult.success) {
-        throw new Error('Failed to create user');
-      }
-      const user = userResult.data;
+      });
 
       await withFakeUnitOfWork(factory, async (uow) => {
         const userRepo = uow.getUserRepository();
@@ -230,7 +233,7 @@ describe('FakeUnitOfWork', () => {
       });
 
       expect(foundUser).toBeDefined();
-      expect(foundUser?.email.toString()).toBe(userData.email);
+      expect(foundUser?.email.toString()).toBe('persist@example.com');
     });
   });
 });
