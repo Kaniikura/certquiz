@@ -105,7 +105,11 @@ async function handleMigrationError(error: unknown, databaseUrl: string): Promis
       stack: error instanceof Error ? error.stack : undefined,
       stderr: error instanceof Error && 'stderr' in error ? error.stderr : undefined,
       stdout: error instanceof Error && 'stdout' in error ? error.stdout : undefined,
-      databaseUrl: databaseUrl.replace(/password=[^&]*/, 'password=***'),
+      databaseUrl: databaseUrl.replace(/(password=[^&]*)|(:[^@]*@)/, (match, p1, p2) => {
+        if (p1) return 'password=***'; // Mask query parameter format
+        if (p2) return ':***@'; // Mask connection string format
+        return match;
+      }),
     });
     throw new Error(`Failed to run migrations: ${errorMessage}`);
   }
