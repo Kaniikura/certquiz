@@ -55,8 +55,10 @@ The main project overview is in `/CLAUDE.md`. This document provides detailed im
 - `@certquiz/shared` → Shared package (types, constants, utils)
 - `@certquiz/typespec` → API specification types
 - `@api/*` → API source (`apps/api/src/*`)
-- `@api/test-support` → Domain test utilities
-- `@api/test-utils` → Infrastructure test utilities
+- `@api/test-support` → Domain test utilities (feature-specific)
+- `@api/testing/infra` → Infrastructure test utilities
+- `@api/testing/domain` → Domain layer test utilities
+- `@api/testing` → Unified test utilities (both layers)
 - `@web/*` → Web source (`apps/web/src/*`)
 
 #### Import Order
@@ -112,11 +114,20 @@ middleware/           # HTTP middleware
 ├── logger.ts         # Request logging
 └── security.ts       # CORS, headers
 
-test-support/         # Domain test utilities
+test-support/         # Feature-specific domain test utilities
 └── types/            # Test-only TypeScript helpers
 
-test-utils/           # Infrastructure test utilities
-└── db/               # Database test helpers
+testing/              # Unified test infrastructure (DDD layers)
+├── infra/            # Infrastructure layer test utilities
+│   ├── db/           # Database, testcontainers, transactions
+│   ├── errors/       # Error testing utilities
+│   ├── process/      # Process execution utilities
+│   ├── runtime/      # Runtime environment utilities
+│   └── vitest/       # Test configuration
+├── domain/           # Domain layer test utilities
+│   ├── fakes/        # Repository fakes, test doubles
+│   └── integration-helpers.ts  # Domain integration helpers
+└── index.ts          # Barrel exports for both layers
 ```
 
 ### Key Rules for VSA:
@@ -637,7 +648,7 @@ describe('QuizSession', () => {
 
 ```typescript
 // DrizzleQuizRepository.test.ts
-import { withTestDb, withRollback } from '@api/test-utils';
+import { withTestDb, withRollback } from '@api/testing/infra/db';
 
 describe('DrizzleQuizRepository', () => {
   it('should save and retrieve', async () => {
@@ -832,7 +843,7 @@ import { startQuizSchema } from './validation';
 import { testIds, TestClock } from '@api/test-support';
 
 // Repository test  
-import { withTestDb, withRollback } from '@api/test-utils';
+import { withTestDb, withRollback } from '@api/testing/infra/db';
 
 // Handler test
 import { vi } from 'vitest';

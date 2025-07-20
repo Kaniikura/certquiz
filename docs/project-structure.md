@@ -39,143 +39,49 @@ certquiz/
 │   │
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
-│       │   ├── index.ts        # Application entry point
-│       │   ├── app-factory.ts  # Dependency injection factory
-│       │   ├── routes.ts       # Route composition root
 │       │   ├── features/       # Feature slices (vertical slices)
 │       │   │   ├── quiz/       # Quiz bounded context
-│       │   │   │   ├── start-quiz/         # Use case: Start a quiz
-│       │   │   │   │   ├── handler.ts      # Application logic (uses repository)
-│       │   │   │   │   ├── handler.test.ts # Handler tests (mocks repository)
-│       │   │   │   │   ├── dto.ts          # Input/output DTOs
-│       │   │   │   │   ├── validation.ts   # Zod schemas
-│       │   │   │   │   └── route.ts        # Hono route definition
-│       │   │   │   ├── submit-answer/      # Use case: Submit answer
-│       │   │   │   │   └── ...             # Same structure
-│       │   │   │   ├── get-results/        # Use case: Get results
-│       │   │   │   │   └── ...             # Same structure
-│       │   │   │   └── domain/             # Domain layer (quiz BC)
+│       │   │   │   ├── start-quiz/     # Use case folders
+│       │   │   │   ├── submit-answer/  # (handler, dto, validation, route, tests)
+│       │   │   │   ├── get-results/
+│       │   │   │   └── domain/         # Domain layer
 │       │   │   │       ├── entities/
-│       │   │   │       │   ├── Quiz.ts
-│       │   │   │       │   └── Question.ts
 │       │   │   │       ├── value-objects/
-│       │   │   │       │   ├── QuizId.ts
-│       │   │   │       │   ├── Score.ts
-│       │   │   │       │   └── QuizConfig.ts
 │       │   │   │       ├── aggregates/
-│       │   │   │       │   └── QuizSession.ts
 │       │   │   │       └── repositories/
-│       │   │   │           ├── IQuizRepository.ts      # Interface (domain)
-│       │   │   │           └── DrizzleQuizRepository.ts # Implementation
 │       │   │   ├── user/       # User bounded context
-│       │   │   │   ├── register/           # Use case: Register
-│       │   │   │   ├── update-progress/    # Use case: Update progress
-│       │   │   │   ├── get-profile/        # Use case: Get profile
-│       │   │   │   └── domain/
-│       │   │   │       ├── entities/
-│       │   │   │       │   └── User.ts
-│       │   │   │       ├── value-objects/
-│       │   │   │       │   ├── UserId.ts
-│       │   │   │       │   └── Email.ts
-│       │   │   │       └── repositories/
-│       │   │   │           ├── IUserRepository.ts
-│       │   │   │           └── DrizzleUserRepository.ts
 │       │   │   ├── auth/       # Auth bounded context
-│       │   │   │   ├── login/              # Use case: Login
-│       │   │   │   ├── refresh-token/      # Use case: Refresh
-│       │   │   │   ├── logout/             # Use case: Logout
-│       │   │   │   ├── middleware/         # Auth middleware
-│       │   │   │   └── domain/
-│       │   │   │       └── repositories/   # Reuses User repository
 │       │   │   └── question/   # Question bounded context
-│       │   │       ├── list-questions/     # Use case: List
-│       │   │       ├── get-question/       # Use case: Get one
-│       │   │       ├── create-question/    # Use case: Create
-│       │   │       └── domain/
-│       │   │           └── repositories/   # Reuses Quiz domain
 │       │   ├── system/         # System/operational features
-│       │   │   ├── health/     # Health check endpoint
-│       │   │   │   ├── handler.ts
-│       │   │   │   ├── handler.test.ts
-│       │   │   │   ├── health.integration.test.ts
-│       │   │   │   └── route.ts
+│       │   │   ├── health/     # Health checks
 │       │   │   └── migration/  # Database migration tooling
-│       │   │       ├── file-repository.ts
-│       │   │       ├── db-repository.ts
-│       │   │       ├── migrate.ts
-│       │   │       └── migrate.test.ts
 │       │   ├── infra/          # Infrastructure layer
-│       │   │   ├── unit-of-work.ts    # Transaction facade for application layer
-│       │   │   ├── db/
-│       │   │   │   ├── client.ts          # Postgres → Drizzle wrapper
-│       │   │   │   ├── schema/            # Drizzle table definitions
-│       │   │   │   │   ├── index.ts       # Bounded context exports
-│       │   │   │   │   ├── enums.ts       # PostgreSQL enums
-│       │   │   │   │   ├── user.ts        # User bounded context tables
-│       │   │   │   │   ├── quiz.ts        # Quiz bounded context tables
-│       │   │   │   │   ├── question.ts    # Question bounded context tables
-│       │   │   │   │   └── system.ts      # System tables
-│       │   │   │   ├── migrations/        # Generated migration files
-│       │   │   │   └── uow.ts             # Unit of work implementation
-│       │   │   ├── events/                # Domain event dispatcher
-│       │   │   │   └── EventBus.ts
-│       │   │   ├── logger/                # Logging infrastructure
-│       │   │   │   ├── root-logger.ts     # Singleton logger with AsyncLocalStorage
-│       │   │   │   ├── PinoLoggerAdapter.ts # Domain adapter for LoggerPort
-│       │   │   │   └── index.ts          # Logger exports
-│       │   │   ├── auth/                  # Auth provider implementations
-│       │   │   │   ├── AuthProvider.ts    # Interface & types
-│       │   │   │   ├── KeyCloakAuthProvider.ts # KeyCloak implementation
-│       │   │   │   ├── StubAuthProvider.ts # Test stub
-│       │   │   │   └── AuthProviderFactory.ts # Factory pattern
-│       │   │   └── email/                 # Email service (future)
+│       │   │   ├── db/         # Database client, schema, migrations
+│       │   │   ├── events/     # Domain event dispatcher
+│       │   │   ├── logger/     # Logging infrastructure
+│       │   │   ├── auth/       # Auth provider implementations
+│       │   │   └── email/      # Email service
 │       │   ├── shared/         # Shared kernel
-│       │   │   ├── result.ts   # Result<T, E> type
-│       │   │   ├── errors.ts   # Domain & application errors
-│       │   │   ├── types.ts    # Shared TypeScript types
-│       │   │   ├── utils.ts    # Common utilities
 │       │   │   ├── logger/     # Domain logging interface
-│       │   │   │   └── LoggerPort.ts  # Pure domain interface
-│       │   │   └── repository/
-│       │   │       └── BaseRepository.ts  # Base class with logging
-│       │   ├── test-support/   # Domain test utilities (co-located)
-│       │   │   ├── TestClock.ts      # Clock implementation for testing
-│       │   │   ├── id-generators.ts  # Test ID factory functions
-│       │   │   ├── test-logger.ts      # Logger stubs for testing
-│       │   │   ├── types/            # Test-only TypeScript utilities
-│       │   │   │   └── Mutable.ts    # Helper type for testing immutability
-│       │   │   └── index.ts          # Barrel export for domain test utilities
+│       │   │   └── repository/ # Base repository classes
+│       │   ├── test-support/   # Feature-specific domain test utilities
 │       │   └── middleware/     # Global HTTP middleware
-│       │       ├── on-error.ts         # Error handling
-│       │       ├── logger.ts           # HTTP logger with correlation tracking
-│       │       ├── request-id.ts       # Request ID generation
-│       │       ├── security.ts         # CORS & security headers
-│       │       └── index.ts            # Middleware exports
-│       ├── test-utils/         # Unified test infrastructure package
-│       │   ├── db/             # Database & container utilities
-│       │   │   ├── container.ts       # Testcontainers management
-│       │   │   ├── connection.ts      # Test DB helpers (createTestDb, withTestDb)
-│       │   │   ├── core.ts            # Unified createTestDatabase() API
-│       │   │   ├── types.ts           # TestDb type definition
-│       │   │   ├── migrations.ts      # Migration execution & verification
-│       │   │   ├── tx.ts              # Transaction isolation (withRollback)
-│       │   │   ├── seeds.ts           # Test data generation & seeding
-│       │   │   └── schema.ts          # Test-only table definitions
-│       │   ├── errors/         # Error type guards & utilities
-│       │   │   └── index.ts           # Error handling utilities
-│       │   ├── process/        # Process execution helpers
-│       │   │   └── exec.ts            # Async process runner (execa wrapper)
-│       │   ├── runtime/        # Environment detection
-│       │   │   └── index.ts           # Runtime detection (Bun vs Node)
-│       │   └── index.ts        # Barrel export for all test utilities
+│       ├── testing/            # Unified test infrastructure (DDD layers)
+│       │   ├── infra/          # Infrastructure layer test utilities
+│       │   │   ├── db/         # Database, testcontainers, transactions
+│       │   │   ├── errors/     # Error type guards & utilities
+│       │   │   ├── process/    # Process execution helpers
+│       │   │   ├── runtime/    # Environment detection
+│       │   │   └── vitest/     # Test configuration utilities
+│       │   ├── domain/         # Domain layer test utilities
+│       │   │   ├── fakes/      # Repository fakes, test doubles
+│       │   │   └── integration-helpers.ts
+│       │   └── index.ts        # Barrel exports
 │       ├── tests/              # Test organization
 │       │   ├── integration/    # Multi-feature tests
 │       │   ├── e2e/            # End-to-end tests
 │       │   └── fixtures/       # Test data factories
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── vitest.config.ts
-│       └── drizzle.config.ts
+│       └── package.json
 │
 ├── packages/                   # Shared packages
 │   ├── shared/                 # Cross-app shared code
@@ -214,163 +120,31 @@ certquiz/
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
 > - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
-> - **Unified test infrastructure**: Consolidated test utilities in `test-utils/` package
+> - **Unified test infrastructure**: Consolidated test utilities in `testing/` package with DDD layer separation
 > - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
 - **Domain test utilities**: Feature-specific helpers remain in `test-support/` for co-location
 
 ## Architecture Layers
 
-### 1. Presentation Layer (Routes)
-Thin HTTP layer that delegates to handlers:
-```typescript
-// features/quiz/start-quiz/route.ts
-export const startQuizRoute = new Hono()
-  .post('/start', 
-    zValidator('json', startQuizSchema),
-    authMiddleware,
-    startQuizHandler
-  )
-```
+### 1. Presentation Layer
+- **routes/**: HTTP route definitions with validation and middleware
+- Thin layer that delegates to application handlers
 
-### 2. Application Layer (Handlers)
-Orchestrates use cases with transaction boundaries:
-```typescript
-// features/quiz/start-quiz/handler.ts
-export async function startQuizHandler(c: Context) {
-  const input = c.req.valid('json')
-  const userId = c.get('user').id
-  
-  return withTransaction(async (trx) => {
-    const repo = new DrizzleQuizRepository(trx)
-    const result = await startQuiz(input, userId, repo)
-    
-    if (!result.success) {
-      return c.json({ error: result.error.message }, 400)
-    }
-    
-    return c.json(result.data)
-  })
-}
-```
+### 2. Application Layer
+- **handlers/**: Orchestrate use cases with transaction boundaries
+- Coordinate between domain and infrastructure layers
 
-### 3. Domain Layer (Pure Business Logic)
-Rich domain models with no infrastructure dependencies:
-```typescript
-// features/quiz/domain/aggregates/QuizSession.ts
-export class QuizSession {
-  private constructor(
-    public readonly id: QuizId,
-    public readonly userId: UserId,
-    private questions: Question[],
-    private answers: Map<QuestionId, Answer>
-  ) {}
-
-  static create(config: QuizConfig, userId: UserId): QuizSession {
-    // Domain validation
-    if (config.questionCount < 1 || config.questionCount > 50) {
-      throw new DomainError('Invalid question count')
-    }
-    
-    return new QuizSession(
-      QuizId.generate(),
-      userId,
-      [],
-      new Map()
-    )
-  }
-
-  submitAnswer(questionId: QuestionId, answer: Answer): void {
-    // Business rules
-    if (this.isComplete()) {
-      throw new DomainError('Quiz already completed')
-    }
-    
-    this.answers.set(questionId, answer)
-  }
-
-  calculateScore(): Score {
-    // Domain logic
-    const correct = Array.from(this.answers.entries())
-      .filter(([qId, answer]) => {
-        const question = this.questions.find(q => q.id.equals(qId))
-        return question?.isCorrect(answer)
-      }).length
-    
-    return Score.of(correct, this.questions.length)
-  }
-}
-```
+### 3. Domain Layer
+- **aggregates/**: Rich domain models with business logic
+- **entities/**: Core domain objects
+- **value-objects/**: Immutable domain concepts
+- **repositories/**: Domain interfaces for persistence
+- Pure TypeScript with no framework dependencies
 
 ### 4. Infrastructure Layer
-Implements domain interfaces with external services:
-```typescript
-// features/quiz/domain/repositories/DrizzleQuizRepository.ts
-export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
-  constructor(
-    private readonly trx: PostgresJsTransaction,
-    logger: LoggerPort
-  ) {
-    super(logger);
-  }
-
-  async findActiveSession(userId: UserId): Promise<QuizSession | null> {
-    const row = await this.trx.query.quizSessions.findFirst({
-      where: and(
-        eq(quizSessions.userId, userId.value),
-        isNull(quizSessions.completedAt)
-      ),
-      with: {
-        questions: {
-          with: { question: true }
-        }
-      }
-    })
-
-    return row ? QuizSession.fromPersistence(row) : null
-  }
-
-  async save(session: QuizSession): Promise<void> {
-    const data = session.toPersistence()
-    
-    await this.trx.insert(quizSessions)
-      .values(data)
-      .onConflictDoUpdate({
-        target: quizSessions.id,
-        set: data
-      })
-  }
-}
-```
-
-### 5. App Factory Pattern (Dependency Injection) 🏭
-Clean dependency injection for testing and production:
-```typescript
-// app-factory.ts
-export function buildApp(deps: AppDependencies): Hono {
-  const app = new Hono();
-  
-  // Middleware with injected dependencies
-  app.use('*', createLoggerMiddleware(deps.logger));
-  
-  // Routes with injected repositories  
-  app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
-  return app;
-}
-
-// Production bootstrap
-export async function buildProductionApp() {
-  const logger = createRootLogger();
-  const authProvider = createAuthProvider();
-  
-  return buildApp({
-    logger,
-    clock: () => new Date(),
-    ping: () => db.ping(),
-    userRepository: withTx(trx => new DrizzleUserRepository(trx), withTransaction),
-    authProvider,
-  });
-}
-```
+- **repositories/**: Concrete implementations using Drizzle ORM
+- **db/**: Database schema, migrations, and connection management
+- **auth/**: External authentication provider integrations
 
 ## Key Design Decisions
 
@@ -380,37 +154,15 @@ export async function buildProductionApp() {
 - **Thin abstraction**: Only methods needed by use cases
 - **No generic repositories**: Each repository is domain-specific
 
-### 2. Unit of Work via Transaction Wrapper 🔄
-```typescript
-// infra/unit-of-work.ts (Application layer facade)
-import { db } from './db/client'
+### 2. Unit of Work via Transaction Wrapper
+- **infra/unit-of-work.ts**: Application layer facade using Drizzle transactions
+- All multi-repository operations wrapped in single transaction
+- Ensures data consistency across aggregates
 
-export const withTransaction = db.transaction.bind(db)
-
-// infra/db/uow.ts (Database-specific implementation)
-// Contains transaction utilities and helpers specific to Drizzle
-
-// Usage in handler
-export async function handler(c: Context) {
-  return withTransaction(async (trx) => {
-    const userRepo = new DrizzleUserRepository(trx)
-    const quizRepo = new DrizzleQuizRepository(trx)
-    // All operations share the same transaction
-  })
-}
-```
-
-### 3. Vertical Slice Organization 📁
-Each use case is self-contained:
-```
-features/quiz/start-quiz/
-├── handler.ts      # Orchestration + transaction
-├── handler.test.ts # Mock repositories
-├── dto.ts          # Input/Output types
-├── validation.ts   # Request validation
-├── route.ts        # HTTP endpoint
-└── README.md       # Use case documentation
-```
+### 3. Vertical Slice Organization
+- **features/[context]/[use-case]/**: Self-contained use case folders
+- Each slice contains: handler, tests, DTOs, validation, routes
+- No cross-slice dependencies - use domain events for communication
 
 ### 4. Domain Model Evolution 📈
 Start simple, add complexity as needed:
@@ -424,373 +176,63 @@ Start simple, add complexity as needed:
 - **Repository tests**: In-memory SQLite for speed
 - **Handler tests**: Mock repositories, test orchestration
 - **Contract tests**: Real database, full integration
-- **Test infrastructure**: Database utilities in `test-utils/db/`, domain helpers in `test-support/`
+- **Test infrastructure**: Database utilities in `testing/infra/db/`, domain helpers in `test-support/`
 
 ## Development Workflow
 
-### 1. Creating a New Feature Slice
+### 1. Creating New Features
+- **Test-Driven Development**: Start with failing tests, then implement
+- **Feature Structure**: Each use case gets dedicated folder with handler, tests, DTOs, validation, routes
+- **Domain Evolution**: Start simple, add complexity progressively
 
-```bash
-# 1. Create feature structure
-mkdir -p apps/api/src/features/quiz/submit-answer
+### 2. Repository Pattern
+- **Interface Definition**: Domain interfaces in `domain/repositories/`
+- **Implementation**: Drizzle-based implementations alongside interfaces
+- **Transaction Management**: All operations wrapped with `withTransaction`
 
-# 2. Start with failing test (TDD)
-cat > apps/api/src/features/quiz/submit-answer/handler.test.ts << 'EOF'
-import { describe, it, expect, vi } from 'vitest'
-import { submitAnswerHandler } from './handler'
+## Migration Strategy
 
-describe('submitAnswerHandler', () => {
-  it('should submit answer successfully', async () => {
-    // Arrange
-    const mockRepo = {
-      findById: vi.fn().mockResolvedValue(mockQuizSession),
-      save: vi.fn()
-    }
-    
-    // Act & Assert
-    // ...
-  })
-})
-EOF
-
-# 3. Implement handler
-cat > apps/api/src/features/quiz/submit-answer/handler.ts << 'EOF'
-import { withTransaction } from '@/infra/unit-of-work'
-import { DrizzleQuizRepository } from '../domain/repositories/DrizzleQuizRepository'
-
-export async function submitAnswerHandler(c: Context) {
-  const { quizId, questionId, answer } = c.req.valid('json')
-  const userId = c.get('user').id
-  
-  return withTransaction(async (trx) => {
-    const repo = new DrizzleQuizRepository(trx)
-    // Implementation
-  })
-}
-EOF
-
-# 4. Create other files
-touch dto.ts validation.ts route.ts
-
-# 5. Wire up route
-# In src/routes.ts:
-# .route('/quiz', submitAnswerRoute)
-```
-
-### 2. Adding Domain Complexity
-
-```typescript
-// Start simple
-class Quiz {
-  constructor(
-    public id: string,
-    public userId: string,
-    public questions: string[]
-  ) {}
-}
-
-// Evolve to value objects
-class Quiz {
-  constructor(
-    public id: QuizId,
-    public userId: UserId,
-    public questions: Question[]
-  ) {}
-}
-
-// Add aggregate behavior
-class QuizSession {
-  private constructor(
-    private readonly id: QuizId,
-    private readonly config: QuizConfig,
-    private state: QuizState
-  ) {}
-  
-  submitAnswer(answer: Answer): Result<void, DomainError> {
-    return this.state.submitAnswer(answer)
-  }
-}
-```
-
-### 3. Repository Implementation Pattern
-
-```typescript
-// 1. Define interface in domain
-// features/quiz/domain/repositories/IQuizRepository.ts
-export interface IQuizRepository {
-  findById(id: QuizId): Promise<Quiz | null>
-  findActiveByUser(userId: UserId): Promise<Quiz[]>
-  save(quiz: Quiz): Promise<void>
-  delete(id: QuizId): Promise<void>
-}
-
-// 2. Implement with Drizzle
-// features/quiz/domain/repositories/DrizzleQuizRepository.ts
-export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
-  constructor(
-    private readonly trx: PostgresJsTransaction,
-    logger: LoggerPort
-  ) {
-    super(logger);
-  }
-  
-  async findById(id: QuizId): Promise<Quiz | null> {
-    const row = await this.trx.query.quizzes.findFirst({
-      where: eq(quizzes.id, id.value)
-    })
-    
-    return row ? Quiz.fromPersistence(row) : null
-  }
-  
-  async save(quiz: Quiz): Promise<void> {
-    const data = quiz.toPersistence()
-    await this.trx.insert(quizzes).values(data)
-  }
-}
-
-// 3. Use in handler with transaction
-export async function handler(c: Context) {
-  return withTransaction(async (trx) => {
-    const repo = new DrizzleQuizRepository(trx)
-    const quiz = await repo.findById(quizId)
-    // Modifications...
-    await repo.save(quiz)
-  })
-}
-```
-
-## Migration Strategy (Clean Slate)
-
-### 1. Backup Current Code
-```bash
-git checkout -b legacy-module-arch
-git push origin legacy-module-arch
-```
-
-### 2. Remove Old Structure
-```bash
-rm -rf apps/api/src/modules
-rm -rf apps/api/src/services
-rm -rf apps/api/src/repositories
-```
-
-### 3. Create New Structure
-```bash
-# Create directories
-mkdir -p apps/api/src/{features,system,infra,shared,middleware}
-mkdir -p apps/api/src/features/{quiz,user,auth,question}/domain/{entities,value-objects,aggregates,repositories}
-
-# Move existing database files
-mv apps/api/src/shared/database.ts apps/api/src/infra/db/client.ts
-```
-
-### 4. Implement First Slice
-Start with health check to validate the structure:
-```bash
-mkdir -p apps/api/src/system/health
-# Implement handler, test, route
-# Wire up in main application
-# Verify it works
-```
-
-### 5. Continue Feature by Feature
-Implement in priority order:
-1. Auth (login) - validates repository pattern
-2. Quiz (start) - complex domain logic
-3. Quiz (submit) - transaction handling
-4. User (profile) - read operations
+### Implementation Approach
+- **Clean Slate**: Backup existing code, implement new VSA structure
+- **Feature Priority**: Auth → Quiz → User → Question bounded contexts
+- **Validation**: Start with health check, validate each layer incrementally
 
 ## Testing Guidelines
 
-### 1. Domain Unit Tests (90% coverage)
-```typescript
-// features/quiz/domain/aggregates/QuizSession.test.ts
-import { testIds, TestClock, type Mutable } from '@api/test-support';
+### Test Strategy by Layer
+| Layer | Type | Coverage | Tools |
+|-------|------|----------|--------|
+| Domain | Unit Tests | 90% | Pure functions, test factories |
+| Repository | Integration | 80% | Real DB, transaction isolation |
+| Handler | Unit Tests | 80% | Mock repositories |
+| Route | Contract | Critical paths | Full HTTP, real DB |
 
-describe('QuizSession', () => {
-  it('should calculate score correctly', () => {
-    const userId = testIds.userId('user1');
-    const session = QuizSession.create(config, userId)
-    session.submitAnswer(testIds.questionId('q1'), Answer.of('A'))
-    session.submitAnswer(testIds.questionId('q2'), Answer.of('B'))
-    
-    const score = session.calculateScore()
-    expect(score.percentage).toBe(50)
-  })
+### Test Organization
+- **Co-location**: Tests next to source files with `.test.ts` suffix
+- **Domain Tests**: Use `@api/test-support` for domain-specific utilities
+- **Infrastructure Tests**: Use `@api/testing/infra` for database and containers
+- **Integration Tests**: Use `@api/testing/domain` for cross-layer helpers
 
-  it('should enforce immutability at runtime', () => {
-    const session = QuizSession.create(config, userId)
-    
-    // Test runtime immutability without using `any`
-    try {
-      (session as Mutable<typeof session>).userId = testIds.userId('hacker');
-    } catch {
-      // Expected - should throw on readonly violations
-    }
-  })
-})
-```
+## Performance Guidelines
 
-### 2. Repository Integration Tests
-```typescript
-// features/quiz/domain/repositories/DrizzleQuizRepository.test.ts
-import { withRollback, getTestDb } from '@api/test-utils/db';
+### Query Optimization
+- **Repository Layer**: Selective queries, batch operations, proper indexing
+- **Transaction Management**: Short transaction scope, no external calls
+- **Domain Models**: Lazy loading, value object immutability
 
-describe('DrizzleQuizRepository', () => {
-  it('should save and retrieve quiz', async () => {
-    await withRollback(async (trx) => {
-      const repo = new DrizzleQuizRepository(trx)
-      const quiz = Quiz.create(/* ... */)
-      
-      await repo.save(quiz)
-      const retrieved = await repo.findById(quiz.id)
-      
-      expect(retrieved).toEqual(quiz)
-    })
-  })
-})
-```
+## Key Patterns
 
-### 3. Handler Contract Tests
-```typescript
-// features/quiz/start-quiz/handler.contract.test.ts
-describe('POST /quiz/start', () => {
-  it('should start quiz with valid input', async () => {
-    const response = await app.request('/quiz/start', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ questionCount: 10 })
-    })
-    
-    expect(response.status).toBe(200)
-    const data = await response.json()
-    expect(data.quizId).toBeDefined()
-  })
-})
-```
+### Error Handling
+- **Result Type**: `Result<T, E>` for fallible operations instead of exceptions
+- **Domain Errors**: Custom error types in domain layer
 
-### 4. Test App Factory Pattern
-```typescript
-// tests/helpers/app.ts
-export async function makeHttpApp() {
-  return buildApp({
-    logger: fakeLogger(),
-    clock: () => new Date('2025-01-01T00:00:00Z'),
-    ping: async () => { /* no-op */ },
-    userRepository: fakeUserRepository(),
-    authProvider: fakeAuthProvider(),
-  });
-}
+### Value Objects
+- **Immutable Types**: Email, UserId, Score with factory methods and validation
+- **Domain Events**: Future pattern for cross-boundary communication
 
-// Usage in tests
-const app = await makeHttpApp();
-const response = await app.request('/api/auth/login', { /* ... */ });
-```
-
-## Performance Considerations
-
-### 1. Repository Query Optimization
-- Use selective queries (only needed columns)
-- Implement batch operations where possible
-- Add appropriate database indexes
-- Use prepared statements for hot paths
-
-### 2. Transaction Scope
-- Keep transactions as short as possible
-- Don't perform external calls inside transactions
-- Use read-only transactions where applicable
-
-### 3. Domain Model Performance
-- Lazy load aggregates when possible
-- Use value objects for immutability
-- Implement domain caching carefully
-
-## Common Patterns
-
-### 1. Result Type for Error Handling
-```typescript
-type Result<T, E = Error> = 
-  | { success: true; data: T }
-  | { success: false; error: E }
-
-// Usage
-function divide(a: number, b: number): Result<number> {
-  if (b === 0) {
-    return { success: false, error: new Error('Division by zero') }
-  }
-  return { success: true, data: a / b }
-}
-```
-
-### 2. Value Object Pattern
-```typescript
-export class Email {
-  private constructor(private readonly value: string) {}
-  
-  static create(value: string): Result<Email> {
-    if (!value.includes('@')) {
-      return { success: false, error: new Error('Invalid email') }
-    }
-    return { success: true, data: new Email(value) }
-  }
-  
-  toString(): string {
-    return this.value
-  }
-  
-  equals(other: Email): boolean {
-    return this.value === other.value
-  }
-}
-```
-
-### 3. Domain Event Pattern (Future)
-```typescript
-export abstract class DomainEvent {
-  constructor(
-    public readonly aggregateId: string,
-    public readonly occurredAt: Date = new Date()
-  ) {}
-}
-
-export class QuizStartedEvent extends DomainEvent {
-  constructor(
-    public readonly quizId: string,
-    public readonly userId: string,
-    public readonly questionCount: number
-  ) {
-    super(quizId)
-  }
-}
-```
-
-### 4. Test Utility Organization Pattern
-```typescript
-// test-utils/index.ts - Infrastructure test utilities barrel export
-export * from './db';
-export * from './errors';
-export * from './process';
-export * from './runtime';
-
-// test-support/index.ts - Domain test utilities barrel export  
-export { testIds } from './id-generators';
-export { TestClock } from './TestClock';
-export type { Mutable } from './types/Mutable';
-
-// Usage examples:
-// Database & infrastructure tests
-import { withRollback, getTestDb } from '@api/test-utils/db';
-import { isDbError } from '@api/test-utils/errors';
-
-// Domain tests
-import { testIds, TestClock, type Mutable } from '@api/test-support';
-
-// Key benefits:
-// 1. Clear separation: infrastructure vs domain test utilities
-// 2. No duplication of database/container management code
-// 3. Type-safe test helpers without `any` types
-// 4. Single import paths for each concern
-```
+### Test Utilities
+- **Infrastructure Layer**: `@api/testing/infra` for database, containers, process utilities
+- **Domain Layer**: `@api/test-support` for domain-specific helpers and factories
 
 ## Success Criteria
 
