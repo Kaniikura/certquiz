@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { mapTestEnvironmentVariables } from '../test-utils/vitest';
 
 // Get root directory path
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,15 +26,7 @@ export default defineConfig(({ mode }) => {
   const testEnv = loadEnv(mode ?? 'integration', rootDir, 'TEST_');
 
   // Map TEST_* variables to their expected names for the application code
-  if (testEnv.TEST_DATABASE_URL) {
-    process.env.DATABASE_URL = testEnv.TEST_DATABASE_URL;
-  }
-  if (testEnv.TEST_API_PORT) {
-    process.env.API_PORT = testEnv.TEST_API_PORT;
-  }
-  if (testEnv.TEST_CACHE_DRIVER) {
-    process.env.CACHE_DRIVER = testEnv.TEST_CACHE_DRIVER;
-  }
+  mapTestEnvironmentVariables(testEnv);
 
   return {
     root: rootDir,

@@ -58,3 +58,6 @@ export {
   isBun,
   isNode,
 } from './runtime';
+
+// Vitest utilities - Vitest configuration helpers
+export { mapTestEnvironmentVariables } from './vitest';
