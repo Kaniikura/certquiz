@@ -96,7 +96,8 @@ export class FakeUnitOfWorkFactory {
   }
 
   create(): FakeUnitOfWork {
-    return new FakeUnitOfWork(this.userRepository, this.quizRepository);
+    // Create fresh repository instances for each UoW to ensure test isolation
+    return new FakeUnitOfWork(new FakeUserRepository(), new FakeQuizRepository());
   }
 
   // Test helper methods
