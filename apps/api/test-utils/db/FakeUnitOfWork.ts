@@ -110,21 +110,17 @@ export class FakeQuizRepository implements IQuizRepository {
 
     for (const session of this.sessions.values()) {
       // Check if session is expired based on state or time limit
-      if (session.state === QuizState.Expired) {
+      if (
+        session.state === QuizState.Expired ||
+        (session.state === QuizState.InProgress &&
+          session.config.timeLimit &&
+          now.getTime() - session.startedAt.getTime() >= session.config.timeLimit * 1000)
+      ) {
         expiredSessions.push(session);
-      } else if (session.state === QuizState.InProgress && session.config.timeLimit) {
-        const elapsed = now.getTime() - session.startedAt.getTime();
-        if (elapsed >= session.config.timeLimit * 1000 && expiredSessions.length < limit) {
-          expiredSessions.push(session);
-        }
-      }
-
-      if (expiredSessions.length >= limit) {
-        break;
       }
     }
 
-    return expiredSessions;
+    return expiredSessions.slice(0, limit);
   }
 
   async findActiveByUser(userId: QuizUserId): Promise<QuizSession | null> {
