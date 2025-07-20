@@ -50,17 +50,16 @@ export default defineConfig(({ mode }) => {
       // Use forks pool to ensure proper container management
       pool: 'forks',
 
-      // Run integration tests sequentially to avoid database conflicts
+      // Configure pool options for parallel execution with proper isolation
       poolOptions: {
         forks: {
-          singleFork: true,
+          singleFork: false, // Allow multiple forks for parallel execution
         },
       },
 
-      // Configure file parallelism - disable for integration tests
-      // This prevents database conflicts when multiple test files try to access
-      // the shared testcontainer database instance concurrently
-      fileParallelism: false,
+      // Enable file parallelism for faster test execution
+      // Tests are properly isolated with migration mutex to prevent conflicts
+      fileParallelism: true,
 
       // Only include integration tests
       include: [
