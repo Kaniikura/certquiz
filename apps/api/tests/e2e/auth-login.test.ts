@@ -7,10 +7,10 @@ import { buildApp } from '@api/app-factory';
 import { User } from '@api/features/auth/domain/entities/User';
 import { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
-import { StubAuthProvider } from '@api/infra/auth/StubAuthProvider';
+import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { unwrapOrFail } from '@api/test-support';
+import { FakeQuizRepository, FakeUserRepository } from '@api/testkit';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FakeQuizRepository, FakeUserRepository } from '../fakes';
 import { fakeLogger } from '../helpers/app';
 
 describe('POST /api/auth/login - E2E', () => {

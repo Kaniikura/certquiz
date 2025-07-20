@@ -20,6 +20,7 @@
       "@api/*": ["apps/api/src/*"] /* Application source code */,
       "@api/test-utils": ["apps/api/test-utils/index.ts"] /* Test utilities package */,
       "@api/test-utils/*": ["apps/api/test-utils/*"],
+      "@api/testkit": ["apps/api/testkit/index.ts"] /* Test doubles barrel export */,
       "@web/*": ["apps/web/src/*"]
     },
     "resolveJsonModule": true,

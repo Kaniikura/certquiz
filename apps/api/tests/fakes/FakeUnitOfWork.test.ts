@@ -6,13 +6,13 @@ import { User } from '@api/features/auth/domain/entities/User';
 import { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   FakeUnitOfWork,
   FakeUnitOfWorkFactory,
   FakeUserRepository,
   withFakeUnitOfWork,
-} from '../../tests/fakes';
+} from '@api/test-utils/fakes';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Test helper function to create test users with less boilerplate
 function createTestUser(

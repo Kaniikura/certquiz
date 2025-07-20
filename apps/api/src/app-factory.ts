@@ -140,7 +140,7 @@ export async function buildProductionApp(): Promise<
   }>
 > {
   // Import production dependencies
-  const { createAuthProvider } = await import('./infra/auth/AuthProviderFactory');
+  const { createAuthProvider } = await import('./infra/auth/AuthProviderFactory.prod');
   const { DrizzleUserRepository } = await import(
     './features/auth/domain/repositories/DrizzleUserRepository'
   );

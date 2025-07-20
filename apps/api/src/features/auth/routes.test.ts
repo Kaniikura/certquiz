@@ -3,9 +3,7 @@
  * @fileoverview Tests for auth routes creation with dependency injection
  */
 
-import { StubAuthProvider } from '@api/infra/auth/StubAuthProvider';
-import { describe, expect, it } from 'vitest';
-import { FakeUserRepository } from '../../../tests/fakes/FakeUserRepository';
+import { describe, expect, FakeUserRepository, it, StubAuthProvider } from '@api/testkit';
 import { createAuthRoutes } from './routes-factory';
 
 describe('Auth Routes Factory', () => {

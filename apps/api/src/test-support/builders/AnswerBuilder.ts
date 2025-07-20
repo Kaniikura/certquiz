@@ -4,8 +4,8 @@
  */
 
 import { testIds } from '@api/test-support';
-import type { OptionId, QuestionId } from '../value-objects/Ids';
-import { Answer } from './Answer';
+import { Answer } from '../../features/quiz/domain/entities/Answer';
+import type { OptionId, QuestionId } from '../../features/quiz/domain/value-objects/Ids';
 
 export class AnswerBuilder {
   private questionId: QuestionId = testIds.questionId();

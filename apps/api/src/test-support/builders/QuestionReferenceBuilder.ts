@@ -4,8 +4,8 @@
  */
 
 import { testIds } from '@api/test-support';
-import type { OptionId, QuestionId } from './Ids';
-import { QuestionReference } from './QuestionReference';
+import type { OptionId, QuestionId } from '../../features/quiz/domain/value-objects/Ids';
+import { QuestionReference } from '../../features/quiz/domain/value-objects/QuestionReference';
 
 export class QuestionReferenceBuilder {
   private questionId: QuestionId = testIds.questionId();

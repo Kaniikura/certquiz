@@ -3,6 +3,16 @@
   "compilerOptions": {
     "composite": false
   },
-  "exclude": ["node_modules", "dist", "src/test-support", "src/**/*.test.ts", "tests/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/test-support",
+    "src/**/*.test.ts",
+    "src/**/*.fake.ts",
+    "src/**/*.stub.ts",
+    "tests/**/*",
+    "test-utils/**/*",
+    "testkit/**/*"
+  ],
   "include": ["src/**/*", "db/**/*.ts", "scripts/**/*", "*.ts"]
 }

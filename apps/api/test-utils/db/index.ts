@@ -5,9 +5,7 @@
 export {
   FakeQuizRepository,
   FakeUnitOfWork,
-  FakeUnitOfWorkFactory,
   FakeUserRepository,
-  withFakeUnitOfWork,
 } from '../../tests/fakes';
 export { createTestDb, withTestDb } from './connection';
 export { closeAllTrackedClients } from './container';

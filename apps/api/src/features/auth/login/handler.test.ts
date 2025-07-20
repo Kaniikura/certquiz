@@ -3,10 +3,8 @@
  * @fileoverview TDD tests for login use case handler
  */
 
-import { FakeAuthProvider } from '@api/infra/auth/FakeAuthProvider';
 import { ValidationError } from '@api/shared/errors';
-import { unwrapOrFail } from '@api/test-support';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, FakeAuthProvider, it, unwrapOrFail, vi } from '@api/testkit';
 import { User } from '../domain/entities/User';
 import {
   InvalidCredentialsError,

@@ -11,6 +11,7 @@
     "src/**/*",
     "tests/**/*.ts",
     "test-utils/**/*.ts",
+    "testkit/**/*.ts",
     "scripts/**/*",
     "*.ts",
     "package.json"
