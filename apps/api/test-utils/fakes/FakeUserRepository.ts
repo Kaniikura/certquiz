@@ -52,15 +52,23 @@ export class FakeUserRepository implements IUserRepository {
 
   async isEmailTaken(email: Email, excludeUserId?: UserId): Promise<boolean> {
     const user = await this.findByEmail(email);
-    if (!user) return false;
-    if (excludeUserId && user.id === excludeUserId) return false;
+    if (!user) {
+      return false;
+    }
+    if (excludeUserId && user.id === excludeUserId) {
+      return false;
+    }
     return true;
   }
 
   async isUsernameTaken(username: string, excludeUserId?: UserId): Promise<boolean> {
     const user = await this.findByUsername(username);
-    if (!user) return false;
-    if (excludeUserId && user.id === excludeUserId) return false;
+    if (!user) {
+      return false;
+    }
+    if (excludeUserId && user.id === excludeUserId) {
+      return false;
+    }
     return true;
   }
 

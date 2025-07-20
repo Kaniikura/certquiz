@@ -25,11 +25,13 @@ let _testDb: DB | undefined;
  */
 function initializeTestDatabase(): { pool: postgres.Sql; db: DB } {
   if (!_testPool || !_testDb) {
-    const databaseUrl = process.env.DATABASE_URL;
+    // Prefer the TEST-specific URL if set, fallback to the default
+    const databaseUrl = process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL;
 
-    // Validate DATABASE_URL using shared utility
+    // Validate using shared utility
     const validDatabaseUrl = validateDatabaseUrl(databaseUrl, {
-      missingMessage: 'DATABASE_URL environment variable is required for tests',
+      missingMessage:
+        'DATABASE_URL or DATABASE_URL_TEST environment variable is required for tests',
     });
 
     // Create postgres connection with test-specific config
@@ -81,6 +83,15 @@ export async function shutdownTestDatabase(): Promise<void> {
   });
 
   // Reset for clean state
+  _testPool = undefined;
+  _testDb = undefined;
+}
+
+/**
+ * Force reset singleton state for test isolation
+ * Should only be used in test teardown
+ */
+export function resetTestDatabase(): void {
   _testPool = undefined;
   _testDb = undefined;
 }
