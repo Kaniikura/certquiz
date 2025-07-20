@@ -60,10 +60,10 @@ jobs:
       matrix:
         include:
           - test-type: unit
-            command: test:unit
+            command: test:api:unit
             description: API Unit Tests
           - test-type: integration
-            command: test:integration
+            command: test:api:integration
             description: API Integration Tests
       fail-fast: false
     steps:
