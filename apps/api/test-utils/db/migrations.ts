@@ -24,7 +24,7 @@ function maskDatabaseUrl(databaseUrl: string): string {
     return url.toString();
   } catch {
     // Fallback to a generic masked string if parsing fails
-    return 'postgresql://***:***@***';
+    return '[REDACTED]';
   }
 }
 
