@@ -4,7 +4,8 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import { beforeEach, describe, expect, FakeAuthProvider, it, unwrapOrFail, vi } from '@api/testkit';
+import { FakeAuthProvider, unwrapOrFail } from '@api/testing/domain';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { User } from '../domain/entities/User';
 import {
   InvalidCredentialsError,

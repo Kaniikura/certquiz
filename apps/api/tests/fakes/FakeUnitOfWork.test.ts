@@ -11,7 +11,7 @@ import {
   FakeUnitOfWorkFactory,
   FakeUserRepository,
   withFakeUnitOfWork,
-} from '@api/test-utils/fakes';
+} from '@api/testing/domain/fakes';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 // Test helper function to create test users with less boilerplate

@@ -77,7 +77,7 @@ export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
  * Check if migrations directory has SQL files
  */
 async function hasMigrationsToRun(): Promise<boolean> {
-  const migrationsDir = path.join(__dirname, '../../src/infra/db/migrations');
+  const migrationsDir = path.join(__dirname, '../../../src/infra/db/migrations');
 
   try {
     const files = await fs.readdir(migrationsDir);

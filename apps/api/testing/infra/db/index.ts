@@ -2,11 +2,7 @@
  * Database utilities barrel export
  */
 
-export {
-  FakeQuizRepository,
-  FakeUnitOfWork,
-  FakeUserRepository,
-} from '../../tests/fakes';
+// Fakes are exported from testing/domain instead to maintain proper layer separation
 export { createTestDb, withTestDb } from './connection';
 export { closeAllTrackedClients } from './container';
 export { createTestDatabase, type TestDatabaseOptions } from './core';

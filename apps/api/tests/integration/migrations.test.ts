@@ -13,8 +13,8 @@ import {
   closeAllTrackedClients,
   createTestDatabase,
   verifyMigrationTables,
-} from '../../test-utils/db';
-import { type ProcessResult, runBunScript } from '../../test-utils/process';
+} from '../../testing/infra/db';
+import { type ProcessResult, runBunScript } from '../../testing/infra/process';
 import { PostgresSingleton } from '../containers/postgres';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -226,7 +226,7 @@ describe('🧪 Test Infrastructure Setup', () => {
 
     try {
       // Import drizzleMigrate for test infrastructure setup
-      const { drizzleMigrate } = await import('../../test-utils/db/migrations');
+      const { drizzleMigrate } = await import('../../testing/infra/db/migrations');
 
       // Run drizzleMigrate which includes both production migrations and test tables
       await drizzleMigrate(dbUrl);

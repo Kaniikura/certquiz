@@ -5,10 +5,10 @@
 
 import { shutdownDatabase } from '@api/infra/db/client';
 import type { LoggerVariables, RequestIdVariables } from '@api/middleware';
-import { createTestDatabase } from '@api/test-utils/db';
+import { createTestDatabase } from '@api/testing/infra/db';
 import type { Hono } from 'hono';
 import { afterAll, beforeAll } from 'vitest';
-import { PostgresSingleton } from '../tests/containers';
+import { PostgresSingleton } from '../../tests/containers';
 
 /**
  * Setup isolated test database for integration tests

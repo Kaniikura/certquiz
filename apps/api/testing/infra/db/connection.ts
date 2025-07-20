@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle as baseDrizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres, { type Sql } from 'postgres';
-import { getPostgres } from '../../tests/containers/postgres';
+import { getPostgres } from '../../../tests/containers/postgres';
 import * as testSchema from './schema';
 import type { TestDb } from './types';
 

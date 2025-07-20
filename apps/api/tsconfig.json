@@ -10,8 +10,7 @@
   "include": [
     "src/**/*",
     "tests/**/*.ts",
-    "test-utils/**/*.ts",
-    "testkit/**/*.ts",
+    "testing/**/*.ts",
     "scripts/**/*",
     "*.ts",
     "package.json"

@@ -9,7 +9,7 @@ import { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { unwrapOrFail } from '@api/test-support';
-import { FakeQuizRepository, FakeUserRepository } from '@api/testkit';
+import { FakeQuizRepository, FakeUserRepository } from '@api/testing/domain';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeLogger } from '../helpers/app';
 

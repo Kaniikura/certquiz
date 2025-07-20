@@ -7,8 +7,8 @@ import {
   seedUsers,
   type TestDb,
   withRollback,
-} from '../../test-utils/db';
-import { testUsers } from '../../test-utils/db/schema';
+} from '../../testing/infra/db';
+import { testUsers } from '../../testing/infra/db/schema';
 import { PostgresSingleton } from '../containers/postgres';
 
 // Helper functions for clean resource management

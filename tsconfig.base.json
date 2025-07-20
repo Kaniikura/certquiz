@@ -18,9 +18,12 @@
 
       /* app-local aliases – point at a folder inside the app   */
       "@api/*": ["apps/api/src/*"] /* Application source code */,
-      "@api/test-utils": ["apps/api/test-utils/index.ts"] /* Test utilities package */,
-      "@api/test-utils/*": ["apps/api/test-utils/*"],
-      "@api/testkit": ["apps/api/testkit/index.ts"] /* Test doubles barrel export */,
+      "@api/testing": ["apps/api/testing/index.ts"] /* Testing utilities convenience barrel */,
+      "@api/testing/*": ["apps/api/testing/*"] /* Testing utilities root */,
+      "@api/testing/infra": ["apps/api/testing/infra/index.ts"] /* Infrastructure test utilities */,
+      "@api/testing/infra/*": ["apps/api/testing/infra/*"],
+      "@api/testing/domain": ["apps/api/testing/domain/index.ts"] /* Domain test utilities */,
+      "@api/testing/domain/*": ["apps/api/testing/domain/*"],
       "@web/*": ["apps/web/src/*"]
     },
     "resolveJsonModule": true,

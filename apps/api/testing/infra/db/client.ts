@@ -4,7 +4,6 @@
  * Separated from production client to maintain clean architecture
  */
 
-import postgres from 'postgres';
 import {
   createDrizzleInstance,
   createIsolatedConnection,
@@ -12,8 +11,9 @@ import {
   performHealthCheck,
   shutdownConnection,
   validateDatabaseUrl,
-} from '../../src/infra/db/shared';
-import type { DB } from '../../src/infra/db/types';
+} from '@api/infra/db/shared';
+import type { DB } from '@api/infra/db/types';
+import postgres from 'postgres';
 
 // Test client state
 let _testPool: postgres.Sql | undefined;
@@ -113,4 +113,4 @@ export function createTestConnection(databaseUrl: string): {
 }
 
 // Export types for test usage
-export type { DB, Queryable } from '../../src/infra/db/types';
+export type { DB, Queryable } from '@api/infra/db/types';

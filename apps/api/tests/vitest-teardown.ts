@@ -3,8 +3,8 @@
  * Ensures proper cleanup after all tests complete
  */
 
+import { shutdownDatabase } from '@api/infra/db/client';
 import { afterAll } from 'vitest';
-import { shutdownDatabase } from '../src/infra/db/client';
 
 // Global teardown to ensure database connections are closed
 afterAll(async () => {

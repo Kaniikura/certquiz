@@ -3,11 +3,11 @@
  * @fileoverview Provides utilities for creating app instances with mocked dependencies
  */
 
+import { type AppDependencies, buildApp } from '@api/app-factory';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { Logger } from '@api/infra/logger/root-logger';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
-import { type AppDependencies, buildApp } from '../../src/app-factory';
 import { FakeQuizRepository, FakeUserRepository } from '../fakes';
 
 /**

@@ -11,8 +11,7 @@
     "src/**/*.fake.ts",
     "src/**/*.stub.ts",
     "tests/**/*",
-    "test-utils/**/*",
-    "testkit/**/*"
+    "testing/**/*"
   ],
   "include": ["src/**/*", "db/**/*.ts", "scripts/**/*", "*.ts"]
 }

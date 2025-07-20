@@ -1,16 +1,14 @@
 /**
- * Test utilities package - Unified test infrastructure
+ * Testing Infrastructure - Technical test utilities
  *
- * This package consolidates all cross-cutting test concerns into a single,
- * well-organized package following barrel export pattern.
+ * This package consolidates all infrastructure-level test concerns that are
+ * not specific to business domains. These utilities handle the technical
+ * foundation that domain-specific test utilities build upon.
  *
  * Organization:
  * - Each folder has its own barrel (index.ts) that gathers all its files
- * - This root barrel only re-exports from folder barrels, never from files directly
- * - No duplication: when you add a new utility, update only the folder barrel
- *
- * Uses explicit exports to comply with project linting rules while maintaining
- * the same low-maintenance benefits as export *.
+ * - This barrel only re-exports from folder barrels, never from files directly
+ * - Pure technical concerns: databases, processes, runtime, configuration
  *
  * @see https://docs.anthropic.com/en/docs/claude-code
  */
