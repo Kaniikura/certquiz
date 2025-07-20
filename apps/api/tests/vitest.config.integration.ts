@@ -1,21 +1,24 @@
 /**
  * Vitest configuration for integration and E2E tests
  *
- * This configuration runs integration tests sequentially to prevent database
- * conflicts when multiple test files try to access the shared testcontainer.
+ * This configuration uses conservative parallelization to balance performance
+ * with stability by limiting concurrent test files while maintaining database isolation.
  *
- * Parallel execution is disabled for the following reasons:
- * 1. Database Resource Contention: Multiple test files accessing the same PostgreSQL
- *    testcontainer can cause resource conflicts and connection issues
- * 2. CI Environment Limitations: CI environments have limited resources and parallel
- *    execution often leads to timeouts in PostgresSingleton.getInstance()
- * 3. Test Isolation: Sequential execution ensures proper test isolation and
- *    prevents flaky test failures due to concurrent database operations
- * 4. Consistency: Same behavior in both local and CI environments reduces
- *    environment-specific issues and debugging complexity
+ * Execution strategy:
+ * - Limited parallel execution (maxForks: 2) to prevent resource contention
+ * - Each test file creates isolated databases via setupTestDatabase()
+ * - File parallelism enabled with controlled concurrency
+ * - Maintains stability while improving performance over sequential execution
+ *
+ * Benefits:
+ * - Improved execution speed compared to fully sequential execution
+ * - Database isolation maintained through setupTestDatabase() per test file
+ * - Reduced resource contention through limited concurrency
+ * - Better CI performance while maintaining test reliability
  *
  * Key differences from unit tests:
- * - Sequential execution (fileParallelism: false, singleFork: true)
+ * - Limited fork parallelism (maxForks: 2) instead of single fork
+ * - File parallelism enabled for better performance
  * - Longer timeouts for database operations
  * - Includes integration-specific setup files
  * - Only includes *.integration.test.ts and e2e test files
@@ -60,19 +63,22 @@ export default defineConfig(({ mode }) => {
       // Use forks pool to ensure proper container management
       pool: 'forks',
 
-      // Run tests sequentially to prevent database conflicts
-      // when multiple test files try to access the shared testcontainer.
-      // Parallel execution causes resource contention and CI timeouts.
+      // Conservative parallelization: Limited concurrent test files to balance
+      // performance with stability. Each test file manages database isolation
+      // through setupTestDatabase(), but we limit concurrency to prevent
+      // resource contention and environment variable conflicts
       poolOptions: {
         forks: {
-          singleFork: true, // Always run sequentially - no environment-specific behavior
+          // Limit to 2 concurrent forks to reduce resource contention
+          // while still providing performance benefits over sequential execution
+          maxForks: 2,
+          minForks: 1,
         },
       },
 
-      // Disable file parallelism to ensure database isolation.
-      // This prevents flaky test failures and ensures consistent behavior
-      // across local development and CI environments.
-      fileParallelism: false,
+      // Enable limited file parallelism for improved test execution speed
+      // while maintaining database isolation through setupTestDatabase()
+      fileParallelism: true,
 
       // Only include integration tests
       include: [
