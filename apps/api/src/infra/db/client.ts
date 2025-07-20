@@ -18,9 +18,11 @@ function getPoolConfig(environment: string) {
       return PoolConfigs.development();
 
     case 'production': {
-      const maxConnections = process.env.DB_POOL_MAX
-        ? parseInt(process.env.DB_POOL_MAX, 10)
-        : undefined;
+      let maxConnections: number | undefined;
+      if (process.env.DB_POOL_MAX) {
+        const parsed = parseInt(process.env.DB_POOL_MAX, 10);
+        maxConnections = Number.isNaN(parsed) ? undefined : parsed;
+      }
       return PoolConfigs.production(maxConnections);
     }
 
