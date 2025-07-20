@@ -6,8 +6,10 @@
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { OptionId, QuestionId, type QuizSessionId, type UserId } from '../domain/value-objects/Ids';
+import type { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizState } from '../domain/value-objects/QuizState';
 import type { SubmitAnswerRequest, SubmitAnswerResponse } from './dto';
 import type { IQuestionService } from './QuestionService';
@@ -31,6 +33,39 @@ export class QuestionNotFoundError extends Error {
     super(`Question not found: ${questionId.toString()}`);
     this.name = 'QuestionNotFoundError';
   }
+}
+
+/**
+ * Load question reference with error handling
+ */
+async function loadQuestionReference(
+  questionService: IQuestionService,
+  questionId: QuestionId
+): Promise<Result<QuestionReference>> {
+  try {
+    const questionReference = await questionService.getQuestionReference(questionId);
+    if (!questionReference) {
+      return Result.fail(new QuestionNotFoundError(questionId));
+    }
+    return Result.ok(questionReference);
+  } catch (error) {
+    return Result.fail(
+      new Error(
+        `Failed to load question reference: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
+  }
+}
+
+/**
+ * Check if quiz was auto-completed
+ */
+function checkAutoCompletion(session: QuizSession): boolean {
+  return (
+    session.state === QuizState.Completed &&
+    session.config.autoCompleteWhenAllAnswered &&
+    session.getAnsweredQuestionCount() === session.config.questionCount
+  );
 }
 
 /**
@@ -70,25 +105,16 @@ export async function submitAnswerHandler(
     }
 
     // 5. Load question reference for validation
-    let questionReference: Awaited<ReturnType<typeof questionService.getQuestionReference>>;
-    try {
-      questionReference = await questionService.getQuestionReference(questionId);
-      if (!questionReference) {
-        return Result.fail(new QuestionNotFoundError(questionId));
-      }
-    } catch (error) {
-      return Result.fail(
-        new Error(
-          `Failed to load question reference: ${error instanceof Error ? error.message : String(error)}`
-        )
-      );
+    const questionRefResult = await loadQuestionReference(questionService, questionId);
+    if (!questionRefResult.success) {
+      return Result.fail(questionRefResult.error);
     }
 
     // 6. Submit answer using domain logic
     const submitResult = session.submitAnswer(
       questionId,
       selectedOptionIds,
-      questionReference,
+      questionRefResult.data,
       clock
     );
     if (!submitResult.success) {
@@ -107,13 +133,18 @@ export async function submitAnswerHandler(
     }
 
     // 8. Determine if auto-completed
-    const wasAutoCompleted =
-      session.state === QuizState.Completed &&
-      session.config.autoCompleteWhenAllAnswered &&
-      session.getAnsweredQuestionCount() === session.config.questionCount;
+    const wasAutoCompleted = checkAutoCompletion(session);
 
-    // 9. Calculate current question index
-    const currentQuestionIndex = session.getAnsweredQuestionCount() - 1; // 0-based index of last answered
+    // 9. Calculate current question index (position of this question in the ordered list)
+    const questionIds = session.getQuestionIds();
+    const currentQuestionIndex = questionIds.findIndex((qId) => QuestionId.equals(qId, questionId));
+
+    // Validate we found the question (should always succeed since we validated earlier)
+    if (currentQuestionIndex === -1) {
+      throw new Error(
+        `Question ${QuestionId.toString(questionId)} not found in session question list`
+      );
+    }
 
     // 10. Build response
     const response: SubmitAnswerResponse = {

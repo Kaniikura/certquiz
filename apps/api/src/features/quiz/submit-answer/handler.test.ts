@@ -7,7 +7,12 @@ import { ValidationError } from '@api/shared/errors';
 import { TestClock, testIds } from '@api/test-support';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
-import type { OptionId, QuestionId, QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import {
+  type OptionId,
+  QuestionId,
+  type QuizSessionId,
+  type UserId,
+} from '../domain/value-objects/Ids';
 import { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
 import { QuizState } from '../domain/value-objects/QuizState';
@@ -426,6 +431,112 @@ describe('submitAnswerHandler', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('Failed to save');
+      }
+    });
+  });
+
+  describe('non-sequential answering', () => {
+    it('should calculate correct question index when answering out of order', async () => {
+      // Arrange - Create session with 5 questions and non-sequential answering allowed
+      const fiveQuestionIds = [
+        testIds.questionId('q1'),
+        testIds.questionId('q2'),
+        testIds.questionId('q3'),
+        testIds.questionId('q4'),
+        testIds.questionId('q5'),
+      ];
+
+      const nonSeqConfig = QuizConfig.create({
+        examType: 'CCNA',
+        questionCount: 5,
+        enforceSequentialAnswering: false, // Allow out-of-order
+      });
+
+      if (!nonSeqConfig.success) throw new Error('Test setup failed');
+
+      const nonSeqSessionResult = QuizSession.startNew(
+        userId,
+        nonSeqConfig.data,
+        fiveQuestionIds,
+        clock
+      );
+
+      if (!nonSeqSessionResult.success) throw new Error('Test setup failed');
+      const nonSeqSession = nonSeqSessionResult.data;
+
+      mockQuizRepository.findById.mockResolvedValue(nonSeqSession);
+      mockQuizRepository.save.mockResolvedValue(undefined);
+
+      // Setup mock question references for all questions
+      const q1Ref = new QuestionReference(fiveQuestionIds[0], testIds.optionIds(3, 'q1-opt'));
+      const q2Ref = new QuestionReference(fiveQuestionIds[1], testIds.optionIds(3, 'q2-opt'));
+      const q3Ref = new QuestionReference(fiveQuestionIds[2], testIds.optionIds(3, 'q3-opt'));
+      const q4Ref = new QuestionReference(fiveQuestionIds[3], testIds.optionIds(3, 'q4-opt'));
+      const q5Ref = new QuestionReference(fiveQuestionIds[4], testIds.optionIds(3, 'q5-opt'));
+
+      // Mock to return correct reference based on question ID
+      const questionRefs = new Map([
+        [fiveQuestionIds[0].toString(), q1Ref],
+        [fiveQuestionIds[1].toString(), q2Ref],
+        [fiveQuestionIds[2].toString(), q3Ref],
+        [fiveQuestionIds[3].toString(), q4Ref],
+        [fiveQuestionIds[4].toString(), q5Ref],
+      ]);
+
+      mockQuestionService.getQuestionReference.mockImplementation(async (qId) => {
+        const ref = questionRefs.get(QuestionId.toString(qId));
+        if (!ref) {
+          throw new Error(`Unexpected question ID: ${QuestionId.toString(qId)}`);
+        }
+        return ref;
+      });
+
+      // Act - Answer question 3 (index 2) first
+      const request1 = {
+        questionId: fiveQuestionIds[2].toString(),
+        selectedOptionIds: [testIds.optionId('q3-opt1').toString()],
+      };
+
+      const result1 = await submitAnswerHandler(
+        request1,
+        nonSeqSession.id,
+        userId,
+        mockQuizRepository,
+        mockQuestionService,
+        clock
+      );
+
+      // Assert
+      expect(result1.success).toBe(true);
+      if (result1.success) {
+        expect(result1.data.currentQuestionIndex).toBe(2); // q3 is at index 2
+        expect(result1.data.questionsAnswered).toBe(1);
+      }
+
+      // Update mock to return the session with first answer
+      const savedSession1 = mockQuizRepository.save.mock.calls[0][0];
+      mockQuizRepository.findById.mockResolvedValue(savedSession1);
+
+      // Act - Answer question 1 (index 0)
+      const request2 = {
+        questionId: fiveQuestionIds[0].toString(),
+        selectedOptionIds: [testIds.optionId('q1-opt1').toString()],
+      };
+
+      const result2 = await submitAnswerHandler(
+        request2,
+        nonSeqSession.id,
+        userId,
+        mockQuizRepository,
+        mockQuestionService,
+        clock
+      );
+
+      // Assert
+      expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data.currentQuestionIndex).toBe(0); // q1 is at index 0
+        expect(result2.data.questionsAnswered).toBe(2);
       }
     });
   });
