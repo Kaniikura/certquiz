@@ -10,14 +10,31 @@ let migrationMutex: Promise<void> = Promise.resolve();
 const execAsync = promisify(exec);
 
 /**
+ * Mask sensitive credentials in database URLs for safe logging
+ *
+ * @param databaseUrl - The database URL to mask
+ * @returns Masked database URL safe for logging
+ */
+function maskDatabaseUrl(databaseUrl: string): string {
+  try {
+    const url = new URL(databaseUrl);
+    if (url.password) {
+      url.password = '***';
+    }
+    return url.toString();
+  } catch {
+    // Fallback to a generic masked string if parsing fails
+    return 'postgresql://***:***@***';
+  }
+}
+
+/**
  * Execute a function with mutex protection to prevent concurrent migrations
  * Uses atomic promise chaining to avoid race conditions
  */
 export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
-  // Initialize resolveMutex with a no-op function to avoid undefined issues
-  let resolveMutex: () => void = () => {
-    // No-op function to ensure resolveMutex is never undefined
-  };
+  // Use TypeScript's definite assignment assertion to ensure resolveMutex is assigned before use
+  let resolveMutex!: () => void;
 
   // Create a new promise that will resolve when this migration completes
   const thisOperationPromise = new Promise<void>((resolve) => {
@@ -141,18 +158,7 @@ async function handleMigrationError(error: unknown, databaseUrl: string): Promis
       stack: error instanceof Error ? error.stack : undefined,
       stderr: error instanceof Error && 'stderr' in error ? error.stderr : undefined,
       stdout: error instanceof Error && 'stdout' in error ? error.stdout : undefined,
-      databaseUrl: (() => {
-        try {
-          const url = new URL(databaseUrl);
-          if (url.password) {
-            url.password = '***'; // Mask the password
-          }
-          return url.toString();
-        } catch {
-          // Fallback to a generic masked string if parsing fails
-          return 'postgresql://***:***@***';
-        }
-      })(),
+      databaseUrl: maskDatabaseUrl(databaseUrl),
     });
     throw new Error(`Failed to run migrations: ${errorMessage}`);
   }
