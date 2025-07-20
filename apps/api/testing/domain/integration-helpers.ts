@@ -22,7 +22,7 @@ import { PostgresSingleton } from '../../tests/containers';
  * @example
  * ```typescript
  * import { app } from '@api/index';
- * import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+ * import { setupTestDatabase } from '@api/testing/domain';
  *
  * describe('My Integration Test', () => {
  *   setupTestDatabase();
