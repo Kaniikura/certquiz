@@ -4,6 +4,8 @@
  */
 
 import { TestClock, testIds, unwrapOrFail } from '@api/test-support';
+import { aQuestionReference } from '@api/test-support/builders/QuestionReferenceBuilder';
+import { aQuizSession } from '@api/test-support/builders/QuizSessionBuilder';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DuplicateQuestionError,
@@ -25,11 +27,9 @@ import {
   QuizStartedEvent,
 } from '../events/QuizEvents';
 import type { QuestionReference } from '../value-objects/QuestionReference';
-import { aQuestionReference } from '../value-objects/QuestionReferenceBuilder';
 import { aQuizConfig } from '../value-objects/QuizConfigBuilder';
 import { QuizState } from '../value-objects/QuizState';
 import { QuizSession } from './QuizSession';
-import { aQuizSession } from './QuizSessionBuilder';
 
 describe('QuizSession', () => {
   let clock: TestClock;

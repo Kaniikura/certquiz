@@ -1,10 +1,8 @@
 /**
- * Test Fakes Barrel Export
- * @fileoverview Centralized exports for all fake implementations
+ * Test fakes barrel export
+ * @fileoverview Re-exports all fake implementations
  */
 
-export { FakeUserRepository } from './FakeUserRepository';
-
-// TODO: Add more fake implementations as needed
-// export { FakeQuizRepository } from './FakeQuizRepository';
-// export { FakeEmailService } from './FakeEmailService';
+export { FakeQuizRepository } from '@api/testing/domain/fakes/FakeQuizRepository';
+export { FakeUnitOfWork } from '@api/testing/domain/fakes/FakeUnitOfWork';
+export { FakeUserRepository } from '@api/testing/domain/fakes/FakeUserRepository';

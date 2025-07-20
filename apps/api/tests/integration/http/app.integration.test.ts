@@ -1,5 +1,5 @@
 import { app } from '@api/index';
-import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { setupTestDatabase } from '@api/testing/domain';
 import { describe, expect, it } from 'vitest';
 
 describe('App Integration Tests', () => {

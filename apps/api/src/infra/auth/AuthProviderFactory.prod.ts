@@ -1,44 +1,20 @@
 /**
- * Auth Provider Factory
- * @fileoverview Factory for creating auth providers based on environment configuration
+ * Production Auth Provider Factory
+ * @fileoverview Factory for creating auth providers in production (excludes test stubs)
  */
 
 import { AppError } from '@api/shared/errors';
 import type { AuthProviderConfig, IAuthProvider } from './AuthProvider';
-import { StubAuthProvider } from './AuthProvider.stub';
 import { KeyCloakAuthProvider } from './KeyCloakAuthProvider';
 
 /**
- * Valid auth provider types
- */
-type AuthProviderType = 'keycloak' | 'stub';
-
-/**
- * Type guard to check if a string is a valid auth provider type
- */
-function isValidAuthProvider(value: string | undefined): value is AuthProviderType {
-  return value === 'keycloak' || value === 'stub';
-}
-
-/**
- * Safely get auth provider type from environment, defaulting to 'stub'
- */
-function getAuthProviderType(): AuthProviderType {
-  const envValue = process.env.AUTH_PROVIDER;
-  return isValidAuthProvider(envValue) ? envValue : 'stub';
-}
-
-/**
- * Create auth provider based on environment configuration
+ * Create auth provider for production use
+ * Only includes real auth providers, no test stubs
  */
 export function createAuthProvider(config?: Partial<AuthProviderConfig>): IAuthProvider {
-  // Default to stub provider for development/testing
-  const provider = config?.provider || getAuthProviderType();
+  const provider = config?.provider || process.env.AUTH_PROVIDER || 'keycloak';
 
   switch (provider) {
-    case 'stub':
-      return new StubAuthProvider();
-
     case 'keycloak': {
       const keycloakConfig = config?.keycloak || {
         url: process.env.KEYCLOAK_URL || 'http://localhost:8080',
@@ -58,6 +34,13 @@ export function createAuthProvider(config?: Partial<AuthProviderConfig>): IAuthP
       return new KeyCloakAuthProvider(keycloakConfig);
     }
 
+    case 'stub':
+      throw new AppError(
+        'Stub auth provider is not available in production. Use KeyCloak or another real auth provider.',
+        'STUB_NOT_AVAILABLE_IN_PRODUCTION',
+        500
+      );
+
     default:
       throw new AppError('Unknown auth provider specified', 'UNKNOWN_AUTH_PROVIDER', 500);
   }
@@ -67,7 +50,14 @@ export function createAuthProvider(config?: Partial<AuthProviderConfig>): IAuthP
  * Get current auth provider configuration from environment
  */
 export function getAuthProviderConfig(): AuthProviderConfig {
-  const provider = getAuthProviderType();
+  const envProvider = process.env.AUTH_PROVIDER;
+
+  // Validate the provider value if set
+  if (envProvider && envProvider !== 'keycloak') {
+    throw new AppError(`Unsupported AUTH_PROVIDER: ${envProvider}`, 'INVALID_AUTH_PROVIDER', 500);
+  }
+
+  const provider = 'keycloak';
 
   const config: AuthProviderConfig = {
     provider,

@@ -137,7 +137,7 @@
   },
   "overrides": [
     {
-      "includes": ["apps/api/test-utils/*/*.ts"],
+      "includes": ["apps/api/testing/**/*.ts"],
       "linter": {
         "rules": {
           "performance": {
@@ -185,7 +185,7 @@
         "apps/api/scripts/**/*.js",
         "apps/api/tests/containers/index.ts",
         "apps/api/tests/integration/migrations.test.ts",
-        "apps/api/test-utils/db/migrations.ts"
+        "apps/api/testing/infra/db/migrations.ts"
       ],
       "linter": {
         "rules": {

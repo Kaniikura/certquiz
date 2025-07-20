@@ -1,70 +1,33 @@
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema';
-
-// Type aliases for Drizzle database and transaction
-export type DB = PostgresJsDatabase<typeof schema>;
-export type Tx = Parameters<DB['transaction']>[0] extends (tx: infer T) => unknown ? T : never;
-
-// Queryable interface for repositories to work with both DB and Tx
-export type Queryable = Pick<DB, 'select' | 'insert' | 'update' | 'delete' | 'execute' | 'query'>;
+import {
+  createDrizzleInstance,
+  PoolConfigs,
+  performHealthCheck,
+  shutdownConnection,
+  validateDatabaseUrl,
+} from './shared';
+import type { DB } from './types';
 
 /**
- * Connection pool configuration based on environment
+ * Get environment-specific pool configuration
+ * Uses shared pool configurations with environment-specific settings
  */
 function getPoolConfig(environment: string) {
-  const common = {
-    idle_timeout: 30, // Close idle connections after 30 seconds
-    max_lifetime: 60 * 60, // Recycle connections after 1 hour
-    connect_timeout: 10, // 10 second connection timeout
-  };
-
   switch (environment) {
-    case 'test':
-      return {
-        ...common,
-        max: 1, // Single connection for deterministic tests
-        prepare: false, // Disable prepared statements for tests
-      };
-
     case 'development':
-      return {
-        ...common,
-        max: 5, // Small pool for development
-      };
+      return PoolConfigs.development();
 
-    case 'production':
-      return {
-        ...common,
-        max: Number(process.env.DB_POOL_MAX ?? 20), // Configurable pool size
-      };
+    case 'production': {
+      let maxConnections: number | undefined;
+      if (process.env.DB_POOL_MAX) {
+        const parsed = parseInt(process.env.DB_POOL_MAX, 10);
+        maxConnections = Number.isNaN(parsed) ? undefined : parsed;
+      }
+      return PoolConfigs.production(maxConnections);
+    }
 
     default:
-      return {
-        ...common,
-        max: 5, // Default to development settings
-      };
-  }
-}
-
-/**
- * Validates the DATABASE_URL format
- */
-function validateDatabaseUrl(url: string | undefined): void {
-  if (!url) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
-
-  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
-    throw new Error(
-      'DATABASE_URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://'
-    );
-  }
-
-  try {
-    new URL(url);
-  } catch (_error) {
-    throw new Error('DATABASE_URL is not a valid URL format');
+      return PoolConfigs.development(); // Default to development settings
   }
 }
 
@@ -81,20 +44,17 @@ function initializeDatabase(): { pool: postgres.Sql; db: DB } {
     const databaseUrl = process.env.DATABASE_URL;
     const nodeEnv = process.env.NODE_ENV || 'development';
 
-    // Validate DATABASE_URL
-    validateDatabaseUrl(databaseUrl);
-
-    // After validation, databaseUrl is guaranteed to be defined
-    const validDatabaseUrl = databaseUrl as string;
+    // Validate DATABASE_URL using shared utility
+    const validDatabaseUrl = validateDatabaseUrl(databaseUrl);
 
     // Create postgres connection with environment-specific config
     const poolConfig = getPoolConfig(nodeEnv);
     _pool = postgres(validDatabaseUrl, poolConfig);
 
-    // Create Drizzle instance with schema
-    _db = drizzle(_pool, {
-      logger: nodeEnv === 'development',
-      schema,
+    // Create Drizzle instance using shared utility
+    _db = createDrizzleInstance(_pool, {
+      enableLogging: nodeEnv === 'development',
+      environment: nodeEnv,
     });
   }
 
@@ -139,41 +99,35 @@ export const db = new Proxy({} as DB, {
   },
 });
 
-// Export the database type
-export type DrizzleDb = DB;
-
 /**
  * Health check function
  * Throws an error if the database is unreachable
  */
 export async function ping(): Promise<void> {
   const pool = getPool();
-  await pool`SELECT 1`; // Will throw if DB is unreachable
+  await performHealthCheck(pool);
 }
 
 /**
  * Gracefully shutdown the database connection
  */
 export async function shutdownDatabase(): Promise<void> {
-  // Only shutdown if initialized
-  if (_pool) {
-    try {
-      await _pool.end({ timeout: 5 }); // 5 second timeout
-      // Reset for clean state
-      _pool = undefined;
-      _db = undefined;
-    } catch (error) {
+  await shutdownConnection(_pool, {
+    timeout: 5,
+    onError: (error) => {
       // Log error but don't throw - we want graceful shutdown
-      const nodeEnv = process.env.NODE_ENV || 'development';
-      if (nodeEnv !== 'test') {
-        // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
-        console.error('[database] Error during shutdown:', error);
-      }
-    }
-  }
+      // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
+      console.error('[database] Error during shutdown:', error);
+    },
+  });
+
+  // Reset for clean state
+  _pool = undefined;
+  _db = undefined;
 }
 
-// Register graceful shutdown handlers
+// Register graceful shutdown handlers for production and development
+// Test environments use their own cleanup mechanisms
 if (typeof process !== 'undefined') {
   const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
 
@@ -184,3 +138,6 @@ if (typeof process !== 'undefined') {
     });
   });
 }
+
+// Re-export types for external use
+export type { DB, DrizzleDb, Queryable, Tx } from './types';

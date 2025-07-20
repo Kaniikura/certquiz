@@ -9,7 +9,7 @@
  * - Frequent operations (getting migrations, lock attempts) use conditional debug logging
  */
 
-import type { Queryable } from '@api/infra/db/client';
+import type { Queryable } from '@api/infra/db/types';
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';

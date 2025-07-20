@@ -3,7 +3,7 @@ import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { db } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
-import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { setupTestDatabase } from '@api/testing/domain';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 

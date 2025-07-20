@@ -5,10 +5,10 @@
 
 import { shutdownDatabase } from '@api/infra/db/client';
 import type { LoggerVariables, RequestIdVariables } from '@api/middleware';
-import { createTestDatabase } from '@api/test-utils/db';
+import { createTestDatabase } from '@api/testing/infra/db';
 import type { Hono } from 'hono';
 import { afterAll, beforeAll } from 'vitest';
-import { PostgresSingleton } from '../tests/containers';
+import { PostgresSingleton } from '../../tests/containers';
 
 /**
  * Setup isolated test database for integration tests
@@ -22,7 +22,7 @@ import { PostgresSingleton } from '../tests/containers';
  * @example
  * ```typescript
  * import { app } from '@api/index';
- * import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+ * import { setupTestDatabase } from '@api/testing/domain';
  *
  * describe('My Integration Test', () => {
  *   setupTestDatabase();
@@ -49,7 +49,7 @@ export function setupTestDatabase() {
 
     // Set DATABASE_URL for the application
     process.env.DATABASE_URL = dbUrl;
-  });
+  }, 30000); // 30 second timeout for database setup
 
   afterAll(async () => {
     // Shutdown database connections first
@@ -59,7 +59,7 @@ export function setupTestDatabase() {
     if (cleanup) {
       await cleanup();
     }
-  });
+  }, 30000); // 30 second timeout for cleanup
 
   return {
     /**

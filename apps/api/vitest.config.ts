@@ -1,48 +1,62 @@
-import { resolve } from 'node:path';
-import { defineProject } from 'vitest/config';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
+import { mapTestEnvironmentVariables } from './testing/infra/vitest';
 
-export default defineProject({
-  // Everything is resolved from the directory that contains this file
-  root: __dirname,
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-  resolve: {
-    alias: {
-      '@api': resolve(__dirname, 'src'),
-      '@shared': resolve(__dirname, '../../packages/shared/src'),
-    },
-  },
+export default defineConfig(({ mode }) => {
+  // Load only TEST_* prefixed environment variables
+  // Use 'test' as fallback when mode is undefined, which loads .env.test files
+  // This is appropriate for the main test configuration targeting unit tests
+  const testEnv = loadEnv(mode ?? 'test', __dirname, 'TEST_');
 
-  test: {
-    clearMocks: true,
-    environment: 'node',
-    exclude: ['**/node_modules/**', '**/dist/**'],
-    globals: true,
+  // Map TEST_* variables to their expected names for the application code
+  const mappedEnv = mapTestEnvironmentVariables(testEnv);
+  Object.assign(process.env, mappedEnv);
 
-    // Global setup for test database - runs once for all tests
-    globalSetup: resolve(__dirname, 'tests/containers/index.ts'),
+  return {
+    root: __dirname,
+    plugins: [tsconfigPaths()],
 
-    // Include all tests by default
-    include: [
-      'src/**/*.test.ts', // Unit tests co-located with source
-      'tests/**/*.test.ts', // Integration tests
-      'test-utils/**/*.test.ts', // Test utilities verification tests
-    ],
+    // API-specific cache directory
+    cacheDir: '.vitest_cache',
 
-    mockReset: true,
-    name: 'api',
-
-    // Pool configuration for transaction isolation
-    pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: true, // Run tests sequentially for transaction isolation
+    test: {
+      // Pass the TEST_* prefixed environment variables to Vitest
+      env: testEnv,
+      // Coverage and reporters for API app
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov'],
+        reportsDirectory: './coverage',
       },
+      reporters: ['default'],
+
+      // Use forks pool to ensure proper container management
+      pool: 'forks',
+
+      // Include all tests by default (sophisticated patterns preserved via include/exclude)
+      include: [
+        'src/**/*.test.ts', // Unit tests co-located with source
+        'tests/**/*.test.ts', // Integration and E2E tests
+        'testing/**/*.test.ts', // Testing utilities verification tests
+      ],
+
+      // Setup files for database cleanup (from our working solution)
+      setupFiles: ['./tests/setup/vitest.shared.setup.ts', './tests/vitest-teardown.ts'],
+
+      // Global test configuration
+      clearMocks: true,
+      environment: 'node',
+      exclude: ['**/node_modules/**', '**/dist/**'],
+      globals: true,
+      mockReset: true,
+      restoreMocks: true,
+
+      // Default timeout for non-project tests and fallback
+      testTimeout: process.env.CI ? 60_000 : 30_000,
     },
-
-    restoreMocks: true,
-
-    // Test timeout for container operations
-    // Note: Increase this value on CI if Docker image pulls are slow
-    testTimeout: process.env.CI ? 60_000 : 30_000,
-  },
+  };
 });

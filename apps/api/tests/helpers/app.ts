@@ -3,44 +3,12 @@
  * @fileoverview Provides utilities for creating app instances with mocked dependencies
  */
 
-import type { User } from '@api/features/auth/domain/entities/User';
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-import type { Email } from '@api/features/auth/domain/value-objects/Email';
-import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { type AppDependencies, buildApp } from '@api/app-factory';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { Logger } from '@api/infra/logger/root-logger';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
-import { type AppDependencies, buildApp } from '../../src/app-factory';
-
-/**
- * Create a fake user repository for testing
- */
-export function fakeUserRepository(): IUserRepository {
-  return {
-    async findByEmail(_email: Email): Promise<User | null> {
-      return null;
-    },
-    async findById(_id: UserId): Promise<User | null> {
-      return null;
-    },
-    async findByIdentityProviderId(_identityProviderId: string): Promise<User | null> {
-      return null;
-    },
-    async findByUsername(_username: string): Promise<User | null> {
-      return null;
-    },
-    async save(_user: User): Promise<void> {
-      // No-op
-    },
-    async isEmailTaken(_email: Email, _excludeUserId?: UserId): Promise<boolean> {
-      return false;
-    },
-    async isUsernameTaken(_username: string, _excludeUserId?: UserId): Promise<boolean> {
-      return false;
-    },
-  };
-}
+import { FakeQuizRepository, FakeUserRepository } from '../fakes';
 
 /**
  * Create a fake auth provider for testing
@@ -103,7 +71,8 @@ export async function makeHttpApp() {
     logger: fakeLogger(),
     clock: () => new Date('2025-01-01T00:00:00Z'),
     ping: noop, // Always healthy
-    userRepository: fakeUserRepository(),
+    userRepository: new FakeUserRepository(),
+    quizRepository: new FakeQuizRepository(),
     authProvider: fakeAuthProvider(),
   };
 
@@ -120,7 +89,8 @@ export async function makeBrokenDbApp() {
     ping: async () => {
       throw new Error('Database connection failed');
     },
-    userRepository: fakeUserRepository(),
+    userRepository: new FakeUserRepository(),
+    quizRepository: new FakeQuizRepository(),
     authProvider: fakeAuthProvider(),
   };
 

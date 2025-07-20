@@ -7,8 +7,8 @@ import {
   seedUsers,
   type TestDb,
   withRollback,
-} from '../../test-utils/db';
-import { testUsers } from '../../test-utils/db/schema';
+} from '../../testing/infra/db';
+import { testUsers } from '../../testing/infra/db/schema';
 import { PostgresSingleton } from '../containers/postgres';
 
 // Helper functions for clean resource management
@@ -65,11 +65,17 @@ describe('Testcontainers Infrastructure', () => {
   });
 
   afterAll(async () => {
-    await client.end({ timeout: 5 });
-    await cleanup();
+    if (client) {
+      await client.end({ timeout: 5 });
+    }
+    if (cleanup) {
+      await cleanup();
+    }
   });
 
   afterEach(async () => {
+    if (!client) return;
+
     // Verify no active transactions are left open
     const result = await client`SELECT count(*) as count 
         FROM pg_stat_activity 
@@ -81,6 +87,10 @@ describe('Testcontainers Infrastructure', () => {
   });
 
   it('should connect to PostgreSQL container', async () => {
+    if (!client) {
+      throw new Error('Client not initialized - check beforeAll setup');
+    }
+
     // Test database connection by running a simple query
     const result = await client`SELECT 1 as test`;
     expect(result[0].test).toBe(1);

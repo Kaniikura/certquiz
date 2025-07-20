@@ -50,17 +50,26 @@ export class FakeUserRepository implements IUserRepository {
     this.users.set(user.email.toString(), user);
   }
 
-  async isEmailTaken(email: Email): Promise<boolean> {
-    return this.users.has(email.toString());
+  async isEmailTaken(email: Email, excludeUserId?: UserId): Promise<boolean> {
+    const user = await this.findByEmail(email);
+    if (!user) {
+      return false;
+    }
+    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
+      return false;
+    }
+    return true;
   }
 
-  async isUsernameTaken(username: string): Promise<boolean> {
-    for (const user of this.users.values()) {
-      if (user.username === username) {
-        return true;
-      }
+  async isUsernameTaken(username: string, excludeUserId?: UserId): Promise<boolean> {
+    const user = await this.findByUsername(username);
+    if (!user) {
+      return false;
     }
-    return false;
+    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
+      return false;
+    }
+    return true;
   }
 
   // Test helper methods

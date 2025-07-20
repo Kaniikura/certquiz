@@ -7,20 +7,22 @@ import { buildApp } from '@api/app-factory';
 import { User } from '@api/features/auth/domain/entities/User';
 import { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
-import { StubAuthProvider } from '@api/infra/auth/StubAuthProvider';
+import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { unwrapOrFail } from '@api/test-support';
+import { FakeQuizRepository, FakeUserRepository } from '@api/testing/domain';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FakeUserRepository } from '../fakes/FakeUserRepository';
 import { fakeLogger } from '../helpers/app';
 
 describe('POST /api/auth/login - E2E', () => {
   let app: ReturnType<typeof buildApp>;
   let fakeUserRepo: FakeUserRepository;
+  let fakeQuizRepo: FakeQuizRepository;
   let stubAuthProvider: StubAuthProvider;
 
   beforeEach(() => {
     // Create fresh fake dependencies for each test
     fakeUserRepo = new FakeUserRepository();
+    fakeQuizRepo = new FakeQuizRepository();
     stubAuthProvider = new StubAuthProvider();
 
     // Build app with all required dependencies
@@ -31,6 +33,7 @@ describe('POST /api/auth/login - E2E', () => {
         // No-op for tests
       },
       userRepository: fakeUserRepo,
+      quizRepository: fakeQuizRepo,
       authProvider: stubAuthProvider,
     });
   });

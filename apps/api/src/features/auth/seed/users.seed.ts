@@ -4,8 +4,8 @@
  */
 
 import * as crypto from 'node:crypto';
-import type { DB } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
+import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';

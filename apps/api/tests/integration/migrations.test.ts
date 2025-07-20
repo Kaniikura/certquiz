@@ -13,8 +13,8 @@ import {
   closeAllTrackedClients,
   createTestDatabase,
   verifyMigrationTables,
-} from '../../test-utils/db';
-import { type ProcessResult, runBunScript } from '../../test-utils/process';
+} from '../../testing/infra/db';
+import { type ProcessResult, runBunScript } from '../../testing/infra/process';
 import { PostgresSingleton } from '../containers/postgres';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,7 +26,7 @@ describe('Database Migrations', () => {
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
     rootConnectionUrl = container.getConnectionUri();
-  });
+  }, 15000);
 
   // Clean up all tracked connections
   afterAll(async () => {
@@ -154,7 +154,7 @@ describe('🔒 Concurrency Control', () => {
     const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
     dbUrl = fresh.url;
     cleanup = fresh.drop;
-  });
+  }, 15000);
 
   afterAll(async () => {
     await cleanup();
@@ -213,7 +213,7 @@ describe('🧪 Test Infrastructure Setup', () => {
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
     rootConnectionUrl = container.getConnectionUri();
-  });
+  }, 15000);
 
   afterAll(async () => {
     await closeAllTrackedClients();
@@ -226,7 +226,7 @@ describe('🧪 Test Infrastructure Setup', () => {
 
     try {
       // Import drizzleMigrate for test infrastructure setup
-      const { drizzleMigrate } = await import('../../test-utils/db/migrations');
+      const { drizzleMigrate } = await import('../../testing/infra/db/migrations');
 
       // Run drizzleMigrate which includes both production migrations and test tables
       await drizzleMigrate(dbUrl);

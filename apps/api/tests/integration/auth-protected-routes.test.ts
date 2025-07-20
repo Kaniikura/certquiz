@@ -1,5 +1,5 @@
 import { app } from '@api/index';
-import { setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { setupTestDatabase } from '@api/testing/domain';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Global variables for test keys (will be initialized in beforeAll)
