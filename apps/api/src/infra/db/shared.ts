@@ -148,6 +148,54 @@ export function createDrizzleInstance(
 }
 
 /**
+ * Helper to safely extract string properties from an object
+ */
+function extractStringProperty(obj: unknown, key: string): string | undefined {
+  if (obj && typeof obj === 'object' && key in obj) {
+    const value = (obj as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Sanitize error objects to ensure no sensitive information is exposed
+ * Uses a whitelist approach to only include known-safe properties
+ *
+ * @param error - The error to sanitize
+ * @returns Sanitized error object safe for logging
+ */
+function sanitizeError(error: unknown): Record<string, unknown> {
+  // Default safe error object
+  const safeError: Record<string, unknown> = {
+    message: 'Unknown error',
+    type: 'unknown',
+  };
+
+  // Handle different error types
+  if (error instanceof Error) {
+    safeError.message = error.message;
+    safeError.type = error.constructor.name;
+
+    // Extract additional safe properties
+    const safeProperties = ['code', 'constraint', 'severity'];
+    for (const prop of safeProperties) {
+      const value = extractStringProperty(error, prop);
+      if (value) safeError[prop] = value;
+    }
+  } else if (typeof error === 'string') {
+    safeError.message = error;
+    safeError.type = 'string';
+  } else if (error && typeof error === 'object') {
+    const message = extractStringProperty(error, 'message');
+    if (message) safeError.message = message;
+    safeError.type = 'object';
+  }
+
+  return safeError;
+}
+
+/**
  * Generic shutdown handler
  * Handles connection cleanup with timeout and error handling
  *
@@ -174,15 +222,7 @@ export async function shutdownConnection(
     } else if (!silent) {
       // Default error handling for production with sanitized logging
       const logger = getRootLogger();
-
-      // Sanitize error to avoid exposing sensitive connection details
-      const sanitizedError = {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        // Only include the error type/code, not full stack or connection details
-        code: error instanceof Error && 'code' in error ? error.code : undefined,
-        // Avoid logging the full error object which may contain connection strings
-      };
-
+      const sanitizedError = sanitizeError(error);
       logger.error(sanitizedError, '[database] Error during shutdown');
     }
     // Test environments: silent = true, no logging
