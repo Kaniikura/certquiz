@@ -55,7 +55,7 @@ export class FakeUserRepository implements IUserRepository {
     if (!user) {
       return false;
     }
-    if (excludeUserId && user.id === excludeUserId) {
+    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
       return false;
     }
     return true;
@@ -66,7 +66,7 @@ export class FakeUserRepository implements IUserRepository {
     if (!user) {
       return false;
     }
-    if (excludeUserId && user.id === excludeUserId) {
+    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
       return false;
     }
     return true;
