@@ -17,8 +17,12 @@ function getPoolConfig(environment: string) {
     case 'development':
       return PoolConfigs.development();
 
-    case 'production':
-      return PoolConfigs.production(Number(process.env.DB_POOL_MAX));
+    case 'production': {
+      const maxConnections = process.env.DB_POOL_MAX
+        ? parseInt(process.env.DB_POOL_MAX, 10)
+        : undefined;
+      return PoolConfigs.production(maxConnections);
+    }
 
     default:
       return PoolConfigs.development(); // Default to development settings

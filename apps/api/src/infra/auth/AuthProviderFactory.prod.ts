@@ -50,7 +50,14 @@ export function createAuthProvider(config?: Partial<AuthProviderConfig>): IAuthP
  * Get current auth provider configuration from environment
  */
 export function getAuthProviderConfig(): AuthProviderConfig {
-  const provider = (process.env.AUTH_PROVIDER as 'keycloak') || 'keycloak';
+  const envProvider = process.env.AUTH_PROVIDER;
+
+  // Validate the provider value if set
+  if (envProvider && envProvider !== 'keycloak') {
+    throw new AppError(`Unsupported AUTH_PROVIDER: ${envProvider}`, 'INVALID_AUTH_PROVIDER', 500);
+  }
+
+  const provider = envProvider === 'keycloak' ? 'keycloak' : 'keycloak';
 
   const config: AuthProviderConfig = {
     provider,
