@@ -4,6 +4,16 @@
  * This configuration runs integration tests sequentially to prevent database
  * conflicts when multiple test files try to access the shared testcontainer.
  *
+ * Parallel execution is disabled for the following reasons:
+ * 1. Database Resource Contention: Multiple test files accessing the same PostgreSQL
+ *    testcontainer can cause resource conflicts and connection issues
+ * 2. CI Environment Limitations: CI environments have limited resources and parallel
+ *    execution often leads to timeouts in PostgresSingleton.getInstance()
+ * 3. Test Isolation: Sequential execution ensures proper test isolation and
+ *    prevents flaky test failures due to concurrent database operations
+ * 4. Consistency: Same behavior in both local and CI environments reduces
+ *    environment-specific issues and debugging complexity
+ *
  * Key differences from unit tests:
  * - Sequential execution (fileParallelism: false, singleFork: true)
  * - Longer timeouts for database operations
@@ -50,16 +60,19 @@ export default defineConfig(({ mode }) => {
       // Use forks pool to ensure proper container management
       pool: 'forks',
 
-      // Configure pool options for parallel execution with proper isolation
+      // Run tests sequentially to prevent database conflicts
+      // when multiple test files try to access the shared testcontainer.
+      // Parallel execution causes resource contention and CI timeouts.
       poolOptions: {
         forks: {
-          singleFork: false, // Allow multiple forks for parallel execution
+          singleFork: true, // Always run sequentially - no environment-specific behavior
         },
       },
 
-      // Enable file parallelism for faster test execution
-      // Tests are properly isolated with migration mutex to prevent conflicts
-      fileParallelism: true,
+      // Disable file parallelism to ensure database isolation.
+      // This prevents flaky test failures and ensures consistent behavior
+      // across local development and CI environments.
+      fileParallelism: false,
 
       // Only include integration tests
       include: [
@@ -83,8 +96,10 @@ export default defineConfig(({ mode }) => {
       mockReset: true,
       restoreMocks: true,
 
-      // Longer timeout for integration tests
-      testTimeout: process.env.CI ? 60_000 : 30_000,
+      // Longer timeout for integration tests (45 seconds)
+      // Uses a unified timeout for consistency across all environments
+      // instead of environment-specific timeouts
+      testTimeout: 45_000,
     },
   };
 });

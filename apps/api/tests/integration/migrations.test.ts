@@ -26,7 +26,7 @@ describe('Database Migrations', () => {
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
     rootConnectionUrl = container.getConnectionUri();
-  });
+  }, 15000);
 
   // Clean up all tracked connections
   afterAll(async () => {
@@ -154,7 +154,7 @@ describe('🔒 Concurrency Control', () => {
     const fresh = await createTestDatabase({ root: rootConnectionUrl, migrate: false });
     dbUrl = fresh.url;
     cleanup = fresh.drop;
-  });
+  }, 15000);
 
   afterAll(async () => {
     await cleanup();
@@ -213,7 +213,7 @@ describe('🧪 Test Infrastructure Setup', () => {
   beforeAll(async () => {
     const container = await PostgresSingleton.getInstance();
     rootConnectionUrl = container.getConnectionUri();
-  });
+  }, 15000);
 
   afterAll(async () => {
     await closeAllTrackedClients();
