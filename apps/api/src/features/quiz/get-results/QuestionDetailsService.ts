@@ -82,12 +82,16 @@ export class StubQuestionDetailsService implements IQuestionDetailsService {
   async getMultipleQuestionDetails(
     questionIds: QuestionId[]
   ): Promise<Map<QuestionId, QuestionDetails>> {
-    const results = new Map<QuestionId, QuestionDetails>();
+    // Execute all getQuestionDetails calls in parallel to avoid N+1 query problem
+    const detailPromises = questionIds.map((id) => this.getQuestionDetails(id));
+    const allDetails = await Promise.all(detailPromises);
 
-    for (const questionId of questionIds) {
-      const details = await this.getQuestionDetails(questionId);
+    // Build the results map from the parallel execution results
+    const results = new Map<QuestionId, QuestionDetails>();
+    for (let i = 0; i < questionIds.length; i++) {
+      const details = allDetails[i];
       if (details) {
-        results.set(questionId, details);
+        results.set(details.id, details);
       }
     }
 
