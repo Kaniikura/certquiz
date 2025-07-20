@@ -8,6 +8,7 @@
 
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { getRootLogger } from '../logger/root-logger';
 import * as schema from './schema';
 import type { DB } from './types';
 
@@ -171,9 +172,18 @@ export async function shutdownConnection(
     if (onError) {
       onError(error);
     } else if (!silent) {
-      // Default error handling for production
-      // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
-      console.error('[database] Error during shutdown:', error);
+      // Default error handling for production with sanitized logging
+      const logger = getRootLogger();
+
+      // Sanitize error to avoid exposing sensitive connection details
+      const sanitizedError = {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        // Only include the error type/code, not full stack or connection details
+        code: error instanceof Error && 'code' in error ? error.code : undefined,
+        // Avoid logging the full error object which may contain connection strings
+      };
+
+      logger.error(sanitizedError, '[database] Error during shutdown');
     }
     // Test environments: silent = true, no logging
   }

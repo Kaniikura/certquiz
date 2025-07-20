@@ -14,24 +14,42 @@ const execAsync = promisify(exec);
  * Uses atomic promise chaining to avoid race conditions
  */
 export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
+  // Initialize resolveMutex with a no-op function to avoid undefined issues
+  let resolveMutex: () => void = () => {
+    // No-op function to ensure resolveMutex is never undefined
+  };
+
   // Create a new promise that will resolve when this migration completes
-  let resolveMutex: (() => void) | undefined;
   const thisOperationPromise = new Promise<void>((resolve) => {
     resolveMutex = resolve;
   });
 
-  // Atomically chain this operation to the current mutex
-  // This ensures that even if multiple calls happen simultaneously,
-  // they will be properly serialized
+  // Atomically update the mutex chain
+  // Store the previous mutex reference before any other operations
   const previousMutex = migrationMutex;
-  migrationMutex = previousMutex.then(async () => {
-    try {
-      // Wait for the actual operation to complete
-      await thisOperationPromise;
-    } catch {
-      // Ensure the chain continues even if this operation fails
+
+  // Create the new mutex chain that includes this operation
+  const newMutex = previousMutex.then(
+    async () => {
+      try {
+        // Wait for the actual operation to complete
+        await thisOperationPromise;
+      } catch {
+        // Ensure the chain continues even if this operation fails
+      }
+    },
+    // Also handle rejection to ensure chain continuity
+    async () => {
+      try {
+        await thisOperationPromise;
+      } catch {
+        // Ensure the chain continues
+      }
     }
-  });
+  );
+
+  // Atomically update the global mutex
+  migrationMutex = newMutex;
 
   try {
     // Wait for all previous operations to complete
@@ -40,7 +58,8 @@ export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } finally {
     // Signal that this operation is complete
-    resolveMutex?.();
+    // resolveMutex is guaranteed to be defined due to initialization
+    resolveMutex();
   }
 }
 
@@ -122,11 +141,18 @@ async function handleMigrationError(error: unknown, databaseUrl: string): Promis
       stack: error instanceof Error ? error.stack : undefined,
       stderr: error instanceof Error && 'stderr' in error ? error.stderr : undefined,
       stdout: error instanceof Error && 'stdout' in error ? error.stdout : undefined,
-      databaseUrl: databaseUrl.replace(/(password=[^&]*)|(:[^@]*@)/, (match, p1, p2) => {
-        if (p1) return 'password=***'; // Mask query parameter format
-        if (p2) return ':***@'; // Mask connection string format
-        return match;
-      }),
+      databaseUrl: (() => {
+        try {
+          const url = new URL(databaseUrl);
+          if (url.password) {
+            url.password = '***'; // Mask the password
+          }
+          return url.toString();
+        } catch {
+          // Fallback to original databaseUrl if parsing fails
+          return databaseUrl;
+        }
+      })(),
     });
     throw new Error(`Failed to run migrations: ${errorMessage}`);
   }

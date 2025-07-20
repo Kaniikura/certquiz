@@ -20,60 +20,76 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..'); // Go up one level to api directory
 
-export default defineConfig(({ mode }) => ({
-  root: rootDir,
-  plugins: [tsconfigPaths()],
+export default defineConfig(({ mode }) => {
+  // Load only TEST_* prefixed environment variables
+  const testEnv = loadEnv(mode ?? 'integration', rootDir, 'TEST_');
 
-  // API-specific cache directory
-  cacheDir: '.vitest_cache',
+  // Map TEST_* variables to their expected names for the application code
+  if (testEnv.TEST_DATABASE_URL) {
+    process.env.DATABASE_URL = testEnv.TEST_DATABASE_URL;
+  }
+  if (testEnv.TEST_API_PORT) {
+    process.env.API_PORT = testEnv.TEST_API_PORT;
+  }
+  if (testEnv.TEST_CACHE_DRIVER) {
+    process.env.CACHE_DRIVER = testEnv.TEST_CACHE_DRIVER;
+  }
 
-  test: {
-    // Load all environment variables for integration mode
-    env: loadEnv(mode ?? 'integration', rootDir, ''),
-    // Coverage and reporters for API app
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
-      reportsDirectory: './coverage',
-    },
-    reporters: ['default'],
+  return {
+    root: rootDir,
+    plugins: [tsconfigPaths()],
 
-    // Use forks pool to ensure proper container management
-    pool: 'forks',
+    // API-specific cache directory
+    cacheDir: '.vitest_cache',
 
-    // Run integration tests sequentially to avoid database conflicts
-    poolOptions: {
-      forks: {
-        singleFork: true,
+    test: {
+      // Pass the TEST_* prefixed environment variables to Vitest
+      env: testEnv,
+      // Coverage and reporters for API app
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov'],
+        reportsDirectory: './coverage',
       },
+      reporters: ['default'],
+
+      // Use forks pool to ensure proper container management
+      pool: 'forks',
+
+      // Run integration tests sequentially to avoid database conflicts
+      poolOptions: {
+        forks: {
+          singleFork: true,
+        },
+      },
+
+      // Configure file parallelism - disable for integration tests
+      fileParallelism: false,
+
+      // Only include integration tests
+      include: [
+        'src/**/*.integration.test.ts',
+        'tests/integration/**/*.test.ts',
+        'tests/e2e/**/*.test.ts',
+      ],
+
+      // Setup files for integration tests
+      setupFiles: [
+        './tests/setup/vitest.shared.setup.ts',
+        './tests/setup/vitest.integration.setup.ts',
+        './tests/vitest-teardown.ts',
+      ],
+
+      // Global test configuration
+      clearMocks: true,
+      environment: 'node',
+      exclude: ['**/node_modules/**', '**/dist/**'],
+      globals: true,
+      mockReset: true,
+      restoreMocks: true,
+
+      // Longer timeout for integration tests
+      testTimeout: process.env.CI ? 60_000 : 30_000,
     },
-
-    // Configure file parallelism - disable for integration tests
-    fileParallelism: false,
-
-    // Only include integration tests
-    include: [
-      'src/**/*.integration.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/e2e/**/*.test.ts',
-    ],
-
-    // Setup files for integration tests
-    setupFiles: [
-      './tests/setup/vitest.shared.setup.ts',
-      './tests/setup/vitest.integration.setup.ts',
-      './tests/vitest-teardown.ts',
-    ],
-
-    // Global test configuration
-    clearMocks: true,
-    environment: 'node',
-    exclude: ['**/node_modules/**', '**/dist/**'],
-    globals: true,
-    mockReset: true,
-    restoreMocks: true,
-
-    // Longer timeout for integration tests
-    testTimeout: process.env.CI ? 60_000 : 30_000,
-  },
-}));
+  };
+});
