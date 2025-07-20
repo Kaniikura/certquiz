@@ -21,13 +21,15 @@ import { PostgresSingleton } from '../tests/containers';
  *
  * @example
  * ```typescript
+ * import { app } from '@api/index';
  * import { setupTestDatabase } from '@api/test-utils/integration-helpers';
  *
  * describe('My Integration Test', () => {
- *   const { getDatabaseUrl } = setupTestDatabase();
+ *   setupTestDatabase();
  *
  *   it('should work with isolated database', async () => {
- *     // Your test code here
+ *     const response = await app.request('/health');
+ *     expect(response.status).toBe(200);
  *   });
  * });
  * ```
@@ -68,36 +70,7 @@ export function setupTestDatabase() {
   };
 }
 
-/**
- * Create an isolated app instance for integration tests
- *
- * This creates a new app instance that will use the test database
- * set up by setupTestDatabase(). The app is created lazily to ensure
- * the DATABASE_URL has been set by the beforeAll hook.
- *
- * @example
- * ```typescript
- * import { setupTestDatabase, createTestApp } from '@api/test-utils/integration-helpers';
- * import { app } from '@api/index';
- *
- * describe('My Integration Test', () => {
- *   setupTestDatabase();
- *   const testApp = createTestApp(app);
- *
- *   it('should handle requests', async () => {
- *     const response = await testApp.request('/health');
- *     expect(response.status).toBe(200);
- *   });
- * });
- * ```
- */
 // Type alias for the app type used in this project
 export type AppType = Hono<{
   Variables: LoggerVariables & RequestIdVariables;
 }>;
-
-export function createTestApp(app: AppType): AppType {
-  // Simply return the app instance passed in
-  // The test file is responsible for importing the app
-  return app;
-}

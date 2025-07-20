@@ -1,15 +1,14 @@
 import { app } from '@api/index';
-import { createTestApp, setupTestDatabase } from '@api/test-utils/integration-helpers';
+import { setupTestDatabase } from '@api/test-utils/integration-helpers';
 import { describe, expect, it } from 'vitest';
 
 describe('Health check endpoints', () => {
   // Setup isolated test database
   setupTestDatabase();
-  const testApp = createTestApp(app);
 
   describe('GET /health/live (liveness probe)', () => {
     it('returns healthy status with system information', async () => {
-      const res = await testApp.request('/health/live');
+      const res = await app.request('/health/live');
 
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toMatch(/application\/json/);
@@ -36,14 +35,14 @@ describe('Health check endpoints', () => {
 
     it('always returns 200 status', async () => {
       // Liveness should always succeed if the process is running
-      const res = await testApp.request('/health/live');
+      const res = await app.request('/health/live');
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /health/ready (readiness probe)', () => {
     it('returns health status with database connectivity', async () => {
-      const res = await testApp.request('/health/ready');
+      const res = await app.request('/health/ready');
 
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toMatch(/application\/json/);
@@ -65,7 +64,7 @@ describe('Health check endpoints', () => {
     });
 
     it('includes request ID from middleware', async () => {
-      const res = await testApp.request('/health/ready');
+      const res = await app.request('/health/ready');
 
       const requestId = res.headers.get('x-request-id');
       expect(requestId).toBeDefined();
@@ -75,7 +74,7 @@ describe('Health check endpoints', () => {
 
   describe('GET /health (legacy endpoint)', () => {
     it('returns readiness status for backward compatibility', async () => {
-      const res = await testApp.request('/health');
+      const res = await app.request('/health');
 
       expect(res.status).toBe(200);
 
@@ -98,15 +97,15 @@ describe('Health check endpoints', () => {
       const endpoints = ['/health', '/health/live', '/health/ready'];
 
       for (const endpoint of endpoints) {
-        const res = await testApp.request(endpoint);
+        const res = await app.request(endpoint);
         expect(res.headers.get('x-request-id')).toBeDefined();
       }
     });
 
     it('validates middleware chain works correctly', async () => {
       // Make multiple requests to ensure middleware state is isolated
-      const res1 = await testApp.request('/health/live');
-      const res2 = await testApp.request('/health/ready');
+      const res1 = await app.request('/health/live');
+      const res2 = await app.request('/health/ready');
 
       const requestId1 = res1.headers.get('x-request-id');
       const requestId2 = res2.headers.get('x-request-id');
@@ -117,7 +116,7 @@ describe('Health check endpoints', () => {
 
     it('health endpoints respond quickly', async () => {
       const start = Date.now();
-      const res = await testApp.request('/health/live');
+      const res = await app.request('/health/live');
       const duration = Date.now() - start;
 
       expect(res.status).toBe(200);
