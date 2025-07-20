@@ -12,6 +12,7 @@ import type { Logger } from '@api/infra/logger/root-logger';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
 import { type AppDependencies, buildApp } from '../../src/app-factory';
+import { FakeQuizRepository } from '../fakes';
 
 /**
  * Create a fake user repository for testing
@@ -104,6 +105,7 @@ export async function makeHttpApp() {
     clock: () => new Date('2025-01-01T00:00:00Z'),
     ping: noop, // Always healthy
     userRepository: fakeUserRepository(),
+    quizRepository: new FakeQuizRepository(),
     authProvider: fakeAuthProvider(),
   };
 
@@ -121,6 +123,7 @@ export async function makeBrokenDbApp() {
       throw new Error('Database connection failed');
     },
     userRepository: fakeUserRepository(),
+    quizRepository: new FakeQuizRepository(),
     authProvider: fakeAuthProvider(),
   };
 
