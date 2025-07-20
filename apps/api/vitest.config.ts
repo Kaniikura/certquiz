@@ -8,6 +8,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   // Load only TEST_* prefixed environment variables
+  // Use 'test' as fallback when mode is undefined, which loads .env.test files
+  // This is appropriate for the main test configuration targeting unit tests
   const testEnv = loadEnv(mode ?? 'test', __dirname, 'TEST_');
 
   // Map TEST_* variables to their expected names for the application code
