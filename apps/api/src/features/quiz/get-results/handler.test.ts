@@ -282,7 +282,8 @@ describe('getResultsHandler', () => {
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.message).toContain('Unauthorized');
+        expect(result.error.message).toBe('Session belongs to different user');
+        expect(result.error.name).toBe('AuthorizationError');
       }
     });
 

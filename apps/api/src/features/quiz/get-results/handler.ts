@@ -3,7 +3,7 @@
  * @fileoverview Business logic for retrieving quiz results with scoring
  */
 
-import { ValidationError } from '@api/shared/errors';
+import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { QuizSessionId, UserId } from '../domain/value-objects/Ids';
@@ -103,7 +103,7 @@ async function loadAndValidateSession(
 
     // Verify session ownership (security check)
     if (session.userId !== userId) {
-      return Result.fail(new Error('Unauthorized: Session belongs to different user'));
+      return Result.fail(new AuthorizationError('Session belongs to different user'));
     }
 
     return Result.ok(session);

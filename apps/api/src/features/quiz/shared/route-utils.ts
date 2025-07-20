@@ -3,6 +3,7 @@
  * @fileoverview Common utilities for error mapping and route handling
  */
 
+import { AuthorizationError } from '@api/shared/errors';
 import type { Context } from 'hono';
 
 /**
@@ -58,12 +59,12 @@ const quizErrorMappings: ErrorMapping[] = [
  * @returns HTTP error response with status and body
  */
 export function mapDomainErrorToHttp(error: Error): HttpErrorResponse {
-  // Check for authorization errors (special case)
-  if (error.message.includes('Unauthorized')) {
+  // Check for authorization errors using instanceof for type safety
+  if (error instanceof AuthorizationError) {
     return {
       status: 403,
       body: {
-        error: 'Unauthorized: Access denied',
+        error: error.message,
         code: 'UNAUTHORIZED',
       },
     };

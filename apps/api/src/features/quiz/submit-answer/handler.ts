@@ -4,7 +4,7 @@
  */
 
 import type { Clock } from '@api/shared/clock';
-import { ValidationError } from '@api/shared/errors';
+import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { OptionId, QuestionId, type QuizSessionId, type UserId } from '../domain/value-objects/Ids';
@@ -66,7 +66,7 @@ export async function submitAnswerHandler(
 
     // 4. Verify session ownership (security check)
     if (session.userId !== userId) {
-      return Result.fail(new Error('Unauthorized: Session belongs to different user'));
+      return Result.fail(new AuthorizationError('Session belongs to different user'));
     }
 
     // 5. Load question reference for validation
