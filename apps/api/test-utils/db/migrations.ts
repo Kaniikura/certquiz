@@ -4,26 +4,42 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 
-// Simple mutex to prevent concurrent migrations
+// Mutex to prevent concurrent migrations with proper atomic updates
 let migrationMutex: Promise<void> = Promise.resolve();
 
 const execAsync = promisify(exec);
 
 /**
  * Execute a function with mutex protection to prevent concurrent migrations
+ * Uses atomic promise chaining to avoid race conditions
  */
-async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
-  const currentMutex = migrationMutex;
+export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
+  // Create a new promise that will resolve when this migration completes
   let resolveMutex: (() => void) | undefined;
-
-  migrationMutex = new Promise<void>((resolve) => {
+  const thisOperationPromise = new Promise<void>((resolve) => {
     resolveMutex = resolve;
   });
 
+  // Atomically chain this operation to the current mutex
+  // This ensures that even if multiple calls happen simultaneously,
+  // they will be properly serialized
+  const previousMutex = migrationMutex;
+  migrationMutex = previousMutex.then(async () => {
+    try {
+      // Wait for the actual operation to complete
+      await thisOperationPromise;
+    } catch {
+      // Ensure the chain continues even if this operation fails
+    }
+  });
+
   try {
-    await currentMutex;
+    // Wait for all previous operations to complete
+    await previousMutex;
+    // Execute the actual operation
     return await fn();
   } finally {
+    // Signal that this operation is complete
     resolveMutex?.();
   }
 }
@@ -45,17 +61,19 @@ async function hasMigrationsToRun(): Promise<boolean> {
 
 /**
  * Execute drizzle-kit migrate with environment isolation
+ * Uses child process environment to avoid affecting global process.env
  */
-async function executeMigration(databaseUrl: string): Promise<void> {
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-
+export async function executeMigration(databaseUrl: string): Promise<void> {
   try {
-    // Set DATABASE_URL for drizzle-kit to use
-    process.env.DATABASE_URL = databaseUrl;
-
-    // Run migrations using drizzle-kit
+    // Run migrations using drizzle-kit with isolated environment
+    // This ensures that other concurrent operations in the same process
+    // are not affected by the DATABASE_URL change
     const { stderr } = await execAsync('bun run db:migrate', {
       cwd: path.join(__dirname, '../..'),
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+      },
     });
 
     if (stderr) {
@@ -66,13 +84,12 @@ async function executeMigration(databaseUrl: string): Promise<void> {
         console.warn('Migration stderr:', stderr);
       }
     }
-  } finally {
-    // Always restore original DATABASE_URL
-    if (originalDatabaseUrl !== undefined) {
-      process.env.DATABASE_URL = originalDatabaseUrl;
-    } else {
-      delete process.env.DATABASE_URL;
+  } catch (error) {
+    // Ensure we have proper error information
+    if (error instanceof Error) {
+      throw error;
     }
+    throw new Error(`Migration failed: ${String(error)}`);
   }
 }
 
