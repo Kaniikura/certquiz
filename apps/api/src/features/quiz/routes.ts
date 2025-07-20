@@ -21,7 +21,7 @@ export function createQuizRoutes(): Hono<{ Variables: { user: AuthUser } }> {
   const getResultsRoute = createGetResultsRoute();
 
   // Mount routes with proper path structure
-  // POST /quiz/:id/start - Start a new quiz session
+  // POST /quiz/start - Start a new quiz session
   app.route('/quiz', startQuizRoute);
 
   // POST /quiz/:sessionId/submit-answer - Submit an answer to a question

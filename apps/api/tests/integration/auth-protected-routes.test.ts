@@ -121,8 +121,8 @@ describe('Authentication Protected Routes Integration', () => {
       expect(body.data.createdBy).toBe('test-user-123');
     });
 
-    it('POST /api/quiz/:id/start should require authentication', async () => {
-      const res = await app.request('/api/quiz/test-quiz-123/start', {
+    it('POST /api/quiz/start should require authentication', async () => {
+      const res = await app.request('/api/quiz/start', {
         method: 'POST',
       });
       expect(res.status).toBe(401);

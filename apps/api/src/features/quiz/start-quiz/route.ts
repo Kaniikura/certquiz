@@ -20,15 +20,14 @@ export function createStartQuizRoute(): Hono<{ Variables: { user: AuthUser } }> 
 
   return createQuizRoute<StartQuizRequest, StartQuizResponse>({
     method: 'post',
-    path: '/:id/start',
+    path: '/start',
     loggerName: 'quiz.start-quiz',
     validator: zValidator('json', startQuizSchema),
     services: {
       questionService: deps.startQuizQuestionService,
       clock: deps.clock,
     },
-    getLogContext: (request, params) => ({
-      quizId: params.id,
+    getLogContext: (request) => ({
       examType: request.examType,
       questionCount: request.questionCount,
     }),
