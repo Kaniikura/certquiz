@@ -1,4 +1,14 @@
 /**
+ * Configuration mapping for test environment variables
+ * Maps TEST_* prefixed variables to their runtime equivalents
+ */
+const TEST_ENV_MAPPING: Record<string, string> = {
+  TEST_DATABASE_URL: 'DATABASE_URL',
+  TEST_API_PORT: 'API_PORT',
+  TEST_CACHE_DRIVER: 'CACHE_DRIVER',
+};
+
+/**
  * Maps TEST_* prefixed environment variables to their expected names
  *
  * When using Vite's loadEnv with a 'TEST_' prefix, it only loads variables
@@ -11,17 +21,13 @@
 export function mapTestEnvironmentVariables(
   testEnv: Record<string, string>
 ): Record<string, string> {
-  // Map TEST_* variables to their expected names for the application code
   const mappedEnv: Record<string, string> = {};
 
-  if (testEnv.TEST_DATABASE_URL) {
-    mappedEnv.DATABASE_URL = testEnv.TEST_DATABASE_URL;
-  }
-  if (testEnv.TEST_API_PORT) {
-    mappedEnv.API_PORT = testEnv.TEST_API_PORT;
-  }
-  if (testEnv.TEST_CACHE_DRIVER) {
-    mappedEnv.CACHE_DRIVER = testEnv.TEST_CACHE_DRIVER;
+  // Iterate through the mapping configuration
+  for (const [testKey, runtimeKey] of Object.entries(TEST_ENV_MAPPING)) {
+    if (testEnv[testKey]) {
+      mappedEnv[runtimeKey] = testEnv[testKey];
+    }
   }
 
   return mappedEnv;
