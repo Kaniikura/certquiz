@@ -57,7 +57,7 @@ export function getAuthProviderConfig(): AuthProviderConfig {
     throw new AppError(`Unsupported AUTH_PROVIDER: ${envProvider}`, 'INVALID_AUTH_PROVIDER', 500);
   }
 
-  const provider = envProvider === 'keycloak' ? 'keycloak' : 'keycloak';
+  const provider = 'keycloak';
 
   const config: AuthProviderConfig = {
     provider,
