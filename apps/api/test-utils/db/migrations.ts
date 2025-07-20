@@ -149,8 +149,8 @@ async function handleMigrationError(error: unknown, databaseUrl: string): Promis
           }
           return url.toString();
         } catch {
-          // Fallback to original databaseUrl if parsing fails
-          return databaseUrl;
+          // Fallback to a generic masked string if parsing fails
+          return 'postgresql://***:***@***';
         }
       })(),
     });
