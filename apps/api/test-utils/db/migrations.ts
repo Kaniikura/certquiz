@@ -43,29 +43,20 @@ export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
     resolveMutex = resolve;
   });
 
-  // Atomically update the mutex chain
   // Store the previous mutex reference before any other operations
   const previousMutex = migrationMutex;
 
-  // Create the new mutex chain that includes this operation
-  const newMutex = previousMutex.then(
-    async () => {
-      try {
-        // Wait for the actual operation to complete
-        await thisOperationPromise;
-      } catch {
-        // Ensure the chain continues even if this operation fails
-      }
-    },
-    // Also handle rejection to ensure chain continuity
-    async () => {
-      try {
-        await thisOperationPromise;
-      } catch {
-        // Ensure the chain continues
-      }
+  // Create the new mutex chain using async/await for better readability
+  const newMutex = (async () => {
+    try {
+      // Wait for the previous mutex to resolve
+      await previousMutex;
+      // Wait for the actual operation to complete
+      await thisOperationPromise;
+    } catch {
+      // Ensure the chain continues even if this operation fails
     }
-  );
+  })();
 
   // Atomically update the global mutex
   migrationMutex = newMutex;
