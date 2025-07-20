@@ -167,10 +167,10 @@ describe('FakeUnitOfWork', () => {
 
     it('should clear all users', async () => {
       await userRepo.save(testUser);
-      expect(userRepo.getAll()).toHaveLength(1);
+      expect(userRepo.getAllUsers()).toHaveLength(1);
 
       userRepo.clear();
-      expect(userRepo.getAll()).toHaveLength(0);
+      expect(userRepo.getAllUsers()).toHaveLength(0);
 
       const found = await userRepo.findById(testUser.id);
       expect(found).toBeNull();

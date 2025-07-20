@@ -96,13 +96,6 @@ export class FakeUserRepository implements IUserRepository {
   }
 
   /**
-   * Get all users (test helper) - alias for getAllUsers
-   */
-  getAll(): User[] {
-    return this.getAllUsers();
-  }
-
-  /**
    * Get user count (test helper)
    */
   getUserCount(): number {
