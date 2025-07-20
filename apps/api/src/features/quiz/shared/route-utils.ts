@@ -7,6 +7,43 @@ import { AuthorizationError } from '@api/shared/errors';
 import type { Context } from 'hono';
 
 /**
+ * HTTP Status Code Constants
+ * Semantic names for HTTP status codes used in quiz error handling
+ */
+
+// Client Error Responses (4xx)
+/** 400 - The request contains invalid data or malformed syntax */
+const HTTP_BAD_REQUEST = 400 as const;
+
+/** 403 - The user lacks permission to access this resource */
+const HTTP_FORBIDDEN = 403 as const;
+
+/** 404 - The requested resource (session, question) was not found */
+const HTTP_NOT_FOUND = 404 as const;
+
+/** 409 - The request conflicts with current state (e.g., quiz expired, question already answered) */
+const HTTP_CONFLICT = 409 as const;
+
+/** 422 - The request is well-formed but contains invalid data (e.g., insufficient questions) */
+const HTTP_UNPROCESSABLE_ENTITY = 422 as const;
+
+// Server Error Responses (5xx)
+/** 500 - An unexpected server error occurred */
+const HTTP_INTERNAL_SERVER_ERROR = 500 as const;
+
+/**
+ * Union type of all supported HTTP status codes for error responses
+ * Used for type-safe error handling in Hono routes
+ */
+type SupportedStatusCode =
+  | typeof HTTP_BAD_REQUEST
+  | typeof HTTP_FORBIDDEN
+  | typeof HTTP_NOT_FOUND
+  | typeof HTTP_CONFLICT
+  | typeof HTTP_UNPROCESSABLE_ENTITY
+  | typeof HTTP_INTERNAL_SERVER_ERROR;
+
+/**
  * Error mapping configuration
  */
 interface ErrorMapping {
@@ -37,20 +74,36 @@ interface HttpErrorResponse {
  */
 const quizErrorMappings: ErrorMapping[] = [
   // Common errors
-  { errorName: 'ValidationError', httpStatus: 400 },
-  { errorName: 'SessionNotFoundError', httpStatus: 404, code: 'SESSION_NOT_FOUND' },
+  { errorName: 'ValidationError', httpStatus: HTTP_BAD_REQUEST },
+  { errorName: 'SessionNotFoundError', httpStatus: HTTP_NOT_FOUND, code: 'SESSION_NOT_FOUND' },
 
   // Start quiz errors
-  { errorName: 'ActiveSessionError', httpStatus: 409, code: 'ACTIVE_SESSION_EXISTS' },
-  { errorName: 'InsufficientQuestionsError', httpStatus: 422, code: 'INSUFFICIENT_QUESTIONS' },
+  { errorName: 'ActiveSessionError', httpStatus: HTTP_CONFLICT, code: 'ACTIVE_SESSION_EXISTS' },
+  {
+    errorName: 'InsufficientQuestionsError',
+    httpStatus: HTTP_UNPROCESSABLE_ENTITY,
+    code: 'INSUFFICIENT_QUESTIONS',
+  },
 
   // Submit answer errors
-  { errorName: 'QuizExpiredError', httpStatus: 409, code: 'QUIZ_EXPIRED' },
-  { errorName: 'QuizNotInProgressError', httpStatus: 409, code: 'QUIZ_NOT_IN_PROGRESS' },
-  { errorName: 'QuestionNotFoundError', httpStatus: 404, code: 'QUESTION_NOT_FOUND' },
-  { errorName: 'QuestionAlreadyAnsweredError', httpStatus: 409, code: 'QUESTION_ALREADY_ANSWERED' },
-  { errorName: 'InvalidOptionsError', httpStatus: 422, code: 'INVALID_OPTIONS' },
-  { errorName: 'OutOfOrderAnswerError', httpStatus: 422, code: 'OUT_OF_ORDER_ANSWER' },
+  { errorName: 'QuizExpiredError', httpStatus: HTTP_CONFLICT, code: 'QUIZ_EXPIRED' },
+  { errorName: 'QuizNotInProgressError', httpStatus: HTTP_CONFLICT, code: 'QUIZ_NOT_IN_PROGRESS' },
+  { errorName: 'QuestionNotFoundError', httpStatus: HTTP_NOT_FOUND, code: 'QUESTION_NOT_FOUND' },
+  {
+    errorName: 'QuestionAlreadyAnsweredError',
+    httpStatus: HTTP_CONFLICT,
+    code: 'QUESTION_ALREADY_ANSWERED',
+  },
+  {
+    errorName: 'InvalidOptionsError',
+    httpStatus: HTTP_UNPROCESSABLE_ENTITY,
+    code: 'INVALID_OPTIONS',
+  },
+  {
+    errorName: 'OutOfOrderAnswerError',
+    httpStatus: HTTP_UNPROCESSABLE_ENTITY,
+    code: 'OUT_OF_ORDER_ANSWER',
+  },
 ];
 
 /**
@@ -62,7 +115,7 @@ export function mapDomainErrorToHttp(error: Error): HttpErrorResponse {
   // Check for authorization errors using instanceof for type safety
   if (error instanceof AuthorizationError) {
     return {
-      status: 403,
+      status: HTTP_FORBIDDEN,
       body: {
         error: error.message,
         code: 'UNAUTHORIZED',
@@ -85,7 +138,7 @@ export function mapDomainErrorToHttp(error: Error): HttpErrorResponse {
 
   // Default to internal server error
   return {
-    status: 500,
+    status: HTTP_INTERNAL_SERVER_ERROR,
     body: {
       error: 'Internal server error',
     },
@@ -112,7 +165,7 @@ export function handleRouteError(
   const { status, body } = mapDomainErrorToHttp(error);
 
   // Log appropriately based on status
-  if (status >= 500) {
+  if (status >= HTTP_INTERNAL_SERVER_ERROR) {
     logger.error('Route handler error', {
       ...context,
       errorType: error.name,
@@ -127,21 +180,9 @@ export function handleRouteError(
     });
   }
 
-  // Cast to specific status codes that Hono accepts
-  switch (status) {
-    case 400:
-      return c.json(body, 400);
-    case 403:
-      return c.json(body, 403);
-    case 404:
-      return c.json(body, 404);
-    case 409:
-      return c.json(body, 409);
-    case 422:
-      return c.json(body, 422);
-    default:
-      return c.json(body, 500);
-  }
+  // Return the response with the appropriate status code
+  // Cast to satisfy Hono's type requirements
+  return c.json(body, status as SupportedStatusCode);
 }
 
 /**
