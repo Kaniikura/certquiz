@@ -9,6 +9,8 @@ import { createAdminRoutes } from './features/admin/routes-factory';
 import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
+import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
+import { questionRoutes } from './features/question/routes';
 import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
 import { createQuizRoutes } from './features/quiz/routes-factory';
 // Dependencies interfaces
@@ -39,6 +41,7 @@ export interface AppDependencies {
   // Domain services
   userRepository: IUserRepository;
   quizRepository: IQuizRepository;
+  questionRepository: IQuestionRepository;
   authProvider: IAuthProvider;
 }
 
@@ -88,6 +91,9 @@ export function buildApp(deps: AppDependencies): Hono<{
 
   // Public auth routes (login, register, etc.)
   app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
+
+  // Question routes (public questions + protected admin creation)
+  app.route('/api/questions', questionRoutes);
 
   // Quiz routes (public + protected sections)
   app.route('/api/quiz', createQuizRoutes(deps.quizRepository));
@@ -144,6 +150,9 @@ export async function buildProductionApp(): Promise<
   const { DrizzleUserRepository } = await import(
     './features/auth/domain/repositories/DrizzleUserRepository'
   );
+  const { DrizzleQuestionRepository } = await import(
+    './features/question/domain/repositories/DrizzleQuestionRepository'
+  );
   const { DrizzleQuizRepository } = await import(
     './features/quiz/domain/repositories/DrizzleQuizRepository'
   );
@@ -156,11 +165,17 @@ export async function buildProductionApp(): Promise<
   const logger = getRootLogger();
   const authProvider = createAuthProvider();
   const userRepositoryLogger = createDomainLogger('auth.repository.user');
+  const questionRepositoryLogger = createDomainLogger('question.repository');
   const quizRepositoryLogger = createDomainLogger('quiz.repository');
 
   // Use withTx helper to reduce boilerplate
   const userRepository = withTx(
     (trx) => new DrizzleUserRepository(trx, userRepositoryLogger),
+    withTransaction
+  );
+
+  const questionRepository = withTx(
+    (trx) => new DrizzleQuestionRepository(trx, questionRepositoryLogger),
     withTransaction
   );
 
@@ -174,6 +189,7 @@ export async function buildProductionApp(): Promise<
     clock: () => new Date(),
     ping,
     userRepository,
+    questionRepository,
     quizRepository,
     authProvider,
   });
