@@ -61,7 +61,11 @@ certquiz/
 │       │   │   ├── logger/     # Logging infrastructure
 │       │   │   ├── auth/       # Auth provider implementations
 │       │   │   └── email/      # Email service
-│       │   ├── shared/         # Shared kernel
+│       │   ├── shared/         # Shared kernel (cross-feature utilities)
+│       │   │   ├── errors.ts   # Application-wide error classes
+│       │   │   ├── result.ts   # Result<T,E> type for error handling
+│       │   │   ├── http-status.ts # HTTP status code constants
+│       │   │   ├── clock.ts    # Clock abstraction for testing
 │       │   │   ├── logger/     # Domain logging interface
 │       │   │   └── repository/ # Base repository classes
 │       │   ├── test-support/   # Feature-specific domain test utilities

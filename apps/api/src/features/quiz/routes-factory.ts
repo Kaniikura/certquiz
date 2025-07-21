@@ -94,15 +94,13 @@ export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
     });
   });
 
-  // POST /api/quiz/:id/start - Start a quiz session (authenticated users)
-  protectedRoutes.post('/:id/start', async (c) => {
-    const id = c.req.param('id');
+  // POST /api/quiz/start - Start a quiz session (authenticated users)
+  protectedRoutes.post('/start', async (c) => {
     const user = c.get('user');
     // TODO: Implement quiz session start
     return c.json({
       success: true,
       data: {
-        quizId: id,
         userId: user.sub,
         message: 'Quiz session start coming soon',
       },
