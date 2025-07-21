@@ -38,47 +38,77 @@ export class CategoryStats {
       return Result.fail(new ValidationError('Categories must be an object'));
     }
 
-    // Validate each category stat structure
-    const categories = dataObj.categories as Record<string, unknown>;
-    const validatedCategories: Record<string, CategoryStat> = {};
-
-    for (const [key, value] of Object.entries(categories)) {
-      if (typeof value !== 'object' || value === null) {
-        return Result.fail(new ValidationError(`Invalid category stat for ${key}`));
-      }
-
-      const stat = value as { correct?: unknown; total?: unknown; accuracy?: unknown };
-      if (
-        typeof stat.correct !== 'number' ||
-        typeof stat.total !== 'number' ||
-        typeof stat.accuracy !== 'number'
-      ) {
-        return Result.fail(new ValidationError(`Invalid stat properties for category ${key}`));
-      }
-
-      // Validate numeric ranges
-      if (stat.correct < 0 || stat.total < 0 || stat.accuracy < 0 || stat.accuracy > 100) {
-        return Result.fail(
-          new ValidationError(
-            `Invalid stat values for category ${key}: values must be non-negative and accuracy must be <= 100`
-          )
-        );
-      }
-
-      validatedCategories[key] = {
-        correct: stat.correct,
-        total: stat.total,
-        accuracy: stat.accuracy,
-      };
+    // Delegate category validation to separate method
+    const categoriesResult = CategoryStats.validateCategories(
+      dataObj.categories as Record<string, unknown>
+    );
+    if (!categoriesResult.success) {
+      return Result.fail(categoriesResult.error);
     }
 
-    // Validate structure matches CategoryStatsData
     const validatedData: CategoryStatsData = {
       version: dataObj.version,
-      categories: validatedCategories,
+      categories: categoriesResult.data,
     };
 
     return Result.ok(new CategoryStats(validatedData));
+  }
+
+  /**
+   * Validate all categories
+   * @private
+   */
+  private static validateCategories(
+    categories: Record<string, unknown>
+  ): Result<Record<string, CategoryStat>, ValidationError> {
+    const validatedCategories: Record<string, CategoryStat> = {};
+
+    for (const [key, value] of Object.entries(categories)) {
+      const result = CategoryStats.validateCategoryStat(key, value);
+      if (!result.success) {
+        return Result.fail(result.error);
+      }
+      validatedCategories[key] = result.data;
+    }
+
+    return Result.ok(validatedCategories);
+  }
+
+  /**
+   * Validate a single category stat
+   * @private
+   */
+  private static validateCategoryStat(
+    key: string,
+    value: unknown
+  ): Result<CategoryStat, ValidationError> {
+    if (typeof value !== 'object' || value === null) {
+      return Result.fail(new ValidationError(`Invalid category stat for ${key}`));
+    }
+
+    const stat = value as { correct?: unknown; total?: unknown; accuracy?: unknown };
+    if (
+      typeof stat.correct !== 'number' ||
+      typeof stat.total !== 'number' ||
+      typeof stat.accuracy !== 'number'
+    ) {
+      return Result.fail(new ValidationError(`Invalid stat properties for category ${key}`));
+    }
+
+    // Validate numeric ranges
+    if (stat.correct < 0 || stat.total < 0 || stat.accuracy < 0 || stat.accuracy > 100) {
+      return Result.fail(
+        new ValidationError(
+          `Invalid stat values for category ${key}: values must be non-negative and accuracy must be <= 100`
+        )
+      );
+    }
+
+    return Result.ok({
+      correct: stat.correct,
+      total: stat.total,
+      accuracy: stat.accuracy,
+    });
   }
 
   /**
