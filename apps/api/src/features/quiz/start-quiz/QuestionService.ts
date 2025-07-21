@@ -3,6 +3,7 @@
  * @fileoverview Service for fetching questions to include in quiz sessions
  */
 
+import * as crypto from 'node:crypto';
 import type { QuestionId } from '../domain/value-objects/Ids';
 
 /**
@@ -40,12 +41,16 @@ export class StubQuestionService implements IQuestionService {
 
     // Create a unique seed based on params to ensure different question sets
     const seed = `${params.examType}-${params.category || 'all'}-${params.difficulty || 'mixed'}`;
-    const seedHash = this.hashString(seed);
+
+    // Generate deterministic hash for consistent test IDs
+    // NOTE: This is a stub implementation for development/testing.
+    // In production, replace this entire StubQuestionService with a real implementation
+    // that queries the question database and returns actual question IDs.
+    const seedHash = crypto.createHash('sha256').update(seed).digest('hex').slice(0, 8);
 
     for (let i = 0; i < params.questionCount; i++) {
       // Generate unique UUIDs based on params and index for consistent testing
-      const uniqueId =
-        `${seedHash.slice(0, 8)}-0000-4000-8000-${String(i).padStart(12, '0')}` as QuestionId;
+      const uniqueId = `${seedHash}-0000-4000-8000-${String(i).padStart(12, '0')}` as QuestionId;
       mockQuestions.push(uniqueId);
     }
 
@@ -57,15 +62,5 @@ export class StubQuestionService implements IQuestionService {
     }
 
     return mockQuestions;
-  }
-
-  private hashString(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0');
   }
 }
