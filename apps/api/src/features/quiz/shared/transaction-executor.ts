@@ -39,19 +39,8 @@ export interface TransactionParams {
 export type TransactionHandler<TResult> = (context: TransactionContext) => Promise<TResult>;
 
 /**
- * Valid argument types for transaction handler factories.
- * Represents JSON-serializable values that can be safely passed to handlers.
- *
- * This type constraint ensures type safety while allowing common data types:
- * - Primitives: string, number, boolean, null, undefined
- * - Objects: Plain objects with serializable properties
- * - Arrays: Arrays of serializable values
- *
- * Explicitly excludes non-serializable types:
- * - Functions
- * - Symbols
- * - BigInts
- * - Class instances (except Date)
+ * Represents JSON-serializable values that can be safely passed to transaction handlers.
+ * Includes primitives, plain objects, arrays, and Date instances.
  */
 export type HandlerArgument =
   | string
