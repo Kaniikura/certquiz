@@ -19,42 +19,60 @@ export interface PostgresError extends Error {
 }
 
 /**
+ * Recursively search for a PostgreSQL error with specific code in the cause chain
+ * Safely handles multiple levels of error wrapping with cycle detection
+ */
+function findPostgresErrorInCauseChain(
+  error: unknown,
+  targetCode: string,
+  visited = new WeakSet<object>(),
+  depth = 0
+): PostgresError | null {
+  // Safety limits: max depth and cycle detection
+  if (depth > 10 || !error || typeof error !== 'object') {
+    return null;
+  }
+
+  // Prevent infinite recursion from circular references
+  if (visited.has(error as object)) {
+    return null;
+  }
+  visited.add(error as object);
+
+  const pgError = error as PostgresError;
+
+  // Check if current error has the target code
+  if (pgError.code === targetCode) {
+    return pgError;
+  }
+
+  // Recursively check the cause chain
+  if ('cause' in pgError && pgError.cause) {
+    return findPostgresErrorInCauseChain(pgError.cause, targetCode, visited, depth + 1);
+  }
+
+  return null;
+}
+
+/**
  * Check if error is a PostgreSQL unique constraint violation
  * SQLSTATE 23505 indicates a unique constraint violation
  *
- * Drizzle ORM wraps PostgreSQL errors, so we need to check both:
- * 1. Direct PostgreSQL error with code property
- * 2. Drizzle error with cause property containing the PostgreSQL error
+ * Recursively unwraps nested causes to handle multiple wrapper layers
+ * (e.g., driver → drizzle adapter → transaction wrapper)
  */
 export function isPgUniqueViolation(error: unknown): error is PostgresError {
-  if (!error || typeof error !== 'object') return false;
-
-  // Check if it's a direct PostgreSQL error
-  const pgError = error as PostgresError;
-  if (pgError.code === '23505') {
-    return true;
-  }
-
-  // Check if it's a Drizzle error wrapping a PostgreSQL error
-  // Drizzle errors have a 'cause' property with the original error
-  if ('cause' in pgError && pgError.cause && typeof pgError.cause === 'object') {
-    const cause = pgError.cause as PostgresError;
-    return cause.code === '23505';
-  }
-
-  return false;
+  return findPostgresErrorInCauseChain(error, '23505') !== null;
 }
 
 /**
  * Map PostgreSQL unique constraint violations to domain errors
  * Based on the constraint name, we can determine which field caused the violation
+ * Recursively unwraps nested causes to find the actual PostgreSQL error
  */
 export function mapPgUniqueViolationToDomainError(error: PostgresError): Error {
-  // Extract the actual PostgreSQL error if it's wrapped
-  let pgError = error;
-  if ('cause' in error && error.cause && typeof error.cause === 'object') {
-    pgError = error.cause as PostgresError;
-  }
+  // Extract the actual PostgreSQL error by recursively searching the cause chain
+  const pgError = findPostgresErrorInCauseChain(error, '23505') || error;
 
   const constraint = pgError.constraint?.toLowerCase() || '';
   const detail = pgError.detail?.toLowerCase() || '';
