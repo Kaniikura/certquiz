@@ -135,15 +135,9 @@ export const registerRoute = new Hono<{
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'REPOSITORY_ERROR',
-          message: 'Internal server error',
-        },
-      },
-      500
+    const { status, body: errorBody } = mapRegisterError(
+      error instanceof Error ? error : new Error('Unknown error')
     );
+    return c.json(errorBody, status as SupportedStatusCode);
   }
 });
