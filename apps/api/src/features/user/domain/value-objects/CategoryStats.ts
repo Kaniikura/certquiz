@@ -56,7 +56,6 @@ export class CategoryStats {
 
   /**
    * Validate all categories
-   * @private
    */
   private static validateCategories(
     categories: Record<string, unknown>
@@ -76,7 +75,6 @@ export class CategoryStats {
 
   /**
    * Validate a single category stat
-   * @private
    */
   private static validateCategoryStat(
     key: string,
