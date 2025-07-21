@@ -18,6 +18,12 @@ import type { IQuestionService as StartQuizQuestionService } from '../start-quiz
 import type { IQuestionService as SubmitAnswerQuestionService } from '../submit-answer/QuestionService';
 
 /**
+ * ASCII code for uppercase letter 'A'
+ * Used to generate option labels (A, B, C, etc.)
+ */
+const ASCII_CODE_FOR_A = 65 as const;
+
+/**
  * Mock quiz repository with all required methods
  */
 export interface MockQuizRepository {
@@ -131,7 +137,7 @@ export function createTestQuestionDetails(
     text: questionText,
     options: optionIds.map((id, index) => ({
       id,
-      text: `Option ${String.fromCharCode(65 + index)}${index === correctOptionIndex ? ' (Correct)' : ''}`,
+      text: `Option ${String.fromCharCode(ASCII_CODE_FOR_A + index)}${index === correctOptionIndex ? ' (Correct)' : ''}`,
       isCorrect: index === correctOptionIndex,
     })),
     correctOptionIds: [optionIds[correctOptionIndex]],
