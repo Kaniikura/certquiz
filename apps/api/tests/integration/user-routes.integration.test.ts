@@ -19,7 +19,8 @@ let testPublicKey: CryptoKey;
 // Create the spy outside the mock so it can access testPublicKey at runtime
 const getKeySpy = vi.fn(async () => testPublicKey);
 
-// Mock only createRemoteJWKSet
+// Mock only createRemoteJWKSet to control the behavior of the JWK retrieval process during tests.
+// Other jose functions are kept as actual implementations to ensure the integrity of cryptographic operations.
 vi.mock('jose', async () => {
   const actual = await vi.importActual<typeof import('jose')>('jose');
 
