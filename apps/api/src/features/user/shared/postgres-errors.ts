@@ -6,6 +6,12 @@
 import { EmailAlreadyTakenError, UsernameAlreadyTakenError } from './errors';
 
 /**
+ * Maximum depth to traverse when searching through error cause chains
+ * Prevents infinite recursion and excessive performance cost
+ */
+const MAX_CAUSE_CHAIN_DEPTH = 10;
+
+/**
  * PostgreSQL error interface
  * Drizzle wraps database errors but preserves the original error properties
  */
@@ -29,7 +35,7 @@ function findPostgresErrorInCauseChain(
   depth = 0
 ): PostgresError | null {
   // Safety limits: max depth and cycle detection
-  if (depth > 10 || !error || typeof error !== 'object') {
+  if (depth > MAX_CAUSE_CHAIN_DEPTH || !error || typeof error !== 'object') {
     return null;
   }
 

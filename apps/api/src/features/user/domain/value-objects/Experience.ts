@@ -6,11 +6,19 @@ import { Result } from '@api/shared/result';
  */
 export class Experience {
   private static readonly MIN_EXPERIENCE = 0;
-  private static readonly MAX_EXPERIENCE = 1000000; // 1 million cap
   private static readonly BASE_CORRECT_POINTS = 10;
   private static readonly BASE_INCORRECT_POINTS = 2; // Consolation points
 
   private constructor(public readonly value: number) {}
+
+  /**
+   * Retrieve the maximum experience cap from configuration or environment
+   * Allows for easy adjustment without code changes
+   */
+  private static getMaxExperience(): number {
+    const maxExperience = process.env.MAX_EXPERIENCE_CAP;
+    return maxExperience ? parseInt(maxExperience, 10) : 1000000; // Default to 1 million
+  }
 
   /**
    * Create Experience from a value
@@ -24,8 +32,10 @@ export class Experience {
       return Result.fail(new ValidationError('Experience cannot be negative'));
     }
 
-    if (value > Experience.MAX_EXPERIENCE) {
-      return Result.fail(new ValidationError('Experience cannot exceed 1000000'));
+    if (value > Experience.getMaxExperience()) {
+      return Result.fail(
+        new ValidationError(`Experience cannot exceed ${Experience.getMaxExperience()}`)
+      );
     }
 
     return Result.ok(new Experience(value));
@@ -39,7 +49,7 @@ export class Experience {
       return Result.fail(new ValidationError('Cannot add negative experience'));
     }
 
-    const newValue = Math.min(this.value + points, Experience.MAX_EXPERIENCE);
+    const newValue = Math.min(this.value + points, Experience.getMaxExperience());
     return Experience.create(newValue);
   }
 
