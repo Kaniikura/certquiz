@@ -7,48 +7,8 @@ import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils'
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { getProfileHandler, UserNotFoundError } from './handler';
-
-// Error mapper for get profile errors
-function mapGetProfileError(error: Error): { status: number; body: object } {
-  if (error.name === 'ValidationError') {
-    return {
-      status: 400,
-      body: {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message,
-        },
-      },
-    };
-  }
-
-  if (error instanceof UserNotFoundError) {
-    return {
-      status: 404,
-      body: {
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: error.message,
-        },
-      },
-    };
-  }
-
-  // Default error response
-  return {
-    status: 500,
-    body: {
-      success: false,
-      error: {
-        code: 'REPOSITORY_ERROR',
-        message: 'Internal server error',
-      },
-    },
-  };
-}
+import { mapUserError } from '../shared/error-mapper';
+import { getProfileHandler } from './handler';
 
 // Define context variables for this route
 type GetProfileVariables = {
@@ -82,7 +42,7 @@ export const getProfileRoute = new Hono<{
         errorMessage: error.message,
       });
 
-      const { status, body: errorBody } = mapGetProfileError(error);
+      const { status, body: errorBody } = mapUserError(error);
       return c.json(errorBody, status as SupportedStatusCode);
     }
 
@@ -103,15 +63,9 @@ export const getProfileRoute = new Hono<{
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'REPOSITORY_ERROR',
-          message: 'Internal server error',
-        },
-      },
-      500
+    const { status, body: errorBody } = mapUserError(
+      error instanceof Error ? error : new Error('Unknown error')
     );
+    return c.json(errorBody, status as SupportedStatusCode);
   }
 });

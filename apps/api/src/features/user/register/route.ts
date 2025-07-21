@@ -8,63 +8,8 @@ import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { EmailAlreadyTakenError, registerHandler, UsernameAlreadyTakenError } from './handler';
-
-// Error mapper for registration errors
-function mapRegisterError(error: Error): { status: number; body: object } {
-  if (error.name === 'ValidationError') {
-    return {
-      status: 400,
-      body: {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message,
-        },
-      },
-    };
-  }
-
-  if (error instanceof EmailAlreadyTakenError) {
-    return {
-      status: 409,
-      body: {
-        success: false,
-        error: {
-          code: 'EMAIL_ALREADY_TAKEN',
-          message: error.message,
-          field: 'email',
-        },
-      },
-    };
-  }
-
-  if (error instanceof UsernameAlreadyTakenError) {
-    return {
-      status: 409,
-      body: {
-        success: false,
-        error: {
-          code: 'USERNAME_ALREADY_TAKEN',
-          message: error.message,
-          field: 'username',
-        },
-      },
-    };
-  }
-
-  // Default error response
-  return {
-    status: 500,
-    body: {
-      success: false,
-      error: {
-        code: 'REPOSITORY_ERROR',
-        message: 'Internal server error',
-      },
-    },
-  };
-}
+import { mapUserError } from '../shared/error-mapper';
+import { registerHandler } from './handler';
 
 // Define context variables for this route
 type RegisterVariables = {
@@ -111,7 +56,7 @@ export const registerRoute = new Hono<{
         errorMessage: error.message,
       });
 
-      const { status, body: errorBody } = mapRegisterError(error);
+      const { status, body: errorBody } = mapUserError(error);
       return c.json(errorBody, status as SupportedStatusCode);
     }
 
@@ -135,7 +80,7 @@ export const registerRoute = new Hono<{
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    const { status, body: errorBody } = mapRegisterError(
+    const { status, body: errorBody } = mapUserError(
       error instanceof Error ? error : new Error('Unknown error')
     );
     return c.json(errorBody, status as SupportedStatusCode);

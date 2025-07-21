@@ -9,7 +9,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { Email, type UserId, UserRole } from '../domain/value-objects';
-import { EmailAlreadyTakenError, registerHandler, UsernameAlreadyTakenError } from './handler';
+import { EmailAlreadyTakenError, UsernameAlreadyTakenError } from '../shared/errors';
+import { registerHandler } from './handler';
 
 // Mock repository for testing
 class MockUserRepository implements IUserRepository {

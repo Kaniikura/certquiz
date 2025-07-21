@@ -9,18 +9,9 @@ import { Result } from '@api/shared/result';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserId } from '../domain/value-objects';
 import { extractCategoryStats } from '../shared/category-stats-utils';
+import { UserNotFoundError } from '../shared/errors';
 import type { UpdateProgressResponse } from './dto';
 import { updateProgressSchema } from './validation';
-
-/**
- * Custom errors for update progress use case
- */
-export class UserNotFoundError extends Error {
-  constructor(userId: string) {
-    super(`User with ID ${userId} not found`);
-    this.name = 'UserNotFoundError';
-  }
-}
 
 /**
  * Update progress use case handler

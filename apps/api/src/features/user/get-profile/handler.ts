@@ -8,18 +8,9 @@ import { Result } from '@api/shared/result';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserId } from '../domain/value-objects';
 import { extractCategoryStats } from '../shared/category-stats-utils';
+import { UserNotFoundError } from '../shared/errors';
 import type { GetProfileResponse } from './dto';
 import { getProfileSchema } from './validation';
-
-/**
- * Custom errors for get profile use case
- */
-export class UserNotFoundError extends Error {
-  constructor(userId: string) {
-    super(`User with ID ${userId} not found`);
-    this.name = 'UserNotFoundError';
-  }
-}
 
 /**
  * Get profile use case handler

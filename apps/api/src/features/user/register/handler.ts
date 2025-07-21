@@ -9,25 +9,9 @@ import { Result } from '@api/shared/result';
 import { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { Email, UserId, UserRole } from '../domain/value-objects';
+import { EmailAlreadyTakenError, UsernameAlreadyTakenError } from '../shared/errors';
 import type { RegisterResponse } from './dto';
 import { registerSchema } from './validation';
-
-/**
- * Custom errors for registration use case
- */
-export class EmailAlreadyTakenError extends Error {
-  constructor(email: string) {
-    super(`Email ${email} is already taken`);
-    this.name = 'EmailAlreadyTakenError';
-  }
-}
-
-export class UsernameAlreadyTakenError extends Error {
-  constructor(username: string) {
-    super(`Username ${username} is already taken`);
-    this.name = 'UsernameAlreadyTakenError';
-  }
-}
 
 /**
  * Register use case handler
