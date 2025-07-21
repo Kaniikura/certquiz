@@ -46,16 +46,35 @@ export const createQuestionRoute = new Hono<{
     }
 
     // Get request body
-    const body = await c.req.json();
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch (jsonError) {
+      logger.warn('Invalid JSON in request body', {
+        error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+      });
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Invalid JSON in request body',
+          },
+        },
+        400
+      );
+    }
 
     // Get authenticated user (required for admin routes)
     const user = c.get('user');
 
+    // Type guard for logging purposes only
+    const logBody = body as { questionType?: string; isPremium?: boolean } | null;
     logger.info('Create question attempt', {
       userId: user.sub,
       userRoles: user.roles,
-      questionType: body?.questionType,
-      isPremium: body?.isPremium,
+      questionType: logBody?.questionType,
+      isPremium: logBody?.isPremium,
     });
 
     // Get dependencies from DI container/context
