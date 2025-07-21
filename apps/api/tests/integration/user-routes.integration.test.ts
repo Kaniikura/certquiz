@@ -6,9 +6,10 @@
 import { userRoutes } from '@api/features/user/routes';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
 import { Hono } from 'hono';
-import { generateKeyPair, SignJWT } from 'jose';
+import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Global variables for test keys (will be initialized in beforeAll)
@@ -36,8 +37,6 @@ describe('User Routes HTTP Integration', () => {
 
   let privateKey: CryptoKey;
   let testApp: Hono;
-  const issuer = 'http://localhost:8080/realms/certquiz';
-  const audience = 'certquiz';
 
   beforeAll(async () => {
     // Generate test key pair for JWT signing
@@ -62,20 +61,9 @@ describe('User Routes HTTP Integration', () => {
     // This is handled by setupTestDatabase() which creates isolated databases
   });
 
-  // Helper to create test JWT tokens
+  // Helper to create test JWT tokens using utility builder
   async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
-    return new SignJWT({
-      sub: 'test-user-123',
-      email: 'test@example.com',
-      realm_access: { roles: ['certquiz-user'] },
-      ...claims,
-    })
-      .setProtectedHeader({ alg: 'RS256' })
-      .setIssuedAt()
-      .setExpirationTime('1h')
-      .setIssuer(issuer)
-      .setAudience(audience)
-      .sign(privateKey);
+    return createJwtBuilder(claims).sign(privateKey);
   }
 
   describe('GET /health', () => {
@@ -563,18 +551,8 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should reject requests with expired JWT', async () => {
-      // Create an expired token
-      const expiredToken = await new SignJWT({
-        sub: 'test-user-123',
-        email: 'test@example.com',
-        realm_access: { roles: ['certquiz-user'] },
-      })
-        .setProtectedHeader({ alg: 'RS256' })
-        .setIssuedAt(Math.floor(Date.now() / 1000) - 7200) // 2 hours ago
-        .setExpirationTime(Math.floor(Date.now() / 1000) - 3600) // 1 hour ago
-        .setIssuer(issuer)
-        .setAudience(audience)
-        .sign(privateKey);
+      // Create an expired token using utility builder
+      const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
 
       const res = await testApp.request('/progress', {
         method: 'PUT',
