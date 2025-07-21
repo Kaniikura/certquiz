@@ -35,6 +35,13 @@ export interface IQuestionService {
  * TODO: Replace with actual implementation that queries question database
  */
 export class StubQuestionService implements IQuestionService {
+  /**
+   * Maximum number of questions supported by the stub implementation.
+   * This is intentionally lower than QuizConfig.MAX_QUESTION_COUNT (100)
+   * to simulate constraints in the stub service.
+   */
+  static readonly MAX_QUESTION_COUNT = 50;
+
   async getQuestionsForQuiz(params: QuestionSelectionParams): Promise<QuestionId[]> {
     // Generate mock question IDs for development
     const mockQuestions: QuestionId[] = [];
@@ -55,9 +62,9 @@ export class StubQuestionService implements IQuestionService {
     }
 
     // Simulate some realistic constraints
-    if (params.questionCount > 50) {
+    if (params.questionCount > StubQuestionService.MAX_QUESTION_COUNT) {
       throw new Error(
-        `Insufficient questions available for ${params.examType}. Maximum 50 questions supported.`
+        `Insufficient questions available for ${params.examType}. Maximum ${StubQuestionService.MAX_QUESTION_COUNT} questions supported.`
       );
     }
 
