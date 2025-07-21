@@ -1,4 +1,4 @@
-import type { Queryable } from '@api/infra/db/client';
+import type { Queryable, Tx } from '@api/infra/db/client';
 import { authUser, userProgress } from '@api/infra/db/schema/user';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
@@ -6,6 +6,39 @@ import { and, eq, ne } from 'drizzle-orm';
 import { type AuthUserRow, User, type UserProgressRow } from '../entities/User';
 import type { Email, UserId } from '../value-objects';
 import type { IUserRepository } from './IUserRepository';
+
+/**
+ * Interface for database connections that support transactions
+ */
+interface TransactionalConnection extends Queryable {
+  transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
+}
+
+/**
+ * Interface representing a joined row from authUser and userProgress tables
+ */
+interface JoinedUserRow {
+  // Auth user fields
+  userId: string;
+  email: string;
+  username: string;
+  role: string;
+  identityProviderId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  // Progress fields
+  level: number;
+  experience: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracy: string;
+  studyTimeMinutes: number;
+  currentStreak: number;
+  lastStudyDate: Date | null;
+  categoryStats: unknown;
+  progressUpdatedAt: Date;
+}
 
 /**
  * Drizzle implementation of User repository for user domain
@@ -361,8 +394,8 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     // For now, delegate to the connection's transaction method
     // This assumes the connection supports transactions
     if ('transaction' in this.conn && typeof this.conn.transaction === 'function') {
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic transaction support requires any casting
-      return await (this.conn as any).transaction(async (tx: any) => {
+      const transactionalConn = this.conn as TransactionalConnection;
+      return await transactionalConn.transaction(async (tx: Tx) => {
         const txRepo = new DrizzleUserRepository(tx, this.logger);
         return await fn(txRepo);
       });
@@ -377,8 +410,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
   /**
    * Map joined database row to User domain entity
    */
-  // biome-ignore lint/suspicious/noExplicitAny: Database row can have varying structure
-  private mapRowToUser(row: any): User {
+  private mapRowToUser(row: JoinedUserRow): User {
     const authRow = {
       userId: row.userId,
       email: row.email,
@@ -399,7 +431,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
       studyTimeMinutes: row.studyTimeMinutes,
       currentStreak: row.currentStreak,
       lastStudyDate: row.lastStudyDate,
-      categoryStats: row.categoryStats,
+      categoryStats: row.categoryStats as object,
       updatedAt: row.progressUpdatedAt,
     };
 

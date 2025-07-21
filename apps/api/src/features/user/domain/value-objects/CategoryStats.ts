@@ -26,8 +26,9 @@ export class CategoryStats {
       return Result.fail(new ValidationError('Category stats must be an object'));
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: Need to cast unknown to access properties
-    const dataObj = data as any;
+    // Type guard to safely access properties
+    const dataObj = data as { version?: unknown; categories?: unknown };
+
     if (typeof dataObj.version !== 'number' || dataObj.version <= 0) {
       return Result.fail(new ValidationError('Category stats version must be positive'));
     }
@@ -36,7 +37,13 @@ export class CategoryStats {
       return Result.fail(new ValidationError('Categories must be an object'));
     }
 
-    return Result.ok(new CategoryStats(data as CategoryStatsData));
+    // Validate structure matches CategoryStatsData
+    const validatedData: CategoryStatsData = {
+      version: dataObj.version,
+      categories: dataObj.categories as Record<string, CategoryStat>,
+    };
+
+    return Result.ok(new CategoryStats(validatedData));
   }
 
   /**

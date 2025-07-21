@@ -1,9 +1,78 @@
+import type { Queryable } from '@api/infra/db/client';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { TestClock } from '@api/test-support/TestClock';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { User } from '../entities/User';
 import { Email, UserId, UserRole } from '../value-objects';
 import { DrizzleUserRepository } from './DrizzleUserRepository';
+
+// Mock data interfaces for testing
+interface MockAuthData {
+  userId: string;
+  email: string;
+  username: string;
+  role: string;
+  identityProviderId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockProgressData {
+  level: number;
+  experience: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracy: string;
+  studyTimeMinutes: number;
+  currentStreak: number;
+  lastStudyDate: Date | null;
+  categoryStats: object;
+  updatedAt: Date;
+}
+
+interface MockJoinedResult {
+  userId: string;
+  email: string;
+  username: string;
+  role: string;
+  identityProviderId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  level: number;
+  experience: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracy: string;
+  studyTimeMinutes: number;
+  currentStreak: number;
+  lastStudyDate: Date | null;
+  categoryStats: object;
+  progressUpdatedAt: Date;
+}
+
+interface MockCountResult {
+  count: string;
+}
+
+interface MockQueryBuilder {
+  limit(): MockJoinedResult[] | MockCountResult[];
+}
+
+interface MockFromBuilder {
+  from(table: unknown): {
+    innerJoin(): {
+      where(condition: unknown): MockQueryBuilder;
+    };
+    where(condition: unknown): MockQueryBuilder;
+  };
+}
+
+interface MockInsertData {
+  userId?: string;
+  [key: string]: unknown;
+}
 
 // Simple mock logger for testing
 class MockLogger implements LoggerPort {
@@ -29,23 +98,17 @@ class MockLogger implements LoggerPort {
 
 // Mock connection that simulates database operations
 class MockConnection {
-  // biome-ignore lint/suspicious/noExplicitAny: Test mock requires flexible data storage
-  private users: Map<string, any> = new Map();
-  // biome-ignore lint/suspicious/noExplicitAny: Test mock requires flexible data storage
-  private progress: Map<string, any> = new Map();
+  private users: Map<string, MockAuthData> = new Map();
+  private progress: Map<string, MockProgressData> = new Map();
 
-  // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-  select(_fields?: any) {
-    const fromBuilder = {
-      // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-      from: (_table: any) => ({
+  select(_fields?: unknown): MockFromBuilder {
+    const fromBuilder: MockFromBuilder = {
+      from: (_table: unknown) => ({
         innerJoin: () => ({
-          // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-          where: (_condition: any) => ({
-            limit: () => {
+          where: (_condition: unknown) => ({
+            limit: (): MockJoinedResult[] => {
               // Simulate finding user by joining tables
-              // biome-ignore lint/suspicious/noExplicitAny: Mock result array
-              const results: any[] = [];
+              const results: MockJoinedResult[] = [];
               for (const [userId, authData] of this.users) {
                 const progressData = this.progress.get(userId);
                 if (progressData) {
@@ -77,12 +140,10 @@ class MockConnection {
             },
           }),
         }),
-        // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-        where: (_condition: any) => ({
-          limit: () => {
+        where: (_condition: unknown) => ({
+          limit: (): MockCountResult[] => {
             // For simple where queries (like isEmailTaken/isUsernameTaken)
-            // biome-ignore lint/suspicious/noExplicitAny: Mock result array
-            const results: any[] = [];
+            const results: MockCountResult[] = [];
             for (const [_userId, authData] of this.users) {
               results.push({ count: authData.userId });
             }
@@ -96,14 +157,12 @@ class MockConnection {
 
   insert() {
     return {
-      // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-      values: (data: any) => ({
-        // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-        onConflictDoUpdate: ({ target }: any) => {
-          if (target?.name === 'user_id') {
+      values: (data: MockInsertData) => ({
+        onConflictDoUpdate: ({ target }: { target: unknown }) => {
+          if ((target as { name?: string })?.name === 'user_id') {
             // Simulate upsert
             if (data.userId) {
-              this.users.set(data.userId, data);
+              this.users.set(data.userId, data as unknown as MockAuthData);
             }
           }
           return Promise.resolve();
@@ -114,10 +173,8 @@ class MockConnection {
 
   update() {
     return {
-      // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-      set: (_data: any) => ({
-        // biome-ignore lint/suspicious/noExplicitAny: Mock method parameter
-        where: (_condition: any) => {
+      set: (_data: unknown) => ({
+        where: (_condition: unknown) => {
           // Simulate update
           return Promise.resolve();
         },
@@ -125,14 +182,25 @@ class MockConnection {
     };
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Mock transaction types
-  transaction(fn: (tx: any) => Promise<any>) {
+  transaction<T>(fn: (tx: MockConnection) => Promise<T>): Promise<T> {
     return fn(this);
   }
 
+  // Additional methods to satisfy generic constraints in tests
+  delete(): unknown {
+    throw new Error('delete method not implemented in mock');
+  }
+
+  execute(): unknown {
+    throw new Error('execute method not implemented in mock');
+  }
+
+  query(): unknown {
+    throw new Error('query method not implemented in mock');
+  }
+
   // Helper methods for testing
-  // biome-ignore lint/suspicious/noExplicitAny: Test helper method parameters
-  addUser(authData: any, progressData: any) {
+  addUser(authData: MockAuthData, progressData: MockProgressData) {
     this.users.set(authData.userId, authData);
     this.progress.set(authData.userId, progressData);
   }
@@ -146,15 +214,13 @@ class MockConnection {
 describe('DrizzleUserRepository', () => {
   let mockConnection: MockConnection;
   let mockLogger: MockLogger;
-  // biome-ignore lint/suspicious/noExplicitAny: Repository generic type for tests
-  let repository: DrizzleUserRepository<any>;
+  let repository: DrizzleUserRepository<Queryable>;
   let clock: TestClock;
 
   beforeEach(() => {
     mockConnection = new MockConnection();
     mockLogger = new MockLogger();
-    // biome-ignore lint/suspicious/noExplicitAny: Type assertion for mock connection
-    repository = new DrizzleUserRepository(mockConnection as any, mockLogger);
+    repository = new DrizzleUserRepository(mockConnection as unknown as Queryable, mockLogger);
     clock = new TestClock(new Date('2025-01-01T12:00:00Z'));
   });
 
@@ -380,16 +446,19 @@ describe('DrizzleUserRepository', () => {
 
     it('should throw error when transaction support is not available', async () => {
       // Create a connection without transaction support
+      // This simulates a database connection that doesn't support transactions
       const noTransactionConnection = {
         select: mockConnection.select.bind(mockConnection),
         insert: mockConnection.insert.bind(mockConnection),
         update: mockConnection.update.bind(mockConnection),
-        // Intentionally omit transaction method
+        delete: mockConnection.delete.bind(mockConnection),
+        execute: mockConnection.execute.bind(mockConnection),
+        query: mockConnection.query.bind(mockConnection),
+        // Intentionally omit transaction method to test error handling
       };
 
       const repositoryWithoutTransaction = new DrizzleUserRepository(
-        // biome-ignore lint/suspicious/noExplicitAny: Type assertion for mock connection
-        noTransactionConnection as any,
+        noTransactionConnection as unknown as Queryable,
         mockLogger
       );
 

@@ -52,8 +52,8 @@ describe('CategoryStats', () => {
         categories: 'invalid',
       };
 
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid data structure
-      const result = CategoryStats.create(stats as any);
+      // Test with invalid data structure
+      const result = CategoryStats.create(stats as unknown);
 
       expect(result.success).toBe(false);
       if (!result.success) {

@@ -3,6 +3,7 @@
  * @fileoverview HTTP endpoint for updating user progress after quiz completion
  */
 
+import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
 import { type Context, Hono } from 'hono';
@@ -105,8 +106,7 @@ export const updateProgressRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapUpdateProgressError(error);
-      // biome-ignore lint/suspicious/noExplicitAny: Hono requires ContentfulStatusCode casting
-      return c.json(errorBody, status as any);
+      return c.json(errorBody, status as SupportedStatusCode);
     }
 
     // Log successful progress update

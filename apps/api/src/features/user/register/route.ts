@@ -3,6 +3,7 @@
  * @fileoverview HTTP endpoint for user registration
  */
 
+import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
 import { type Context, Hono } from 'hono';
@@ -120,8 +121,7 @@ export const registerRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapRegisterError(error);
-      // biome-ignore lint/suspicious/noExplicitAny: Hono requires ContentfulStatusCode casting
-      return c.json(errorBody, status as any);
+      return c.json(errorBody, status as SupportedStatusCode);
     }
 
     // Log successful registration
