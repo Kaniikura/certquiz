@@ -16,6 +16,12 @@ import { getProfileRoute } from './get-profile/route';
 import { registerRoute } from './register/route';
 import { updateProgressRoute } from './update-progress/route';
 
+/**
+ * Paths that should be excluded from transaction middleware
+ * These endpoints don't require database access and should respond quickly
+ */
+const TRANSACTION_EXCLUDED_PATHS = new Set(['/health']);
+
 // Define context variables for user routes
 type UserVariables = {
   userRepository: IUserRepository;
@@ -56,8 +62,8 @@ userRoutes.get('/health', (c) => {
  * Applied only to routes that need database access
  */
 userRoutes.use('*', async (c, next) => {
-  // Skip transaction for health endpoint
-  if (c.req.path === '/health') {
+  // Skip transaction for excluded paths
+  if (TRANSACTION_EXCLUDED_PATHS.has(c.req.path)) {
     return next();
   }
 
