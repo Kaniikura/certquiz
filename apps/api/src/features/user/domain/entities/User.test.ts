@@ -194,10 +194,13 @@ describe('User', () => {
       if (!createResult.success) throw new Error('Failed to create user');
       const user = createResult.data;
 
-      const result = user.updateProfile({
-        username: 'john_smith',
-        email: 'john.smith@example.com',
-      });
+      const result = user.updateProfile(
+        {
+          username: 'john_smith',
+          email: 'john.smith@example.com',
+        },
+        clock
+      );
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -220,9 +223,12 @@ describe('User', () => {
       if (!createResult.success) throw new Error('Failed to create user');
       const user = createResult.data;
 
-      const result = user.updateProfile({
-        email: 'invalid-email',
-      });
+      const result = user.updateProfile(
+        {
+          email: 'invalid-email',
+        },
+        clock
+      );
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -244,7 +250,7 @@ describe('User', () => {
       if (!result.success) throw new Error('Failed to create user');
       const user = result.data;
 
-      const deactivatedUser = user.deactivate();
+      const deactivatedUser = user.deactivate(clock);
 
       expect(deactivatedUser.isActive).toBe(false);
       expect(deactivatedUser.progress).toBe(user.progress); // Progress unchanged

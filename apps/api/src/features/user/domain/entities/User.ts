@@ -161,7 +161,10 @@ export class User extends AggregateRoot<UserId> {
   /**
    * Update user profile information
    */
-  updateProfile(updates: { username?: string; email?: string }): Result<User, ValidationError> {
+  updateProfile(
+    updates: { username?: string; email?: string },
+    clock: Clock
+  ): Result<User, ValidationError> {
     let newEmail = this.email;
     let newUsername = this.username;
 
@@ -191,7 +194,7 @@ export class User extends AggregateRoot<UserId> {
         this.isActive,
         this.progress, // Progress unchanged
         this.createdAt,
-        new Date() // Updated timestamp
+        clock.now() // Updated timestamp
       )
     );
   }
@@ -199,7 +202,7 @@ export class User extends AggregateRoot<UserId> {
   /**
    * Deactivate user
    */
-  deactivate(): User {
+  deactivate(clock: Clock): User {
     return new User(
       this.id,
       this.email,
@@ -209,7 +212,7 @@ export class User extends AggregateRoot<UserId> {
       false, // isActive = false
       this.progress, // Progress unchanged
       this.createdAt,
-      new Date() // Updated timestamp
+      clock.now() // Updated timestamp
     );
   }
 
