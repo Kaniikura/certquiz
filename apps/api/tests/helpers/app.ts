@@ -8,7 +8,7 @@ import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/Aut
 import type { Logger } from '@api/infra/logger/root-logger';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
-import { FakeQuizRepository, FakeUserRepository } from '../fakes';
+import { FakeQuestionRepository, FakeQuizRepository, FakeUserRepository } from '../fakes';
 
 /**
  * Create a fake auth provider for testing
@@ -73,6 +73,7 @@ export async function makeHttpApp() {
     ping: noop, // Always healthy
     userRepository: new FakeUserRepository(),
     quizRepository: new FakeQuizRepository(),
+    questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
   };
 
@@ -91,6 +92,7 @@ export async function makeBrokenDbApp() {
     },
     userRepository: new FakeUserRepository(),
     quizRepository: new FakeQuizRepository(),
+    questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
   };
 
