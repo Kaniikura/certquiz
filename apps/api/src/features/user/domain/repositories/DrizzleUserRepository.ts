@@ -49,11 +49,25 @@ export class DrizzleUserRepository<TConnection extends Queryable>
   extends BaseRepository
   implements IUserRepository
 {
+  private readonly validRoles = ['guest', 'user', 'premium', 'admin'] as const;
+
   constructor(
     private readonly conn: TConnection,
     logger: LoggerPort
   ) {
     super(logger);
+  }
+
+  /**
+   * Validate and cast role string to union type
+   */
+  private validateAndCastRole(role: string): 'guest' | 'user' | 'premium' | 'admin' {
+    if (!this.validRoles.includes(role as 'guest' | 'user' | 'premium' | 'admin')) {
+      throw new Error(
+        `Invalid role value: ${role}. Valid roles are: ${this.validRoles.join(', ')}`
+      );
+    }
+    return role as 'guest' | 'user' | 'premium' | 'admin';
   }
 
   /**
@@ -187,7 +201,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
           userId: authRow.userId,
           email: authRow.email,
           username: authRow.username,
-          role: authRow.role as 'guest' | 'user' | 'premium' | 'admin',
+          role: this.validateAndCastRole(authRow.role),
           identityProviderId: authRow.identityProviderId,
           isActive: authRow.isActive,
           createdAt: authRow.createdAt,
@@ -198,7 +212,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
           set: {
             email: authRow.email,
             username: authRow.username,
-            role: authRow.role as 'guest' | 'user' | 'premium' | 'admin',
+            role: this.validateAndCastRole(authRow.role),
             identityProviderId: authRow.identityProviderId,
             isActive: authRow.isActive,
             updatedAt: authRow.updatedAt,
@@ -264,7 +278,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
       userId: authRow.userId,
       email: authRow.email,
       username: authRow.username,
-      role: authRow.role as 'guest' | 'user' | 'premium' | 'admin',
+      role: this.validateAndCastRole(authRow.role),
       identityProviderId: authRow.identityProviderId,
       isActive: authRow.isActive,
       createdAt: authRow.createdAt,
