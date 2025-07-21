@@ -37,10 +37,44 @@ export class CategoryStats {
       return Result.fail(new ValidationError('Categories must be an object'));
     }
 
+    // Validate each category stat structure
+    const categories = dataObj.categories as Record<string, unknown>;
+    const validatedCategories: Record<string, CategoryStat> = {};
+
+    for (const [key, value] of Object.entries(categories)) {
+      if (typeof value !== 'object' || value === null) {
+        return Result.fail(new ValidationError(`Invalid category stat for ${key}`));
+      }
+
+      const stat = value as { correct?: unknown; total?: unknown; accuracy?: unknown };
+      if (
+        typeof stat.correct !== 'number' ||
+        typeof stat.total !== 'number' ||
+        typeof stat.accuracy !== 'number'
+      ) {
+        return Result.fail(new ValidationError(`Invalid stat properties for category ${key}`));
+      }
+
+      // Validate numeric ranges
+      if (stat.correct < 0 || stat.total < 0 || stat.accuracy < 0 || stat.accuracy > 100) {
+        return Result.fail(
+          new ValidationError(
+            `Invalid stat values for category ${key}: values must be non-negative and accuracy must be <= 100`
+          )
+        );
+      }
+
+      validatedCategories[key] = {
+        correct: stat.correct,
+        total: stat.total,
+        accuracy: stat.accuracy,
+      };
+    }
+
     // Validate structure matches CategoryStatsData
     const validatedData: CategoryStatsData = {
       version: dataObj.version,
-      categories: dataObj.categories as Record<string, CategoryStat>,
+      categories: validatedCategories,
     };
 
     return Result.ok(new CategoryStats(validatedData));

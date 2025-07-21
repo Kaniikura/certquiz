@@ -60,6 +60,82 @@ describe('CategoryStats', () => {
         expect(result.error.message).toBe('Categories must be an object');
       }
     });
+
+    it('should fail when category stat is not an object', () => {
+      const stats = {
+        version: 1,
+        categories: {
+          CCNA: 'invalid', // Not an object
+        },
+      };
+
+      const result = CategoryStats.create(stats as unknown);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toBe('Invalid category stat for CCNA');
+      }
+    });
+
+    it('should fail when category stat has invalid properties', () => {
+      const stats = {
+        version: 1,
+        categories: {
+          CCNA: {
+            correct: 'not a number', // Should be number
+            total: 10,
+            accuracy: 80,
+          },
+        },
+      };
+
+      const result = CategoryStats.create(stats as unknown);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toBe('Invalid stat properties for category CCNA');
+      }
+    });
+
+    it('should fail when category stat has negative values', () => {
+      const stats = {
+        version: 1,
+        categories: {
+          CCNA: {
+            correct: -5, // Negative value
+            total: 10,
+            accuracy: 80,
+          },
+        },
+      };
+
+      const result = CategoryStats.create(stats);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Invalid stat values for category CCNA');
+      }
+    });
+
+    it('should fail when accuracy is greater than 100', () => {
+      const stats = {
+        version: 1,
+        categories: {
+          CCNA: {
+            correct: 10,
+            total: 10,
+            accuracy: 150, // Greater than 100
+          },
+        },
+      };
+
+      const result = CategoryStats.create(stats);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Invalid stat values for category CCNA');
+      }
+    });
   });
 
   describe('updateCategory', () => {
