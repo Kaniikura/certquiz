@@ -132,36 +132,12 @@ export class UserProgress {
    * Add quiz result and update all related statistics
    */
   addQuizResult(result: QuizResult): UserProgress {
-    // Calculate experience gained from this quiz
-    const experienceGained = this.calculateExperienceGain(result);
-    const newExperienceResult = this.experience.add(experienceGained);
-    if (!newExperienceResult.success) {
-      throw new Error('Failed to add experience points');
-    }
-    const newExperience = newExperienceResult.data;
+    const newExperience = this.updateExperience(result);
+    const { newTotalQuestions, newCorrectAnswers } = this.updateTotals(result);
+    const newAccuracy = this.recalculateAccuracy(newCorrectAnswers, newTotalQuestions);
+    const newStudyTime = this.addStudyTime(result);
+    const newCategoryStats = this.updateCategoryStats(result);
 
-    // Update totals
-    const newTotalQuestions = this.totalQuestions + result.totalQuestions;
-    const newCorrectAnswers = this.correctAnswers + result.correctAnswers;
-
-    // Recalculate accuracy
-    const newAccuracy = Accuracy.fromQuizResults(newCorrectAnswers, newTotalQuestions);
-
-    // Add study time
-    const newStudyTimeResult = this.studyTime.addMinutes(result.studyTimeMinutes);
-    if (!newStudyTimeResult.success) {
-      throw new Error('Failed to add study time minutes');
-    }
-    const newStudyTime = newStudyTimeResult.data;
-
-    // Update category statistics
-    const newCategoryStats = this.categoryStats.updateCategory(
-      result.category,
-      (this.categoryStats.getCategoryStats(result.category)?.correct || 0) + result.correctAnswers,
-      (this.categoryStats.getCategoryStats(result.category)?.total || 0) + result.totalQuestions
-    );
-
-    // Create updated progress but keep original lastStudyDate for streak calculation
     const beforeStreakUpdate = new UserProgress(
       this.level,
       newExperience,
@@ -175,8 +151,61 @@ export class UserProgress {
       result.clock.now()
     );
 
-    // Calculate new level and then update streak (which will update lastStudyDate)
     return beforeStreakUpdate.calculateLevel().updateStreak(result.clock);
+  }
+
+  /**
+   * Update experience points based on quiz result
+   */
+  private updateExperience(result: QuizResult): Experience {
+    const experienceGained = this.calculateExperienceGain(result);
+    const newExperienceResult = this.experience.add(experienceGained);
+    if (!newExperienceResult.success) {
+      throw new Error('Failed to add experience points');
+    }
+    return newExperienceResult.data;
+  }
+
+  /**
+   * Update question totals based on quiz result
+   */
+  private updateTotals(result: QuizResult): {
+    newTotalQuestions: number;
+    newCorrectAnswers: number;
+  } {
+    return {
+      newTotalQuestions: this.totalQuestions + result.totalQuestions,
+      newCorrectAnswers: this.correctAnswers + result.correctAnswers,
+    };
+  }
+
+  /**
+   * Recalculate accuracy based on updated totals
+   */
+  private recalculateAccuracy(correctAnswers: number, totalQuestions: number): Accuracy {
+    return Accuracy.fromQuizResults(correctAnswers, totalQuestions);
+  }
+
+  /**
+   * Add study time from quiz result
+   */
+  private addStudyTime(result: QuizResult): StudyTime {
+    const newStudyTimeResult = this.studyTime.addMinutes(result.studyTimeMinutes);
+    if (!newStudyTimeResult.success) {
+      throw new Error('Failed to add study time minutes');
+    }
+    return newStudyTimeResult.data;
+  }
+
+  /**
+   * Update category statistics based on quiz result
+   */
+  private updateCategoryStats(result: QuizResult): CategoryStats {
+    return this.categoryStats.updateCategory(
+      result.category,
+      (this.categoryStats.getCategoryStats(result.category)?.correct || 0) + result.correctAnswers,
+      (this.categoryStats.getCategoryStats(result.category)?.total || 0) + result.totalQuestions
+    );
   }
 
   /**
