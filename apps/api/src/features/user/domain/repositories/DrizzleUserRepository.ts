@@ -351,8 +351,10 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         return await fn(txRepo);
       });
     } else {
-      // Fallback if transaction not supported (shouldn't happen with proper Drizzle setup)
-      return await fn(this);
+      throw new Error(
+        'Transaction support is required but not available on database connection. ' +
+          'Ensure your database connection is properly configured with transaction support.'
+      );
     }
   }
 

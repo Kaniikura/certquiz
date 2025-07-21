@@ -377,5 +377,30 @@ describe('DrizzleUserRepository', () => {
 
       expect(result).toBe('success');
     });
+
+    it('should throw error when transaction support is not available', async () => {
+      // Create a connection without transaction support
+      const noTransactionConnection = {
+        select: mockConnection.select.bind(mockConnection),
+        insert: mockConnection.insert.bind(mockConnection),
+        update: mockConnection.update.bind(mockConnection),
+        // Intentionally omit transaction method
+      };
+
+      const repositoryWithoutTransaction = new DrizzleUserRepository(
+        // biome-ignore lint/suspicious/noExplicitAny: Type assertion for mock connection
+        noTransactionConnection as any,
+        mockLogger
+      );
+
+      await expect(
+        repositoryWithoutTransaction.withTransaction(async () => {
+          return 'should not reach here';
+        })
+      ).rejects.toThrow(
+        'Transaction support is required but not available on database connection. ' +
+          'Ensure your database connection is properly configured with transaction support.'
+      );
+    });
   });
 });
