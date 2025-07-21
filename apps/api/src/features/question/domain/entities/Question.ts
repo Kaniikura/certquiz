@@ -22,7 +22,12 @@ export type QuestionDifficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Mix
 /**
  * Question status in the system
  */
-export type QuestionStatus = 'active' | 'inactive' | 'draft' | 'archived';
+export enum QuestionStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  DRAFT = 'draft',
+  ARCHIVED = 'archived',
+}
 
 /**
  * Question JSON representation for persistence
@@ -288,11 +293,11 @@ export class Question {
    * Activate the question
    */
   activate(): Result<void> {
-    if (this._status === 'active') {
+    if (this._status === QuestionStatus.ACTIVE) {
       return Result.fail(new ValidationError('Question is already active'));
     }
 
-    this._status = 'active';
+    this._status = QuestionStatus.ACTIVE;
     this._updatedAt = new Date();
     return Result.ok(undefined);
   }
@@ -301,11 +306,11 @@ export class Question {
    * Deactivate the question
    */
   deactivate(): Result<void> {
-    if (this._status === 'inactive') {
+    if (this._status === QuestionStatus.INACTIVE) {
       return Result.fail(new ValidationError('Question is already inactive'));
     }
 
-    this._status = 'inactive';
+    this._status = QuestionStatus.INACTIVE;
     this._updatedAt = new Date();
     return Result.ok(undefined);
   }

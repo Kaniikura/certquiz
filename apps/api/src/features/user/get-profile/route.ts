@@ -24,6 +24,26 @@ export const getProfileRoute = new Hono<{
     // Get user ID from URL parameter
     const userId = c.req.param('userId');
 
+    // Validate userId format early to fail fast
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!userId || !uuidRegex.test(userId)) {
+      logger.warn('Invalid user ID format', {
+        userId,
+        expectedFormat: 'UUID',
+      });
+
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid user ID format. Expected UUID.',
+          },
+        },
+        400
+      );
+    }
+
     logger.info('Get profile attempt', { userId });
 
     // Get dependencies from DI container/context

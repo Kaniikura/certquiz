@@ -15,7 +15,7 @@ import {
   QuestionRepositoryError,
   QuestionVersionConflictError,
 } from '../../shared/errors';
-import { Question } from '../entities/Question';
+import { Question, QuestionStatus } from '../entities/Question';
 import { QuestionOption } from '../value-objects/QuestionOption';
 import { QuestionOptions } from '../value-objects/QuestionOptions';
 import { DrizzleQuestionRepository } from './DrizzleQuestionRepository';
@@ -101,7 +101,7 @@ describe('DrizzleQuestionRepository', () => {
       tags: ['europe', 'capitals'],
       images: [],
       isPremium: false,
-      status: 'active',
+      status: QuestionStatus.ACTIVE,
       createdById: userId,
       createdAt: clock.now(),
       updatedAt: clock.now(),
@@ -130,7 +130,7 @@ describe('DrizzleQuestionRepository', () => {
         expect(created.id).toBe(question.id);
         expect(created.version).toBe(1);
         expect(created.questionText).toBe(question.questionText);
-        expect(created.status).toBe('active');
+        expect(created.status).toBe(QuestionStatus.ACTIVE);
         expect(mockLogger.info).toHaveBeenCalledWith('Question created successfully', {
           questionId: question.id,
           version: 1,

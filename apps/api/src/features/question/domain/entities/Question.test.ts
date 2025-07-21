@@ -7,7 +7,7 @@ import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { describe, expect, it } from 'vitest';
 import { QuestionOption } from '../value-objects/QuestionOption';
 import { QuestionOptions } from '../value-objects/QuestionOptions';
-import { Question } from './Question';
+import { Question, QuestionStatus } from './Question';
 
 describe('Question', () => {
   const createValidOptions = () => {
@@ -52,7 +52,7 @@ describe('Question', () => {
         tags: ['arithmetic', 'basic'],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
@@ -83,7 +83,7 @@ describe('Question', () => {
         tags: [],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -111,7 +111,7 @@ describe('Question', () => {
         tags: [],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -139,7 +139,7 @@ describe('Question', () => {
         tags: [],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -167,7 +167,7 @@ describe('Question', () => {
         tags: [],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -195,7 +195,7 @@ describe('Question', () => {
         tags: [],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -224,7 +224,7 @@ describe('Question', () => {
         tags: ['arithmetic'],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
@@ -346,7 +346,7 @@ describe('Question', () => {
         tags: ['arithmetic'],
         images: [],
         isPremium: false,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
@@ -389,7 +389,7 @@ describe('Question', () => {
         tags: ['arithmetic', 'basic'],
         images: ['image1.png'],
         isPremium: true,
-        status: 'active',
+        status: QuestionStatus.ACTIVE,
         createdById: '123e4567-e89b-12d3-a456-426614174000',
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),

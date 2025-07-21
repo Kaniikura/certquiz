@@ -26,7 +26,7 @@ export interface ErrorResponse {
  */
 export function mapUserError(error: Error): ErrorResponse {
   // Validation errors
-  if (error.name === 'ValidationError' || error instanceof ValidationError) {
+  if (error instanceof ValidationError) {
     return {
       status: 400,
       body: {

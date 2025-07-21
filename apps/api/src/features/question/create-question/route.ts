@@ -1,0 +1,116 @@
+/**
+ * Create question route implementation
+ * @fileoverview HTTP endpoint for admin question creation
+ */
+
+import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
+import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { LoggerVariables } from '@api/middleware/logger';
+import type { Clock } from '@api/shared/clock';
+import { Hono } from 'hono';
+import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
+import { mapQuestionError } from '../shared/error-mapper';
+import { createQuestionHandler } from './handler';
+
+// Define context variables for this route
+type CreateQuestionVariables = {
+  questionRepository: IQuestionRepository;
+  clock: Clock;
+  user: AuthUser; // Required for admin authorization
+} & LoggerVariables;
+
+export const createQuestionRoute = new Hono<{
+  Variables: CreateQuestionVariables;
+}>().post('/questions', async (c) => {
+  const logger = c.get('logger');
+
+  try {
+    // Validate Content-Type header
+    const contentType = c.req.header('Content-Type');
+    if (!contentType || !contentType.includes('application/json')) {
+      logger.warn('Invalid Content-Type header', {
+        providedContentType: contentType,
+        expectedContentType: 'application/json',
+      });
+
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_CONTENT_TYPE',
+            message: 'Content-Type must be application/json',
+          },
+        },
+        400
+      );
+    }
+
+    // Get request body
+    const body = await c.req.json();
+
+    // Get authenticated user (required for admin routes)
+    const user = c.get('user');
+
+    logger.info('Create question attempt', {
+      userId: user.sub,
+      userRoles: user.roles,
+      questionType: body?.questionType,
+      isPremium: body?.isPremium,
+    });
+
+    // Get dependencies from DI container/context
+    const questionRepository = c.get('questionRepository');
+    const clock = c.get('clock');
+
+    // Delegate to handler
+    const result = await createQuestionHandler(
+      body,
+      questionRepository,
+      clock,
+      user.sub,
+      user.roles
+    );
+
+    if (!result.success) {
+      const error = result.error;
+
+      // Log question creation failure
+      logger.warn('Create question failed', {
+        userId: user.sub,
+        userRoles: user.roles,
+        errorType: error.name,
+        errorMessage: error.message,
+      });
+
+      const { status, body: errorBody } = mapQuestionError(error);
+      return c.json(errorBody, status as SupportedStatusCode);
+    }
+
+    // Log successful question creation
+    logger.info('Create question successful', {
+      userId: user.sub,
+      userRoles: user.roles,
+      questionId: result.data.question.id,
+      questionType: result.data.question.questionType,
+      isPremium: result.data.question.isPremium,
+      status: result.data.question.status,
+    });
+
+    return c.json(
+      {
+        success: true,
+        data: result.data,
+      },
+      201
+    );
+  } catch (error) {
+    logger.error('Create question route error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    const { status, body: errorBody } = mapQuestionError(
+      error instanceof Error ? error : new Error('Unknown error')
+    );
+    return c.json(errorBody, status as SupportedStatusCode);
+  }
+});

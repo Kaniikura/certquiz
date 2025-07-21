@@ -21,7 +21,7 @@ import {
   QuestionRepositoryError,
   QuestionVersionConflictError,
 } from '../../shared/errors';
-import { Question, type QuestionStatus, type QuestionType } from '../entities/Question';
+import { Question, QuestionStatus, type QuestionType } from '../entities/Question';
 import type {
   IQuestionRepository,
   PaginatedQuestions,
@@ -92,12 +92,12 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
    */
   private mapQuestionStatusToDb(status: QuestionStatus): 'draft' | 'active' | 'archived' {
     switch (status) {
-      case 'active':
+      case QuestionStatus.ACTIVE:
         return 'active';
-      case 'inactive':
-      case 'archived':
+      case QuestionStatus.INACTIVE:
+      case QuestionStatus.ARCHIVED:
         return 'archived';
-      case 'draft':
+      case QuestionStatus.DRAFT:
         return 'draft';
       default: {
         // Exhaustive check
