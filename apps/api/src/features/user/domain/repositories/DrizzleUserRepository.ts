@@ -318,15 +318,17 @@ export class DrizzleUserRepository<TConnection extends Queryable>
       });
     } catch (error) {
       // Debug: Log the full error structure to understand what we're dealing with
-      const pgError = error as PostgresError;
-      this.logger.debug('Create user error details', {
-        errorType: error?.constructor?.name,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorCode: pgError?.code,
-        errorCause: pgError?.cause,
-        errorConstraint: pgError?.constraint,
-        errorDetail: pgError?.detail,
-      });
+      if (process.env.NODE_ENV === 'development') {
+        const pgError = error as PostgresError;
+        this.logger.debug('Create user error details', {
+          errorType: error?.constructor?.name,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorCode: pgError?.code,
+          errorCause: pgError?.cause,
+          errorConstraint: pgError?.constraint,
+          errorDetail: pgError?.detail,
+        });
+      }
 
       // Check if it's a PostgreSQL unique constraint violation
       if (isPgUniqueViolation(error)) {
