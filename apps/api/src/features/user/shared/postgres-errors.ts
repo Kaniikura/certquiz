@@ -55,14 +55,54 @@ function findPostgresErrorInCauseChain(
 }
 
 /**
- * Check if error is a PostgreSQL unique constraint violation
+ * Check if error is a direct PostgreSQL unique constraint violation
  * SQLSTATE 23505 indicates a unique constraint violation
  *
- * Recursively unwraps nested causes to handle multiple wrapper layers
+ * This function checks only the top-level error object itself
+ */
+export function isDirectPgUniqueViolation(error: unknown): error is PostgresError {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const pgError = error as PostgresError;
+  return pgError.code === '23505';
+}
+
+/**
+ * Check if error is a Drizzle-wrapped PostgreSQL unique constraint violation
+ * SQLSTATE 23505 indicates a unique constraint violation
+ *
+ * This function recursively unwraps nested causes to handle multiple wrapper layers
  * (e.g., driver → drizzle adapter → transaction wrapper)
  */
+export function isDrizzleWrappedPgUniqueViolation(error: unknown): error is PostgresError {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const pgError = error as PostgresError;
+
+  // Skip direct matches - those are handled by isDirectPgUniqueViolation
+  if (pgError.code === '23505') {
+    return false;
+  }
+
+  // Only check the cause chain for wrapped errors
+  if ('cause' in pgError && pgError.cause) {
+    return findPostgresErrorInCauseChain(pgError.cause, '23505') !== null;
+  }
+
+  return false;
+}
+
+/**
+ * Check if error is a PostgreSQL unique constraint violation (direct or wrapped)
+ * SQLSTATE 23505 indicates a unique constraint violation
+ *
+ * Combines direct error checking with recursive unwrapping for comprehensive detection
+ */
 export function isPgUniqueViolation(error: unknown): error is PostgresError {
-  return findPostgresErrorInCauseChain(error, '23505') !== null;
+  return isDirectPgUniqueViolation(error) || isDrizzleWrappedPgUniqueViolation(error);
 }
 
 /**
