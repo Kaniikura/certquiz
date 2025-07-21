@@ -62,6 +62,28 @@ describe('UserProgress', () => {
         accuracy: 80,
       });
     });
+
+    it('should throw error for invalid accuracy value', () => {
+      const dbRow = {
+        level: 5,
+        experience: 400,
+        totalQuestions: 100,
+        correctAnswers: 80,
+        accuracy: 'invalid-number', // This will cause parseFloat to return NaN
+        studyTimeMinutes: 120,
+        currentStreak: 7,
+        lastStudyDate: new Date('2025-01-01T12:00:00Z'),
+        categoryStats: {
+          version: 1,
+          categories: {},
+        },
+        updatedAt: new Date('2025-01-01T12:00:00Z'),
+      };
+
+      expect(() => UserProgress.fromPersistence(dbRow)).toThrow(
+        'Invalid accuracy value in database: invalid-number'
+      );
+    });
   });
 
   describe('addQuizResult', () => {

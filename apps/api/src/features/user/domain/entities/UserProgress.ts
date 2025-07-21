@@ -86,7 +86,14 @@ export class UserProgress {
   static fromPersistence(row: UserProgressPersistence): UserProgress {
     const level = Level.create(row.level);
     const experience = Experience.create(row.experience);
-    const accuracy = Accuracy.create(parseFloat(row.accuracy));
+
+    // Validate parseFloat result before passing to Accuracy
+    const parsedAccuracy = parseFloat(row.accuracy);
+    if (Number.isNaN(parsedAccuracy)) {
+      throw new Error(`Invalid accuracy value in database: ${row.accuracy}`);
+    }
+    const accuracy = Accuracy.create(parsedAccuracy);
+
     const studyTime = StudyTime.create(row.studyTimeMinutes);
     const streak = Streak.create(row.currentStreak);
     const categoryStats = CategoryStats.create(row.categoryStats);
