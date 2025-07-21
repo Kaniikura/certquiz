@@ -8,6 +8,19 @@ import { HttpStatus, type HttpStatusCode } from '@api/shared/http-status';
 import type { Context } from 'hono';
 
 /**
+ * Safely parse JSON from request body
+ * @param c - Hono context
+ * @returns Parsed JSON or null if parsing fails
+ */
+export async function safeJson(c: Context): Promise<unknown> {
+  try {
+    return await c.req.json();
+  } catch (_error) {
+    return null;
+  }
+}
+
+/**
  * Union type of all supported HTTP status codes for error responses
  * Used for type-safe error handling in Hono routes
  */

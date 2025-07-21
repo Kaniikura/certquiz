@@ -3,21 +3,12 @@
  * @fileoverview HTTP endpoint for updating user progress after quiz completion
  */
 
-import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
+import { type SupportedStatusCode, safeJson } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
-import { type Context, Hono } from 'hono';
+import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserNotFoundError, updateProgressHandler } from './handler';
-
-// Helper function to safely parse JSON
-async function safeJson(c: Context): Promise<unknown> {
-  try {
-    return await c.req.json();
-  } catch (_error) {
-    return null;
-  }
-}
 
 // Error mapper for update progress errors
 function mapUpdateProgressError(error: Error): { status: number; body: object } {
