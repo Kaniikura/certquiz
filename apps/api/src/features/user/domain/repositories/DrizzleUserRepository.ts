@@ -199,50 +199,42 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     try {
       const { authRow, progressRow } = user.toPersistence();
 
-      // Upsert auth user
-      await this.conn
-        .insert(authUser)
-        .values({
-          userId: authRow.userId,
-          email: authRow.email,
-          username: authRow.username,
-          role: this.validateAndCastRole(authRow.role),
-          identityProviderId: authRow.identityProviderId,
-          isActive: authRow.isActive,
-          createdAt: authRow.createdAt,
-          updatedAt: authRow.updatedAt,
-        })
-        .onConflictDoUpdate({
-          target: authUser.userId,
-          set: {
+      // Execute both upserts within a single transaction to ensure atomicity
+      await this.withTransaction(async (txRepo) => {
+        // Transaction repository already has the transactional connection
+        // Cast is safe here as withTransaction ensures the repository type
+        const txUserRepo = txRepo as DrizzleUserRepository<TConnection>;
+
+        // Upsert auth user
+        await txUserRepo.conn
+          .insert(authUser)
+          .values({
+            userId: authRow.userId,
             email: authRow.email,
             username: authRow.username,
-            role: this.validateAndCastRole(authRow.role),
+            role: txUserRepo.validateAndCastRole(authRow.role),
             identityProviderId: authRow.identityProviderId,
             isActive: authRow.isActive,
+            createdAt: authRow.createdAt,
             updatedAt: authRow.updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: authUser.userId,
+            set: {
+              email: authRow.email,
+              username: authRow.username,
+              role: txUserRepo.validateAndCastRole(authRow.role),
+              identityProviderId: authRow.identityProviderId,
+              isActive: authRow.isActive,
+              updatedAt: authRow.updatedAt,
+            },
+          });
 
-      // Upsert user progress
-      await this.conn
-        .insert(userProgress)
-        .values({
-          userId: authRow.userId,
-          level: progressRow.level,
-          experience: progressRow.experience,
-          totalQuestions: progressRow.totalQuestions,
-          correctAnswers: progressRow.correctAnswers,
-          accuracy: progressRow.accuracy,
-          studyTimeMinutes: progressRow.studyTimeMinutes,
-          currentStreak: progressRow.currentStreak,
-          lastStudyDate: progressRow.lastStudyDate,
-          categoryStats: progressRow.categoryStats,
-          updatedAt: progressRow.updatedAt,
-        })
-        .onConflictDoUpdate({
-          target: userProgress.userId,
-          set: {
+        // Upsert user progress
+        await txUserRepo.conn
+          .insert(userProgress)
+          .values({
+            userId: authRow.userId,
             level: progressRow.level,
             experience: progressRow.experience,
             totalQuestions: progressRow.totalQuestions,
@@ -253,8 +245,23 @@ export class DrizzleUserRepository<TConnection extends Queryable>
             lastStudyDate: progressRow.lastStudyDate,
             categoryStats: progressRow.categoryStats,
             updatedAt: progressRow.updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: userProgress.userId,
+            set: {
+              level: progressRow.level,
+              experience: progressRow.experience,
+              totalQuestions: progressRow.totalQuestions,
+              correctAnswers: progressRow.correctAnswers,
+              accuracy: progressRow.accuracy,
+              studyTimeMinutes: progressRow.studyTimeMinutes,
+              currentStreak: progressRow.currentStreak,
+              lastStudyDate: progressRow.lastStudyDate,
+              categoryStats: progressRow.categoryStats,
+              updatedAt: progressRow.updatedAt,
+            },
+          });
+      });
 
       this.logger.info('User saved successfully', {
         userId: authRow.userId,
