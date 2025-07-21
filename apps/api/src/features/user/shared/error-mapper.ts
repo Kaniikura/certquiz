@@ -14,6 +14,7 @@ export interface ErrorResponse {
       code: string;
       message: string;
       field?: string;
+      details?: string; // Include error details in development
     };
   };
 }
@@ -83,13 +84,17 @@ export function mapUserError(error: Error): ErrorResponse {
   }
 
   // Default error response for unexpected errors
+  // In development/testing, include error details for debugging
+  const isDev = process.env.NODE_ENV !== 'production';
   return {
     status: 500,
     body: {
       success: false,
       error: {
         code: 'REPOSITORY_ERROR',
-        message: 'Internal server error',
+        message: isDev ? error.message : 'Internal server error',
+        // Include stack trace in development for debugging
+        ...(isDev && { details: error.stack }),
       },
     },
   };

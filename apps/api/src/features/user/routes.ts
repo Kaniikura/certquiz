@@ -38,10 +38,29 @@ const clock = new SystemClock();
 const userRepositoryLogger = createDomainLogger('user.repository');
 
 /**
+ * Health check for user service (public endpoint)
+ * Useful for service monitoring and debugging
+ * Note: This is outside transaction middleware to avoid unnecessary DB connections
+ */
+userRoutes.get('/health', (c) => {
+  return c.json({
+    service: 'user',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
  * Dependency injection middleware
  * Creates transaction-scoped repository instances for each request
+ * Applied only to routes that need database access
  */
 userRoutes.use('*', async (c, next) => {
+  // Skip transaction for health endpoint
+  if (c.req.path === '/health') {
+    return next();
+  }
+
   // Use withTransaction to ensure all user operations are transactional
   await withTransaction(async (trx: TransactionContext) => {
     // Create repository instance with transaction and logger
@@ -73,15 +92,3 @@ protectedRoutes.route('/', getProfileRoute);
 // Mount both groups to userRoutes
 userRoutes.route('/', publicRoutes);
 userRoutes.route('/', protectedRoutes);
-
-/**
- * Health check for user service (public endpoint)
- * Useful for service monitoring and debugging
- */
-userRoutes.get('/health', (c) => {
-  return c.json({
-    service: 'user',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-  });
-});

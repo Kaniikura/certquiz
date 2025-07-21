@@ -3,6 +3,11 @@ import { authUser, userProgress } from '@api/infra/db/schema/user';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
+import {
+  isPgUniqueViolation,
+  mapPgUniqueViolationToDomainError,
+  type PostgresError,
+} from '../../shared/postgres-errors';
 import { User } from '../entities/User';
 import type { Email, UserId } from '../value-objects';
 import type { IUserRepository } from './IUserRepository';
@@ -307,6 +312,29 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         username: authRow.username,
       });
     } catch (error) {
+      // Debug: Log the full error structure to understand what we're dealing with
+      const pgError = error as PostgresError;
+      this.logger.debug('Create user error details', {
+        errorType: error?.constructor?.name,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode: pgError?.code,
+        errorCause: pgError?.cause,
+        errorConstraint: pgError?.constraint,
+        errorDetail: pgError?.detail,
+      });
+
+      // Check if it's a PostgreSQL unique constraint violation
+      if (isPgUniqueViolation(error)) {
+        // Map to appropriate domain error (EmailAlreadyTakenError or UsernameAlreadyTakenError)
+        const domainError = mapPgUniqueViolationToDomainError(error);
+        this.logger.warn('User creation failed due to duplicate constraint', {
+          userId: user.id,
+          error: this.getErrorDetails(domainError),
+        });
+        throw domainError;
+      }
+
+      // For other errors, log and re-throw as-is
       this.logger.error('Failed to create user', {
         userId: user.id,
         error: this.getErrorDetails(error),

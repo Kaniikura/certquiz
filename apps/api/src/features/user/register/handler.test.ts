@@ -57,10 +57,10 @@ class MockUserRepository implements IUserRepository {
 
   async create(user: User): Promise<void> {
     if (this.emails.has(user.email.toString())) {
-      throw new Error('Email already exists');
+      throw new EmailAlreadyTakenError(user.email.toString());
     }
     if (this.usernames.has(user.username)) {
-      throw new Error('Username already exists');
+      throw new UsernameAlreadyTakenError(user.username);
     }
     await this.save(user);
   }

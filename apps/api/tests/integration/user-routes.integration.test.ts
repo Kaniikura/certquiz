@@ -1,0 +1,597 @@
+/**
+ * User routes HTTP integration tests
+ * @fileoverview Tests actual HTTP request/response behavior for user endpoints
+ */
+
+import { userRoutes } from '@api/features/user/routes';
+import { getRootLogger } from '@api/infra/logger/root-logger';
+import { createLoggerMiddleware } from '@api/middleware/logger';
+import { setupTestDatabase } from '@api/testing/domain';
+import { Hono } from 'hono';
+import { generateKeyPair, SignJWT } from 'jose';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Global variables for test keys (will be initialized in beforeAll)
+let testPrivateKey: CryptoKey;
+let testPublicKey: CryptoKey;
+
+// Create the spy outside the mock so it can access testPublicKey at runtime
+const getKeySpy = vi.fn(async () => testPublicKey);
+
+// Mock only createRemoteJWKSet
+vi.mock('jose', async () => {
+  const actual = await vi.importActual<typeof import('jose')>('jose');
+
+  const mockCreateRemoteJWKSet = vi.fn(() => getKeySpy);
+
+  return {
+    ...actual,
+    createRemoteJWKSet: mockCreateRemoteJWKSet,
+  };
+});
+
+describe('User Routes HTTP Integration', () => {
+  // Setup isolated test database
+  setupTestDatabase();
+
+  let privateKey: CryptoKey;
+  let testApp: Hono;
+  const issuer = 'http://localhost:8080/realms/certquiz';
+  const audience = 'certquiz';
+
+  beforeAll(async () => {
+    // Generate test key pair for JWT signing
+    const keyPair = await generateKeyPair('RS256');
+    testPrivateKey = keyPair.privateKey;
+    testPublicKey = keyPair.publicKey;
+    privateKey = testPrivateKey;
+
+    // Create test app with necessary middleware
+    testApp = new Hono();
+
+    // Add logger middleware (required by withTransaction)
+    const logger = getRootLogger();
+    testApp.use('*', createLoggerMiddleware(logger));
+
+    // Mount user routes
+    testApp.route('/', userRoutes);
+  });
+
+  beforeEach(async () => {
+    // Clean up database state between tests if needed
+    // This is handled by setupTestDatabase() which creates isolated databases
+  });
+
+  // Helper to create test JWT tokens
+  async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
+    return new SignJWT({
+      sub: 'test-user-123',
+      email: 'test@example.com',
+      realm_access: { roles: ['certquiz-user'] },
+      ...claims,
+    })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .sign(privateKey);
+  }
+
+  describe('GET /health', () => {
+    it('should return healthy status', async () => {
+      const res = await testApp.request('/health');
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        service: 'user',
+        status: 'healthy',
+        timestamp: expect.any(String),
+      });
+    });
+  });
+
+  describe('POST /register', () => {
+    it('should register a new user with valid data', async () => {
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'newuser@example.com',
+          username: 'newuser',
+          identityProviderId: 'provider-123',
+          role: 'user',
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: true,
+        data: {
+          user: {
+            id: expect.any(String),
+            email: 'newuser@example.com',
+            username: 'newuser',
+            role: 'user',
+            isActive: true,
+            progress: {
+              level: 1,
+              experience: 0,
+              currentStreak: 0,
+            },
+          },
+        },
+      });
+    });
+
+    it('should return 400 for invalid email', async () => {
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'invalid-email',
+          username: 'testuser',
+          identityProviderId: 'provider-123',
+          role: 'user',
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: expect.stringContaining('email'),
+        },
+      });
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          // missing username
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: expect.any(String),
+        },
+      });
+    });
+
+    it('should return 409 for duplicate email', async () => {
+      // Use unique email for this test to avoid conflicts with other tests
+      const uniqueEmail = `duplicate-${Date.now()}@example.com`;
+
+      // First registration
+      const firstRes = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: uniqueEmail,
+          username: `user1-${Date.now()}`,
+          identityProviderId: `provider-${Date.now()}-1`,
+          role: 'user',
+        }),
+      });
+
+      // Check first registration succeeded
+      expect(firstRes.status).toBe(201);
+
+      // Second registration with same email
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: uniqueEmail,
+          username: `user2-${Date.now()}`,
+          identityProviderId: `provider-${Date.now()}-2`,
+          role: 'user',
+        }),
+      });
+
+      expect(res.status).toBe(409);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'EMAIL_ALREADY_TAKEN',
+          field: 'email',
+        },
+      });
+    });
+
+    it('should return 409 for duplicate username', async () => {
+      // Use unique username for this test to avoid conflicts
+      const uniqueUsername = `duplicateuser-${Date.now()}`;
+
+      // First registration
+      const firstRes = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `user1-${Date.now()}@example.com`,
+          username: uniqueUsername,
+          identityProviderId: `provider-${Date.now()}-1`,
+          role: 'user',
+        }),
+      });
+
+      // Check first registration succeeded
+      expect(firstRes.status).toBe(201);
+
+      // Second registration with same username
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `user2-${Date.now()}@example.com`,
+          username: uniqueUsername,
+          identityProviderId: `provider-${Date.now()}-2`,
+          role: 'user',
+        }),
+      });
+
+      expect(res.status).toBe(409);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'USERNAME_ALREADY_TAKEN',
+          field: 'username',
+        },
+      });
+    });
+
+    it('should handle malformed JSON gracefully', async () => {
+      const res = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'invalid json',
+      });
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('PUT /progress', () => {
+    let testUserId: string;
+
+    beforeEach(async () => {
+      // Create a test user for progress updates with unique data
+      const timestamp = Date.now();
+      const registerRes = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `progresstest-${timestamp}@example.com`,
+          username: `progressuser-${timestamp}`,
+          identityProviderId: `provider-progress-${timestamp}`,
+          role: 'user',
+        }),
+      });
+
+      // Check registration response
+      if (registerRes.status !== 201) {
+        const errorData = await registerRes.json();
+        throw new Error(
+          `Failed to create test user: ${registerRes.status} ${JSON.stringify(errorData)}`
+        );
+      }
+
+      const registerData = await registerRes.json();
+      testUserId = registerData.data.user.id;
+    });
+
+    it('should require authentication', async () => {
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: testUserId,
+          correctAnswers: 5,
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 30,
+        }),
+      });
+
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.error).toBeDefined();
+    });
+
+    it('should update progress with valid data and authentication', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: testUserId,
+          correctAnswers: 8,
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 45,
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: true,
+        data: {
+          progress: {
+            level: expect.any(Number),
+            experience: expect.any(Number),
+            totalQuestions: 10,
+            correctAnswers: 8,
+            accuracy: 80,
+            studyTimeMinutes: 45,
+            currentStreak: 1,
+            lastStudyDate: expect.any(String),
+            categoryStats: {
+              CCNA: {
+                correct: 8,
+                total: 10,
+                accuracy: 80,
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('should return 404 for non-existent user', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: '550e8400-e29b-41d4-a716-446655440000', // Non-existent UUID
+          correctAnswers: 5,
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 30,
+        }),
+      });
+
+      expect(res.status).toBe(404);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+        },
+      });
+    });
+
+    it('should return 400 for invalid data', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: testUserId,
+          correctAnswers: -5, // Invalid: negative number
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 30,
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    });
+  });
+
+  describe('GET /profile/:userId', () => {
+    let testUserId: string;
+
+    beforeEach(async () => {
+      // Create a test user with some progress using unique data
+      const timestamp = Date.now();
+      const registerRes = await testApp.request('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `profiletest-${timestamp}@example.com`,
+          username: `profileuser-${timestamp}`,
+          identityProviderId: `provider-profile-${timestamp}`,
+          role: 'user',
+        }),
+      });
+
+      // Check registration succeeded
+      if (registerRes.status !== 201) {
+        const errorData = await registerRes.json();
+        throw new Error(
+          `Failed to create test user: ${registerRes.status} ${JSON.stringify(errorData)}`
+        );
+      }
+
+      const registerData = await registerRes.json();
+      testUserId = registerData.data.user.id;
+
+      // Add some progress to the user
+      const token = await createTestToken();
+      await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: testUserId,
+          correctAnswers: 15,
+          totalQuestions: 20,
+          category: 'CCNP',
+          studyTimeMinutes: 60,
+        }),
+      });
+    });
+
+    it('should require authentication', async () => {
+      const res = await testApp.request(`/profile/${testUserId}`);
+
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.error).toBeDefined();
+    });
+
+    it('should return user profile with authentication', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request(`/profile/${testUserId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: true,
+        data: {
+          user: {
+            id: testUserId,
+            email: expect.stringContaining('profiletest-'),
+            username: expect.stringContaining('profileuser-'),
+            role: 'user',
+            isActive: true,
+            progress: {
+              level: expect.any(Number),
+              experience: expect.any(Number),
+              totalQuestions: 20,
+              correctAnswers: 15,
+              accuracy: 75,
+              studyTimeMinutes: 60,
+              currentStreak: 1,
+              lastStudyDate: expect.any(String),
+              categoryStats: {
+                CCNP: {
+                  correct: 15,
+                  total: 20,
+                  accuracy: 75,
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('should return 404 for non-existent user', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request('/profile/550e8400-e29b-41d4-a716-446655440000', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      expect(res.status).toBe(404);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+        },
+      });
+    });
+
+    it('should return 400 for invalid user ID format', async () => {
+      const token = await createTestToken();
+      const res = await testApp.request('/profile/invalid-uuid', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data).toMatchObject({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    });
+  });
+
+  describe('Protected routes authorization', () => {
+    it('should reject requests with invalid JWT', async () => {
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer invalid-token',
+        },
+        body: JSON.stringify({
+          userId: '550e8400-e29b-41d4-a716-446655440000',
+          correctAnswers: 5,
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 30,
+        }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should reject requests with expired JWT', async () => {
+      // Create an expired token
+      const expiredToken = await new SignJWT({
+        sub: 'test-user-123',
+        email: 'test@example.com',
+        realm_access: { roles: ['certquiz-user'] },
+      })
+        .setProtectedHeader({ alg: 'RS256' })
+        .setIssuedAt(Math.floor(Date.now() / 1000) - 7200) // 2 hours ago
+        .setExpirationTime(Math.floor(Date.now() / 1000) - 3600) // 1 hour ago
+        .setIssuer(issuer)
+        .setAudience(audience)
+        .sign(privateKey);
+
+      const res = await testApp.request('/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${expiredToken}`,
+        },
+        body: JSON.stringify({
+          userId: '550e8400-e29b-41d4-a716-446655440000',
+          correctAnswers: 5,
+          totalQuestions: 10,
+          category: 'CCNA',
+          studyTimeMinutes: 30,
+        }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+});

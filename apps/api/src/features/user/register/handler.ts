@@ -9,7 +9,6 @@ import { Result } from '@api/shared/result';
 import { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { Email, UserId, UserRole } from '../domain/value-objects';
-import { EmailAlreadyTakenError, UsernameAlreadyTakenError } from '../shared/errors';
 import type { RegisterResponse } from './dto';
 import { registerSchema } from './validation';
 
@@ -37,19 +36,9 @@ export async function registerHandler(
       return Result.fail(emailResult.error);
     }
 
-    // 3. Check if email is already taken
-    const emailTaken = await userRepository.isEmailTaken(emailResult.data);
-    if (emailTaken) {
-      return Result.fail(new EmailAlreadyTakenError(email));
-    }
-
-    // 4. Check if username is already taken
-    const usernameTaken = await userRepository.isUsernameTaken(username);
-    if (usernameTaken) {
-      return Result.fail(new UsernameAlreadyTakenError(username));
-    }
-
-    // 5. Create user with domain rules
+    // 3. Create user with domain rules
+    // Note: We no longer pre-check for duplicates. The database UNIQUE constraints
+    // will handle this atomically, avoiding race conditions
     const userResult = User.create(
       {
         email: emailResult.data.toString(),
@@ -66,10 +55,12 @@ export async function registerHandler(
 
     const user = userResult.data;
 
-    // 6. Save user using repository
+    // 4. Save user using repository
+    // The repository will catch PostgreSQL duplicate key violations and throw
+    // EmailAlreadyTakenError or UsernameAlreadyTakenError if appropriate
     await userRepository.create(user);
 
-    // 7. Return successful registration response
+    // 5. Return successful registration response
     return Result.ok({
       user: {
         id: UserId.toString(user.id),
