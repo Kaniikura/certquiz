@@ -201,18 +201,17 @@ export class DrizzleUserRepository<TConnection extends Queryable>
 
       // Execute both upserts within a single transaction to ensure atomicity
       await this.withTransaction(async (txRepo) => {
-        // Transaction repository already has the transactional connection
-        // Cast is safe here as withTransaction ensures the repository type
-        const txUserRepo = txRepo as DrizzleUserRepository<TConnection>;
+        // Transaction repository is properly typed as DrizzleUserRepository<Tx>
+        // No unsafe casting needed - type safety guaranteed by withTransaction signature
 
         // Upsert auth user
-        await txUserRepo.conn
+        await txRepo.conn
           .insert(authUser)
           .values({
             userId: authRow.userId,
             email: authRow.email,
             username: authRow.username,
-            role: txUserRepo.validateAndCastRole(authRow.role),
+            role: txRepo.validateAndCastRole(authRow.role),
             identityProviderId: authRow.identityProviderId,
             isActive: authRow.isActive,
             createdAt: authRow.createdAt,
@@ -223,7 +222,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
             set: {
               email: authRow.email,
               username: authRow.username,
-              role: txUserRepo.validateAndCastRole(authRow.role),
+              role: txRepo.validateAndCastRole(authRow.role),
               identityProviderId: authRow.identityProviderId,
               isActive: authRow.isActive,
               updatedAt: authRow.updatedAt,
@@ -231,7 +230,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
           });
 
         // Upsert user progress
-        await txUserRepo.conn
+        await txRepo.conn
           .insert(userProgress)
           .values({
             userId: authRow.userId,
@@ -282,16 +281,15 @@ export class DrizzleUserRepository<TConnection extends Queryable>
 
       // Execute both inserts within a single transaction to ensure atomicity
       await this.withTransaction(async (txRepo) => {
-        // Transaction repository already has the transactional connection
-        // Cast is safe here as withTransaction ensures the repository type
-        const txUserRepo = txRepo as DrizzleUserRepository<TConnection>;
+        // Transaction repository is properly typed as DrizzleUserRepository<Tx>
+        // No unsafe casting needed - type safety guaranteed by withTransaction signature
 
         // Insert auth user
-        await txUserRepo.conn.insert(authUser).values({
+        await txRepo.conn.insert(authUser).values({
           userId: authRow.userId,
           email: authRow.email,
           username: authRow.username,
-          role: txUserRepo.validateAndCastRole(authRow.role),
+          role: txRepo.validateAndCastRole(authRow.role),
           identityProviderId: authRow.identityProviderId,
           isActive: authRow.isActive,
           createdAt: authRow.createdAt,
@@ -299,7 +297,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         });
 
         // Insert user progress with default values
-        await txUserRepo.conn.insert(userProgress).values({
+        await txRepo.conn.insert(userProgress).values({
           userId: authRow.userId,
           level: progressRow.level,
           experience: progressRow.experience,
@@ -430,7 +428,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     }
   }
 
-  async withTransaction<T>(fn: (repo: IUserRepository) => Promise<T>): Promise<T> {
+  async withTransaction<T>(fn: (repo: DrizzleUserRepository<Tx>) => Promise<T>): Promise<T> {
     // For now, delegate to the connection's transaction method
     // This assumes the connection supports transactions
     if ('transaction' in this.conn && typeof this.conn.transaction === 'function') {
