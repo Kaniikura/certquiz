@@ -23,31 +23,38 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     super(logger);
   }
 
+  /**
+   * Common select fields for user queries with joined progress data
+   */
+  private getUserSelectFields() {
+    return {
+      // Auth user fields
+      userId: authUser.userId,
+      email: authUser.email,
+      username: authUser.username,
+      role: authUser.role,
+      identityProviderId: authUser.identityProviderId,
+      isActive: authUser.isActive,
+      createdAt: authUser.createdAt,
+      updatedAt: authUser.updatedAt,
+      // Progress fields
+      level: userProgress.level,
+      experience: userProgress.experience,
+      totalQuestions: userProgress.totalQuestions,
+      correctAnswers: userProgress.correctAnswers,
+      accuracy: userProgress.accuracy,
+      studyTimeMinutes: userProgress.studyTimeMinutes,
+      currentStreak: userProgress.currentStreak,
+      lastStudyDate: userProgress.lastStudyDate,
+      categoryStats: userProgress.categoryStats,
+      progressUpdatedAt: userProgress.updatedAt,
+    };
+  }
+
   async findById(id: UserId): Promise<User | null> {
     try {
       const rows = await this.conn
-        .select({
-          // Auth user fields
-          userId: authUser.userId,
-          email: authUser.email,
-          username: authUser.username,
-          role: authUser.role,
-          identityProviderId: authUser.identityProviderId,
-          isActive: authUser.isActive,
-          createdAt: authUser.createdAt,
-          updatedAt: authUser.updatedAt,
-          // Progress fields
-          level: userProgress.level,
-          experience: userProgress.experience,
-          totalQuestions: userProgress.totalQuestions,
-          correctAnswers: userProgress.correctAnswers,
-          accuracy: userProgress.accuracy,
-          studyTimeMinutes: userProgress.studyTimeMinutes,
-          currentStreak: userProgress.currentStreak,
-          lastStudyDate: userProgress.lastStudyDate,
-          categoryStats: userProgress.categoryStats,
-          progressUpdatedAt: userProgress.updatedAt,
-        })
+        .select(this.getUserSelectFields())
         .from(authUser)
         .innerJoin(userProgress, eq(authUser.userId, userProgress.userId))
         .where(eq(authUser.userId, id))
@@ -70,28 +77,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
   async findByEmail(email: Email): Promise<User | null> {
     try {
       const rows = await this.conn
-        .select({
-          // Auth user fields
-          userId: authUser.userId,
-          email: authUser.email,
-          username: authUser.username,
-          role: authUser.role,
-          identityProviderId: authUser.identityProviderId,
-          isActive: authUser.isActive,
-          createdAt: authUser.createdAt,
-          updatedAt: authUser.updatedAt,
-          // Progress fields
-          level: userProgress.level,
-          experience: userProgress.experience,
-          totalQuestions: userProgress.totalQuestions,
-          correctAnswers: userProgress.correctAnswers,
-          accuracy: userProgress.accuracy,
-          studyTimeMinutes: userProgress.studyTimeMinutes,
-          currentStreak: userProgress.currentStreak,
-          lastStudyDate: userProgress.lastStudyDate,
-          categoryStats: userProgress.categoryStats,
-          progressUpdatedAt: userProgress.updatedAt,
-        })
+        .select(this.getUserSelectFields())
         .from(authUser)
         .innerJoin(userProgress, eq(authUser.userId, userProgress.userId))
         .where(eq(authUser.email, email.toString()))
@@ -114,28 +100,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
   async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
     try {
       const rows = await this.conn
-        .select({
-          // Auth user fields
-          userId: authUser.userId,
-          email: authUser.email,
-          username: authUser.username,
-          role: authUser.role,
-          identityProviderId: authUser.identityProviderId,
-          isActive: authUser.isActive,
-          createdAt: authUser.createdAt,
-          updatedAt: authUser.updatedAt,
-          // Progress fields
-          level: userProgress.level,
-          experience: userProgress.experience,
-          totalQuestions: userProgress.totalQuestions,
-          correctAnswers: userProgress.correctAnswers,
-          accuracy: userProgress.accuracy,
-          studyTimeMinutes: userProgress.studyTimeMinutes,
-          currentStreak: userProgress.currentStreak,
-          lastStudyDate: userProgress.lastStudyDate,
-          categoryStats: userProgress.categoryStats,
-          progressUpdatedAt: userProgress.updatedAt,
-        })
+        .select(this.getUserSelectFields())
         .from(authUser)
         .innerJoin(userProgress, eq(authUser.userId, userProgress.userId))
         .where(eq(authUser.identityProviderId, identityProviderId))
@@ -158,28 +123,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
   async findByUsername(username: string): Promise<User | null> {
     try {
       const rows = await this.conn
-        .select({
-          // Auth user fields
-          userId: authUser.userId,
-          email: authUser.email,
-          username: authUser.username,
-          role: authUser.role,
-          identityProviderId: authUser.identityProviderId,
-          isActive: authUser.isActive,
-          createdAt: authUser.createdAt,
-          updatedAt: authUser.updatedAt,
-          // Progress fields
-          level: userProgress.level,
-          experience: userProgress.experience,
-          totalQuestions: userProgress.totalQuestions,
-          correctAnswers: userProgress.correctAnswers,
-          accuracy: userProgress.accuracy,
-          studyTimeMinutes: userProgress.studyTimeMinutes,
-          currentStreak: userProgress.currentStreak,
-          lastStudyDate: userProgress.lastStudyDate,
-          categoryStats: userProgress.categoryStats,
-          progressUpdatedAt: userProgress.updatedAt,
-        })
+        .select(this.getUserSelectFields())
         .from(authUser)
         .innerJoin(userProgress, eq(authUser.userId, userProgress.userId))
         .where(eq(authUser.username, username))
