@@ -1,5 +1,6 @@
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import { Accuracy } from './Accuracy';
 
 interface CategoryStat {
   correct: number;
@@ -95,14 +96,14 @@ export class CategoryStats {
    * Update category statistics
    */
   updateCategory(category: string, correct: number, total: number): CategoryStats {
-    const accuracy = total === 0 ? 0 : Math.round((correct / total) * 10000) / 100;
+    const accuracy = Accuracy.fromQuizResults(correct, total);
 
     const newCategories = {
       ...this.stats.categories,
       [category]: {
         correct,
         total,
-        accuracy,
+        accuracy: accuracy.value,
       },
     };
 
