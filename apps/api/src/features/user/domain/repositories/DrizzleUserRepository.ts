@@ -425,6 +425,17 @@ export class DrizzleUserRepository<TConnection extends Queryable>
    * Map joined database row to User domain entity
    */
   private mapRowToUser(row: JoinedUserRow): User {
+    // Validate categoryStats is an object
+    if (typeof row.categoryStats !== 'object' || row.categoryStats === null) {
+      this.logger.error('Invalid categoryStats in database', {
+        userId: row.userId,
+        categoryStats: row.categoryStats,
+      });
+      throw new Error(
+        `Invalid categoryStats in database for user ${row.userId}: must be an object`
+      );
+    }
+
     const authRow = {
       userId: row.userId,
       email: row.email,
@@ -445,7 +456,7 @@ export class DrizzleUserRepository<TConnection extends Queryable>
       studyTimeMinutes: row.studyTimeMinutes,
       currentStreak: row.currentStreak,
       lastStudyDate: row.lastStudyDate,
-      categoryStats: row.categoryStats as object,
+      categoryStats: row.categoryStats,
       updatedAt: row.progressUpdatedAt,
     };
 
