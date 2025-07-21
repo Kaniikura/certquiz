@@ -7,6 +7,7 @@ import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserId } from '../domain/value-objects';
+import { extractCategoryStats } from '../shared/category-stats-utils';
 import type { GetProfileResponse } from './dto';
 import { getProfileSchema } from './validation';
 
@@ -45,15 +46,7 @@ export async function getProfileHandler(
     }
 
     // 3. Extract category statistics
-    const categoryStats: {
-      [category: string]: { correct: number; total: number; accuracy: number };
-    } = {};
-    for (const cat of user.progress.categoryStats.getAllCategories()) {
-      const stats = user.progress.categoryStats.getCategoryStats(cat);
-      if (stats) {
-        categoryStats[cat] = stats;
-      }
-    }
+    const categoryStats = extractCategoryStats(user.progress);
 
     // 4. Return complete profile data
     return Result.ok({

@@ -8,6 +8,7 @@ import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { UserId } from '../domain/value-objects';
+import { extractCategoryStats } from '../shared/category-stats-utils';
 import type { UpdateProgressResponse } from './dto';
 import { updateProgressSchema } from './validation';
 
@@ -62,15 +63,7 @@ export async function updateProgressHandler(
     await userRepository.updateProgress(updatedUser);
 
     // 5. Return progress data
-    const categoryStats: {
-      [category: string]: { correct: number; total: number; accuracy: number };
-    } = {};
-    for (const cat of updatedUser.progress.categoryStats.getAllCategories()) {
-      const stats = updatedUser.progress.categoryStats.getCategoryStats(cat);
-      if (stats) {
-        categoryStats[cat] = stats;
-      }
-    }
+    const categoryStats = extractCategoryStats(updatedUser.progress);
 
     return Result.ok({
       progress: {
