@@ -8,9 +8,17 @@ import { Result } from '@api/shared/result';
 export class Level {
   private static readonly MIN_LEVEL = 1;
   private static readonly MAX_LEVEL = 100;
-  private static readonly XP_PER_LEVEL = 100; // Simple linear progression
 
   private constructor(public readonly value: number) {}
+
+  /**
+   * Calculate the XP required for a given level.
+   * Currently uses a simple linear progression: 100 XP per level.
+   * This method allows for future adjustments to the progression logic.
+   */
+  private static getXpPerLevel(_level: number): number {
+    return 100; // Simple linear progression
+  }
 
   /**
    * Create a Level from a specific value
@@ -36,7 +44,7 @@ export class Level {
    * Using simple linear progression: Level = floor(XP / 100) + 1
    */
   static fromExperience(experience: number): Level {
-    const calculatedLevel = Math.floor(experience / Level.XP_PER_LEVEL) + 1;
+    const calculatedLevel = Math.floor(experience / Level.getXpPerLevel(1)) + 1;
     const cappedLevel = Math.min(calculatedLevel, Level.MAX_LEVEL);
     return new Level(cappedLevel);
   }
@@ -48,14 +56,14 @@ export class Level {
     if (this.value >= Level.MAX_LEVEL) {
       return 0;
     }
-    return this.value * Level.XP_PER_LEVEL;
+    return this.value * Level.getXpPerLevel(this.value);
   }
 
   /**
    * Get total experience needed to reach this level
    */
   experienceForLevel(): number {
-    return (this.value - 1) * Level.XP_PER_LEVEL;
+    return (this.value - 1) * Level.getXpPerLevel(this.value);
   }
 
   toString(): string {
