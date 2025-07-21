@@ -31,6 +31,11 @@ interface UserProgressPersistence {
  * UserProgress entity representing user's learning progress and statistics
  */
 export class UserProgress {
+  // Experience calculation constants
+  private static readonly XP_PER_CORRECT_ANSWER = 10;
+  private static readonly XP_PER_INCORRECT_ANSWER = 2;
+  private static readonly PERFECT_SCORE_BONUS_MULTIPLIER = 0.5; // 50% bonus
+
   constructor(
     public readonly level: Level,
     public readonly experience: Experience,
@@ -284,16 +289,16 @@ export class UserProgress {
   private calculateExperienceGain(result: QuizResult): number {
     let totalXP = 0;
 
-    // Award XP for each correct answer (10 XP base)
-    totalXP += result.correctAnswers * 10;
+    // Award XP for each correct answer
+    totalXP += result.correctAnswers * UserProgress.XP_PER_CORRECT_ANSWER;
 
-    // Award consolation XP for incorrect answers (2 XP each)
+    // Award consolation XP for incorrect answers
     const incorrectAnswers = result.totalQuestions - result.correctAnswers;
-    totalXP += incorrectAnswers * 2;
+    totalXP += incorrectAnswers * UserProgress.XP_PER_INCORRECT_ANSWER;
 
     // Bonus XP for perfect scores
     if (result.correctAnswers === result.totalQuestions && result.totalQuestions > 0) {
-      totalXP += Math.floor(result.totalQuestions * 0.5); // 50% bonus
+      totalXP += Math.floor(result.totalQuestions * UserProgress.PERFECT_SCORE_BONUS_MULTIPLIER);
     }
 
     return totalXP;
