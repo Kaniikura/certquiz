@@ -39,6 +39,31 @@ export interface TransactionParams {
 export type TransactionHandler<TResult> = (context: TransactionContext) => Promise<TResult>;
 
 /**
+ * Valid argument types for transaction handler factories.
+ * Represents JSON-serializable values that can be safely passed to handlers.
+ *
+ * This type constraint ensures type safety while allowing common data types:
+ * - Primitives: string, number, boolean, null, undefined
+ * - Objects: Plain objects with serializable properties
+ * - Arrays: Arrays of serializable values
+ *
+ * Explicitly excludes non-serializable types:
+ * - Functions
+ * - Symbols
+ * - BigInts
+ * - Class instances (except Date)
+ */
+export type HandlerArgument =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Date
+  | { [key: string]: HandlerArgument }
+  | HandlerArgument[];
+
+/**
  * Executes a handler function within a database transaction
  * Handles repository creation and ID conversions
  *
@@ -70,10 +95,24 @@ export async function executeInTransaction<TResult>(
 }
 
 /**
- * Type-safe handler creator for specific handler signatures
- * Useful for creating specialized transaction executors
+ * Type-safe handler creator for specific handler signatures.
+ * Useful for creating specialized transaction executors with proper type constraints.
+ *
+ * @template TArgs - Array of handler arguments, constrained to serializable types
+ * @template TResult - The result type of the handler
+ * @param handlerFactory - Factory function that creates a transaction handler
+ * @returns Executor function that wraps the handler in a transaction
+ *
+ * @example
+ * ```typescript
+ * const executeStartQuiz = createTransactionExecutor(
+ *   (request: StartQuizRequest, userId: string) => async (context) => {
+ *     // Handler implementation
+ *   }
+ * );
+ * ```
  */
-export function createTransactionExecutor<TArgs extends unknown[], TResult>(
+export function createTransactionExecutor<TArgs extends HandlerArgument[], TResult>(
   handlerFactory: (...args: TArgs) => TransactionHandler<TResult>
 ) {
   return async (args: TArgs, params: TransactionParams): Promise<TResult> => {
