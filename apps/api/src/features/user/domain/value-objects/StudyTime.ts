@@ -27,7 +27,11 @@ export class StudyTime {
    */
   static fromHours(hours: number): StudyTime {
     const minutes = Math.round(hours * 60);
-    return new StudyTime(minutes);
+    const result = StudyTime.create(minutes);
+    if (!result.success) {
+      throw new Error(`Invalid hours value: ${hours}. ${result.error.message}`);
+    }
+    return result.data;
   }
 
   /**

@@ -53,6 +53,12 @@ describe('StudyTime', () => {
       const studyTime = StudyTime.fromHours(1.999); // 119.94 minutes
       expect(studyTime.minutes).toBe(120);
     });
+
+    it('should throw error for negative hours', () => {
+      expect(() => StudyTime.fromHours(-1)).toThrow(
+        'Invalid hours value: -1. Study time cannot be negative'
+      );
+    });
   });
 
   describe('addMinutes', () => {
