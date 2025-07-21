@@ -95,7 +95,11 @@ async function executeHandler<TRequest, TResponse>(
   } else if (config.handler) {
     return config.handler(request, context);
   } else {
-    throw new Error('Either handler or createTransactionHandler must be provided');
+    throw new Error(
+      `Invalid route configuration for method "${config.method}" and path "${config.path}": ` +
+        `Either a "handler" or "createTransactionHandler" must be provided. ` +
+        'Please update the RouteConfig to include one of these properties.'
+    );
   }
 }
 
