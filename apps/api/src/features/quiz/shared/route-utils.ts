@@ -11,7 +11,7 @@ import type { Context } from 'hono';
  * Union type of all supported HTTP status codes for error responses
  * Used for type-safe error handling in Hono routes
  */
-type SupportedStatusCode = Extract<
+export type SupportedStatusCode = Extract<
   HttpStatusCode,
   | typeof HttpStatus.BAD_REQUEST
   | typeof HttpStatus.FORBIDDEN

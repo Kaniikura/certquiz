@@ -19,7 +19,7 @@ interface QuizCompletionData {
   studyTimeMinutes: number;
 }
 
-interface AuthUserRow {
+export interface AuthUserRow {
   userId: string;
   email: string;
   username: string;
@@ -30,7 +30,7 @@ interface AuthUserRow {
   updatedAt: Date;
 }
 
-interface UserProgressRow {
+export interface UserProgressRow {
   level: number;
   experience: number;
   totalQuestions: number;
