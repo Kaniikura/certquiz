@@ -50,6 +50,14 @@ certquiz/
 │       │   │   │       ├── aggregates/
 │       │   │   │       └── repositories/
 │       │   │   ├── user/       # User bounded context
+│       │   │   │   ├── register/       # User registration use case
+│       │   │   │   ├── update-progress/ # Progress tracking use case
+│       │   │   │   ├── get-profile/    # Profile retrieval use case
+│       │   │   │   ├── domain/         # Domain layer
+│       │   │   │   │   ├── entities/   # User, UserProgress
+│       │   │   │   │   ├── value-objects/ # Email, UserId, Level, Experience, etc.
+│       │   │   │   │   └── repositories/ # IUserRepository, DrizzleUserRepository
+│       │   │   │   └── shared/         # Error handling, utilities
 │       │   │   ├── auth/       # Auth bounded context
 │       │   │   └── question/   # Question bounded context
 │       │   ├── system/         # System/operational features
