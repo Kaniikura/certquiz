@@ -3,7 +3,7 @@ import { authUser, userProgress } from '@api/infra/db/schema/user';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
-import { type AuthUserRow, User, type UserProgressRow } from '../entities/User';
+import { User } from '../entities/User';
 import type { Email, UserId } from '../value-objects';
 import type { IUserRepository } from './IUserRepository';
 
@@ -264,51 +264,42 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     }
   }
 
-  /**
-   * Execute both insert operations for user creation within a transaction
-   * @private
-   */
-  private async executeCreateInserts(
-    conn: TConnection,
-    authRow: AuthUserRow,
-    progressRow: UserProgressRow
-  ): Promise<void> {
-    // Insert auth user
-    await conn.insert(authUser).values({
-      userId: authRow.userId,
-      email: authRow.email,
-      username: authRow.username,
-      role: this.validateAndCastRole(authRow.role),
-      identityProviderId: authRow.identityProviderId,
-      isActive: authRow.isActive,
-      createdAt: authRow.createdAt,
-      updatedAt: authRow.updatedAt,
-    });
-
-    // Insert user progress
-    await conn.insert(userProgress).values({
-      userId: authRow.userId,
-      level: progressRow.level,
-      experience: progressRow.experience,
-      totalQuestions: progressRow.totalQuestions,
-      correctAnswers: progressRow.correctAnswers,
-      accuracy: progressRow.accuracy,
-      studyTimeMinutes: progressRow.studyTimeMinutes,
-      currentStreak: progressRow.currentStreak,
-      lastStudyDate: progressRow.lastStudyDate,
-      categoryStats: progressRow.categoryStats,
-      updatedAt: progressRow.updatedAt,
-    });
-  }
-
   async create(user: User): Promise<void> {
     try {
       const { authRow, progressRow } = user.toPersistence();
 
       // Execute both inserts within a single transaction to ensure atomicity
       await this.withTransaction(async (txRepo) => {
-        const drizzleTxRepo = txRepo as DrizzleUserRepository<TConnection>;
-        await this.executeCreateInserts(drizzleTxRepo.conn, authRow, progressRow);
+        // Transaction repository already has the transactional connection
+        // Cast is safe here as withTransaction ensures the repository type
+        const txUserRepo = txRepo as DrizzleUserRepository<TConnection>;
+
+        // Insert auth user
+        await txUserRepo.conn.insert(authUser).values({
+          userId: authRow.userId,
+          email: authRow.email,
+          username: authRow.username,
+          role: txUserRepo.validateAndCastRole(authRow.role),
+          identityProviderId: authRow.identityProviderId,
+          isActive: authRow.isActive,
+          createdAt: authRow.createdAt,
+          updatedAt: authRow.updatedAt,
+        });
+
+        // Insert user progress with default values
+        await txUserRepo.conn.insert(userProgress).values({
+          userId: authRow.userId,
+          level: progressRow.level,
+          experience: progressRow.experience,
+          totalQuestions: progressRow.totalQuestions,
+          correctAnswers: progressRow.correctAnswers,
+          accuracy: progressRow.accuracy,
+          studyTimeMinutes: progressRow.studyTimeMinutes,
+          currentStreak: progressRow.currentStreak,
+          lastStudyDate: progressRow.lastStudyDate,
+          categoryStats: progressRow.categoryStats,
+          updatedAt: progressRow.updatedAt,
+        });
       });
 
       this.logger.info('User created successfully', {
