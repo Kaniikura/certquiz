@@ -4,7 +4,7 @@
  */
 
 import type { QuizSession } from '../domain/aggregates/QuizSession';
-import type { QuestionId } from '../domain/value-objects/Ids';
+import type { OptionId, QuestionId } from '../domain/value-objects/Ids';
 import type { AnswerOption, AnswerResult, ScoreSummary } from './dto';
 import type { QuestionDetails } from './QuestionDetailsService';
 
@@ -14,7 +14,10 @@ import type { QuestionDetails } from './QuestionDetailsService';
  * @param correctOptionIds - Correct option IDs for the question
  * @returns Whether the answer is correct
  */
-export function isAnswerCorrect(selectedOptionIds: string[], correctOptionIds: string[]): boolean {
+export function isAnswerCorrect(
+  selectedOptionIds: readonly OptionId[],
+  correctOptionIds: readonly OptionId[]
+): boolean {
   const selectedSet = new Set(selectedOptionIds);
   const correctSet = new Set(correctOptionIds);
 
@@ -29,7 +32,7 @@ export function isAnswerCorrect(selectedOptionIds: string[], correctOptionIds: s
  */
 export function buildAnswerOptions(
   questionDetails: QuestionDetails,
-  selectedOptionIds: string[]
+  selectedOptionIds: readonly OptionId[]
 ): AnswerOption[] {
   return questionDetails.options.map((option) => ({
     id: option.id,
@@ -59,12 +62,8 @@ export function buildAnswerResults(
       continue; // Skip if question details not found
     }
 
-    // Convert IDs to strings for comparison
-    const selectedIds = answer.selectedOptionIds.map((id) => id.toString());
-    const correctIds = questionDetails.correctOptionIds.map((id) => id.toString());
-
-    // Check correctness
-    const isCorrect = isAnswerCorrect(selectedIds, correctIds);
+    // Check correctness using OptionId arrays directly
+    const isCorrect = isAnswerCorrect(answer.selectedOptionIds, questionDetails.correctOptionIds);
     if (isCorrect) {
       correctCount++;
     }
@@ -77,7 +76,7 @@ export function buildAnswerResults(
       isCorrect: isCorrect,
       submittedAt: answer.answeredAt,
       questionText: questionDetails.text,
-      options: buildAnswerOptions(questionDetails, selectedIds),
+      options: buildAnswerOptions(questionDetails, answer.selectedOptionIds),
     };
 
     answerResults.push(answerResult);
