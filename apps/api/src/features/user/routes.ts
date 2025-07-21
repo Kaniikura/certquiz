@@ -5,6 +5,8 @@
 
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
+import { auth } from '@api/middleware/auth';
+import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
 import { Hono } from 'hono';
@@ -18,6 +20,7 @@ import { updateProgressRoute } from './update-progress/route';
 type UserVariables = {
   userRepository: IUserRepository;
   clock: Clock;
+  user?: AuthUser; // Optional as register route doesn't require auth
 };
 
 /**
@@ -53,13 +56,26 @@ userRoutes.use('*', async (c, next) => {
   });
 });
 
-// Mount individual user routes
-userRoutes.route('/', registerRoute);
-userRoutes.route('/', updateProgressRoute);
-userRoutes.route('/', getProfileRoute);
+// Create separate groups for public and protected routes
+const publicRoutes = new Hono<{ Variables: UserVariables }>();
+const protectedRoutes = new Hono<{ Variables: UserVariables }>();
+
+// Apply authentication middleware to protected routes only
+protectedRoutes.use('*', auth({ required: true }));
+
+// Mount public routes (no authentication required)
+publicRoutes.route('/', registerRoute);
+
+// Mount protected routes (authentication required)
+protectedRoutes.route('/', updateProgressRoute);
+protectedRoutes.route('/', getProfileRoute);
+
+// Mount both groups to userRoutes
+userRoutes.route('/', publicRoutes);
+userRoutes.route('/', protectedRoutes);
 
 /**
- * Health check for user service
+ * Health check for user service (public endpoint)
  * Useful for service monitoring and debugging
  */
 userRoutes.get('/health', (c) => {
