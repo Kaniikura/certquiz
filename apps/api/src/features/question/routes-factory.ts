@@ -74,20 +74,7 @@ export function createQuestionRoutes(
     const requestPath = c.req.path;
 
     // Check if the path should be excluded from transactions
-    const isExcluded = Array.from(TRANSACTION_EXCLUDED_PATHS).some((excludedPath) => {
-      // Exact match
-      if (requestPath === excludedPath) return true;
-
-      // Match with trailing slash
-      if (requestPath === `${excludedPath}/`) return true;
-
-      // Match sub-paths (e.g., /health/status matches /health)
-      if (requestPath.startsWith(`${excludedPath}/`)) return true;
-
-      return false;
-    });
-
-    if (isExcluded) {
+    if (TRANSACTION_EXCLUDED_PATHS.has(requestPath)) {
       return next();
     }
 
