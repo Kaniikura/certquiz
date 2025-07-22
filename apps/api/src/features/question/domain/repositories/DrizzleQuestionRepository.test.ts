@@ -30,7 +30,6 @@ type TestQueryable = TransactionalConnection;
 
 describe('DrizzleQuestionRepository', () => {
   const clock = new TestClock(new Date('2025-01-01T00:00:00Z'));
-  const userId = crypto.randomUUID();
   const mockLogger = {
     debug: vi.fn(),
     info: vi.fn(),
@@ -43,9 +42,9 @@ describe('DrizzleQuestionRepository', () => {
   });
 
   // Helper to create test user
-  async function createTestUser(db: TestQueryable) {
+  async function createTestUser(db: TestQueryable, testUserId = crypto.randomUUID()) {
     await db.insert(authUser).values({
-      userId,
+      userId: testUserId,
       email: 'test@example.com',
       username: 'testuser',
       role: 'user',
@@ -53,7 +52,7 @@ describe('DrizzleQuestionRepository', () => {
     });
 
     await db.insert(userProgress).values({
-      userId,
+      userId: testUserId,
       level: 1,
       experience: 0,
       totalQuestions: 0,
@@ -63,10 +62,15 @@ describe('DrizzleQuestionRepository', () => {
       currentStreak: 0,
       categoryStats: { version: 1 },
     });
+
+    return testUserId;
   }
 
   // Helper to create test question
-  function createTestQuestion(overrides?: Partial<Parameters<typeof Question.create>[0]>) {
+  function createTestQuestion(
+    testUserId: string,
+    overrides?: Partial<Parameters<typeof Question.create>[0]>
+  ) {
     const option1Result = QuestionOption.create({
       id: crypto.randomUUID(),
       text: 'Option 1',
@@ -101,7 +105,7 @@ describe('DrizzleQuestionRepository', () => {
       images: [],
       isPremium: false,
       status: QuestionStatus.ACTIVE,
-      createdById: userId,
+      createdById: testUserId,
       createdAt: clock.now(),
       updatedAt: clock.now(),
       ...overrides,
@@ -118,9 +122,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should create a new question with version 1', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion();
+        const question = createTestQuestion(testUserId);
 
         // Act
         const created = await repo.createQuestion(question);
@@ -141,7 +145,7 @@ describe('DrizzleQuestionRepository', () => {
       await withRollback(async (trx) => {
         // Arrange
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion({ createdById: 'invalid-uuid' });
+        const question = createTestQuestion('invalid-uuid');
 
         // Act & Assert
         await expect(repo.createQuestion(question)).rejects.toThrow(QuestionRepositoryError);
@@ -154,9 +158,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should update existing question and increment version', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion();
+        const question = createTestQuestion(testUserId);
         await repo.createQuestion(question);
 
         // Update the question
@@ -184,9 +188,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should throw version conflict error when versions mismatch', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion();
+        const question = createTestQuestion(testUserId);
         await repo.createQuestion(question);
 
         // Another process updates the question
@@ -231,7 +235,7 @@ describe('DrizzleQuestionRepository', () => {
       await withRollback(async (trx) => {
         // Arrange
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion();
+        const question = createTestQuestion(crypto.randomUUID());
 
         // Act & Assert
         await expect(repo.updateQuestion(question)).rejects.toThrow(QuestionNotFoundError);
@@ -243,9 +247,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should find question with full details', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion();
+        const question = createTestQuestion(testUserId);
         await repo.createQuestion(question);
 
         // Act
@@ -283,7 +287,7 @@ describe('DrizzleQuestionRepository', () => {
     it('should correctly identify and map true/false questions', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
         // Create a true/false question
@@ -307,7 +311,7 @@ describe('DrizzleQuestionRepository', () => {
           throw new Error('Failed to create options collection');
         }
 
-        const trueFalseQuestion = createTestQuestion({
+        const trueFalseQuestion = createTestQuestion(testUserId, {
           questionText: 'Is the sky blue?',
           questionType: 'true_false',
           options: optionsResult.data,
@@ -329,7 +333,7 @@ describe('DrizzleQuestionRepository', () => {
     it('should correctly map multiple choice questions with more than 2 options', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
         // Create a multiple choice question with 4 options
@@ -347,7 +351,7 @@ describe('DrizzleQuestionRepository', () => {
         const optionsResult = QuestionOptions.create(options);
         if (!optionsResult.success) throw new Error('Failed to create options collection');
 
-        const multipleChoiceQuestion = createTestQuestion({
+        const multipleChoiceQuestion = createTestQuestion(testUserId, {
           questionText: 'Which is the correct answer?',
           questionType: 'multiple_choice',
           options: optionsResult.data,
@@ -369,9 +373,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should find question summary excluding answers', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const question = createTestQuestion({ isPremium: false });
+        const question = createTestQuestion(testUserId, { isPremium: false });
         await repo.createQuestion(question);
 
         // Act
@@ -392,9 +396,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should exclude premium questions when includePremium is false', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const premiumQuestion = createTestQuestion({ isPremium: true });
+        const premiumQuestion = createTestQuestion(testUserId, { isPremium: true });
         await repo.createQuestion(premiumQuestion);
 
         // Act
@@ -408,9 +412,9 @@ describe('DrizzleQuestionRepository', () => {
     it('should include premium questions when includePremium is true', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-        const premiumQuestion = createTestQuestion({ isPremium: true });
+        const premiumQuestion = createTestQuestion(testUserId, { isPremium: true });
         await repo.createQuestion(premiumQuestion);
 
         // Act
@@ -427,12 +431,12 @@ describe('DrizzleQuestionRepository', () => {
     it('should find questions with pagination', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
         // Create multiple questions
         for (let i = 0; i < 5; i++) {
-          const question = createTestQuestion({
+          const question = createTestQuestion(testUserId, {
             questionText: `Question ${i + 1}`,
             examTypes: ['CCNA'],
             categories: ['Networking'],
@@ -455,12 +459,12 @@ describe('DrizzleQuestionRepository', () => {
     it('should filter by exam types', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
-        await repo.createQuestion(createTestQuestion({ examTypes: ['CCNA'] }));
-        await repo.createQuestion(createTestQuestion({ examTypes: ['CCNP'] }));
-        await repo.createQuestion(createTestQuestion({ examTypes: ['CCNA', 'CCNP'] }));
+        await repo.createQuestion(createTestQuestion(testUserId, { examTypes: ['CCNA'] }));
+        await repo.createQuestion(createTestQuestion(testUserId, { examTypes: ['CCNP'] }));
+        await repo.createQuestion(createTestQuestion(testUserId, { examTypes: ['CCNA', 'CCNP'] }));
 
         // Act
         const result = await repo.findQuestions({ examTypes: ['CCNA'] }, { limit: 10, offset: 0 });
@@ -474,12 +478,12 @@ describe('DrizzleQuestionRepository', () => {
     it('should filter by difficulty', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
-        await repo.createQuestion(createTestQuestion({ difficulty: 'Beginner' }));
-        await repo.createQuestion(createTestQuestion({ difficulty: 'Intermediate' }));
-        await repo.createQuestion(createTestQuestion({ difficulty: 'Advanced' }));
+        await repo.createQuestion(createTestQuestion(testUserId, { difficulty: 'Beginner' }));
+        await repo.createQuestion(createTestQuestion(testUserId, { difficulty: 'Intermediate' }));
+        await repo.createQuestion(createTestQuestion(testUserId, { difficulty: 'Advanced' }));
 
         // Act
         const result = await repo.findQuestions(
@@ -496,11 +500,15 @@ describe('DrizzleQuestionRepository', () => {
     it('should handle search query', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
-        await repo.createQuestion(createTestQuestion({ questionText: 'What is TCP/IP?' }));
-        await repo.createQuestion(createTestQuestion({ questionText: 'Explain OSI model' }));
+        await repo.createQuestion(
+          createTestQuestion(testUserId, { questionText: 'What is TCP/IP?' })
+        );
+        await repo.createQuestion(
+          createTestQuestion(testUserId, { questionText: 'Explain OSI model' })
+        );
 
         // Act
         const result = await repo.findQuestions({ searchQuery: 'TCP' }, { limit: 10, offset: 0 });
@@ -519,18 +527,30 @@ describe('DrizzleQuestionRepository', () => {
     it('should return aggregated statistics', async () => {
       await withRollback(async (trx) => {
         // Arrange
-        await createTestUser(trx as unknown as TestQueryable);
+        const testUserId = await createTestUser(trx as unknown as TestQueryable);
         const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
 
         // Create test data
         await repo.createQuestion(
-          createTestQuestion({ examTypes: ['CCNA'], difficulty: 'Beginner', isPremium: false })
+          createTestQuestion(testUserId, {
+            examTypes: ['CCNA'],
+            difficulty: 'Beginner',
+            isPremium: false,
+          })
         );
         await repo.createQuestion(
-          createTestQuestion({ examTypes: ['CCNA'], difficulty: 'Intermediate', isPremium: true })
+          createTestQuestion(testUserId, {
+            examTypes: ['CCNA'],
+            difficulty: 'Intermediate',
+            isPremium: true,
+          })
         );
         await repo.createQuestion(
-          createTestQuestion({ examTypes: ['CCNP'], difficulty: 'Advanced', isPremium: true })
+          createTestQuestion(testUserId, {
+            examTypes: ['CCNP'],
+            difficulty: 'Advanced',
+            isPremium: true,
+          })
         );
 
         // Act
