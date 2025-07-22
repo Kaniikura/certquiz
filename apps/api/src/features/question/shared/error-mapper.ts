@@ -101,12 +101,17 @@ export function mapQuestionError(error: Error): ErrorResponse {
 
   // Repository configuration error
   if (error instanceof QuestionRepositoryConfigurationError) {
-    // Log original error details for server-side debugging
+    // Check environment for sensitive information logging
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    // Log original error details for server-side debugging (dev only)
     logger.error('Repository configuration error occurred', {
       errorType: 'QuestionRepositoryConfigurationError',
-      originalMessage: error.message,
-      stack: error.stack,
       errorName: error.name,
+      ...(isDev && {
+        originalMessage: error.message,
+        stack: error.stack,
+      }),
     });
 
     return {
@@ -124,12 +129,17 @@ export function mapQuestionError(error: Error): ErrorResponse {
 
   // Repository errors
   if (error instanceof QuestionRepositoryError) {
-    // Log original error details for server-side debugging
+    // Check environment for sensitive information logging
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    // Log original error details for server-side debugging (dev only)
     logger.error('Repository operation error occurred', {
       errorType: 'QuestionRepositoryError',
-      originalMessage: error.message,
-      stack: error.stack,
       errorName: error.name,
+      ...(isDev && {
+        originalMessage: error.message,
+        stack: error.stack,
+      }),
     });
 
     return {
@@ -146,16 +156,20 @@ export function mapQuestionError(error: Error): ErrorResponse {
   }
 
   // Default error response for unexpected errors
-  // Always log unexpected errors for server-side debugging
+  // Check environment for sensitive information logging
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  // Always log unexpected errors for server-side debugging (sensitive details in dev only)
   logger.error('Unexpected error occurred in question operation', {
     errorType: error.constructor.name,
-    originalMessage: error.message,
-    stack: error.stack,
     errorName: error.name,
+    ...(isDev && {
+      originalMessage: error.message,
+      stack: error.stack,
+    }),
   });
 
   // In development/testing, include error details for debugging
-  const isDev = process.env.NODE_ENV !== 'production';
   return {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     body: {
