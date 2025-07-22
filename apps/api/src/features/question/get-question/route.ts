@@ -19,7 +19,7 @@ type GetQuestionVariables = {
 
 export const getQuestionRoute = new Hono<{
   Variables: GetQuestionVariables;
-}>().get('/questions/:questionId', async (c): Promise<Response> => {
+}>().get('/:questionId', async (c): Promise<Response> => {
   const logger = c.get('logger');
 
   try {
