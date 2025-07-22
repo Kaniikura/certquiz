@@ -1527,7 +1527,7 @@
     "public.question_status": {
       "name": "question_status",
       "schema": "public",
-      "values": ["draft", "active", "archived"]
+      "values": ["draft", "active", "inactive", "archived"]
     },
     "public.question_type": {
       "name": "question_type",
