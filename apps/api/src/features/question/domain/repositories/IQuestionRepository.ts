@@ -30,6 +30,7 @@
  */
 
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { Question } from '../entities/Question';
 
 /**
  * Pagination parameters for question listing
@@ -146,4 +147,38 @@ export interface IQuestionRepository {
     questionsByDifficulty: Record<string, number>;
     premiumQuestions: number;
   }>;
+
+  /**
+   * Create a new question (admin only)
+   *
+   * @param question - The question entity to create
+   * @returns The created question with generated ID
+   *
+   * @throws {ValidationError} Invalid question data
+   * @throws {RepositoryError} Database operation error
+   */
+  createQuestion(question: Question): Promise<Question>;
+
+  /**
+   * Update an existing question (admin only)
+   * Updates the question and increments version
+   *
+   * @param question - The question entity with updated data
+   * @returns The updated question
+   *
+   * @throws {NotFoundError} Question not found
+   * @throws {ValidationError} Invalid question data
+   * @throws {RepositoryError} Database operation error
+   */
+  updateQuestion(question: Question): Promise<Question>;
+
+  /**
+   * Get full question details including answers (admin only)
+   *
+   * @param questionId - Question identifier
+   * @returns Full question entity or null if not found
+   *
+   * @throws {RepositoryError} Database operation error
+   */
+  findQuestionWithDetails(questionId: QuestionId): Promise<Question | null>;
 }

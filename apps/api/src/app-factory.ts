@@ -9,6 +9,9 @@ import { createAdminRoutes } from './features/admin/routes-factory';
 import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
+import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
+import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
+import { createQuestionRoutes } from './features/question/routes-factory';
 import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
 import { createQuizRoutes } from './features/quiz/routes-factory';
 // Dependencies interfaces
@@ -23,6 +26,7 @@ import {
   requestIdMiddleware,
   securityMiddleware,
 } from './middleware';
+import type { IdGenerator } from './shared/id-generator';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -32,6 +36,7 @@ export interface AppDependencies {
   // Cross-cutting concerns
   logger: Logger;
   clock: () => Date;
+  idGenerator: IdGenerator;
 
   // Health & infrastructure
   ping: () => Promise<void>;
@@ -39,6 +44,8 @@ export interface AppDependencies {
   // Domain services
   userRepository: IUserRepository;
   quizRepository: IQuizRepository;
+  questionRepository: IQuestionRepository;
+  premiumAccessService: IPremiumAccessService;
   authProvider: IAuthProvider;
 }
 
@@ -88,6 +95,12 @@ export function buildApp(deps: AppDependencies): Hono<{
 
   // Public auth routes (login, register, etc.)
   app.route('/api/auth', createAuthRoutes(deps.userRepository, deps.authProvider));
+
+  // Question routes (public questions + protected admin creation)
+  app.route(
+    '/api/questions',
+    createQuestionRoutes(deps.premiumAccessService, { now: deps.clock }, deps.idGenerator)
+  );
 
   // Quiz routes (public + protected sections)
   app.route('/api/quiz', createQuizRoutes(deps.quizRepository));
@@ -144,6 +157,9 @@ export async function buildProductionApp(): Promise<
   const { DrizzleUserRepository } = await import(
     './features/auth/domain/repositories/DrizzleUserRepository'
   );
+  const { DrizzleQuestionRepository } = await import(
+    './features/question/domain/repositories/DrizzleQuestionRepository'
+  );
   const { DrizzleQuizRepository } = await import(
     './features/quiz/domain/repositories/DrizzleQuizRepository'
   );
@@ -151,16 +167,30 @@ export async function buildProductionApp(): Promise<
   const { ping } = await import('./infra/db/client');
   const { getRootLogger } = await import('./infra/logger/root-logger');
   const { createDomainLogger } = await import('./infra/logger/PinoLoggerAdapter');
+  const { CryptoIdGenerator } = await import('./shared/id-generator');
+  const { PremiumAccessService } = await import(
+    './features/question/domain/services/PremiumAccessService'
+  );
+  const { SystemClock } = await import('./shared/clock');
 
   // Create production dependencies
   const logger = getRootLogger();
   const authProvider = createAuthProvider();
+  const idGenerator = new CryptoIdGenerator();
+  const premiumAccessService = new PremiumAccessService();
+  const clock = new SystemClock();
   const userRepositoryLogger = createDomainLogger('auth.repository.user');
+  const questionRepositoryLogger = createDomainLogger('question.repository');
   const quizRepositoryLogger = createDomainLogger('quiz.repository');
 
   // Use withTx helper to reduce boilerplate
   const userRepository = withTx(
     (trx) => new DrizzleUserRepository(trx, userRepositoryLogger),
+    withTransaction
+  );
+
+  const questionRepository = withTx(
+    (trx) => new DrizzleQuestionRepository(trx, questionRepositoryLogger),
     withTransaction
   );
 
@@ -171,10 +201,13 @@ export async function buildProductionApp(): Promise<
 
   return buildApp({
     logger,
-    clock: () => new Date(),
+    clock: () => clock.now(),
+    idGenerator,
     ping,
     userRepository,
+    questionRepository,
     quizRepository,
+    premiumAccessService,
     authProvider,
   });
 }

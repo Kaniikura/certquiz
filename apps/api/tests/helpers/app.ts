@@ -4,11 +4,13 @@
  */
 
 import { type AppDependencies, buildApp } from '@api/app-factory';
+import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { Logger } from '@api/infra/logger/root-logger';
+import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
-import { FakeQuizRepository, FakeUserRepository } from '../fakes';
+import { FakeQuestionRepository, FakeQuizRepository, FakeUserRepository } from '../fakes';
 
 /**
  * Create a fake auth provider for testing
@@ -73,7 +75,10 @@ export async function makeHttpApp() {
     ping: noop, // Always healthy
     userRepository: new FakeUserRepository(),
     quizRepository: new FakeQuizRepository(),
+    questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
+    idGenerator: new SequentialIdGenerator('test'),
+    premiumAccessService: new PremiumAccessService(),
   };
 
   return buildApp(deps);
@@ -91,7 +96,10 @@ export async function makeBrokenDbApp() {
     },
     userRepository: new FakeUserRepository(),
     quizRepository: new FakeQuizRepository(),
+    questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
+    idGenerator: new SequentialIdGenerator('test'),
+    premiumAccessService: new PremiumAccessService(),
   };
 
   return buildApp(deps);

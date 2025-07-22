@@ -1,6 +1,6 @@
 CREATE TYPE "public"."difficulty" AS ENUM('Beginner', 'Intermediate', 'Advanced', 'Expert', 'Mixed');--> statement-breakpoint
 CREATE TYPE "public"."exam_type" AS ENUM('CCNA', 'CCNP_ENCOR', 'CCNP_ENARSI', 'SECURITY_PLUS');--> statement-breakpoint
-CREATE TYPE "public"."question_status" AS ENUM('draft', 'active', 'archived');--> statement-breakpoint
+CREATE TYPE "public"."question_status" AS ENUM('draft', 'active', 'inactive', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."question_type" AS ENUM('single', 'multiple');--> statement-breakpoint
 CREATE TYPE "public"."quiz_state" AS ENUM('IN_PROGRESS', 'COMPLETED', 'EXPIRED');--> statement-breakpoint
 CREATE TYPE "public"."subscription_plan" AS ENUM('free', 'premium');--> statement-breakpoint

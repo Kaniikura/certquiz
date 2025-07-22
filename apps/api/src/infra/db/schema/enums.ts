@@ -12,7 +12,12 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
 
 // Quiz related enums
 export const questionTypeEnum = pgEnum('question_type', ['single', 'multiple']);
-export const questionStatusEnum = pgEnum('question_status', ['draft', 'active', 'archived']);
+export const questionStatusEnum = pgEnum('question_status', [
+  'draft',
+  'active',
+  'inactive',
+  'archived',
+]);
 export const quizStateEnum = pgEnum('quiz_state', ['IN_PROGRESS', 'COMPLETED', 'EXPIRED']);
 
 // Exam related enums
