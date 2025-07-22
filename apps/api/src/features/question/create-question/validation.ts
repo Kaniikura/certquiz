@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { QuestionStatus } from '../domain/entities/Question';
 
 /**
  * Available question types for creation
@@ -17,8 +18,9 @@ const QuestionDifficultySchema = z.enum(['Beginner', 'Intermediate', 'Advanced',
 
 /**
  * Available question statuses for creation
+ * Uses the QuestionStatus enum values to ensure type compatibility
  */
-const QuestionStatusSchema = z.enum(['active', 'inactive', 'draft', 'archived']);
+const QuestionStatusSchema = z.nativeEnum(QuestionStatus);
 
 /**
  * Question option schema with business rule validation
@@ -110,7 +112,7 @@ export const createQuestionSchema = z
 
     isPremium: z.boolean().default(false),
 
-    status: QuestionStatusSchema.default('draft'),
+    status: QuestionStatusSchema.default(QuestionStatus.DRAFT),
   })
   .refine(
     (data) => {

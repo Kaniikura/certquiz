@@ -8,7 +8,7 @@ import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import type { IdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
-import { Question, type QuestionStatus } from '../domain/entities/Question';
+import { Question } from '../domain/entities/Question';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
 import type { QuestionOption } from '../domain/value-objects/QuestionOption';
 import { QuestionOption as QuestionOptionFactory } from '../domain/value-objects/QuestionOption';
@@ -85,7 +85,7 @@ export async function createQuestionHandler(
       tags: request.tags,
       images: request.images,
       isPremium: request.isPremium,
-      status: request.status as QuestionStatus,
+      status: request.status,
       createdById: userId,
       createdAt: now,
       updatedAt: now,
