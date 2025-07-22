@@ -325,6 +325,8 @@ export class Question {
 
   /**
    * Check if question type allows multiple answers
+   * Business Rule: Only multiple_select questions allow multiple correct answers
+   * Used by quiz validation logic to determine scoring strategy
    */
   allowsMultipleAnswers(): boolean {
     return this.questionType === 'multiple_select';
