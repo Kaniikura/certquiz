@@ -3,6 +3,7 @@
  * @fileoverview Production implementation using Web Crypto API
  */
 
+import { ensureCryptoRandomUUID } from '@api/shared/crypto';
 import type { IdGenerator } from './IdGenerator';
 
 /**
@@ -19,15 +20,10 @@ export class CryptoIdGenerator implements IdGenerator {
   /**
    * Generate a cryptographically secure UUID v4
    * @returns A unique UUID v4 string
-   * @throws Error if crypto.randomUUID is not available
+   * @throws CryptoUnavailableError if crypto.randomUUID is not available
    */
   generate(): string {
-    if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
-      throw new Error(
-        'crypto.randomUUID is not available. Ensure you are running in a secure context (HTTPS) or Node.js 19+.'
-      );
-    }
-
+    ensureCryptoRandomUUID();
     return crypto.randomUUID();
   }
 }

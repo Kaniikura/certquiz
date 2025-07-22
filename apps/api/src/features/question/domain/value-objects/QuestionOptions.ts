@@ -23,6 +23,7 @@
  * ```
  */
 
+import { generateSecureSeed } from '@api/shared/crypto';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { QuestionOption, type QuestionOptionJSON } from './QuestionOption';
@@ -166,15 +167,7 @@ export class QuestionOptions {
    * @returns A secure 32-bit unsigned integer seed
    */
   static generateSecureSeed(): number {
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      return array[0];
-    }
-
-    // Fallback for environments without Web Crypto API
-    // This is less secure but better than predictable Math.random()
-    return Math.floor(Math.random() * 0xffffffff);
+    return generateSecureSeed();
   }
 
   /**
