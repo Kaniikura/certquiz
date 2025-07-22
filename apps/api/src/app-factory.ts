@@ -25,6 +25,7 @@ import {
   requestIdMiddleware,
   securityMiddleware,
 } from './middleware';
+import type { IdGenerator } from './shared/id-generator';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -34,6 +35,7 @@ export interface AppDependencies {
   // Cross-cutting concerns
   logger: Logger;
   clock: () => Date;
+  idGenerator: IdGenerator;
 
   // Health & infrastructure
   ping: () => Promise<void>;
@@ -160,10 +162,12 @@ export async function buildProductionApp(): Promise<
   const { ping } = await import('./infra/db/client');
   const { getRootLogger } = await import('./infra/logger/root-logger');
   const { createDomainLogger } = await import('./infra/logger/PinoLoggerAdapter');
+  const { CryptoIdGenerator } = await import('./shared/id-generator');
 
   // Create production dependencies
   const logger = getRootLogger();
   const authProvider = createAuthProvider();
+  const idGenerator = new CryptoIdGenerator();
   const userRepositoryLogger = createDomainLogger('auth.repository.user');
   const questionRepositoryLogger = createDomainLogger('question.repository');
   const quizRepositoryLogger = createDomainLogger('quiz.repository');
@@ -187,6 +191,7 @@ export async function buildProductionApp(): Promise<
   return buildApp({
     logger,
     clock: () => new Date(),
+    idGenerator,
     ping,
     userRepository,
     questionRepository,

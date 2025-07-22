@@ -9,6 +9,7 @@ import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
+import { CryptoIdGenerator, type IdGenerator } from '@api/shared/id-generator';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
 import { DrizzleQuestionRepository } from './domain/repositories/DrizzleQuestionRepository';
@@ -26,6 +27,7 @@ const TRANSACTION_EXCLUDED_PATHS = new Set(['/health']);
 type QuestionVariables = {
   questionRepository: IQuestionRepository;
   clock: Clock;
+  idGenerator: IdGenerator;
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
 };
 
@@ -40,8 +42,9 @@ export const questionRoutes = new Hono<{
 // Create logger for question repository
 const questionRepositoryLogger = createDomainLogger('question.repository');
 
-// Create clock instance (singleton for request lifecycle)
+// Create shared instances (singletons for request lifecycle)
 const clock = new SystemClock();
+const idGenerator = new CryptoIdGenerator();
 
 /**
  * Health check for question service (public endpoint)
@@ -75,6 +78,7 @@ questionRoutes.use('*', async (c, next) => {
     // Inject dependencies into context
     c.set('questionRepository', questionRepository);
     c.set('clock', clock);
+    c.set('idGenerator', idGenerator);
 
     // Continue to route handlers
     await next();

@@ -7,6 +7,7 @@ import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils'
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
+import type { IdGenerator } from '@api/shared/id-generator';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
 import { mapQuestionError } from '../shared/error-mapper';
@@ -16,6 +17,7 @@ import { createQuestionHandler } from './handler';
 type CreateQuestionVariables = {
   questionRepository: IQuestionRepository;
   clock: Clock;
+  idGenerator: IdGenerator;
   user: AuthUser; // Required for admin authorization
 } & LoggerVariables;
 
@@ -80,12 +82,14 @@ export const createQuestionRoute = new Hono<{
     // Get dependencies from DI container/context
     const questionRepository = c.get('questionRepository');
     const clock = c.get('clock');
+    const idGenerator = c.get('idGenerator');
 
     // Delegate to handler
     const result = await createQuestionHandler(
       body,
       questionRepository,
       clock,
+      idGenerator,
       user.sub,
       user.roles
     );

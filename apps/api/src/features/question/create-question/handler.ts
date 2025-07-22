@@ -6,6 +6,7 @@
 import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import type { IdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
 import { Question, type QuestionStatus } from '../domain/entities/Question';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
@@ -24,6 +25,7 @@ export async function createQuestionHandler(
   input: unknown,
   questionRepository: IQuestionRepository,
   clock: Clock,
+  idGenerator: IdGenerator,
   userId: string,
   userRoles: string[] = []
 ): Promise<Result<CreateQuestionResponse, Error>> {
@@ -47,7 +49,7 @@ export async function createQuestionHandler(
     const options: QuestionOption[] = [];
     for (const optionDto of request.options) {
       const optionResult = QuestionOptionFactory.create({
-        id: optionDto.id || crypto.randomUUID(),
+        id: optionDto.id || idGenerator.generate(),
         text: optionDto.text,
         isCorrect: optionDto.isCorrect,
       });
