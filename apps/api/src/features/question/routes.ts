@@ -66,9 +66,24 @@ questionRoutes.get('/health', (c) => {
  */
 questionRoutes.use('*', async (c, next) => {
   // Skip transaction for excluded paths
-  // Check path suffix since routes are mounted at a prefix (e.g., /api/questions)
-  const pathSuffix = c.req.path.split('/').pop() || '';
-  if (TRANSACTION_EXCLUDED_PATHS.has(`/${pathSuffix}`)) {
+  // When routes are mounted at a prefix, c.req.path is relative to the mount point
+  const requestPath = c.req.path;
+
+  // Check if the path should be excluded from transactions
+  const isExcluded = Array.from(TRANSACTION_EXCLUDED_PATHS).some((excludedPath) => {
+    // Exact match
+    if (requestPath === excludedPath) return true;
+
+    // Match with trailing slash
+    if (requestPath === `${excludedPath}/`) return true;
+
+    // Match sub-paths (e.g., /health/status matches /health)
+    if (requestPath.startsWith(`${excludedPath}/`)) return true;
+
+    return false;
+  });
+
+  if (isExcluded) {
     return next();
   }
 
