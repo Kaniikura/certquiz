@@ -8,6 +8,7 @@ import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
 import type { QuestionDifficulty } from '../domain/entities/Question';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
+import type { IPremiumAccessService } from '../domain/services';
 import type { ListQuestionsResponse, QuestionSummaryDto } from './dto';
 import { type ListQuestionsRequest, listQuestionsSchema } from './validation';
 
@@ -58,6 +59,7 @@ export async function listQuestionsHandler(
   input: unknown,
   questionRepository: IQuestionRepository,
   logger: LoggerPort,
+  premiumAccessService: IPremiumAccessService,
   isAuthenticated: boolean = false
 ): Promise<Result<ListQuestionsResponse, Error>> {
   try {
@@ -69,10 +71,12 @@ export async function listQuestionsHandler(
 
     const request: ListQuestionsRequest = validationResult.data;
 
-    // 2. Determine premium access based on authentication
-    // Only authenticated users can access premium questions
-    // If unauthenticated user requests premium, silently ignore and return only non-premium
-    const includePremium = isAuthenticated && request.includePremium;
+    // 2. Determine premium access using premium access service
+    // Service encapsulates business rules for premium content access
+    const includePremium = premiumAccessService.shouldIncludePremiumContent(
+      isAuthenticated,
+      request.includePremium
+    );
 
     // 3. Build repository filters from request
     const filters = {

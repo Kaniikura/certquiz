@@ -8,6 +8,7 @@ import type { LoggerVariables } from '@api/middleware/logger';
 import { UUID_REGEX } from '@api/shared/validation/constants';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
+import { PremiumAccessService } from '../domain/services';
 import { mapQuestionError } from '../shared/error-mapper';
 import { getQuestionHandler } from './handler';
 
@@ -58,8 +59,16 @@ export const getQuestionRoute = new Hono<{
     // Get dependencies from DI container/context
     const questionRepository = c.get('questionRepository');
 
+    // Create premium access service instance
+    const premiumAccessService = new PremiumAccessService();
+
     // Delegate to handler
-    const result = await getQuestionHandler({ questionId }, questionRepository, isAuthenticated);
+    const result = await getQuestionHandler(
+      { questionId },
+      questionRepository,
+      premiumAccessService,
+      isAuthenticated
+    );
 
     if (!result.success) {
       const error = result.error;

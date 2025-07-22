@@ -10,6 +10,7 @@ import type {
   IQuestionRepository,
   QuestionSummary,
 } from '../domain/repositories/IQuestionRepository';
+import { PremiumAccessService } from '../domain/services';
 import { listQuestionsHandler } from './handler';
 
 describe('listQuestionsHandler', () => {
@@ -22,8 +23,11 @@ describe('listQuestionsHandler', () => {
     findQuestionWithDetails: ReturnType<typeof vi.fn>;
   };
   let mockLogger: LoggerPort;
+  let premiumAccessService: PremiumAccessService;
 
   beforeEach(() => {
+    // Create premium access service instance
+    premiumAccessService = new PremiumAccessService();
     // Setup repository mock
     mockQuestionRepository = {
       findQuestions: vi.fn(),
@@ -81,6 +85,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false
       );
 
@@ -139,6 +144,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false
       );
 
@@ -174,6 +180,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false
       );
 
@@ -199,6 +206,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false
       );
 
@@ -222,6 +230,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false
       );
 
@@ -253,6 +262,7 @@ describe('listQuestionsHandler', () => {
         },
         mockQuestionRepository as IQuestionRepository,
         mockLogger,
+        premiumAccessService,
         false // Not authenticated
       );
 

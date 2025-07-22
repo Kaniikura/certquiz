@@ -7,7 +7,8 @@ import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import { QuestionAccessDeniedError, QuestionNotFoundError } from '../shared/errors';
+import type { IPremiumAccessService } from '../domain/services';
+import { QuestionNotFoundError } from '../shared/errors';
 import type { GetQuestionResponse, QuestionDto, QuestionOptionDto } from './dto';
 import { type GetQuestionRequest, getQuestionSchema } from './validation';
 
@@ -18,6 +19,7 @@ import { type GetQuestionRequest, getQuestionSchema } from './validation';
 export async function getQuestionHandler(
   input: unknown,
   questionRepository: IQuestionRepository,
+  premiumAccessService: IPremiumAccessService,
   isAuthenticated: boolean = false
 ): Promise<Result<GetQuestionResponse, Error>> {
   try {
@@ -37,14 +39,15 @@ export async function getQuestionHandler(
       return Result.fail(new QuestionNotFoundError(questionId));
     }
 
-    // 3. Check premium access
-    if (question.isPremium && !isAuthenticated) {
-      return Result.fail(
-        new QuestionAccessDeniedError(
-          questionId,
-          'Authentication required to access premium question'
-        )
-      );
+    // 3. Check premium access using premium access service
+    const accessResult = premiumAccessService.validateQuestionPremiumAccess(
+      isAuthenticated,
+      question.isPremium,
+      questionId
+    );
+
+    if (!accessResult.success) {
+      return Result.fail(accessResult.error);
     }
 
     // 4. Transform domain entity to DTO

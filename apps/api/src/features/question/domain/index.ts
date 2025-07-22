@@ -19,6 +19,9 @@ export type {
   QuestionPagination,
   QuestionSummary,
 } from './repositories/IQuestionRepository';
+// Services
+export type { IPremiumAccessService } from './services';
+export { PremiumAccessService } from './services';
 // Value Objects
 export { QuestionOption, type QuestionOptionJSON } from './value-objects/QuestionOption';
 export { QuestionOptions } from './value-objects/QuestionOptions';
