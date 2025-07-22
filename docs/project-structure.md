@@ -59,7 +59,17 @@ certquiz/
 │       │   │   │   │   └── repositories/ # IUserRepository, DrizzleUserRepository
 │       │   │   │   └── shared/         # Error handling, utilities
 │       │   │   ├── auth/       # Auth bounded context
+│       │   │   │   ├── login/         # User authentication use case
+│       │   │   │   └── domain/         # Domain layer
 │       │   │   └── question/   # Question bounded context
+│       │   │   │   ├── list-questions/ # Question listing with filters
+│       │   │   │   ├── get-question/   # Single question retrieval
+│       │   │   │   ├── create-question/# Admin question creation
+│       │   │   │   ├── domain/         # Domain layer
+│       │   │   │   │   ├── entities/   # Question
+│       │   │   │   │   ├── value-objects/ # QuestionOptions, QuestionOption
+│       │   │   │   │   └── repositories/ # IQuestionRepository, DrizzleQuestionRepository
+│       │   │   │   └── shared/         # Error handling, utilities
 │       │   ├── system/         # System/operational features
 │       │   │   ├── health/     # Health checks
 │       │   │   └── migration/  # Database migration tooling
