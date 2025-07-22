@@ -53,19 +53,40 @@ export function parseCommaSeparated(value: string | undefined): string[] | undef
 }
 
 /**
- * Parse numeric string with bounds validation
+ * Parse numeric string with bounds validation and automatic clamping
  *
- * @param value - String value to parse
- * @param defaultValue - Default value if parsing fails
- * @param min - Minimum allowed value (inclusive)
- * @param max - Maximum allowed value (inclusive)
- * @returns Parsed and validated number
+ * **IMPORTANT**: This function performs SILENT CLAMPING of out-of-range values.
+ * Values outside the specified bounds are automatically adjusted to fit within
+ * the range rather than being rejected or throwing errors.
+ *
+ * Behavior:
+ * - Valid numbers within bounds: returned as-is
+ * - Numbers below minimum: clamped to minimum value
+ * - Numbers above maximum: clamped to maximum value
+ * - Invalid/unparseable input: returns default value
+ *
+ * This design choice prioritizes user experience by ensuring the application
+ * continues to function with reasonable values rather than failing on edge cases.
+ *
+ * @param value - String value to parse (undefined/null treated as invalid)
+ * @param defaultValue - Default value returned when parsing fails
+ * @param min - Minimum allowed value (inclusive) - values below this are clamped UP
+ * @param max - Maximum allowed value (inclusive) - values above this are clamped DOWN
+ * @returns Parsed number guaranteed to be within [min, max] range, or defaultValue if parsing fails
  *
  * @example
+ * // Normal case: value within bounds
  * parseNumericWithBounds('10', 5, 1, 100)    // 10
+ *
+ * // Clamping cases: out-of-range values are silently adjusted
  * parseNumericWithBounds('200', 5, 1, 100)   // 100 (clamped to max)
  * parseNumericWithBounds('0', 5, 1, 100)     // 1 (clamped to min)
- * parseNumericWithBounds('abc', 5, 1, 100)   // 5 (default)
+ * parseNumericWithBounds('-50', 5, 1, 100)   // 1 (clamped to min)
+ *
+ * // Default cases: invalid input uses fallback
+ * parseNumericWithBounds('abc', 5, 1, 100)   // 5 (default - parsing failed)
+ * parseNumericWithBounds('', 10, 1, 100)     // 10 (default - empty string)
+ * parseNumericWithBounds(undefined, 15, 1, 100) // 15 (default - undefined input)
  */
 export function parseNumericWithBounds(
   value: string | undefined,
