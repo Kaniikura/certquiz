@@ -3,6 +3,7 @@
  * @fileoverview Service interface for managing premium content access rules
  */
 
+import type { QuestionAccessDeniedError } from '@api/features/question/shared/errors';
 import type { Result } from '@api/shared/result';
 
 /**
@@ -51,5 +52,5 @@ export interface IPremiumAccessService {
     isAuthenticated: boolean,
     isPremiumContent: boolean,
     questionId: string
-  ): Result<void, Error>;
+  ): Result<void, QuestionAccessDeniedError>;
 }

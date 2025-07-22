@@ -79,7 +79,7 @@ export class PremiumAccessService implements IPremiumAccessService {
     isAuthenticated: boolean,
     isPremiumContent: boolean,
     questionId: string
-  ): Result<void, Error> {
+  ): Result<void, QuestionAccessDeniedError> {
     // Non-premium questions are always accessible
     if (!isPremiumContent) {
       return Result.ok(undefined);
