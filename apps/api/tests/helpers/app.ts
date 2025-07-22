@@ -6,6 +6,7 @@
 import { type AppDependencies, buildApp } from '@api/app-factory';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { Logger } from '@api/infra/logger/root-logger';
+import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
 import { FakeQuestionRepository, FakeQuizRepository, FakeUserRepository } from '../fakes';
@@ -75,6 +76,7 @@ export async function makeHttpApp() {
     quizRepository: new FakeQuizRepository(),
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
+    idGenerator: new SequentialIdGenerator('test'),
   };
 
   return buildApp(deps);
@@ -94,6 +96,7 @@ export async function makeBrokenDbApp() {
     quizRepository: new FakeQuizRepository(),
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
+    idGenerator: new SequentialIdGenerator('test'),
   };
 
   return buildApp(deps);
