@@ -213,7 +213,7 @@ The following technical debt items need immediate attention to enable proper tes
 // - Tests fail without real database due to direct transaction usage
 
 // Tasks:
-- Step 0: Implement TxRunner shim for immediate test fixes (0.5 day) ✅ COMPLETED
+- Step 0: Implement TxRunner shim for immediate test fixes (0.5 day) ✅
   ✅ Create TxRunner interface with run method
   ✅ Implement DrizzleTxRunner using withTransaction
   ✅ Implement NoopTxRunner for tests
