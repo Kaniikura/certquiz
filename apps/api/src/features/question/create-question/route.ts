@@ -70,7 +70,10 @@ export const createQuestionRoute = new Hono<{
     const user = c.get('user');
 
     // Type guard for logging purposes only
-    const logBody = body as { questionType?: string; isPremium?: boolean } | null;
+    const logBody =
+      typeof body === 'object' && body !== null
+        ? (body as { questionType?: string; isPremium?: boolean })
+        : null;
     logger.info('Create question attempt', {
       userId: user.sub,
       userRoles: user.roles,
