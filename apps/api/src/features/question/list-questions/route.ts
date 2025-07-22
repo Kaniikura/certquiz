@@ -7,13 +7,14 @@ import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import { PremiumAccessService } from '../domain/services';
+import type { IPremiumAccessService } from '../domain/services';
 import { mapQuestionError } from '../shared/error-mapper';
 import { listQuestionsHandler } from './handler';
 
 // Define context variables for this route
 type ListQuestionsVariables = {
   questionRepository: IQuestionRepository;
+  premiumAccessService: IPremiumAccessService;
   user?: AuthUser; // Optional for public access with premium logic
 } & LoggerVariables;
 
@@ -52,9 +53,7 @@ export const listQuestionsRoute = new Hono<{
 
     // Get dependencies from DI container/context
     const questionRepository = c.get('questionRepository');
-
-    // Create premium access service instance
-    const premiumAccessService = new PremiumAccessService();
+    const premiumAccessService = c.get('premiumAccessService');
 
     // Delegate to handler
     const result = await listQuestionsHandler(

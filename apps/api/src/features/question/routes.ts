@@ -14,6 +14,8 @@ import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
 import { DrizzleQuestionRepository } from './domain/repositories/DrizzleQuestionRepository';
 import type { IQuestionRepository } from './domain/repositories/IQuestionRepository';
+import type { IPremiumAccessService } from './domain/services/IPremiumAccessService';
+import { PremiumAccessService } from './domain/services/PremiumAccessService';
 import { getQuestionRoute } from './get-question/route';
 import { listQuestionsRoute } from './list-questions/route';
 
@@ -26,6 +28,7 @@ const TRANSACTION_EXCLUDED_PATHS = new Set(['/health']);
 // Define context variables for question routes
 type QuestionVariables = {
   questionRepository: IQuestionRepository;
+  premiumAccessService: IPremiumAccessService;
   clock: Clock;
   idGenerator: IdGenerator;
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
@@ -45,6 +48,7 @@ const questionRepositoryLogger = createDomainLogger('question.repository');
 // Create shared instances (singletons for request lifecycle)
 const clock = new SystemClock();
 const idGenerator = new CryptoIdGenerator();
+const premiumAccessService = new PremiumAccessService();
 
 /**
  * Health check for question service (public endpoint)
@@ -94,6 +98,7 @@ questionRoutes.use('*', async (c, next) => {
 
     // Inject dependencies into context
     c.set('questionRepository', questionRepository);
+    c.set('premiumAccessService', premiumAccessService);
     c.set('clock', clock);
     c.set('idGenerator', idGenerator);
 
