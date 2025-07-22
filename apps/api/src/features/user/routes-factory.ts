@@ -4,11 +4,13 @@
  */
 
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
+import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
 import type { TxRunner } from '@api/shared/tx-runner';
+import { DrizzleTxRunner } from '@api/shared/tx-runner';
 import { Hono } from 'hono';
 import { DrizzleUserRepository } from './domain/repositories/DrizzleUserRepository';
 import type { IUserRepository } from './domain/repositories/IUserRepository';
@@ -33,10 +35,7 @@ type UserVariables = {
  * Create user routes with dependency injection
  * This factory allows us to inject different implementations for different environments
  */
-export function createUserRoutes(
-  userRepository: IUserRepository,
-  txRunner?: TxRunner
-): Hono<{ Variables: UserVariables }> {
+export function createUserRoutes(txRunner?: TxRunner): Hono<{ Variables: UserVariables }> {
   const userRoutes = new Hono<{ Variables: UserVariables }>();
 
   // Create clock instance (singleton for request lifecycle)
@@ -58,40 +57,36 @@ export function createUserRoutes(
     });
   });
 
-  // If txRunner is provided, use it for transaction handling
-  if (txRunner) {
-    /**
-     * Dependency injection middleware
-     * Creates transaction-scoped repository instances for each request
-     * Applied only to routes that need database access
-     */
-    userRoutes.use('*', async (c, next) => {
-      // Skip transaction for excluded paths
-      if (TRANSACTION_EXCLUDED_PATHS.has(c.req.path)) {
-        return next();
-      }
+  // Use provided txRunner or create a default one
+  const runner = txRunner || new DrizzleTxRunner(withTransaction);
 
-      // Use txRunner to ensure all user operations are transactional
-      await txRunner.run(async (trx) => {
-        // Create repository instance with transaction and logger
-        const transactionalUserRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
+  /**
+   * Dependency injection middleware
+   * Creates transaction-scoped repository instances for each request
+   * Applied only to routes that need database access
+   */
+  userRoutes.use('*', async (c, next) => {
+    // Skip transaction for excluded paths
+    const requestPath = c.req.path;
 
-        // Inject dependencies into context
-        c.set('userRepository', transactionalUserRepository);
-        c.set('clock', clock);
+    // Check if the path should be excluded from transactions
+    if (TRANSACTION_EXCLUDED_PATHS.has(requestPath)) {
+      return next();
+    }
 
-        // Continue to route handlers
-        await next();
-      });
-    });
-  } else {
-    // No txRunner provided, use the userRepository directly
-    userRoutes.use('*', async (c, next) => {
+    // Use txRunner to ensure all user operations are transactional
+    await runner.run(async (trx: TransactionContext) => {
+      // Create repository instance with transaction and logger
+      const userRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
+
+      // Inject dependencies into context
       c.set('userRepository', userRepository);
       c.set('clock', clock);
+
+      // Continue to route handlers
       await next();
     });
-  }
+  });
 
   // Create separate groups for public and protected routes
   const publicRoutes = new Hono<{ Variables: UserVariables }>();

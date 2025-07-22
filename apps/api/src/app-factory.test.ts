@@ -12,7 +12,6 @@ import type { IUserRepository } from './features/auth/domain/repositories/IUserR
 import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
 import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
 import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
-import type { IUserRepository as IUserDomainRepository } from './features/user/domain/repositories/IUserRepository';
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
 import { getRootLogger } from './infra/logger/root-logger';
 import type { LoggerVariables, RequestIdVariables } from './middleware';
@@ -31,7 +30,6 @@ function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDep
       /* no-op */
     },
     userRepository: {} as IUserRepository,
-    userDomainRepository: {} as IUserDomainRepository,
     quizRepository: {} as IQuizRepository,
     questionRepository: {} as IQuestionRepository,
     premiumAccessService: new PremiumAccessService(),
