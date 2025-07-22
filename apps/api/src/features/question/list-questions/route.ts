@@ -54,7 +54,12 @@ export const listQuestionsRoute = new Hono<{
     const questionRepository = c.get('questionRepository');
 
     // Delegate to handler
-    const result = await listQuestionsHandler(queryParams, questionRepository, isAuthenticated);
+    const result = await listQuestionsHandler(
+      queryParams,
+      questionRepository,
+      logger,
+      isAuthenticated
+    );
 
     if (!result.success) {
       const error = result.error;

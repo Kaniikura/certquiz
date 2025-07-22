@@ -4,6 +4,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
+import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
 import type { QuestionDifficulty } from '../domain/entities/Question';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
@@ -23,14 +24,29 @@ const VALID_DIFFICULTIES: readonly QuestionDifficulty[] = [
 /**
  * Validates and safely converts a string to QuestionDifficulty
  * @param difficulty - The difficulty value to validate
+ * @param logger - Logger instance for tracking data quality issues
+ * @param questionId - Question ID for context in log messages
  * @returns Valid QuestionDifficulty or default 'Mixed' for invalid values
  */
-function validateDifficulty(difficulty: string): QuestionDifficulty {
+function validateDifficulty(
+  difficulty: string,
+  logger: LoggerPort,
+  questionId?: string
+): QuestionDifficulty {
   if (VALID_DIFFICULTIES.includes(difficulty as QuestionDifficulty)) {
     return difficulty as QuestionDifficulty;
   }
-  // Silently default to 'Mixed' for invalid values
-  // Note: Invalid values indicate data corruption and should be investigated
+
+  // Log warning for data quality tracking
+  logger.warn('Invalid question difficulty detected - data quality issue', {
+    invalidDifficulty: difficulty,
+    defaultedTo: 'Mixed',
+    questionId,
+    validDifficulties: VALID_DIFFICULTIES,
+    dataIntegrityAlert: true,
+  });
+
+  // Default to 'Mixed' for invalid values to maintain backward compatibility
   return 'Mixed';
 }
 
@@ -41,6 +57,7 @@ function validateDifficulty(difficulty: string): QuestionDifficulty {
 export async function listQuestionsHandler(
   input: unknown,
   questionRepository: IQuestionRepository,
+  logger: LoggerPort,
   isAuthenticated: boolean = false
 ): Promise<Result<ListQuestionsResponse, Error>> {
   try {
@@ -82,7 +99,7 @@ export async function listQuestionsHandler(
       questionType: summary.questionType,
       examTypes: summary.examTypes,
       categories: summary.categories,
-      difficulty: validateDifficulty(summary.difficulty),
+      difficulty: validateDifficulty(summary.difficulty, logger, summary.questionId),
       isPremium: summary.isPremium,
       hasImages: summary.hasImages,
       optionCount: summary.optionCount,
