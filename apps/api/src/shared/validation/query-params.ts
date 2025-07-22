@@ -76,17 +76,17 @@ export function parseCommaSeparated(value: string | undefined): string[] | undef
  *
  * @example
  * // Normal case: value within bounds
- * parseNumericWithBounds('10', 5, 1, 100)    // 10
+ * parseNumericWithBounds('10', 5, 1, 100);    // 10
  *
  * // Clamping cases: out-of-range values are silently adjusted
- * parseNumericWithBounds('200', 5, 1, 100)   // 100 (clamped to max)
- * parseNumericWithBounds('0', 5, 1, 100)     // 1 (clamped to min)
- * parseNumericWithBounds('-50', 5, 1, 100)   // 1 (clamped to min)
+ * parseNumericWithBounds('200', 5, 1, 100);   // 100 (clamped to max)
+ * parseNumericWithBounds('0', 5, 1, 100);     // 1 (clamped to min)
+ * parseNumericWithBounds('-50', 5, 1, 100);   // 1 (clamped to min)
  *
  * // Default cases: invalid input uses fallback
- * parseNumericWithBounds('abc', 5, 1, 100)   // 5 (default - parsing failed)
- * parseNumericWithBounds('', 10, 1, 100)     // 10 (default - empty string)
- * parseNumericWithBounds(undefined, 15, 1, 100) // 15 (default - undefined input)
+ * parseNumericWithBounds('abc', 5, 1, 100);   // 5 (default - parsing failed)
+ * parseNumericWithBounds('', 10, 1, 100);     // 10 (default - empty string)
+ * parseNumericWithBounds(undefined, 15, 1, 100); // 15 (default - undefined input)
  */
 export function parseNumericWithBounds(
   value: string | undefined,
