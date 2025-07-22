@@ -23,7 +23,7 @@ type CreateQuestionVariables = {
 
 export const createQuestionRoute = new Hono<{
   Variables: CreateQuestionVariables;
-}>().post('/questions', async (c) => {
+}>().post('/questions', async (c): Promise<Response> => {
   const logger = c.get('logger');
 
   try {

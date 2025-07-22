@@ -3,7 +3,7 @@
  * @fileoverview CRUD operations for Question catalog with versioning support
  */
 
-import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import {
   type QuestionRow,
   type QuestionVersionRow,
@@ -644,7 +644,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
     }
 
     return {
-      questionId: masterRow.questionId as QuestionId,
+      questionId: QuestionId.of(masterRow.questionId),
       questionText: versionRow.questionText,
       questionType: this.mapQuestionTypeFromDb(
         versionRow.questionType as 'single' | 'multiple',

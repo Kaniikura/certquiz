@@ -30,6 +30,7 @@
  */
 
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { Question } from '../entities/Question';
 
 /**
  * Pagination parameters for question listing
@@ -156,9 +157,7 @@ export interface IQuestionRepository {
    * @throws {ValidationError} Invalid question data
    * @throws {RepositoryError} Database operation error
    */
-  createQuestion(
-    question: import('../entities/Question').Question
-  ): Promise<import('../entities/Question').Question>;
+  createQuestion(question: Question): Promise<Question>;
 
   /**
    * Update an existing question (admin only)
@@ -171,9 +170,7 @@ export interface IQuestionRepository {
    * @throws {ValidationError} Invalid question data
    * @throws {RepositoryError} Database operation error
    */
-  updateQuestion(
-    question: import('../entities/Question').Question
-  ): Promise<import('../entities/Question').Question>;
+  updateQuestion(question: Question): Promise<Question>;
 
   /**
    * Get full question details including answers (admin only)
@@ -183,7 +180,5 @@ export interface IQuestionRepository {
    *
    * @throws {RepositoryError} Database operation error
    */
-  findQuestionWithDetails(
-    questionId: QuestionId
-  ): Promise<import('../entities/Question').Question | null>;
+  findQuestionWithDetails(questionId: QuestionId): Promise<Question | null>;
 }

@@ -12,6 +12,7 @@ import type {
   QuestionPagination,
   QuestionSummary,
 } from '@api/features/question/domain/repositories/IQuestionRepository';
+import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 
 /**
@@ -162,7 +163,7 @@ export class FakeQuestionRepository implements IQuestionRepository {
   async updateQuestion(question: Question): Promise<Question> {
     const existing = this.questions.get(question.id);
     if (!existing) {
-      throw new Error(`Question ${question.id} not found`);
+      throw new QuestionNotFoundError(question.id);
     }
     this.questions.set(question.id, question);
     return question;

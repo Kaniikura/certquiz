@@ -3,7 +3,7 @@
  * @fileoverview Domain entity representing a question in the certification exam system
  */
 
-import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { QuestionSummary } from '../repositories/IQuestionRepository';
@@ -320,6 +320,7 @@ export class Question {
    */
   setPremium(isPremium: boolean): void {
     this._isPremium = isPremium;
+    this._version++;
     this._updatedAt = new Date();
   }
 
@@ -413,7 +414,7 @@ export class Question {
     }
 
     return Question.create({
-      id: data.id as QuestionId,
+      id: QuestionId.of(data.id),
       version: data.version,
       questionText: data.questionText,
       questionType: data.questionType,
