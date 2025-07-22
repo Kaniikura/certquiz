@@ -10,7 +10,6 @@ import { TestClock } from '@api/test-support';
 import { withRollback } from '@api/testing/infra/db';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  InvalidQuestionDataError,
   QuestionNotFoundError,
   QuestionRepositoryError,
   QuestionVersionConflictError,
@@ -512,25 +511,8 @@ describe('DrizzleQuestionRepository', () => {
       });
     });
 
-    it('should validate pagination limits', async () => {
-      await withRollback(async (trx) => {
-        // Arrange
-        const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
-
-        // Act & Assert
-        await expect(repo.findQuestions({}, { limit: 150, offset: 0 })).rejects.toThrow(
-          InvalidQuestionDataError
-        );
-
-        await expect(repo.findQuestions({}, { limit: 0, offset: 0 })).rejects.toThrow(
-          InvalidQuestionDataError
-        );
-
-        await expect(repo.findQuestions({}, { limit: 10, offset: -1 })).rejects.toThrow(
-          InvalidQuestionDataError
-        );
-      });
-    });
+    // Validation is now handled by listQuestionsSchema at the handler level
+    // Repository trusts that incoming data is already validated
   });
 
   describe('getQuestionStats', () => {

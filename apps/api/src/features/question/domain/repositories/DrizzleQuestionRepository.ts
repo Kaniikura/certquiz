@@ -389,14 +389,6 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
     pagination: QuestionPagination
   ): Promise<PaginatedQuestions> {
     try {
-      // Validate pagination
-      if (pagination.limit > 100 || pagination.limit < 1) {
-        throw new InvalidQuestionDataError('Limit must be between 1 and 100');
-      }
-      if (pagination.offset < 0) {
-        throw new InvalidQuestionDataError('Offset must be non-negative');
-      }
-
       this.logger.debug('Finding questions with filters', { filters, pagination });
 
       // Build query conditions
