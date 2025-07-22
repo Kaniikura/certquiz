@@ -31,7 +31,6 @@ export {
   withRollback,
   withTestDb,
 } from './db';
-
 // Error utilities - pure utilities with no side effects
 export {
   type DatabaseError,
@@ -40,7 +39,6 @@ export {
   isDatabaseError,
   isExecError,
 } from './errors';
-
 // Process execution utilities - anything that shells out
 export {
   assertProcessSuccess,
@@ -49,13 +47,15 @@ export {
   runBunScript,
   runProcessAndAssert,
 } from './process';
-
 // Runtime detection utilities - environment detection
 export {
   getRuntimeName,
   isBun,
   isNode,
 } from './runtime';
+
+// Transaction utilities - Transaction handling test helpers
+export { createNoopTxRunner } from './tx-runner';
 
 // Vitest utilities - Vitest configuration helpers
 export { mapTestEnvironmentVariables } from './vitest';
