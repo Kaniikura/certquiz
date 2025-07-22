@@ -4,6 +4,7 @@
  */
 
 import { type AppDependencies, buildApp } from '@api/app-factory';
+import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { Logger } from '@api/infra/logger/root-logger';
 import { SequentialIdGenerator } from '@api/shared/id-generator';
@@ -77,6 +78,7 @@ export async function makeHttpApp() {
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
     idGenerator: new SequentialIdGenerator('test'),
+    premiumAccessService: new PremiumAccessService(),
   };
 
   return buildApp(deps);
@@ -97,6 +99,7 @@ export async function makeBrokenDbApp() {
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
     idGenerator: new SequentialIdGenerator('test'),
+    premiumAccessService: new PremiumAccessService(),
   };
 
   return buildApp(deps);

@@ -7,6 +7,7 @@ import { buildApp } from '@api/app-factory';
 import { User } from '@api/features/auth/domain/entities/User';
 import { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { unwrapOrFail } from '@api/test-support';
@@ -44,6 +45,7 @@ describe('POST /api/auth/login - E2E', () => {
       questionRepository: fakeQuestionRepo,
       authProvider: stubAuthProvider,
       idGenerator: new SequentialIdGenerator('test'),
+      premiumAccessService: new PremiumAccessService(),
     });
   });
 

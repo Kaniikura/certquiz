@@ -4,12 +4,15 @@
  */
 
 import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
+import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
-import { questionRoutes } from '@api/features/question/routes';
+import { createQuestionRoutes } from '@api/features/question/routes-factory';
 import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
+import { SystemClock } from '@api/shared/clock';
+import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
 import { Hono } from 'hono';
@@ -74,7 +77,13 @@ describe('Question Routes HTTP Integration', () => {
     const logger = getRootLogger();
     testApp.use('*', createLoggerMiddleware(logger));
 
-    // Mount question routes
+    // Create dependencies for question routes
+    const premiumAccessService = new PremiumAccessService();
+    const clock = new SystemClock();
+    const idGenerator = new CryptoIdGenerator();
+
+    // Create and mount question routes with dependencies
+    const questionRoutes = createQuestionRoutes(premiumAccessService, clock, idGenerator);
     testApp.route('/', questionRoutes);
   });
 
