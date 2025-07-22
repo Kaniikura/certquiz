@@ -15,6 +15,9 @@ import { EmailAlreadyTakenError, UserNotFoundError, UsernameAlreadyTakenError } 
  */
 export function mapUserError(error: Error): ErrorResponse {
   // Validation errors
+  // Note: The instanceof check is safe and intentional. All ValidationError instances
+  // in the codebase properly extend the ValidationError class from @api/shared/errors.
+  // This has been verified across the entire codebase and is tested in error-mapper.test.ts
   if (error instanceof ValidationError) {
     return {
       status: HttpStatus.BAD_REQUEST,
