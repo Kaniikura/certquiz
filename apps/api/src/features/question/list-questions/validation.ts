@@ -3,23 +3,13 @@
  * @fileoverview Zod schema for question listing input validation with type inference
  */
 
+import { parseCommaSeparated, parseFlexibleBoolean } from '@api/shared/validation/query-params';
 import { z } from 'zod';
 
 /**
  * Available question difficulties for filtering
  */
 const QuestionDifficultySchema = z.enum(['Beginner', 'Intermediate', 'Advanced', 'Mixed']);
-
-/**
- * Flexible boolean parser for query parameters
- * Accepts common boolean representations (case-insensitive):
- * - true: 'true', '1', 'yes'
- * - false: everything else
- */
-function parseFlexibleBoolean(value: string): boolean {
-  const normalizedValue = value.toLowerCase().trim();
-  return ['true', '1', 'yes'].includes(normalizedValue);
-}
 
 /**
  * List questions request validation schema
@@ -49,7 +39,7 @@ export const listQuestionsSchema = z.object({
   examTypes: z
     .string()
     .optional()
-    .transform((val) => (val ? val.split(',').map((type) => type.trim()) : undefined))
+    .transform(parseCommaSeparated)
     .refine(
       (val) => {
         if (!val) return true;
@@ -63,7 +53,7 @@ export const listQuestionsSchema = z.object({
   categories: z
     .string()
     .optional()
-    .transform((val) => (val ? val.split(',').map((cat) => cat.trim()) : undefined))
+    .transform(parseCommaSeparated)
     .refine(
       (val) => {
         if (!val) return true;
