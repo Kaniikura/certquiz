@@ -4,6 +4,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
+import { HttpStatus } from '@api/shared/http-status';
 import type { ErrorResponse } from '@api/shared/types/error-response';
 import { EmailAlreadyTakenError, UserNotFoundError, UsernameAlreadyTakenError } from './errors';
 
@@ -16,7 +17,7 @@ export function mapUserError(error: Error): ErrorResponse {
   // Validation errors
   if (error instanceof ValidationError) {
     return {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       body: {
         success: false,
         error: {
@@ -30,7 +31,7 @@ export function mapUserError(error: Error): ErrorResponse {
   // User not found
   if (error instanceof UserNotFoundError) {
     return {
-      status: 404,
+      status: HttpStatus.NOT_FOUND,
       body: {
         success: false,
         error: {
@@ -44,7 +45,7 @@ export function mapUserError(error: Error): ErrorResponse {
   // Email already taken
   if (error instanceof EmailAlreadyTakenError) {
     return {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       body: {
         success: false,
         error: {
@@ -59,7 +60,7 @@ export function mapUserError(error: Error): ErrorResponse {
   // Username already taken
   if (error instanceof UsernameAlreadyTakenError) {
     return {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       body: {
         success: false,
         error: {
@@ -75,7 +76,7 @@ export function mapUserError(error: Error): ErrorResponse {
   // In development/testing, include error details for debugging
   const isDev = process.env.NODE_ENV !== 'production';
   return {
-    status: 500,
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
     body: {
       success: false,
       error: {

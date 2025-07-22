@@ -3,7 +3,6 @@
  * @fileoverview HTTP endpoint for retrieving user profile and progress
  */
 
-import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
@@ -63,7 +62,7 @@ export const getProfileRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapUserError(error);
-      return c.json(errorBody, status as SupportedStatusCode);
+      return c.json(errorBody, status);
     }
 
     // Log successful profile retrieval
@@ -86,6 +85,6 @@ export const getProfileRoute = new Hono<{
     const { status, body: errorBody } = mapUserError(
       error instanceof Error ? error : new Error('Unknown error')
     );
-    return c.json(errorBody, status as SupportedStatusCode);
+    return c.json(errorBody, status);
   }
 });

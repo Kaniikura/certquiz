@@ -3,7 +3,6 @@
  * @fileoverview HTTP endpoint for retrieving detailed question information
  */
 
-import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
@@ -75,7 +74,7 @@ export const getQuestionRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapQuestionError(error);
-      return c.json(errorBody, status as SupportedStatusCode);
+      return c.json(errorBody, status);
     }
 
     // Log successful question retrieval
@@ -100,6 +99,6 @@ export const getQuestionRoute = new Hono<{
     const { status, body: errorBody } = mapQuestionError(
       error instanceof Error ? error : new Error('Unknown error')
     );
-    return c.json(errorBody, status as SupportedStatusCode);
+    return c.json(errorBody, status);
   }
 });

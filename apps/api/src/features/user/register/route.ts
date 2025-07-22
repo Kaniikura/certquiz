@@ -3,7 +3,7 @@
  * @fileoverview HTTP endpoint for user registration
  */
 
-import { type SupportedStatusCode, safeJson } from '@api/features/quiz/shared/route-utils';
+import { safeJson } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
@@ -57,7 +57,7 @@ export const registerRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapUserError(error);
-      return c.json(errorBody, status as SupportedStatusCode);
+      return c.json(errorBody, status);
     }
 
     // Log successful registration
@@ -83,6 +83,6 @@ export const registerRoute = new Hono<{
     const { status, body: errorBody } = mapUserError(
       error instanceof Error ? error : new Error('Unknown error')
     );
-    return c.json(errorBody, status as SupportedStatusCode);
+    return c.json(errorBody, status);
   }
 });

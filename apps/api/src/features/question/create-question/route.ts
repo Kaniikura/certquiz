@@ -3,7 +3,6 @@
  * @fileoverview HTTP endpoint for admin question creation
  */
 
-import type { SupportedStatusCode } from '@api/features/quiz/shared/route-utils';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
@@ -106,7 +105,7 @@ export const createQuestionRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapQuestionError(error);
-      return c.json(errorBody, status as SupportedStatusCode);
+      return c.json(errorBody, status);
     }
 
     // Log successful question creation
@@ -134,6 +133,6 @@ export const createQuestionRoute = new Hono<{
     const { status, body: errorBody } = mapQuestionError(
       error instanceof Error ? error : new Error('Unknown error')
     );
-    return c.json(errorBody, status as SupportedStatusCode);
+    return c.json(errorBody, status);
   }
 });

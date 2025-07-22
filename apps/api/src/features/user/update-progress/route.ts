@@ -3,7 +3,7 @@
  * @fileoverview HTTP endpoint for updating user progress after quiz completion
  */
 
-import { type SupportedStatusCode, safeJson } from '@api/features/quiz/shared/route-utils';
+import { safeJson } from '@api/features/quiz/shared/route-utils';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
@@ -57,7 +57,7 @@ export const updateProgressRoute = new Hono<{
       });
 
       const { status, body: errorBody } = mapUserError(error);
-      return c.json(errorBody, status as SupportedStatusCode);
+      return c.json(errorBody, status);
     }
 
     // Log successful progress update
@@ -81,6 +81,6 @@ export const updateProgressRoute = new Hono<{
     const { status, body: errorBody } = mapUserError(
       error instanceof Error ? error : new Error('Unknown error')
     );
-    return c.json(errorBody, status as SupportedStatusCode);
+    return c.json(errorBody, status);
   }
 });

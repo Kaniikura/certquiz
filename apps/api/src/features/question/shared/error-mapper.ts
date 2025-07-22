@@ -4,6 +4,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
+import { HttpStatus } from '@api/shared/http-status';
 import type { ErrorResponse } from '@api/shared/types/error-response';
 import {
   InvalidQuestionDataError,
@@ -23,7 +24,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Validation errors
   if (error instanceof ValidationError) {
     return {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       body: {
         success: false,
         error: {
@@ -37,7 +38,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Invalid question data
   if (error instanceof InvalidQuestionDataError) {
     return {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       body: {
         success: false,
         error: {
@@ -51,7 +52,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Question access denied
   if (error instanceof QuestionAccessDeniedError) {
     return {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       body: {
         success: false,
         error: {
@@ -65,7 +66,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Question not found
   if (error instanceof QuestionNotFoundError) {
     return {
-      status: 404,
+      status: HttpStatus.NOT_FOUND,
       body: {
         success: false,
         error: {
@@ -79,7 +80,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Version conflict (optimistic locking)
   if (error instanceof QuestionVersionConflictError) {
     return {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       body: {
         success: false,
         error: {
@@ -93,7 +94,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Repository configuration error
   if (error instanceof QuestionRepositoryConfigurationError) {
     return {
-      status: 500,
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: {
         success: false,
         error: {
@@ -108,7 +109,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // Repository errors
   if (error instanceof QuestionRepositoryError) {
     return {
-      status: 500,
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: {
         success: false,
         error: {
@@ -124,7 +125,7 @@ export function mapQuestionError(error: Error): ErrorResponse {
   // In development/testing, include error details for debugging
   const isDev = process.env.NODE_ENV !== 'production';
   return {
-    status: 500,
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
     body: {
       success: false,
       error: {
