@@ -4,7 +4,7 @@
  */
 
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { ValidationError } from '@api/shared/errors';
+import { createValidationErrorResponse, isValidationError } from '@api/shared/error-utils';
 import { HttpStatus } from '@api/shared/http-status';
 import type { ErrorResponse } from '@api/shared/types/error-response';
 import {
@@ -27,20 +27,8 @@ const logger = createDomainLogger('question.error-mapper');
  */
 export function mapQuestionError(error: Error): ErrorResponse {
   // Validation errors
-  // Note: The instanceof check is safe and intentional. All ValidationError instances
-  // in the codebase properly extend the ValidationError class from @api/shared/errors.
-  // This has been verified across the entire codebase and is tested in error-mapper.test.ts
-  if (error instanceof ValidationError) {
-    return {
-      status: HttpStatus.BAD_REQUEST,
-      body: {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message,
-        },
-      },
-    };
+  if (isValidationError(error)) {
+    return createValidationErrorResponse(error);
   }
 
   // Invalid question data
