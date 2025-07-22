@@ -3,7 +3,7 @@
  * @fileoverview Unit tests for deterministic random number generation
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   createSeededRNG,
   generateCryptoSeed,
@@ -168,13 +168,16 @@ describe('shuffleWithSeed', () => {
     expect(result).toEqual(['A']);
   });
 
-  it('should produce random shuffle without seed', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  it('should produce valid shuffle without seed (using secure randomness)', () => {
+    // Test that function works without seed (now using secure randomness)
+    const result = shuffleWithSeed(testArray);
 
-    const _result = shuffleWithSeed(testArray);
+    // Should return array with same elements
+    expect(result).toHaveLength(testArray.length);
+    expect(result).toEqual(expect.arrayContaining(testArray));
 
-    expect(Math.random).toHaveBeenCalled();
-    vi.restoreAllMocks();
+    // Should not modify original array
+    expect(testArray).toEqual(['A', 'B', 'C', 'D', 'E']);
   });
 });
 

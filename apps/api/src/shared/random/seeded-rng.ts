@@ -97,7 +97,7 @@ export function generateCryptoSeed(): number {
  */
 export function shuffleWithSeed<T>(array: readonly T[], seed?: number): T[] {
   const shuffled = [...array];
-  const rng = seed !== undefined ? createSeededRNG(seed) : { next: Math.random };
+  const rng = seed !== undefined ? createSeededRNG(seed) : createSeededRNG(generateCryptoSeed());
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng.next() * (i + 1));
