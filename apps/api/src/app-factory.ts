@@ -169,8 +169,11 @@ export async function buildProductionApp(): Promise<
 > {
   // Import production dependencies
   const { createAuthProvider } = await import('./infra/auth/AuthProviderFactory.prod');
-  const { DrizzleUserRepository } = await import(
+  const { DrizzleUserRepository: DrizzleAuthUserRepository } = await import(
     './features/auth/domain/repositories/DrizzleUserRepository'
+  );
+  const { DrizzleUserRepository: DrizzleUserDomainRepository } = await import(
+    './features/user/domain/repositories/DrizzleUserRepository'
   );
   const { DrizzleQuestionRepository } = await import(
     './features/question/domain/repositories/DrizzleQuestionRepository'
@@ -195,14 +198,20 @@ export async function buildProductionApp(): Promise<
   const idGenerator = new CryptoIdGenerator();
   const premiumAccessService = new PremiumAccessService();
   const clock = new SystemClock();
-  const userRepositoryLogger = createDomainLogger('auth.repository.user');
+  const authUserRepositoryLogger = createDomainLogger('auth.repository.user');
+  const userDomainRepositoryLogger = createDomainLogger('user.repository');
   const questionRepositoryLogger = createDomainLogger('question.repository');
   const quizRepositoryLogger = createDomainLogger('quiz.repository');
   const txRunner = new DrizzleTxRunner(withTransaction);
 
   // Use withTx helper to reduce boilerplate
   const userRepository = withTx(
-    (trx) => new DrizzleUserRepository(trx, userRepositoryLogger),
+    (trx) => new DrizzleAuthUserRepository(trx, authUserRepositoryLogger),
+    withTransaction
+  );
+
+  const userDomainRepository = withTx(
+    (trx) => new DrizzleUserDomainRepository(trx, userDomainRepositoryLogger),
     withTransaction
   );
 
@@ -222,7 +231,7 @@ export async function buildProductionApp(): Promise<
     idGenerator,
     ping,
     userRepository,
-    userDomainRepository: userRepository as unknown as IUserDomainRepository,
+    userDomainRepository,
     questionRepository,
     quizRepository,
     premiumAccessService,
