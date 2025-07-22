@@ -17,8 +17,8 @@ import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Global variables for test keys (will be initialized in beforeAll)
-let testPrivateKey: CryptoKey;
-let testPublicKey: CryptoKey;
+let testPrivateKey: CryptoKey | undefined;
+let testPublicKey: CryptoKey | undefined;
 
 // Create the spy outside the mock so it can access testPublicKey at runtime
 const getKeySpy = vi.fn(async () => testPublicKey);

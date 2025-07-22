@@ -280,6 +280,90 @@ describe('DrizzleQuestionRepository', () => {
         });
       });
     });
+
+    it('should correctly identify and map true/false questions', async () => {
+      await withRollback(async (trx) => {
+        // Arrange
+        await createTestUser(trx as unknown as TestQueryable);
+        const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
+
+        // Create a true/false question
+        const trueOption = QuestionOption.create({
+          id: crypto.randomUUID(),
+          text: 'True',
+          isCorrect: true,
+        });
+        const falseOption = QuestionOption.create({
+          id: crypto.randomUUID(),
+          text: 'False',
+          isCorrect: false,
+        });
+
+        if (!trueOption.success || !falseOption.success) {
+          throw new Error('Failed to create true/false options');
+        }
+
+        const optionsResult = QuestionOptions.create([trueOption.data, falseOption.data]);
+        if (!optionsResult.success) {
+          throw new Error('Failed to create options collection');
+        }
+
+        const trueFalseQuestion = createTestQuestion({
+          questionText: 'Is the sky blue?',
+          questionType: 'true_false',
+          options: optionsResult.data,
+          explanation: 'The sky appears blue due to light scattering',
+        });
+
+        // Act
+        await repo.createQuestion(trueFalseQuestion);
+        const found = await repo.findQuestionWithDetails(trueFalseQuestion.id);
+
+        // Assert
+        expect(found).not.toBeNull();
+        expect(found?.questionType).toBe('true_false');
+        expect(found?.questionText).toBe('Is the sky blue?');
+        expect(found?.options.count).toBe(2);
+      });
+    });
+
+    it('should correctly map multiple choice questions with more than 2 options', async () => {
+      await withRollback(async (trx) => {
+        // Arrange
+        await createTestUser(trx as unknown as TestQueryable);
+        const repo = new DrizzleQuestionRepository(trx as unknown as TestQueryable, mockLogger);
+
+        // Create a multiple choice question with 4 options
+        const options = [];
+        for (let i = 0; i < 4; i++) {
+          const optionResult = QuestionOption.create({
+            id: crypto.randomUUID(),
+            text: `Option ${i + 1}`,
+            isCorrect: i === 0,
+          });
+          if (!optionResult.success) throw new Error('Failed to create option');
+          options.push(optionResult.data);
+        }
+
+        const optionsResult = QuestionOptions.create(options);
+        if (!optionsResult.success) throw new Error('Failed to create options collection');
+
+        const multipleChoiceQuestion = createTestQuestion({
+          questionText: 'Which is the correct answer?',
+          questionType: 'multiple_choice',
+          options: optionsResult.data,
+        });
+
+        // Act
+        await repo.createQuestion(multipleChoiceQuestion);
+        const found = await repo.findQuestionWithDetails(multipleChoiceQuestion.id);
+
+        // Assert
+        expect(found).not.toBeNull();
+        expect(found?.questionType).toBe('multiple_choice');
+        expect(found?.options.count).toBe(4);
+      });
+    });
   });
 
   describe('findQuestionById', () => {

@@ -80,21 +80,75 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
 
   /**
    * Map database question type to entity question type
+   * @param type Database question type
+   * @param options Question options (optional) for inferring true/false questions
    */
-  private mapQuestionTypeFromDb(type: 'single' | 'multiple'): QuestionType {
-    // For now, we'll map single to multiple_choice as the default
-    // In the future, we might need to store additional metadata to distinguish between multiple_choice and true_false
-    return type === 'single' ? 'multiple_choice' : 'multiple_select';
+  private mapQuestionTypeFromDb(type: 'single' | 'multiple', options?: unknown): QuestionType {
+    // Multiple select is straightforward
+    if (type === 'multiple') {
+      return 'multiple_select';
+    }
+
+    // For single answer questions, check if it's a true/false question
+    if (options && this.isTrueFalseQuestion(options)) {
+      return 'true_false';
+    }
+
+    // Default to multiple choice for other single answer questions
+    return 'multiple_choice';
+  }
+
+  /**
+   * Determine if a question is a true/false question based on its options
+   * @param options The question options from the database
+   */
+  private isTrueFalseQuestion(options: unknown): boolean {
+    if (!Array.isArray(options)) {
+      return false;
+    }
+
+    // True/False questions must have exactly 2 options
+    if (options.length !== 2) {
+      return false;
+    }
+
+    // Check if options are variations of true/false
+    const normalizedTexts = options
+      .map((opt) => {
+        if (typeof opt === 'object' && opt !== null && 'text' in opt) {
+          return String(opt.text).toLowerCase().trim();
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .sort();
+
+    // Common true/false patterns
+    const trueFalsePatterns = [
+      ['false', 'true'],
+      ['no', 'yes'],
+      ['incorrect', 'correct'],
+    ];
+
+    return trueFalsePatterns.some(
+      (pattern) =>
+        normalizedTexts.length === 2 &&
+        normalizedTexts[0] === pattern[0] &&
+        normalizedTexts[1] === pattern[1]
+    );
   }
 
   /**
    * Map entity question status to database question status
    */
-  private mapQuestionStatusToDb(status: QuestionStatus): 'draft' | 'active' | 'archived' {
+  private mapQuestionStatusToDb(
+    status: QuestionStatus
+  ): 'draft' | 'active' | 'inactive' | 'archived' {
     switch (status) {
       case QuestionStatus.ACTIVE:
         return 'active';
       case QuestionStatus.INACTIVE:
+        return 'inactive';
       case QuestionStatus.ARCHIVED:
         return 'archived';
       case QuestionStatus.DRAFT:
@@ -110,7 +164,9 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
   /**
    * Map database question status to entity question status
    */
-  private mapQuestionStatusFromDb(status: 'draft' | 'active' | 'archived'): QuestionStatus {
+  private mapQuestionStatusFromDb(
+    status: 'draft' | 'active' | 'inactive' | 'archived'
+  ): QuestionStatus {
     return status as QuestionStatus;
   }
 
@@ -538,7 +594,10 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
       id: masterRow.questionId,
       version: masterRow.currentVersion,
       questionText: versionRow.questionText,
-      questionType: this.mapQuestionTypeFromDb(versionRow.questionType as 'single' | 'multiple'),
+      questionType: this.mapQuestionTypeFromDb(
+        versionRow.questionType as 'single' | 'multiple',
+        versionRow.options
+      ),
       explanation: versionRow.explanation,
       detailedExplanation: versionRow.detailedExplanation ?? undefined,
       options: versionRow.options,
@@ -548,7 +607,9 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
       tags: versionRow.tags ?? [],
       images: versionRow.images ?? [],
       isPremium: masterRow.isPremium,
-      status: this.mapQuestionStatusFromDb(masterRow.status as 'draft' | 'active' | 'archived'),
+      status: this.mapQuestionStatusFromDb(
+        masterRow.status as 'draft' | 'active' | 'inactive' | 'archived'
+      ),
       createdById: masterRow.createdById,
       createdAt: masterRow.createdAt.toISOString(),
       updatedAt: masterRow.updatedAt.toISOString(),
@@ -585,7 +646,10 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
     return {
       questionId: masterRow.questionId as QuestionId,
       questionText: versionRow.questionText,
-      questionType: this.mapQuestionTypeFromDb(versionRow.questionType as 'single' | 'multiple'),
+      questionType: this.mapQuestionTypeFromDb(
+        versionRow.questionType as 'single' | 'multiple',
+        versionRow.options
+      ),
       examTypes: versionRow.examTypes ?? [],
       categories: versionRow.categories ?? [],
       difficulty: versionRow.difficulty,
