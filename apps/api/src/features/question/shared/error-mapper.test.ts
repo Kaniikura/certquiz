@@ -212,4 +212,50 @@ describe('mapQuestionError', () => {
       process.env.NODE_ENV = originalEnv;
     });
   });
+
+  describe('Structured logging integration', () => {
+    it('should still handle repository configuration errors correctly with logging', () => {
+      const error = new QuestionRepositoryConfigurationError(
+        'Database connection string is invalid'
+      );
+
+      const result = mapQuestionError(error);
+
+      // Verify user response doesn't expose internal details (main security requirement)
+      expect(result.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+      expect(result.body.error.code).toBe('REPOSITORY_CONFIG_ERROR');
+      expect(result.body.error.message).toBe('Repository configuration error');
+      expect(result.body.error.message).not.toContain('Database connection string');
+      expect(result.body.error.message).not.toContain('invalid');
+    });
+
+    it('should still handle repository errors correctly with logging', () => {
+      const error = new QuestionRepositoryError('findById', 'Connection timeout after 30s');
+
+      const result = mapQuestionError(error);
+
+      // Verify user response doesn't expose internal details (main security requirement)
+      expect(result.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+      expect(result.body.error.code).toBe('REPOSITORY_ERROR');
+      expect(result.body.error.message).toBe('Database operation failed');
+      expect(result.body.error.message).not.toContain('findById');
+      expect(result.body.error.message).not.toContain('Connection timeout');
+    });
+
+    it('should still handle unexpected errors correctly with logging', () => {
+      const error = new TypeError('Cannot read property "id" of undefined');
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      const result = mapQuestionError(error);
+
+      // Verify user response in production mode
+      expect(result.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+      expect(result.body.error.code).toBe('INTERNAL_ERROR');
+      expect(result.body.error.message).toBe('Internal server error');
+      expect(result.body.error.message).not.toContain('Cannot read property');
+
+      process.env.NODE_ENV = originalEnv;
+    });
+  });
 });
