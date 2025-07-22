@@ -23,8 +23,8 @@
  * ```
  */
 
-import { generateSecureSeed } from '@api/shared/crypto';
 import { ValidationError } from '@api/shared/errors';
+import { generateCryptoSeed, shuffleWithSeed } from '@api/shared/random';
 import { Result } from '@api/shared/result';
 import { QuestionOption, type QuestionOptionJSON } from './QuestionOption';
 
@@ -150,14 +150,7 @@ export class QuestionOptions {
    * - For testing: Use known seeds to ensure predictable behavior
    */
   shuffle(seed?: number): QuestionOption[] {
-    const shuffled = [...this.options];
-    const rng = seed !== undefined ? this.createSeededRNG(seed) : Math.random;
-
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+    return shuffleWithSeed(this.options, seed);
   }
 
   /**
@@ -167,28 +160,7 @@ export class QuestionOptions {
    * @returns A secure 32-bit unsigned integer seed
    */
   static generateSecureSeed(): number {
-    return generateSecureSeed();
-  }
-
-  /**
-   * Create a seeded pseudo-random number generator
-   * Uses Lehmer RNG (Park-Miller) algorithm for deterministic but well-distributed randomness
-   *
-   * @param seed Initial seed value (must be positive integer)
-   * @returns Function that generates random numbers in [0, 1) range
-   */
-  private createSeededRNG(seed: number): () => number {
-    // Ensure seed is a positive integer
-    let currentSeed = Math.abs(Math.floor(seed)) || 1;
-
-    // Lehmer RNG constants (Park-Miller)
-    const a = 16807;
-    const m = 2147483647; // 2^31 - 1
-
-    return (): number => {
-      currentSeed = (a * currentSeed) % m;
-      return currentSeed / m;
-    };
+    return generateCryptoSeed();
   }
 
   /**
