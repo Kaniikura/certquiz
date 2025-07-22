@@ -172,20 +172,93 @@ Complete implementation of all core features using Vertical Slice Architecture (
 
 > 📁 **Detailed task breakdown**: [docs/completed/05-feature-implementation.md](./completed/05-feature-implementation.md)
 
-## 6. API Layer Implementation 🟡
+## 6. API Layer Implementation & Technical Debt 🔴
+**Status**: PARTIALLY COMPLETED
+**Completion Date**: July 22, 2025 (API initialization)
 
-### 6.1 Initialize Hono Server
-**Time**: 30 minutes
+### 6.1 Initialize Hono Server ✅
+**Time**: 30 minutes (actual: ~2 hours)
+**Status**: COMPLETED
+
+**Summary**: Initialized Hono server with proper structure and middleware:
 ```typescript
-// Tasks:
-- Setup basic Hono server with proper structure
-- Configure CORS and security headers
-- Add health check endpoint
-- Setup global error handling
-- Test: Server starts on port 4000
+// Completed Tasks:
+✅ Setup basic Hono server with proper structure
+✅ Configure CORS and security headers (already existed)
+✅ Add health check endpoint (already existed)
+✅ Setup global error handling (already existed)
+✅ Test: Server starts on port 4000
 ```
 
-### 6.2 Implement Core Middleware
+**Key Achievements**:
+- Created central route composition in `routes.ts` following VSA principles
+- Improved app factory with better documentation and middleware ordering
+- Added comprehensive tests for server initialization (app-factory.test.ts)
+- Added tests verifying server starts on port 4000 (index.test.ts)
+- Maintained existing VSA architecture while incorporating o3's Hono best practices
+
+### Technical Debt Reduction Overview
+The following technical debt items need immediate attention to enable proper testing without database dependencies.
+
+## 7. Migrate from withTransaction to IUnitOfWork Pattern 🔴
+
+### 7.1 Core Migration
+**Time**: 4 days
+**Priority**: HIGH
+**Blocker**: Tests require real database connection
+```typescript
+// Current State:
+// - Legacy withTransaction pattern used in routes
+// - New IUnitOfWork pattern exists but not fully adopted
+// - Tests fail without real database due to direct transaction usage
+
+// Tasks:
+- Step 0: Implement TxRunner shim for immediate test fixes (0.5 day) ✅
+  ✅ Create TxRunner interface with run method
+  ✅ Implement DrizzleTxRunner using withTransaction
+  ✅ Implement NoopTxRunner for tests
+  ✅ Update routes to use TxRunner instead of direct withTransaction
+  ✅ Verify all tests pass without database
+
+- Step 1: Introduce UnitOfWorkProvider middleware (1 day)
+  - Create middleware that provides IUnitOfWork to context
+  - Implement factory for real/fake UoW based on environment
+  - Test middleware with both implementations
+
+- Step 2: Slice-by-slice migration (2-3 days)
+  - Migrate user routes from repositories to IUnitOfWork
+  - Migrate question routes from repositories to IUnitOfWork
+  - Migrate quiz routes from repositories to IUnitOfWork
+  - Migrate auth routes from repositories to IUnitOfWork
+  - Remove legacy repository-setting middleware from each slice
+
+- Step 3: Remove legacy code (0.5 day)
+  - Delete TxRunner shim
+  - Remove withTransaction imports from routes
+  - Clean up unused legacy code
+  - Add ESLint rule to prevent withTransaction in routes
+
+- Test: All routes use IUnitOfWork, no direct transaction usage
+- Test: HTTP layer tests run without database
+- Test: Integration tests still work with real database
+```
+
+### 7.2 Complete Migration to Full IUnitOfWork
+**Time**: 2 days
+**Depends on**: 7.1
+```typescript
+// Tasks:
+- Add IQuestionRepository to IUnitOfWork interface
+- Implement question repository accessor
+- Update all question-related code to use UoW
+- Add missing repository methods
+- Implement transaction lifecycle methods (begin/commit/rollback)
+- Test: Full UoW pattern implemented across all features
+```
+
+## 8. API Layer Enhancement 🟢
+
+### 8.1 Implement Core Middleware
 **Time**: 1.5 hours
 ```typescript
 // Tasks:
@@ -196,7 +269,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Middleware chain works correctly
 ```
 
-### 6.3 Create Route Composition
+### 8.2 Create Route Composition
 **Time**: 1 hour
 ```typescript
 // Tasks:
@@ -209,7 +282,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: All endpoints return expected responses
 ```
 
-### 6.4 Add Admin Module (Optional)
+### 8.3 Add Admin Module (Optional)
 **Time**: 2 hours
 **DEFER TO PHASE 2**
 ```typescript
@@ -220,9 +293,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Admin endpoints protected
 ```
 
-## 7. Basic Features Implementation 🟢
+## 9. Basic Features Implementation 🟢
 
-### 7.1 ~~Add Caching Layer~~ (REMOVED)
+### 9.1 ~~Add Caching Layer~~ (REMOVED)
 **Time**: ~~1 hour~~ 0 hours
 **Status**: REMOVED - Using Neon database instead
 ```typescript
@@ -238,7 +311,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 // caching would introduce unnecessary complexity.
 ```
 
-### 7.2 Add Basic Gamification
+### 9.2 Add Basic Gamification
 **Time**: 1.5 hours
 ```typescript
 // Tasks:
@@ -248,9 +321,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Gamification features work
 ```
 
-## 8. Frontend Foundation Tasks 🟢
+## 10. Frontend Foundation Tasks 🟢
 
-### 8.1 Setup SvelteKit Project
+### 10.1 Setup SvelteKit Project
 **Time**: 30 minutes
 ```bash
 # Tasks:
@@ -261,7 +334,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Dev server starts, TailwindCSS works
 ```
 
-### 8.2 Create Layout Components
+### 10.2 Create Layout Components
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
@@ -272,7 +345,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Layout responsive on all screen sizes
 ```
 
-### 8.3 Setup State Management
+### 10.3 Setup State Management
 **Time**: 1 hour
 **REVISED TASK**
 ```typescript
@@ -284,7 +357,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: State management works correctly
 ```
 
-### 8.4 Implement API Client
+### 10.4 Implement API Client
 **Time**: 1.5 hours
 **REVISED TASK**
 ```typescript
@@ -296,9 +369,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: API calls work with proper error handling
 ```
 
-## 9. Core UI Implementation Tasks 🟢
+## 11. Core UI Implementation Tasks 🟢
 
-### 9.1 Authentication Flow
+### 11.1 Authentication Flow
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
@@ -309,7 +382,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Complete auth flow works
 ```
 
-### 9.2 Quiz Interface
+### 11.2 Quiz Interface
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
@@ -321,7 +394,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Complete quiz flow in UI
 ```
 
-### 9.3 Question Browser
+### 11.3 Question Browser
 **Time**: 2 hours
 ```svelte
 <!-- Tasks: -->
@@ -333,9 +406,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Browsing and filtering work smoothly
 ```
 
-## 10. Admin Interface Tasks 🟢
+## 12. Admin Interface Tasks 🟢
 
-### 10.1 Admin Dashboard
+### 12.1 Admin Dashboard
 **Time**: 1 hour
 ```svelte
 <!-- Tasks: -->
@@ -346,7 +419,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Dashboard displays real data
 ```
 
-### 10.2 Question Management
+### 12.2 Question Management
 **Time**: 3 hours
 ```svelte
 <!-- Tasks: -->
@@ -358,7 +431,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: All admin operations work
 ```
 
-### 10.3 User Management
+### 12.3 User Management
 **Time**: 2 hours
 **NEW TASK**
 ```svelte
@@ -370,9 +443,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: User management features work
 ```
 
-## 11. Testing & Quality Tasks 🟡
+## 13. Testing & Quality Tasks 🟡
 
-### 11.1 Unit Test Setup
+### 13.1 Unit Test Setup
 **Time**: 1 hour
 ```typescript
 // Tasks:
@@ -383,7 +456,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: `bun run test` runs all tests
 ```
 
-### 11.2 Integration Test Suite
+### 13.2 Integration Test Suite
 **Time**: 3 hours
 ```typescript
 // Tasks:
@@ -394,7 +467,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Integration tests pass
 ```
 
-### 11.3 E2E Test Suite
+### 13.3 E2E Test Suite
 **Time**: 2 hours
 ```typescript
 // Tasks:
@@ -405,7 +478,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: E2E tests pass
 ```
 
-### 11.4 Performance Testing
+### 13.4 Performance Testing
 **Time**: 2 hours
 **NEW TASK**
 ```typescript
@@ -417,9 +490,9 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Meets performance targets
 ```
 
-## 12. DevOps & Deployment Tasks 🟢
+## 14. DevOps & Deployment Tasks 🟢
 
-### 12.1 CI/CD Pipeline
+### 14.1 CI/CD Pipeline
 **Time**: 2 hours
 ```yaml
 # Tasks:
@@ -430,7 +503,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: CI runs on every push
 ```
 
-### 12.2 Container Optimization
+### 14.2 Container Optimization
 **Time**: 2 hours
 ```dockerfile
 # Tasks:
@@ -441,7 +514,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Containers run efficiently
 ```
 
-### 12.3 Kubernetes Deployment
+### 14.3 Kubernetes Deployment
 **Time**: 2 hours
 ```yaml
 # Tasks:
@@ -452,7 +525,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Test: Deploys to local K8s
 ```
 
-### 12.4 Monitoring Setup
+### 14.4 Monitoring Setup
 **Time**: 2 hours
 **NEW TASK**
 ```yaml
@@ -472,17 +545,19 @@ graph TD
     B --> C[3. Database Foundation]
     C --> D[4. Quality Gates]
     D --> E[5. Feature Implementation]
-    E --> F[6. API Layer]
-    F --> G[7. Basic Features]
+    E --> F[6. API Layer & Technical Debt]
+    F --> G[7. IUnitOfWork Migration]
+    G --> H[8. API Enhancement]
+    H --> I[9. Basic Features]
     
-    A --> H[8. Frontend Foundation]
-    H --> I[9. Core UI]
-    I --> J[10. Admin Interface]
+    A --> J[10. Frontend Foundation]
+    J --> K[11. Core UI]
+    K --> L[12. Admin Interface]
     
-    E --> K[11. Testing]
-    H --> K
+    E --> M[13. Testing]
+    J --> M
     
-    All --> L[12. DevOps]
+    All --> N[14. DevOps]
 ```
 
 ## Definition of Done
@@ -517,10 +592,11 @@ Each task is complete when:
   - Day 2-3: Quiz feature slices ✅ **COMPLETED with additional improvements**
   - Day 4: User domain evolution & features ✅ **COMPLETED**
   - Day 5: Question features ✅ **COMPLETED**
-- **Week 5**: Tasks 6 + 7-9 (API Layer + Basic Features + Frontend Foundation + Core UI)
-  - Day 1: API layer completion
-  - Day 2-5: Basic features + Frontend foundation + Core UI
-- **Week 6**: Tasks 10-12 (Admin Interface + Testing + DevOps)
+- **Week 5**: Tasks 6-8 + 9-11 (API Layer & Technical Debt + API Enhancement + Basic Features + Frontend Foundation + Core UI)
+  - Day 1: API layer completion + TxRunner shim ✅
+  - Day 2-3: Continue IUnitOfWork migration (Task 7)
+  - Day 4-5: API enhancement (Task 8) + Basic features (Task 9) + Frontend foundation start (Task 10)
+- **Week 6**: Tasks 11-14 (Core UI + Admin Interface + Testing + DevOps)
 
 **Architecture Migration Summary**:
 - Clean-slate approach (no gradual migration)

@@ -9,6 +9,8 @@ import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
+import type { TxRunner } from '@api/shared/tx-runner';
+import { DrizzleTxRunner } from '@api/shared/tx-runner';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
 import { DrizzleQuestionRepository } from './domain/repositories/DrizzleQuestionRepository';
@@ -39,7 +41,8 @@ type QuestionVariables = {
 export function createQuestionRoutes(
   premiumAccessService: IPremiumAccessService,
   clock: Clock,
-  idGenerator: IdGenerator
+  idGenerator: IdGenerator,
+  txRunner?: TxRunner
 ): Hono<{
   Variables: QuestionVariables;
 }> {
@@ -63,6 +66,9 @@ export function createQuestionRoutes(
     });
   });
 
+  // Use provided txRunner or create a default one
+  const runner = txRunner || new DrizzleTxRunner(withTransaction);
+
   /**
    * Dependency injection middleware
    * Creates transaction-scoped repository instances for each request
@@ -78,8 +84,8 @@ export function createQuestionRoutes(
       return next();
     }
 
-    // Use withTransaction to ensure all question operations are transactional
-    await withTransaction(async (trx: TransactionContext) => {
+    // Use txRunner to ensure all question operations are transactional
+    await runner.run(async (trx: TransactionContext) => {
       // Create repository instance with transaction and logger
       // Use the DrizzleQuestionRepository with transaction context
       const questionRepository = new DrizzleQuestionRepository(trx, questionRepositoryLogger);
