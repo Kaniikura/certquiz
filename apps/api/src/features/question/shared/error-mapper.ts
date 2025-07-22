@@ -4,6 +4,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
+import type { ErrorResponse } from '@api/shared/types/error-response';
 import {
   InvalidQuestionDataError,
   QuestionAccessDeniedError,
@@ -12,19 +13,6 @@ import {
   QuestionRepositoryError,
   QuestionVersionConflictError,
 } from './errors';
-
-export interface ErrorResponse {
-  status: number;
-  body: {
-    success: false;
-    error: {
-      code: string;
-      message: string;
-      field?: string;
-      details?: string; // Include error details in development
-    };
-  };
-}
 
 /**
  * Maps domain errors to HTTP error responses
