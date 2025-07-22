@@ -4,53 +4,57 @@
  */
 
 import { createNoopTxRunner } from '@api/testing/infra';
+import type { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
+import type { AppDependencies } from './app-factory';
 import { buildApp } from './app-factory';
 import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
 import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
-import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
 import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
 import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
 import type { IUserRepository as IUserDomainRepository } from './features/user/domain/repositories/IUserRepository';
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
 import { getRootLogger } from './infra/logger/root-logger';
-import type { IdGenerator } from './shared/id-generator';
+import type { LoggerVariables, RequestIdVariables } from './middleware';
 import { CryptoIdGenerator } from './shared/id-generator';
+
+/**
+ * Creates fake app dependencies for testing
+ * Provides all required dependencies with minimal implementations
+ */
+function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDependencies {
+  return {
+    logger: getRootLogger(),
+    clock: () => new Date(),
+    idGenerator: new CryptoIdGenerator(),
+    ping: async () => {
+      /* no-op */
+    },
+    userRepository: {} as IUserRepository,
+    userDomainRepository: {} as IUserDomainRepository,
+    quizRepository: {} as IQuizRepository,
+    questionRepository: {} as IQuestionRepository,
+    premiumAccessService: new PremiumAccessService(),
+    authProvider: new FakeAuthProvider(),
+    txRunner: createNoopTxRunner(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a test app instance with fake dependencies
+ * Encapsulates the common setup pattern used across tests
+ */
+function createTestApp(
+  overrides?: Partial<AppDependencies>
+): Hono<{ Variables: LoggerVariables & RequestIdVariables }> {
+  const dependencies = createFakeAppDependencies(overrides);
+  return buildApp(dependencies);
+}
 
 describe('App Factory', () => {
   it('builds app with fake dependencies', async () => {
-    // Create fake dependencies
-    const logger = getRootLogger();
-    const clock = () => new Date();
-    const idGenerator: IdGenerator = new CryptoIdGenerator();
-    const ping = async () => {
-      /* no-op */
-    };
-
-    // Create minimal fake repositories
-    const userRepository = {} as IUserRepository;
-    const quizRepository = {} as IQuizRepository;
-    const questionRepository = {} as IQuestionRepository;
-    const premiumAccessService: IPremiumAccessService = new PremiumAccessService();
-
-    // Create auth provider and noop tx runner
-    const authProvider = new FakeAuthProvider();
-    const txRunner = createNoopTxRunner();
-
-    // Build app with fake dependencies
-    const app = buildApp({
-      logger,
-      clock,
-      idGenerator,
-      ping,
-      userRepository,
-      userDomainRepository: {} as IUserDomainRepository,
-      quizRepository,
-      questionRepository,
-      premiumAccessService,
-      authProvider,
-      txRunner,
-    });
+    const app = createTestApp();
 
     // Test root endpoint
     const res = await app.request('/');
@@ -65,38 +69,7 @@ describe('App Factory', () => {
   });
 
   it('returns 404 for non-existent endpoints', async () => {
-    // Create fake dependencies
-    const logger = getRootLogger();
-    const clock = () => new Date();
-    const idGenerator: IdGenerator = new CryptoIdGenerator();
-    const ping = async () => {
-      /* no-op */
-    };
-
-    // Create minimal fake repositories
-    const userRepository = {} as IUserRepository;
-    const quizRepository = {} as IQuizRepository;
-    const questionRepository = {} as IQuestionRepository;
-    const premiumAccessService: IPremiumAccessService = new PremiumAccessService();
-
-    // Create auth provider and noop tx runner
-    const authProvider = new FakeAuthProvider();
-    const txRunner = createNoopTxRunner();
-
-    // Build app with fake dependencies
-    const app = buildApp({
-      logger,
-      clock,
-      idGenerator,
-      ping,
-      userRepository,
-      userDomainRepository: {} as IUserDomainRepository,
-      quizRepository,
-      questionRepository,
-      premiumAccessService,
-      authProvider,
-      txRunner,
-    });
+    const app = createTestApp();
 
     // Test non-existent endpoint
     const res = await app.request('/non-existent');
@@ -113,38 +86,7 @@ describe('App Factory', () => {
   });
 
   it('health endpoint responds without database', async () => {
-    // Create fake dependencies
-    const logger = getRootLogger();
-    const clock = () => new Date();
-    const idGenerator: IdGenerator = new CryptoIdGenerator();
-    const ping = async () => {
-      /* no-op */
-    };
-
-    // Create minimal fake repositories
-    const userRepository = {} as IUserRepository;
-    const quizRepository = {} as IQuizRepository;
-    const questionRepository = {} as IQuestionRepository;
-    const premiumAccessService: IPremiumAccessService = new PremiumAccessService();
-
-    // Create auth provider and noop tx runner
-    const authProvider = new FakeAuthProvider();
-    const txRunner = createNoopTxRunner();
-
-    // Build app with fake dependencies
-    const app = buildApp({
-      logger,
-      clock,
-      idGenerator,
-      ping,
-      userRepository,
-      userDomainRepository: {} as IUserDomainRepository,
-      quizRepository,
-      questionRepository,
-      premiumAccessService,
-      authProvider,
-      txRunner,
-    });
+    const app = createTestApp();
 
     // Test health endpoint
     const res = await app.request('/health');
