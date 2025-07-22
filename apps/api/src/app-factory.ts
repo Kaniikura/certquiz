@@ -14,6 +14,8 @@ import type { IPremiumAccessService } from './features/question/domain/services/
 import { createQuestionRoutes } from './features/question/routes-factory';
 import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
 import { createQuizRoutes } from './features/quiz/routes-factory';
+import type { IUserRepository as IUserDomainRepository } from './features/user/domain/repositories/IUserRepository';
+import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
 import type { Logger } from './infra/logger';
@@ -27,6 +29,7 @@ import {
   securityMiddleware,
 } from './middleware';
 import type { IdGenerator } from './shared/id-generator';
+import type { TxRunner } from './shared/tx-runner';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -43,10 +46,14 @@ export interface AppDependencies {
 
   // Domain services
   userRepository: IUserRepository;
+  userDomainRepository: IUserDomainRepository;
   quizRepository: IQuizRepository;
   questionRepository: IQuestionRepository;
   premiumAccessService: IPremiumAccessService;
   authProvider: IAuthProvider;
+
+  // Transaction handling (optional for testing)
+  txRunner?: TxRunner;
 }
 
 /**
@@ -99,11 +106,19 @@ export function buildApp(deps: AppDependencies): Hono<{
   // Question routes (public questions + protected admin creation)
   app.route(
     '/api/questions',
-    createQuestionRoutes(deps.premiumAccessService, { now: deps.clock }, deps.idGenerator)
+    createQuestionRoutes(
+      deps.premiumAccessService,
+      { now: deps.clock },
+      deps.idGenerator,
+      deps.txRunner
+    )
   );
 
   // Quiz routes (public + protected sections)
   app.route('/api/quiz', createQuizRoutes(deps.quizRepository));
+
+  // User routes (public + protected sections)
+  app.route('/api/users', createUserRoutes(deps.userDomainRepository, deps.txRunner));
 
   // Admin routes (all protected with admin role)
   app.route(
@@ -172,6 +187,7 @@ export async function buildProductionApp(): Promise<
     './features/question/domain/services/PremiumAccessService'
   );
   const { SystemClock } = await import('./shared/clock');
+  const { DrizzleTxRunner } = await import('./shared/tx-runner');
 
   // Create production dependencies
   const logger = getRootLogger();
@@ -182,6 +198,7 @@ export async function buildProductionApp(): Promise<
   const userRepositoryLogger = createDomainLogger('auth.repository.user');
   const questionRepositoryLogger = createDomainLogger('question.repository');
   const quizRepositoryLogger = createDomainLogger('quiz.repository');
+  const txRunner = new DrizzleTxRunner(withTransaction);
 
   // Use withTx helper to reduce boilerplate
   const userRepository = withTx(
@@ -205,9 +222,11 @@ export async function buildProductionApp(): Promise<
     idGenerator,
     ping,
     userRepository,
+    userDomainRepository: userRepository as unknown as IUserDomainRepository,
     questionRepository,
     quizRepository,
     premiumAccessService,
     authProvider,
+    txRunner,
   });
 }
