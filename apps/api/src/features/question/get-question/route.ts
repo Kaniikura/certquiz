@@ -5,6 +5,7 @@
 
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
+import { UUID_REGEX } from '@api/shared/validation/constants';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
 import { mapQuestionError } from '../shared/error-mapper';
@@ -26,8 +27,7 @@ export const getQuestionRoute = new Hono<{
     const questionId = c.req.param('questionId');
 
     // Validate questionId format early to fail fast
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!questionId || !uuidRegex.test(questionId)) {
+    if (!questionId || !UUID_REGEX.test(questionId)) {
       logger.warn('Invalid question ID format', {
         questionId,
         expectedFormat: 'UUID',

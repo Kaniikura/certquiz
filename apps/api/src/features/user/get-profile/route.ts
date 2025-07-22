@@ -4,6 +4,7 @@
  */
 
 import type { LoggerVariables } from '@api/middleware/logger';
+import { UUID_REGEX } from '@api/shared/validation/constants';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { mapUserError } from '../shared/error-mapper';
@@ -24,8 +25,7 @@ export const getProfileRoute = new Hono<{
     const userId = c.req.param('userId');
 
     // Validate userId format early to fail fast
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!userId || !uuidRegex.test(userId)) {
+    if (!userId || !UUID_REGEX.test(userId)) {
       logger.warn('Invalid user ID format', {
         userId,
         expectedFormat: 'UUID',

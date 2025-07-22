@@ -5,16 +5,12 @@
 
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import { UUID_REGEX } from '@api/shared/validation/constants';
 
 /**
  * Maximum length for option text
  */
 const MAX_OPTION_TEXT_LENGTH = 1000;
-
-/**
- * UUID regex pattern for validation (matches v1-v5)
- */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * JSON representation of a question option
