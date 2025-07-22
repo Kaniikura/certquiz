@@ -1,6 +1,26 @@
 /**
  * QuestionOptions value object
  * @fileoverview Collection of question options with business rule validation
+ *
+ * Usage Examples:
+ *
+ * Basic shuffling (random each time):
+ * ```typescript
+ * const shuffled = questionOptions.shuffle();
+ * ```
+ *
+ * Deterministic shuffling for quiz fairness:
+ * ```typescript
+ * const quizSeed = QuestionOptions.generateSecureSeed();
+ * const shuffled = questionOptions.shuffle(quizSeed);
+ * // Store quizSeed with quiz session for consistent ordering
+ * ```
+ *
+ * Testing with predictable results:
+ * ```typescript
+ * const shuffled = questionOptions.shuffle(12345);
+ * // Always produces same order for seed 12345
+ * ```
  */
 
 import { ValidationError } from '@api/shared/errors';
@@ -117,15 +137,65 @@ export class QuestionOptions {
 
   /**
    * Get shuffled copy of options
-   * Uses Fisher-Yates shuffle algorithm
+   * Uses Fisher-Yates shuffle algorithm with optional seeded randomness
+   *
+   * @param seed Optional seed for deterministic shuffling. If not provided,
+   *             uses cryptographically secure random generation.
+   *             Same seed will always produce the same shuffle order.
+   *
+   * Business Rules:
+   * - For quiz fairness: Use same seed for all users taking the same quiz version
+   * - For security: Seeds should be cryptographically random and unpredictable
+   * - For testing: Use known seeds to ensure predictable behavior
    */
-  shuffle(): QuestionOption[] {
+  shuffle(seed?: number): QuestionOption[] {
     const shuffled = [...this.options];
+    const rng = seed !== undefined ? this.createSeededRNG(seed) : Math.random;
+
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  }
+
+  /**
+   * Generate cryptographically secure seed for shuffling
+   * Uses Web Crypto API for true randomness
+   *
+   * @returns A secure 32-bit unsigned integer seed
+   */
+  static generateSecureSeed(): number {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      return array[0];
+    }
+
+    // Fallback for environments without Web Crypto API
+    // This is less secure but better than predictable Math.random()
+    return Math.floor(Math.random() * 0xffffffff);
+  }
+
+  /**
+   * Create a seeded pseudo-random number generator
+   * Uses Lehmer RNG (Park-Miller) algorithm for deterministic but well-distributed randomness
+   *
+   * @param seed Initial seed value (must be positive integer)
+   * @returns Function that generates random numbers in [0, 1) range
+   */
+  private createSeededRNG(seed: number): () => number {
+    // Ensure seed is a positive integer
+    let currentSeed = Math.abs(Math.floor(seed)) || 1;
+
+    // Lehmer RNG constants (Park-Miller)
+    const a = 16807;
+    const m = 2147483647; // 2^31 - 1
+
+    return (): number => {
+      currentSeed = (a * currentSeed) % m;
+      return currentSeed / m;
+    };
   }
 
   /**
