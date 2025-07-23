@@ -6,13 +6,10 @@
 import { Hono } from 'hono';
 import pkg from '../package.json';
 import { createAdminRoutes } from './features/admin/routes-factory';
-import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
-import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
 import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
 import { createQuestionRoutes } from './features/question/routes-factory';
-import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
 import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
@@ -47,11 +44,6 @@ export interface AppDependencies {
   // Domain services
   premiumAccessService: IPremiumAccessService;
   authProvider: IAuthProvider;
-
-  // Deprecated - these will be removed after migration
-  userRepository?: IUserRepository;
-  quizRepository?: IQuizRepository;
-  questionRepository?: IQuestionRepository;
 }
 
 /**
