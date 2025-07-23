@@ -3,7 +3,6 @@
  * @fileoverview Tests for app factory with fake dependencies
  */
 
-import { createNoopTxRunner } from '@api/testing/infra';
 import type { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import type { AppDependencies } from './app-factory';
@@ -35,7 +34,6 @@ function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDep
     questionRepository: {} as IQuestionRepository,
     premiumAccessService: new PremiumAccessService(),
     authProvider: new FakeAuthProvider(),
-    txRunner: createNoopTxRunner(),
     ...overrides,
   };
 }

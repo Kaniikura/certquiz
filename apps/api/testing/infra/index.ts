@@ -54,8 +54,5 @@ export {
   isNode,
 } from './runtime';
 
-// Transaction utilities - Transaction handling test helpers
-export { createNoopTxRunner } from './tx-runner';
-
 // Vitest utilities - Vitest configuration helpers
 export { mapTestEnvironmentVariables } from './vitest';

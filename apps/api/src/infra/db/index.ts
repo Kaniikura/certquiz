@@ -15,4 +15,7 @@ export { sql } from 'drizzle-orm';
 export { ping } from './client';
 
 // Internal exports for the unit-of-work facade
+// WARNING: withTransaction should NOT be used directly in route handlers!
+// Route handlers should use IUnitOfWork from middleware context instead.
+// Direct usage of withTransaction in routes is deprecated and will cause issues.
 export { type TransactionContext, withTransaction } from './uow';

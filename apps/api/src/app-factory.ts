@@ -30,7 +30,6 @@ import {
   type UnitOfWorkVariables,
 } from './middleware';
 import type { IdGenerator } from './shared/id-generator';
-import type { TxRunner } from './shared/tx-runner';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -53,7 +52,6 @@ export interface AppDependencies {
   userRepository?: IUserRepository;
   quizRepository?: IQuizRepository;
   questionRepository?: IQuestionRepository;
-  txRunner?: TxRunner;
 }
 
 /**
