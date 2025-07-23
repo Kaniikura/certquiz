@@ -3,11 +3,21 @@
  * @fileoverview Tests actual HTTP request/response behavior for user endpoints
  */
 
-import { userRoutes } from '@api/features/user/routes';
+// Import createUserRoutes from the routes-factory
+import { createUserRoutes } from '@api/features/user/routes-factory';
+
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createUnitOfWorkMiddleware } from '@api/middleware/unit-of-work';
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
+import {
+  FakeAuthUserRepository,
+  FakeQuestionRepository,
+  FakeQuizRepository,
+  FakeUnitOfWork,
+  FakeUserRepository,
+} from '@api/testing/domain/fakes';
 import { Hono } from 'hono';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -49,11 +59,21 @@ describe('User Routes HTTP Integration', () => {
     // Create test app with necessary middleware
     testApp = new Hono();
 
-    // Add logger middleware (required by withTransaction)
+    // Add logger middleware
     const logger = getRootLogger();
     testApp.use('*', createLoggerMiddleware(logger));
 
-    // Mount user routes
+    // Add UnitOfWork middleware with shared repositories
+    const sharedAuthUserRepo = new FakeAuthUserRepository();
+    const sharedUserRepo = new FakeUserRepository();
+    const sharedQuizRepo = new FakeQuizRepository();
+    const sharedQuestionRepo = new FakeQuestionRepository();
+    const uowFactory = async () =>
+      new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
+    testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+
+    // Create and mount user routes
+    const userRoutes = createUserRoutes();
     testApp.route('/', userRoutes);
   });
 

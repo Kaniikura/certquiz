@@ -3,16 +3,12 @@
  * @fileoverview Creates user routes with injected dependencies
  */
 
-import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
-import type { TxRunner } from '@api/shared/tx-runner';
-import { DrizzleTxRunner } from '@api/shared/tx-runner';
 import { Hono } from 'hono';
-import { DrizzleUserRepository } from './domain/repositories/DrizzleUserRepository';
 import type { IUserRepository } from './domain/repositories/IUserRepository';
 import { getProfileRoute } from './get-profile/route';
 import { registerRoute } from './register/route';
@@ -29,20 +25,17 @@ type UserVariables = {
   userRepository: IUserRepository;
   clock: Clock;
   user?: AuthUser; // Optional as register route doesn't require auth
-};
+} & UnitOfWorkVariables;
 
 /**
  * Create user routes with dependency injection
  * This factory allows us to inject different implementations for different environments
  */
-export function createUserRoutes(txRunner?: TxRunner): Hono<{ Variables: UserVariables }> {
+export function createUserRoutes(): Hono<{ Variables: UserVariables }> {
   const userRoutes = new Hono<{ Variables: UserVariables }>();
 
   // Create clock instance (singleton for request lifecycle)
   const clock = new SystemClock();
-
-  // Create logger for user repository
-  const userRepositoryLogger = createDomainLogger('user.repository');
 
   /**
    * Health check for user service (public endpoint)
@@ -57,13 +50,9 @@ export function createUserRoutes(txRunner?: TxRunner): Hono<{ Variables: UserVar
     });
   });
 
-  // Use provided txRunner or create a default one
-  const runner = txRunner || new DrizzleTxRunner(withTransaction);
-
   /**
    * Dependency injection middleware
-   * Creates transaction-scoped repository instances for each request
-   * Applied only to routes that need database access
+   * Gets repository from UnitOfWork which is provided by global middleware
    */
   userRoutes.use('*', async (c, next) => {
     // Skip transaction for excluded paths
@@ -74,18 +63,16 @@ export function createUserRoutes(txRunner?: TxRunner): Hono<{ Variables: UserVar
       return next();
     }
 
-    // Use txRunner to ensure all user operations are transactional
-    await runner.run(async (trx: TransactionContext) => {
-      // Create repository instance with transaction and logger
-      const userRepository = new DrizzleUserRepository(trx, userRepositoryLogger);
+    // Get UnitOfWork from context (provided by global middleware)
+    const unitOfWork = c.get('unitOfWork');
+    const userRepository = unitOfWork.getUserRepository();
 
-      // Inject dependencies into context
-      c.set('userRepository', userRepository);
-      c.set('clock', clock);
+    // Inject dependencies into context
+    c.set('userRepository', userRepository);
+    c.set('clock', clock);
 
-      // Continue to route handlers
-      await next();
-    });
+    // Continue to route handlers
+    await next();
   });
 
   // Create separate groups for public and protected routes

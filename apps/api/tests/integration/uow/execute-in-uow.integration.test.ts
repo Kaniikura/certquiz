@@ -46,7 +46,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Insert user within transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(user);
       });
 
@@ -83,7 +83,7 @@ describe('Unit of Work Integration Tests', () => {
       // Attempt to save user but throw error
       await expect(
         executeInUnitOfWork(async (uow) => {
-          const userRepo = uow.getUserRepository();
+          const userRepo = uow.getAuthUserRepository();
           await userRepo.save(user);
           throw error;
         })
@@ -132,7 +132,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Save multiple users in same transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(user1);
         await userRepo.save(user2);
       });
@@ -185,7 +185,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Start a transaction that will fail
       const failedTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(failUser);
         // Simulate some work
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -196,7 +196,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Start another transaction concurrently
       const successfulTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(successUser);
       });
 
@@ -219,8 +219,8 @@ describe('Unit of Work Integration Tests', () => {
 
     it('should ensure repository instances are cached within transaction', async () => {
       await executeInUnitOfWork(async (uow) => {
-        const userRepo1 = uow.getUserRepository();
-        const userRepo2 = uow.getUserRepository();
+        const userRepo1 = uow.getAuthUserRepository();
+        const userRepo2 = uow.getAuthUserRepository();
         const quizRepo1 = uow.getQuizRepository();
         const quizRepo2 = uow.getQuizRepository();
 

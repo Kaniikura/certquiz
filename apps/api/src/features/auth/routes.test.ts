@@ -3,7 +3,18 @@
  * @fileoverview Tests for auth routes creation with dependency injection
  */
 
-import { FakeUserRepository, StubAuthProvider } from '@api/testing/domain';
+import { getRootLogger } from '@api/infra/logger/root-logger';
+import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createUnitOfWorkMiddleware } from '@api/middleware/unit-of-work';
+import { StubAuthProvider } from '@api/testing/domain';
+import {
+  FakeAuthUserRepository,
+  FakeQuestionRepository,
+  FakeQuizRepository,
+  FakeUnitOfWork,
+  FakeUserRepository,
+} from '@api/testing/domain/fakes';
+import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createAuthRoutes } from './routes-factory';
 
@@ -11,11 +22,10 @@ describe('Auth Routes Factory', () => {
   describe('Route Creation', () => {
     it('should create auth routes with dependencies', () => {
       // Arrange
-      const fakeUserRepo = new FakeUserRepository();
       const stubAuthProvider = new StubAuthProvider();
 
       // Act
-      const authRoutes = createAuthRoutes(fakeUserRepo, stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider);
 
       // Assert - Should be a valid Hono instance
       expect(authRoutes).toBeDefined();
@@ -26,9 +36,8 @@ describe('Auth Routes Factory', () => {
   describe('Health Check Route', () => {
     it('should return healthy status', async () => {
       // Arrange
-      const fakeUserRepo = new FakeUserRepository();
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(fakeUserRepo, stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider);
 
       // Act
       const req = new Request('http://localhost/health');
@@ -48,9 +57,25 @@ describe('Auth Routes Factory', () => {
   describe('Login Route Behavior', () => {
     it('should handle login route path', async () => {
       // Arrange
-      const fakeUserRepo = new FakeUserRepository();
+      const testApp = new Hono();
+
+      // Add logger middleware
+      const logger = getRootLogger();
+      testApp.use('*', createLoggerMiddleware(logger));
+
+      // Add UnitOfWork middleware with shared repositories
+      const sharedAuthUserRepo = new FakeAuthUserRepository();
+      const sharedUserRepo = new FakeUserRepository();
+      const sharedQuizRepo = new FakeQuizRepository();
+      const sharedQuestionRepo = new FakeQuestionRepository();
+      const uowFactory = async () =>
+        new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
+      testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+
+      // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(fakeUserRepo, stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider);
+      testApp.route('/', authRoutes);
 
       // Act - Test that the login route is mounted
       const req = new Request('http://localhost/login', {
@@ -59,7 +84,7 @@ describe('Auth Routes Factory', () => {
         body: JSON.stringify({}),
       });
 
-      const res = await authRoutes.fetch(req);
+      const res = await testApp.fetch(req);
 
       // Assert - Should not return 404 (route exists)
       // Will return 400 due to validation issues, but that's expected
@@ -69,9 +94,25 @@ describe('Auth Routes Factory', () => {
 
     it('should handle malformed JSON gracefully', async () => {
       // Arrange
-      const fakeUserRepo = new FakeUserRepository();
+      const testApp = new Hono();
+
+      // Add logger middleware
+      const logger = getRootLogger();
+      testApp.use('*', createLoggerMiddleware(logger));
+
+      // Add UnitOfWork middleware with shared repositories
+      const sharedAuthUserRepo = new FakeAuthUserRepository();
+      const sharedUserRepo = new FakeUserRepository();
+      const sharedQuizRepo = new FakeQuizRepository();
+      const sharedQuestionRepo = new FakeQuestionRepository();
+      const uowFactory = async () =>
+        new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
+      testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+
+      // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(fakeUserRepo, stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider);
+      testApp.route('/', authRoutes);
 
       // Act
       const req = new Request('http://localhost/login', {
@@ -80,7 +121,7 @@ describe('Auth Routes Factory', () => {
         body: 'invalid json',
       });
 
-      const res = await authRoutes.fetch(req);
+      const res = await testApp.fetch(req);
 
       // Assert - Should handle gracefully
       expect(res.status).toBe(400);

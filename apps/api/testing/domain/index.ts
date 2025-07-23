@@ -20,6 +20,7 @@ export { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 export { unwrapOrFail } from '@api/test-support';
 // Repository fakes - centralized domain test doubles
 export {
+  FakeAuthUserRepository,
   FakeQuestionRepository,
   FakeQuizRepository,
   FakeUnitOfWork,

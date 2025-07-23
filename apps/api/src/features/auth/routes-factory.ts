@@ -5,8 +5,8 @@
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import { getRootLogger } from '@api/infra/logger';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import { Hono } from 'hono';
-import type { IUserRepository } from './domain/repositories/IUserRepository';
 import { mapAuthError } from './http/error-mapper';
 import { safeJson } from './http/request-helpers';
 import { loginHandler } from './login/handler';
@@ -16,10 +16,9 @@ import { loginHandler } from './login/handler';
  * This factory allows us to inject different implementations for different environments
  */
 export function createAuthRoutes(
-  userRepository: IUserRepository,
   authProvider: IAuthProvider
-): Hono {
-  const authRoutes = new Hono();
+): Hono<{ Variables: UnitOfWorkVariables }> {
+  const authRoutes = new Hono<{ Variables: UnitOfWorkVariables }>();
   const logger = getRootLogger().child({ module: 'auth.routes' });
 
   // All auth routes are public (login, register, etc.)
@@ -30,6 +29,10 @@ export function createAuthRoutes(
    */
   authRoutes.post('/login', async (c) => {
     try {
+      // Get UnitOfWork from context
+      const unitOfWork = c.get('unitOfWork');
+      const userRepository = unitOfWork.getAuthUserRepository();
+
       const body = await safeJson(c);
       const result = await loginHandler(body, userRepository, authProvider);
 

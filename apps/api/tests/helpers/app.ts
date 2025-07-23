@@ -10,7 +10,7 @@ import type { Logger } from '@api/infra/logger/root-logger';
 import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
 import { vi } from 'vitest';
-import { FakeQuestionRepository, FakeQuizRepository, FakeUserRepository } from '../fakes';
+import { FakeAuthUserRepository, FakeQuestionRepository, FakeQuizRepository } from '../fakes';
 
 /**
  * Create a fake auth provider for testing
@@ -73,7 +73,7 @@ export async function makeHttpApp() {
     logger: fakeLogger(),
     clock: () => new Date('2025-01-01T00:00:00Z'),
     ping: noop, // Always healthy
-    userRepository: new FakeUserRepository(),
+    userRepository: new FakeAuthUserRepository(),
     quizRepository: new FakeQuizRepository(),
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),
@@ -94,7 +94,7 @@ export async function makeBrokenDbApp() {
     ping: async () => {
       throw new Error('Database connection failed');
     },
-    userRepository: new FakeUserRepository(),
+    userRepository: new FakeAuthUserRepository(),
     quizRepository: new FakeQuizRepository(),
     questionRepository: new FakeQuestionRepository(),
     authProvider: fakeAuthProvider(),

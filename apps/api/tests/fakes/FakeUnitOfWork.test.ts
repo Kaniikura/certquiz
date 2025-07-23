@@ -2,10 +2,10 @@
  * Tests for FakeUnitOfWork implementation
  */
 
-import { User } from '@api/features/auth/domain/entities/User';
-import { Email } from '@api/features/auth/domain/value-objects/Email';
-import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { User } from '@api/features/user/domain/entities/User';
+import { Email, UserRole } from '@api/features/user/domain/value-objects';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
+import { SystemClock } from '@api/shared/clock';
 import {
   FakeUnitOfWork,
   FakeUnitOfWorkFactory,
@@ -17,29 +17,22 @@ import { beforeEach, describe, expect, it } from 'vitest';
 // Test helper function to create test users with less boilerplate
 function createTestUser(
   overrides: Partial<{
-    userId: string;
     email: string;
     username: string;
-    role: 'user' | 'admin' | 'premium';
-    identityProviderId: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    role: UserRole;
+    identityProviderId: string | undefined;
   }> = {}
 ): User {
+  const clock = new SystemClock();
   const userData = {
-    userId: UserId.generate(),
     email: 'test@example.com',
     username: 'testuser',
-    role: 'user' as const,
-    identityProviderId: null,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    role: UserRole.User,
+    identityProviderId: undefined,
     ...overrides,
   };
 
-  const result = User.fromPersistence(userData);
+  const result = User.create(userData, clock);
   if (!result.success) {
     throw new Error('Failed to create test user');
   }

@@ -5,23 +5,14 @@
 
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import { Hono } from 'hono';
-import type { IUserRepository } from '../auth/domain/repositories/IUserRepository';
-import type { IQuizRepository } from '../quiz/domain/repositories/IQuizRepository';
-
-interface AdminDependencies {
-  userRepository: IUserRepository;
-  quizRepository: IQuizRepository;
-}
 
 /**
  * Create admin routes - all require admin role
  */
-export function createAdminRoutes(
-  // TODO: Remove underscore when implementing admin features (currently unused but will be needed)
-  _deps: AdminDependencies
-): Hono<{ Variables: { user: AuthUser } }> {
-  const adminRoutes = new Hono<{ Variables: { user: AuthUser } }>();
+export function createAdminRoutes(): Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }> {
+  const adminRoutes = new Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }>();
 
   // Apply admin authentication to all routes
   adminRoutes.use('*', auth({ roles: ['admin'] }));

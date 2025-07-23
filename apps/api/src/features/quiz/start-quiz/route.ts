@@ -4,6 +4,7 @@
  */
 
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import { zValidator } from '@hono/zod-validator';
 import type { Hono } from 'hono';
 import { QuizDependencyProvider } from '../shared/dependencies';
@@ -15,7 +16,9 @@ import { startQuizSchema } from './validation';
 /**
  * Create start quiz route with dependency injection
  */
-export function createStartQuizRoute(): Hono<{ Variables: { user: AuthUser } }> {
+export function createStartQuizRoute(): Hono<{
+  Variables: { user: AuthUser } & UnitOfWorkVariables;
+}> {
   const deps = new QuizDependencyProvider();
 
   return createQuizRoute<StartQuizRequest, StartQuizResponse>({

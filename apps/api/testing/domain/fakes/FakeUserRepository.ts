@@ -3,10 +3,13 @@
  * @fileoverview In-memory user repository that doesn't require database
  */
 
-import type { User } from '@api/features/auth/domain/entities/User';
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-import type { Email } from '@api/features/auth/domain/value-objects/Email';
-import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { User } from '@api/features/user/domain/entities/User';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
+import type { Email, UserId } from '@api/features/user/domain/value-objects';
+import {
+  EmailAlreadyTakenError,
+  UsernameAlreadyTakenError,
+} from '@api/features/user/shared/errors';
 
 /**
  * In-memory user repository for testing
@@ -21,7 +24,7 @@ export class FakeUserRepository implements IUserRepository {
 
   async findById(id: UserId): Promise<User | null> {
     for (const user of this.users.values()) {
-      if (UserId.toString(user.id) === UserId.toString(id)) {
+      if (user.id.toString() === id.toString()) {
         return user;
       }
     }
@@ -50,12 +53,40 @@ export class FakeUserRepository implements IUserRepository {
     this.users.set(user.email.toString(), user);
   }
 
+  async create(user: User): Promise<void> {
+    // Check if email is already taken
+    const existingUserByEmail = await this.findByEmail(user.email);
+    if (existingUserByEmail) {
+      throw new EmailAlreadyTakenError(user.email.toString());
+    }
+
+    // Check if username is already taken
+    const existingUserByUsername = await this.findByUsername(user.username);
+    if (existingUserByUsername) {
+      throw new UsernameAlreadyTakenError(user.username);
+    }
+
+    // Save the new user
+    await this.save(user);
+  }
+
+  async updateProgress(user: User): Promise<void> {
+    // For fake repository, just save the entire user object
+    await this.save(user);
+  }
+
+  async withTransaction<T>(fn: (repo: IUserRepository) => Promise<T>): Promise<T> {
+    // Fake repository doesn't need real transactions
+    // Just execute the function with this repository
+    return await fn(this);
+  }
+
   async isEmailTaken(email: Email, excludeUserId?: UserId): Promise<boolean> {
     const user = await this.findByEmail(email);
     if (!user) {
       return false;
     }
-    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
+    if (excludeUserId && user.id.toString() === excludeUserId.toString()) {
       return false;
     }
     return true;
@@ -66,7 +97,7 @@ export class FakeUserRepository implements IUserRepository {
     if (!user) {
       return false;
     }
-    if (excludeUserId && UserId.equals(user.id, excludeUserId)) {
+    if (excludeUserId && user.id.toString() === excludeUserId.toString()) {
       return false;
     }
     return true;

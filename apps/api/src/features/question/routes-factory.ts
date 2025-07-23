@@ -3,17 +3,13 @@
  * @fileoverview Creates question routes with proper dependency injection
  */
 
-import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
-import type { TxRunner } from '@api/shared/tx-runner';
-import { DrizzleTxRunner } from '@api/shared/tx-runner';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
-import { DrizzleQuestionRepository } from './domain/repositories/DrizzleQuestionRepository';
 import type { IQuestionRepository } from './domain/repositories/IQuestionRepository';
 import type { IPremiumAccessService } from './domain/services/IPremiumAccessService';
 import { getQuestionRoute } from './get-question/route';
@@ -32,7 +28,7 @@ type QuestionVariables = {
   clock: Clock;
   idGenerator: IdGenerator;
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
-};
+} & UnitOfWorkVariables;
 
 /**
  * Create question routes with dependency injection
@@ -41,17 +37,13 @@ type QuestionVariables = {
 export function createQuestionRoutes(
   premiumAccessService: IPremiumAccessService,
   clock: Clock,
-  idGenerator: IdGenerator,
-  txRunner?: TxRunner
+  idGenerator: IdGenerator
 ): Hono<{
   Variables: QuestionVariables;
 }> {
   const questionRoutes = new Hono<{
     Variables: QuestionVariables;
   }>();
-
-  // Create logger for question repository
-  const questionRepositoryLogger = createDomainLogger('question.repository');
 
   /**
    * Health check for question service (public endpoint)
@@ -65,9 +57,6 @@ export function createQuestionRoutes(
       timestamp: new Date().toISOString(),
     });
   });
-
-  // Use provided txRunner or create a default one
-  const runner = txRunner || new DrizzleTxRunner(withTransaction);
 
   /**
    * Dependency injection middleware
@@ -84,21 +73,18 @@ export function createQuestionRoutes(
       return next();
     }
 
-    // Use txRunner to ensure all question operations are transactional
-    await runner.run(async (trx: TransactionContext) => {
-      // Create repository instance with transaction and logger
-      // Use the DrizzleQuestionRepository with transaction context
-      const questionRepository = new DrizzleQuestionRepository(trx, questionRepositoryLogger);
+    // Get UnitOfWork from context (provided by global middleware)
+    const unitOfWork = c.get('unitOfWork');
+    const questionRepository = unitOfWork.getQuestionRepository();
 
-      // Inject dependencies into context
-      c.set('questionRepository', questionRepository);
-      c.set('premiumAccessService', premiumAccessService);
-      c.set('clock', clock);
-      c.set('idGenerator', idGenerator);
+    // Inject dependencies into context
+    c.set('questionRepository', questionRepository);
+    c.set('premiumAccessService', premiumAccessService);
+    c.set('clock', clock);
+    c.set('idGenerator', idGenerator);
 
-      // Continue to route handlers
-      await next();
-    });
+    // Continue to route handlers
+    await next();
   });
 
   // Create separate groups for public and protected routes

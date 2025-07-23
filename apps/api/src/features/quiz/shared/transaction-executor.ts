@@ -3,9 +3,8 @@
  * @fileoverview Provides a generic transaction wrapper for handler execution
  */
 
-import { withTransaction } from '@api/infra/unit-of-work';
+import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
-import { DrizzleQuizRepository } from '../domain/repositories/DrizzleQuizRepository';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
 
@@ -31,6 +30,8 @@ export interface TransactionParams {
   sessionIdParam?: string;
   /** Logger instance */
   logger: LoggerPort;
+  /** Unit of Work instance */
+  unitOfWork: IUnitOfWork;
 }
 
 /**
@@ -53,34 +54,32 @@ export type HandlerArgument =
   | HandlerArgument[];
 
 /**
- * Executes a handler function within a database transaction
- * Handles repository creation and ID conversions
+ * Executes a handler function using the provided UnitOfWork
+ * Handles repository retrieval and ID conversions
  *
- * @param handler - Function to execute within transaction
- * @param params - Transaction parameters
+ * @param handler - Function to execute
+ * @param params - Execution parameters including UnitOfWork
  * @returns Handler result
  */
 export async function executeInTransaction<TResult>(
   handler: TransactionHandler<TResult>,
   params: TransactionParams
 ): Promise<TResult> {
-  return withTransaction(async (trx) => {
-    // Create repository with transaction context
-    const quizRepository = new DrizzleQuizRepository(trx, params.logger);
+  // Get repository from UnitOfWork
+  const quizRepository = params.unitOfWork.getQuizRepository();
 
-    // Convert IDs to value objects
-    const userId = UserId.of(params.userSub);
-    const sessionId = params.sessionIdParam ? QuizSessionId.of(params.sessionIdParam) : undefined;
+  // Convert IDs to value objects
+  const userId = UserId.of(params.userSub);
+  const sessionId = params.sessionIdParam ? QuizSessionId.of(params.sessionIdParam) : undefined;
 
-    // Create context and execute handler
-    const context: TransactionContext = {
-      quizRepository,
-      userId,
-      sessionId,
-    };
+  // Create context and execute handler
+  const context: TransactionContext = {
+    quizRepository,
+    userId,
+    sessionId,
+  };
 
-    return handler(context);
-  });
+  return handler(context);
 }
 
 /**

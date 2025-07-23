@@ -21,5 +21,5 @@ export { UserRole } from './domain/value-objects/UserRole';
 // Export use case DTOs
 export type { LoginResponse } from './login/dto';
 export type { LoginRequest } from './login/validation';
-// Export main routes for mounting in application
-export { authRoutes } from './routes';
+// Export route factory for mounting in application
+export { createAuthRoutes } from './routes-factory';

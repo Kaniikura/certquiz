@@ -6,12 +6,11 @@
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { Hono } from 'hono';
-import type { IQuizRepository } from './domain/repositories/IQuizRepository';
 
 /**
  * Create quiz routes with public and protected sections
  */
-export function createQuizRoutes(_quizRepository: IQuizRepository): Hono {
+export function createQuizRoutes(): Hono {
   // Public routes - no authentication required
   const publicRoutes = new Hono();
 

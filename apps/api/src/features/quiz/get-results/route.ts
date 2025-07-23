@@ -4,6 +4,7 @@
  */
 
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import type { Hono } from 'hono';
 import { QuizDependencyProvider } from '../shared/dependencies';
 import { createQuizRoute } from '../shared/route-factory';
@@ -13,7 +14,9 @@ import { getResultsHandler } from './handler';
 /**
  * Create get results route with dependency injection
  */
-export function createGetResultsRoute(): Hono<{ Variables: { user: AuthUser } }> {
+export function createGetResultsRoute(): Hono<{
+  Variables: { user: AuthUser } & UnitOfWorkVariables;
+}> {
   const deps = new QuizDependencyProvider();
 
   return createQuizRoute<GetResultsRequest, GetResultsResponse>({

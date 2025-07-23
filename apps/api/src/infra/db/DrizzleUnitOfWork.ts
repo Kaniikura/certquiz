@@ -16,10 +16,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { DrizzleUserRepository } from '@api/features/auth/domain/repositories/DrizzleUserRepository';
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import { DrizzleUserRepository as AuthDrizzleUserRepository } from '@api/features/auth/domain/repositories/DrizzleUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import { DrizzleQuestionRepository } from '@api/features/question/domain/repositories/DrizzleQuestionRepository';
+import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
 import { DrizzleQuizRepository } from '@api/features/quiz/domain/repositories/DrizzleQuizRepository';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import { DrizzleUserRepository } from '@api/features/user/domain/repositories/DrizzleUserRepository';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';
@@ -83,6 +87,23 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
   }
 
   /**
+   * Get Auth User repository instance
+   * Uses caching to ensure the same instance is returned for multiple calls
+   */
+  getAuthUserRepository(): IAuthUserRepository {
+    const key = 'authUser';
+    if (!this.repositoryCache.has(key)) {
+      const repo = new AuthDrizzleUserRepository(this.tx, this.logger);
+      this.repositoryCache.set(key, repo);
+      this.logger.debug('Auth user repository created', {
+        transactionId: this.transactionId,
+        repository: key,
+      });
+    }
+    return this.repositoryCache.get(key) as IAuthUserRepository;
+  }
+
+  /**
    * Get User repository instance
    * Uses caching to ensure the same instance is returned for multiple calls
    */
@@ -114,6 +135,23 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
       });
     }
     return this.repositoryCache.get(key) as IQuizRepository;
+  }
+
+  /**
+   * Get Question repository instance
+   * Uses caching to ensure the same instance is returned for multiple calls
+   */
+  getQuestionRepository(): IQuestionRepository {
+    const key = 'question';
+    if (!this.repositoryCache.has(key)) {
+      const repo = new DrizzleQuestionRepository(this.tx, this.logger);
+      this.repositoryCache.set(key, repo);
+      this.logger.debug('Question repository created', {
+        transactionId: this.transactionId,
+        repository: key,
+      });
+    }
+    return this.repositoryCache.get(key) as IQuestionRepository;
   }
 
   /**

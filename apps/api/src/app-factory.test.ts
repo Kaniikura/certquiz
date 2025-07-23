@@ -15,6 +15,7 @@ import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizR
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
 import { getRootLogger } from './infra/logger/root-logger';
 import type { LoggerVariables, RequestIdVariables } from './middleware';
+import type { UnitOfWorkVariables } from './middleware/unit-of-work';
 import { CryptoIdGenerator } from './shared/id-generator';
 
 /**
@@ -45,7 +46,7 @@ function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDep
  */
 function createTestApp(
   overrides?: Partial<AppDependencies>
-): Hono<{ Variables: LoggerVariables & RequestIdVariables }> {
+): Hono<{ Variables: LoggerVariables & RequestIdVariables & UnitOfWorkVariables }> {
   const dependencies = createFakeAppDependencies(overrides);
   return buildApp(dependencies);
 }

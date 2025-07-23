@@ -32,8 +32,10 @@ describe('Unit of Work Middleware', () => {
       begin: vi.fn().mockResolvedValue(undefined),
       commit: vi.fn().mockResolvedValue(undefined),
       rollback: vi.fn().mockResolvedValue(undefined),
+      getAuthUserRepository: vi.fn(),
       getUserRepository: vi.fn(),
       getQuizRepository: vi.fn(),
+      getQuestionRepository: vi.fn(),
     };
 
     // Create factory that returns mock

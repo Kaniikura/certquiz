@@ -27,8 +27,10 @@
  * interface compatibility and future migration to explicit transaction control.
  */
 
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 
 export interface IUnitOfWork {
   /**
@@ -62,6 +64,13 @@ export interface IUnitOfWork {
   rollback(): Promise<void>;
 
   /**
+   * Get the Auth User repository instance for this unit of work
+   *
+   * @returns Auth user repository that operates within the current transaction context
+   */
+  getAuthUserRepository(): IAuthUserRepository;
+
+  /**
    * Get the User repository instance for this unit of work
    *
    * @returns User repository that operates within the current transaction context
@@ -75,7 +84,13 @@ export interface IUnitOfWork {
    */
   getQuizRepository(): IQuizRepository;
 
+  /**
+   * Get the Question repository instance for this unit of work
+   *
+   * @returns Question repository that operates within the current transaction context
+   */
+  getQuestionRepository(): IQuestionRepository;
+
   // Future repository accessors can be added here:
-  // getQuestionRepository(): IQuestionRepository;
   // getProgressRepository(): IProgressRepository;
 }

@@ -6,9 +6,13 @@
  * business logic in isolation from database infrastructure.
  */
 
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
+import { FakeAuthUserRepository } from './FakeAuthUserRepository';
+import { FakeQuestionRepository } from './FakeQuestionRepository';
 import { FakeQuizRepository } from './FakeQuizRepository';
 import { FakeUserRepository } from './FakeUserRepository';
 
@@ -19,15 +23,24 @@ import { FakeUserRepository } from './FakeUserRepository';
  * All operations are performed in-memory.
  */
 export class FakeUnitOfWork implements IUnitOfWork {
+  private authUserRepository: FakeAuthUserRepository;
   private userRepository: FakeUserRepository;
   private quizRepository: FakeQuizRepository;
+  private questionRepository: FakeQuestionRepository;
   private isTransactionActive = false;
   private isCommitted = false;
   private isRolledBack = false;
 
-  constructor(userRepository?: FakeUserRepository, quizRepository?: FakeQuizRepository) {
+  constructor(
+    authUserRepository?: FakeAuthUserRepository,
+    userRepository?: FakeUserRepository,
+    quizRepository?: FakeQuizRepository,
+    questionRepository?: FakeQuestionRepository
+  ) {
+    this.authUserRepository = authUserRepository || new FakeAuthUserRepository();
     this.userRepository = userRepository || new FakeUserRepository();
     this.quizRepository = quizRepository || new FakeQuizRepository();
+    this.questionRepository = questionRepository || new FakeQuestionRepository();
   }
 
   async begin(): Promise<void> {
@@ -61,12 +74,20 @@ export class FakeUnitOfWork implements IUnitOfWork {
     this.isTransactionActive = false;
   }
 
+  getAuthUserRepository(): IAuthUserRepository {
+    return this.authUserRepository;
+  }
+
   getUserRepository(): IUserRepository {
     return this.userRepository;
   }
 
   getQuizRepository(): IQuizRepository {
     return this.quizRepository;
+  }
+
+  getQuestionRepository(): IQuestionRepository {
+    return this.questionRepository;
   }
 
   // Test helper methods
@@ -87,20 +108,33 @@ export class FakeUnitOfWork implements IUnitOfWork {
  * Factory for creating FakeUnitOfWork instances
  */
 export class FakeUnitOfWorkFactory {
+  private authUserRepository: FakeAuthUserRepository;
   private userRepository: FakeUserRepository;
   private quizRepository: FakeQuizRepository;
+  private questionRepository: FakeQuestionRepository;
 
   constructor() {
+    this.authUserRepository = new FakeAuthUserRepository();
     this.userRepository = new FakeUserRepository();
     this.quizRepository = new FakeQuizRepository();
+    this.questionRepository = new FakeQuestionRepository();
   }
 
   create(): FakeUnitOfWork {
     // Create fresh repository instances for each UoW to ensure test isolation
-    return new FakeUnitOfWork(new FakeUserRepository(), new FakeQuizRepository());
+    return new FakeUnitOfWork(
+      new FakeAuthUserRepository(),
+      new FakeUserRepository(),
+      new FakeQuizRepository(),
+      new FakeQuestionRepository()
+    );
   }
 
   // Test helper methods
+  getAuthUserRepository(): FakeAuthUserRepository {
+    return this.authUserRepository;
+  }
+
   getUserRepository(): FakeUserRepository {
     return this.userRepository;
   }
@@ -109,9 +143,15 @@ export class FakeUnitOfWorkFactory {
     return this.quizRepository;
   }
 
+  getQuestionRepository(): FakeQuestionRepository {
+    return this.questionRepository;
+  }
+
   clear(): void {
+    this.authUserRepository.clear();
     this.userRepository.clear();
     this.quizRepository.clear();
+    this.questionRepository.clear();
   }
 }
 

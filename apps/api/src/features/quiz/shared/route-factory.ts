@@ -3,8 +3,10 @@
  * @fileoverview Generic route creation utility to reduce duplication
  */
 
+import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import type { Result } from '@api/shared/result';
 import { type Context, Hono, type MiddlewareHandler } from 'hono';
 import { createSuccessResponse, handleRouteError } from './route-utils';
@@ -83,7 +85,8 @@ async function executeHandler<TRequest, TResponse>(
   config: RouteConfig<TRequest, TResponse>,
   request: TRequest,
   context: RouteHandlerContext,
-  logger: ReturnType<typeof createDomainLogger>
+  logger: ReturnType<typeof createDomainLogger>,
+  unitOfWork: IUnitOfWork
 ): Promise<Result<TResponse>> {
   if (config.createTransactionHandler) {
     const transactionHandler = config.createTransactionHandler(request, context);
@@ -91,6 +94,7 @@ async function executeHandler<TRequest, TResponse>(
       userSub: context.user.sub,
       sessionIdParam: context.params.sessionId,
       logger,
+      unitOfWork,
     });
   } else if (config.handler) {
     return config.handler(request, context);
@@ -109,8 +113,8 @@ async function executeHandler<TRequest, TResponse>(
  */
 export function createQuizRoute<TRequest = unknown, TResponse = unknown>(
   config: RouteConfig<TRequest, TResponse>
-): Hono<{ Variables: { user: AuthUser } }> {
-  const route = new Hono<{ Variables: { user: AuthUser } }>();
+): Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }> {
+  const route = new Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }>();
   const logger = createDomainLogger(config.loggerName);
 
   // Build middleware array
@@ -120,8 +124,11 @@ export function createQuizRoute<TRequest = unknown, TResponse = unknown>(
   }
 
   // Create the route handler
-  const routeHandler = async (c: Context<{ Variables: { user: AuthUser } }>) => {
+  const routeHandler = async (
+    c: Context<{ Variables: { user: AuthUser } & UnitOfWorkVariables }>
+  ) => {
     const user = c.get('user');
+    const unitOfWork = c.get('unitOfWork');
     const params = c.req.param();
     const request = await extractRequest<TRequest>(c, config.method, !!config.validator);
 
@@ -138,7 +145,7 @@ export function createQuizRoute<TRequest = unknown, TResponse = unknown>(
         services: config.services || {},
       };
 
-      const result = await executeHandler(config, request, context, logger);
+      const result = await executeHandler(config, request, context, logger, unitOfWork);
 
       if (!result.success) {
         return handleRouteError(c, result.error, logger, logContext);

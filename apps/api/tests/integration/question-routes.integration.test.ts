@@ -11,10 +11,16 @@ import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createUnitOfWorkMiddleware } from '@api/middleware/unit-of-work';
 import { SystemClock } from '@api/shared/clock';
 import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
+import { FakeAuthUserRepository } from '@api/testing/domain/fakes/FakeAuthUserRepository';
+import { FakeQuestionRepository } from '@api/testing/domain/fakes/FakeQuestionRepository';
+import { FakeQuizRepository } from '@api/testing/domain/fakes/FakeQuizRepository';
+import { FakeUnitOfWork } from '@api/testing/domain/fakes/FakeUnitOfWork';
+import { FakeUserRepository } from '@api/testing/domain/fakes/FakeUserRepository';
 import { Hono } from 'hono';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,6 +52,10 @@ describe('Question Routes HTTP Integration', () => {
   let privateKey: CryptoKey;
   let testApp: Hono;
   let testQuestions: TestQuestion[] = [];
+  // Shared repositories that persist data across requests
+  let sharedUserRepo: FakeUserRepository;
+  let sharedQuizRepo: FakeQuizRepository;
+  let sharedQuestionRepo: FakeQuestionRepository;
 
   beforeAll(async () => {
     // Generate test key pair for JWT signing
@@ -76,6 +86,18 @@ describe('Question Routes HTTP Integration', () => {
     // Add logger middleware (required by withTransaction)
     const logger = getRootLogger();
     testApp.use('*', createLoggerMiddleware(logger));
+
+    // Create shared repository instances that persist data across requests
+    const sharedAuthUserRepo = new FakeAuthUserRepository();
+    sharedUserRepo = new FakeUserRepository();
+    sharedQuizRepo = new FakeQuizRepository();
+    sharedQuestionRepo = new FakeQuestionRepository();
+
+    // Add UnitOfWork middleware using shared repositories
+    // This ensures all requests use the same repository instances
+    const uowFactory = async () =>
+      new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
+    testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
 
     // Create dependencies for question routes
     const premiumAccessService = new PremiumAccessService();
