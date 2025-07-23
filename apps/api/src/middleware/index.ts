@@ -17,3 +17,5 @@ export { errorHandler, toHttpError } from './on-error';
 export type { RequestIdVariables } from './request-id';
 export { requestIdMiddleware } from './request-id';
 export { securityMiddleware } from './security';
+export type { UnitOfWorkFactory, UnitOfWorkVariables } from './unit-of-work';
+export { createSelectiveUnitOfWorkMiddleware, createUnitOfWorkMiddleware } from './unit-of-work';
