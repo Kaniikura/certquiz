@@ -19,7 +19,7 @@ export function getAuthUserRepository<T extends TransactionVariables>(
 ): IAuthUserRepository {
   const uow = c.get('uow');
   if (!uow) {
-    throw new Error('No active transaction. Ensure transaction middleware is applied.');
+    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
   }
   return uow.getAuthUserRepository();
 }
@@ -33,7 +33,7 @@ export function getUserRepository<T extends TransactionVariables>(
 ): IUserRepository {
   const uow = c.get('uow');
   if (!uow) {
-    throw new Error('No active transaction. Ensure transaction middleware is applied.');
+    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
   }
   return uow.getUserRepository();
 }
@@ -47,7 +47,7 @@ export function getQuizRepository<T extends TransactionVariables>(
 ): IQuizRepository {
   const uow = c.get('uow');
   if (!uow) {
-    throw new Error('No active transaction. Ensure transaction middleware is applied.');
+    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
   }
   return uow.getQuizRepository();
 }
@@ -61,7 +61,7 @@ export function getQuestionRepository<T extends TransactionVariables>(
 ): IQuestionRepository {
   const uow = c.get('uow');
   if (!uow) {
-    throw new Error('No active transaction. Ensure transaction middleware is applied.');
+    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
   }
   return uow.getQuestionRepository();
 }
