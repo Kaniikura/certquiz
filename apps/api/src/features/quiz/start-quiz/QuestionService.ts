@@ -9,7 +9,7 @@ import type { QuestionId } from '../domain/value-objects/Ids';
 /**
  * Parameters for selecting questions for a quiz
  */
-export interface QuestionSelectionParams {
+interface QuestionSelectionParams {
   examType: string;
   category?: string;
   questionCount: number;

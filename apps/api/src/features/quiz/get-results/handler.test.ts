@@ -7,12 +7,12 @@ import { TestClock, testIds } from '@api/test-support';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { OptionId, QuestionId, QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import type { QuestionDetails } from '../domain/value-objects/QuestionDetailsService';
 import { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
 import { QuizState } from '../domain/value-objects/QuizState';
 import type { GetResultsRequest, GetResultsResponse } from './dto';
 import { getResultsHandler } from './handler';
-import type { QuestionDetails } from './QuestionDetailsService';
 
 describe('getResultsHandler', () => {
   let mockQuizRepository: {

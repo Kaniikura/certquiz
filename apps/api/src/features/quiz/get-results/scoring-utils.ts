@@ -4,9 +4,9 @@
  */
 
 import type { QuizSession } from '../domain/aggregates/QuizSession';
-import type { OptionId, QuestionId } from '../domain/value-objects/Ids';
+import { OptionId, type QuestionId } from '../domain/value-objects/Ids';
+import type { QuestionDetails } from '../domain/value-objects/QuestionDetailsService';
 import type { AnswerOption, AnswerResult, ScoreSummary } from './dto';
-import type { QuestionDetails } from './QuestionDetailsService';
 
 /**
  * Checks if a submitted answer is correct
@@ -14,7 +14,7 @@ import type { QuestionDetails } from './QuestionDetailsService';
  * @param correctOptionIds - Correct option IDs for the question
  * @returns Whether the answer is correct
  */
-export function isAnswerCorrect(
+function isAnswerCorrect(
   selectedOptionIds: readonly OptionId[],
   correctOptionIds: readonly OptionId[]
 ): boolean {
@@ -30,15 +30,15 @@ export function isAnswerCorrect(
  * @param selectedOptionIds - User's selected option IDs
  * @returns Formatted answer options
  */
-export function buildAnswerOptions(
+function buildAnswerOptions(
   questionDetails: QuestionDetails,
   selectedOptionIds: readonly OptionId[]
 ): AnswerOption[] {
   return questionDetails.options.map((option) => ({
-    id: option.id,
+    id: OptionId.of(option.id),
     text: option.text,
     isCorrect: option.isCorrect,
-    wasSelected: selectedOptionIds.some((selectedId) => selectedId === option.id),
+    wasSelected: selectedOptionIds.some((selectedId) => selectedId.toString() === option.id),
   }));
 }
 

@@ -7,14 +7,14 @@ import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
-import { StubQuestionDetailsService } from '../get-results/QuestionDetailsService';
+import { StubQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { StubQuestionService as StartQuizQuestionService } from '../start-quiz/QuestionService';
 import { StubQuestionService as SubmitAnswerQuestionService } from '../submit-answer/QuestionService';
 
 /**
  * Quiz feature dependencies
  */
-export interface QuizDependencies {
+interface QuizDependencies {
   /** System clock for timestamps */
   clock: Clock;
   /** Question service for start-quiz operations */
@@ -39,43 +39,10 @@ const defaultDependencies: QuizDependencies = {
 };
 
 /**
- * Dependency container instance
- */
-let dependencies: QuizDependencies = { ...defaultDependencies };
-
-/**
- * Get current dependencies
- */
-export function getQuizDependencies(): QuizDependencies {
-  return dependencies;
-}
-
-/**
- * Override dependencies (useful for testing)
- * @param overrides - Partial dependencies to override
- * @returns Previous dependencies
- */
-export function overrideQuizDependencies(overrides: Partial<QuizDependencies>): QuizDependencies {
-  const previous = dependencies;
-  dependencies = {
-    ...dependencies,
-    ...overrides,
-  };
-  return previous;
-}
-
-/**
- * Reset dependencies to defaults
- */
-export function resetQuizDependencies(): void {
-  dependencies = { ...defaultDependencies };
-}
-
-/**
  * Create a scoped dependency container
  * Useful for isolated testing or specific contexts
  */
-export function createScopedDependencies(overrides?: Partial<QuizDependencies>): QuizDependencies {
+function createScopedDependencies(overrides?: Partial<QuizDependencies>): QuizDependencies {
   return {
     ...defaultDependencies,
     ...overrides,

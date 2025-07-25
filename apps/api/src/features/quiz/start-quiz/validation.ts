@@ -37,5 +37,3 @@ export const startQuizSchema = z.object({
     .optional()
     .default(QuizConfig.DEFAULT_FALLBACK_LIMIT_SECONDS),
 });
-
-export type StartQuizInput = z.infer<typeof startQuizSchema>;

@@ -1,54 +1,95 @@
 /**
  * Start quiz HTTP route
- * @fileoverview HTTP endpoint for creating new quiz sessions
+ * @fileoverview HTTP endpoint for creating new quiz sessions using route utilities
  */
 
+import { getQuizRepository } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
+import type { LoggerVariables } from '@api/middleware/logger';
+import type { TransactionVariables } from '@api/middleware/transaction';
+import type { Clock } from '@api/shared/clock';
+import { createAmbientRoute } from '@api/shared/route';
 import { zValidator } from '@hono/zod-validator';
-import type { Hono } from 'hono';
+import { Hono } from 'hono';
+import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
+import { UserId } from '../domain/value-objects/Ids';
 import { QuizDependencyProvider } from '../shared/dependencies';
-import { createQuizRoute } from '../shared/route-factory';
+import { mapStartQuizError } from '../shared/error-mapper';
 import type { StartQuizRequest, StartQuizResponse } from './dto';
 import { startQuizHandler } from './handler';
+import type { StubQuestionService } from './QuestionService';
 import { startQuizSchema } from './validation';
 
 /**
- * Create start quiz route with dependency injection
+ * Create start quiz route
  */
-export function createStartQuizRoute(): Hono<{
-  Variables: { user: AuthUser } & UnitOfWorkVariables;
-}> {
+export function startQuizRoute(clock: Clock) {
   const deps = new QuizDependencyProvider();
+  const questionService = deps.startQuizQuestionService;
 
-  return createQuizRoute<StartQuizRequest, StartQuizResponse>({
-    method: 'post',
-    path: '/start',
-    loggerName: 'quiz.start-quiz',
-    validator: zValidator('json', startQuizSchema),
-    services: {
-      questionService: deps.startQuizQuestionService,
-      clock: deps.clock,
-    },
-    getLogContext: (request) => ({
-      examType: request.examType,
-      questionCount: request.questionCount,
-    }),
-    getSuccessLogData: (response) => ({
-      sessionId: response.sessionId,
-      totalQuestions: response.totalQuestions,
-      expiresAt: response.expiresAt,
-    }),
-    createTransactionHandler: (request, context) => {
-      return async ({ quizRepository, userId }) => {
+  return new Hono<{
+    Variables: { user: AuthUser } & LoggerVariables & TransactionVariables;
+  }>().post('/start', zValidator('json', startQuizSchema), (c) => {
+    const route = createAmbientRoute<
+      StartQuizRequest,
+      StartQuizResponse,
+      {
+        quizRepo: IQuizRepository;
+        questionService: StubQuestionService;
+        clock: Clock;
+      },
+      { user: AuthUser } & LoggerVariables & TransactionVariables
+    >(
+      {
+        operation: 'start',
+        resource: 'quiz',
+        requiresAuth: true,
+        successStatusCode: 201,
+        extractLogContext: (body) => {
+          const request = body as StartQuizRequest;
+          return {
+            examType: request.examType,
+            questionCount: request.questionCount,
+          };
+        },
+        extractSuccessLogData: (result) => {
+          const response = result as StartQuizResponse;
+          return {
+            sessionId: response.sessionId,
+            totalQuestions: response.totalQuestions,
+            expiresAt: response.expiresAt,
+          };
+        },
+        errorMapper: mapStartQuizError,
+      },
+      async (
+        body,
+        routeDeps: {
+          quizRepo: IQuizRepository;
+          questionService: StubQuestionService;
+          clock: Clock;
+        },
+        context
+      ) => {
+        const request = body as StartQuizRequest;
+        const user = context.get('user') as AuthUser;
+        const userId = UserId.of(user.sub);
+
         return startQuizHandler(
           request,
           userId,
-          quizRepository,
-          context.services.questionService as typeof deps.startQuizQuestionService,
-          context.services.clock as typeof deps.clock
+          routeDeps.quizRepo,
+          routeDeps.questionService,
+          routeDeps.clock
         );
-      };
-    },
+      }
+    );
+
+    // Inject dependencies
+    return route(c, {
+      quizRepo: getQuizRepository(c),
+      questionService: questionService,
+      clock: clock,
+    });
   });
 }

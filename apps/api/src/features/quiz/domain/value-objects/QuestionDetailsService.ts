@@ -3,7 +3,16 @@
  * @fileoverview Service for loading question details including correct answers
  */
 
-import { OptionId, type QuestionId } from '../domain/value-objects/Ids';
+import { OptionId, type QuestionId } from './Ids';
+
+/**
+ * Question option
+ */
+interface QuestionOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
 
 /**
  * Detailed question information including correct answers
@@ -13,15 +22,6 @@ export interface QuestionDetails {
   text: string;
   options: QuestionOption[];
   correctOptionIds: OptionId[];
-}
-
-/**
- * Question option with details
- */
-export interface QuestionOption {
-  id: OptionId;
-  text: string;
-  isCorrect: boolean;
 }
 
 /**
@@ -69,7 +69,9 @@ export class StubQuestionDetailsService implements IQuestionDetailsService {
       },
     ];
 
-    const correctOptions = options.filter((opt) => opt.isCorrect).map((opt) => opt.id);
+    const correctOptions: OptionId[] = options
+      .filter((opt) => opt.isCorrect)
+      .map((opt) => OptionId.of(opt.id));
 
     return {
       id: questionId,

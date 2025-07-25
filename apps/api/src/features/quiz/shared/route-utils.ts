@@ -4,7 +4,7 @@
  */
 
 import { AuthorizationError } from '@api/shared/errors';
-import { HttpStatus, type HttpStatusCode } from '@api/shared/http-status';
+import { HttpStatus } from '@api/shared/http-status';
 import type { Context } from 'hono';
 
 /**
@@ -19,20 +19,6 @@ export async function safeJson(c: Context): Promise<unknown> {
     return null;
   }
 }
-
-/**
- * Union type of all supported HTTP status codes for error responses
- * Used for type-safe error handling in Hono routes
- */
-export type SupportedStatusCode = Extract<
-  HttpStatusCode,
-  | typeof HttpStatus.BAD_REQUEST
-  | typeof HttpStatus.FORBIDDEN
-  | typeof HttpStatus.NOT_FOUND
-  | typeof HttpStatus.CONFLICT
-  | typeof HttpStatus.UNPROCESSABLE_ENTITY
-  | typeof HttpStatus.INTERNAL_SERVER_ERROR
->;
 
 /**
  * Error mapping configuration
@@ -149,57 +135,5 @@ export function mapDomainErrorToHttp(error: Error): HttpErrorResponse {
     body: {
       error: 'Internal server error',
     },
-  };
-}
-
-/**
- * Creates a standardized error response
- * @param c - Hono context
- * @param error - Error to handle
- * @param logger - Logger instance for error logging
- * @param context - Additional context for logging
- * @returns HTTP response
- */
-export function handleRouteError(
-  c: Context,
-  error: Error,
-  logger: {
-    warn: (msg: string, data: Record<string, unknown>) => void;
-    error: (msg: string, data: Record<string, unknown>) => void;
-  },
-  context: Record<string, unknown>
-) {
-  const { status, body } = mapDomainErrorToHttp(error);
-
-  // Log appropriately based on status
-  if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-    logger.error('Route handler error', {
-      ...context,
-      errorType: error.name,
-      errorMessage: error.message,
-      stack: error.stack,
-    });
-  } else {
-    logger.warn('Request failed', {
-      ...context,
-      errorType: error.name,
-      errorMessage: error.message,
-    });
-  }
-
-  // Return the response with the appropriate status code
-  // Cast to satisfy Hono's type requirements
-  return c.json(body, status as SupportedStatusCode);
-}
-
-/**
- * Creates a standardized success response
- * @param data - Response data
- * @returns Success response structure
- */
-export function createSuccessResponse<T>(data: T) {
-  return {
-    success: true,
-    data,
   };
 }

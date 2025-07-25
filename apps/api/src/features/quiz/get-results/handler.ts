@@ -7,15 +7,15 @@ import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import type { GetResultsResponse } from './dto';
-import type { IQuestionDetailsService } from './QuestionDetailsService';
 import { buildAnswerResults, calculateScoreSummary } from './scoring-utils';
 import { getResultsSchema } from './validation';
 
 /**
  * Business logic error for session not found
  */
-export class SessionNotFoundError extends Error {
+class SessionNotFoundError extends Error {
   constructor(sessionId: QuizSessionId) {
     super(`Quiz session not found: ${sessionId.toString()}`);
     this.name = 'SessionNotFoundError';

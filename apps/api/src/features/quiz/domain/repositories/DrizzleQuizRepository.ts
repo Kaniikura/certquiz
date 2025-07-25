@@ -19,8 +19,8 @@ import { v5 as uuidv5 } from 'uuid';
 const { PostgresError } = postgres;
 
 import { z } from 'zod';
+import { OptimisticLockError } from '../../shared/errors';
 import { QuizSession } from '../aggregates/QuizSession';
-import { OptimisticLockError } from '../errors/QuizErrors';
 import { DomainEvent } from '../events/DomainEvent';
 import {
   AnswerSubmittedEvent,
