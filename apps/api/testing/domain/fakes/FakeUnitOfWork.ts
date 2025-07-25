@@ -32,15 +32,17 @@ export class FakeUnitOfWork implements IUnitOfWork {
   private isRolledBack = false;
 
   constructor(
-    authUserRepository?: FakeAuthUserRepository,
-    userRepository?: FakeUserRepository,
-    quizRepository?: FakeQuizRepository,
-    questionRepository?: FakeQuestionRepository
+    authUserRepository?: IAuthUserRepository,
+    userRepository?: IUserRepository,
+    quizRepository?: IQuizRepository,
+    questionRepository?: IQuestionRepository
   ) {
-    this.authUserRepository = authUserRepository || new FakeAuthUserRepository();
-    this.userRepository = userRepository || new FakeUserRepository();
-    this.quizRepository = quizRepository || new FakeQuizRepository();
-    this.questionRepository = questionRepository || new FakeQuestionRepository();
+    this.authUserRepository =
+      (authUserRepository as FakeAuthUserRepository) || new FakeAuthUserRepository();
+    this.userRepository = (userRepository as FakeUserRepository) || new FakeUserRepository();
+    this.quizRepository = (quizRepository as FakeQuizRepository) || new FakeQuizRepository();
+    this.questionRepository =
+      (questionRepository as FakeQuestionRepository) || new FakeQuestionRepository();
   }
 
   async begin(): Promise<void> {
@@ -121,12 +123,13 @@ export class FakeUnitOfWorkFactory {
   }
 
   create(): FakeUnitOfWork {
-    // Create fresh repository instances for each UoW to ensure test isolation
+    // Use shared repository instances to persist data across UoW instances
+    // This allows integration tests to simulate persistent storage
     return new FakeUnitOfWork(
-      new FakeAuthUserRepository(),
-      new FakeUserRepository(),
-      new FakeQuizRepository(),
-      new FakeQuestionRepository()
+      this.authUserRepository,
+      this.userRepository,
+      this.quizRepository,
+      this.questionRepository
     );
   }
 

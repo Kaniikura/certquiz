@@ -207,11 +207,11 @@ describe('FakeUnitOfWork', () => {
       expect(uowRef?.hasRolledBack()).toBe(true);
     });
 
-    it('should ensure test isolation between UoW instances', async () => {
+    it('should share repositories across UoW instances via factory', async () => {
       // Save a user in one UoW
       const user = createTestUser({
-        email: 'isolated@example.com',
-        username: 'isolateduser',
+        email: 'shared@example.com',
+        username: 'shareduser',
       });
 
       await withFakeUnitOfWork(factory, async (uow) => {
@@ -219,14 +219,15 @@ describe('FakeUnitOfWork', () => {
         await userRepo.save(user);
       });
 
-      // A different UoW should NOT see the user (test isolation)
+      // A different UoW should see the user (shared repositories via factory)
       const foundUser = await withFakeUnitOfWork(factory, async (uow) => {
         const userRepo = uow.getUserRepository();
         return userRepo.findById(user.id);
       });
 
-      // This should be null because each UoW has isolated repositories
-      expect(foundUser).toBeNull();
+      // This should find the user because factory shares repositories across UoW instances
+      expect(foundUser).toBeDefined();
+      expect(foundUser?.email.toString()).toBe('shared@example.com');
     });
 
     it('should use factory shared repositories for cross-UoW persistence testing', async () => {
