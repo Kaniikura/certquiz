@@ -8,7 +8,10 @@ import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
+import { ValidationError } from '@api/shared/errors';
+import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
+import { isValidUUID } from '@api/shared/validation';
 import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
@@ -69,6 +72,11 @@ export function getResultsRoute(_clock: Clock) {
         ) => {
           const user = context.get('user') as AuthUser;
           const sessionId = context.req.param('sessionId');
+
+          // Validate session ID
+          if (!sessionId || !isValidUUID(sessionId)) {
+            return Result.fail(new ValidationError('Invalid session ID format. Expected UUID.'));
+          }
 
           const userIdVO = UserId.of(user.sub);
           const sessionIdVO = QuizSessionId.of(sessionId);
