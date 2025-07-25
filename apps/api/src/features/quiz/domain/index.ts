@@ -6,13 +6,13 @@
 // Base infrastructure
 export type { Clock } from '@api/shared/clock';
 export { SystemClock } from '@api/shared/clock';
+// Errors
+export { QuizDomainError } from '../shared/errors';
 // Aggregates
 export { QuizSession } from './aggregates/QuizSession';
 export { AggregateRoot } from './base/AggregateRoot';
 // Entities
 export { Answer } from './entities/Answer';
-// Errors
-export { QuizDomainError } from './errors/QuizErrors';
 export { DomainEvent } from './events/DomainEvent';
 // Events
 export {

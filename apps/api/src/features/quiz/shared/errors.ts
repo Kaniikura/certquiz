@@ -93,7 +93,7 @@ export class QuizNotExpiredError extends QuizDomainError {
   }
 }
 
-export class QuestionNotFoundError extends QuizDomainError {
+export class QuestionNotFoundInQuizError extends QuizDomainError {
   constructor() {
     super('Question not found in quiz', QuizErrorCode.QUESTION_NOT_FOUND);
   }

@@ -17,14 +17,13 @@ import {
   OutOfOrderAnswerError,
   QuestionAlreadyAnsweredError,
   QuestionCountMismatchError,
-  QuestionNotFoundError,
   QuestionNotInQuizError,
   QuizDomainError,
   QuizErrorCode,
   QuizExpiredError,
   QuizNotExpiredError,
   QuizNotInProgressError,
-} from './QuizErrors';
+} from './errors';
 
 describe('Quiz Domain Errors', () => {
   describe('QuizDomainError (base class)', () => {
@@ -42,7 +41,7 @@ describe('Quiz Domain Errors', () => {
       const error = new InvalidAnswerError('Test message');
 
       expect(error.stack).toBeDefined();
-      expect(error.stack).toContain('QuizErrors.test.ts');
+      expect(error.stack).toContain('errors.test.ts');
     });
 
     it('should include error code', () => {
@@ -178,17 +177,6 @@ describe('Quiz Domain Errors', () => {
     });
   });
 
-  describe('QuestionNotFoundError', () => {
-    it('should create error for missing questions', () => {
-      const error = new QuestionNotFoundError();
-
-      expect(error).toBeInstanceOf(QuizDomainError);
-      expect(error.name).toBe('QuestionNotFoundError');
-      expect(error.message).toBe('Question not found in quiz');
-      expect(error.code).toBe(QuizErrorCode.QUESTION_NOT_FOUND);
-    });
-  });
-
   describe('QuestionAlreadyAnsweredError', () => {
     it('should create error for duplicate answers', () => {
       const error = new QuestionAlreadyAnsweredError();
@@ -311,7 +299,6 @@ describe('Quiz Domain Errors', () => {
         new QuizNotInProgressError(),
         new QuizExpiredError(),
         new QuizNotExpiredError(),
-        new QuestionNotFoundError(),
         new QuestionAlreadyAnsweredError(),
         new InvalidTimeLimitError(),
         new OutOfOrderAnswerError(1, 3),
@@ -379,7 +366,6 @@ describe('Quiz Domain Errors', () => {
         { error: new IncompleteQuizError(2), code: QuizErrorCode.INCOMPLETE_QUIZ },
         { error: new QuizNotInProgressError(), code: QuizErrorCode.QUIZ_NOT_IN_PROGRESS },
         { error: new QuizExpiredError(), code: QuizErrorCode.QUIZ_EXPIRED },
-        { error: new QuestionNotFoundError(), code: QuizErrorCode.QUESTION_NOT_FOUND },
         {
           error: new QuestionAlreadyAnsweredError(),
           code: QuizErrorCode.QUESTION_ALREADY_ANSWERED,
@@ -450,7 +436,6 @@ describe('Quiz Domain Errors', () => {
         new InvalidAnswerError('No options selected'),
         new InvalidOptionsError(['invalid-opt-1', 'invalid-opt-2']),
         new OutOfOrderAnswerError(0, 5),
-        new QuestionNotFoundError(),
         new InvalidQuestionReferenceError(),
       ];
 

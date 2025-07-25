@@ -4,7 +4,7 @@
  */
 
 import { Result } from '@api/shared/result';
-import { InvalidAnswerError } from '../errors/QuizErrors';
+import { InvalidAnswerError } from '../../shared/errors';
 import { AnswerId, type OptionId, type QuestionId } from '../value-objects/Ids';
 
 export class Answer {

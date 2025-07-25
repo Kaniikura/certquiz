@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { InvalidQuestionCountError, InvalidTimeLimitError } from '../errors/QuizErrors';
+import { InvalidQuestionCountError, InvalidTimeLimitError } from '../../shared/errors';
 import type { Category, Difficulty, ExamType } from './ExamTypes';
 import { QuizConfig, type QuizConfigDTO } from './QuizConfig';
 
