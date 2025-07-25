@@ -1,5 +1,5 @@
 /**
- * Fake Question Repository for Testing
+ * In-Memory Question Repository for Testing
  * @fileoverview In-memory question repository that doesn't require database
  */
 
@@ -19,7 +19,7 @@ import type { QuestionId } from '@api/features/quiz/domain';
  * In-memory question repository for testing
  * Provides full IQuestionRepository interface without database dependency
  */
-export class FakeQuestionRepository implements IQuestionRepository {
+export class InMemoryQuestionRepository implements IQuestionRepository {
   private questions = new Map<string, Question>();
 
   async findQuestions(

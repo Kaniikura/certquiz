@@ -9,11 +9,13 @@ import type { IUserRepository } from '@api/features/user/domain';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Context } from 'hono';
-import { FakeAuthUserRepository } from './domain/fakes/FakeAuthUserRepository';
-import { FakeQuestionRepository } from './domain/fakes/FakeQuestionRepository';
-import { FakeQuizRepository } from './domain/fakes/FakeQuizRepository';
-import { FakeUnitOfWork } from './domain/fakes/FakeUnitOfWork';
-import { FakeUserRepository } from './domain/fakes/FakeUserRepository';
+import {
+  InMemoryAuthUserRepository,
+  InMemoryQuestionRepository,
+  InMemoryQuizRepository,
+  InMemoryUnitOfWork,
+  InMemoryUserRepository,
+} from './domain/fakes';
 
 /**
  * Repository set for creating test contexts
@@ -35,11 +37,11 @@ export interface RepositorySet {
 export function createTestContext(
   repositories?: RepositorySet
 ): Context<{ Variables: TransactionVariables }> {
-  const uow = new FakeUnitOfWork(
-    repositories?.authUser || new FakeAuthUserRepository(),
-    repositories?.user || new FakeUserRepository(),
-    repositories?.quiz || new FakeQuizRepository(),
-    repositories?.question || new FakeQuestionRepository()
+  const uow = new InMemoryUnitOfWork(
+    repositories?.authUser || new InMemoryAuthUserRepository(),
+    repositories?.user || new InMemoryUserRepository(),
+    repositories?.quiz || new InMemoryQuizRepository(),
+    repositories?.question || new InMemoryQuestionRepository()
   );
 
   const contextMap = new Map<string, unknown>();
@@ -90,10 +92,10 @@ export function createTestDependencies<T>(
   return {
     create: () =>
       factory({
-        authUserRepo: new FakeAuthUserRepository(),
-        userRepo: new FakeUserRepository(),
-        quizRepo: new FakeQuizRepository(),
-        questionRepo: new FakeQuestionRepository(),
+        authUserRepo: new InMemoryAuthUserRepository(),
+        userRepo: new InMemoryUserRepository(),
+        quizRepo: new InMemoryQuizRepository(),
+        questionRepo: new InMemoryQuestionRepository(),
       }),
   };
 }

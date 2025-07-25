@@ -1,16 +1,12 @@
 /**
- * Tests for FakeUnitOfWork implementation
+ * Tests for InMemoryUnitOfWork implementation
  */
 
 import { Email, User, UserRole } from '@api/features/user/domain';
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { SystemClock } from '@api/shared/clock';
-import {
-  FakeUnitOfWork,
-  FakeUnitOfWorkFactory,
-  FakeUserRepository,
-  withFakeUnitOfWork,
-} from '@api/testing/domain/fakes';
+import { InMemoryUnitOfWork, InMemoryUserRepository } from '@api/testing/domain/fakes';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 // Test helper function to create test users with less boilerplate
@@ -38,14 +34,16 @@ function createTestUser(
   return result.data;
 }
 
-describe('FakeUnitOfWork', () => {
-  let factory: FakeUnitOfWorkFactory;
-  let uow: FakeUnitOfWork;
+describe('InMemoryUnitOfWork', () => {
+  let provider: InMemoryUnitOfWorkProvider;
+  let uow: InMemoryUnitOfWork;
 
   beforeEach(() => {
-    factory = new FakeUnitOfWorkFactory();
-    factory.clear();
-    uow = factory.create();
+    provider = new InMemoryUnitOfWorkProvider();
+    provider.clear();
+    // Create a unit of work directly for basic transaction tests
+    const repos = provider.getRepositories();
+    uow = new InMemoryUnitOfWork(repos.authUser, repos.user, repos.quiz, repos.question);
   });
 
   describe('Transaction Management', () => {
@@ -89,7 +87,7 @@ describe('FakeUnitOfWork', () => {
     it('should provide access to user repository', () => {
       const userRepo = uow.getUserRepository();
       expect(userRepo).toBeDefined();
-      expect(userRepo).toBeInstanceOf(FakeUserRepository);
+      expect(userRepo).toBeInstanceOf(InMemoryUserRepository);
     });
 
     it('should provide access to quiz repository', () => {
@@ -104,12 +102,12 @@ describe('FakeUnitOfWork', () => {
     });
   });
 
-  describe('FakeUserRepository', () => {
-    let userRepo: FakeUserRepository;
+  describe('InMemoryUserRepository', () => {
+    let userRepo: InMemoryUserRepository;
     let testUser: User;
 
     beforeEach(() => {
-      userRepo = factory.getUserRepository();
+      userRepo = provider.getRepositories().user;
       testUser = createTestUser();
     });
 
@@ -169,22 +167,22 @@ describe('FakeUnitOfWork', () => {
     });
   });
 
-  describe('withFakeUnitOfWork', () => {
+  describe('InMemoryUnitOfWorkProvider', () => {
     it('should execute callback with unit of work', async () => {
       let capturedUow: IUnitOfWork | undefined;
-      const result = await withFakeUnitOfWork(factory, async (uow) => {
+      const result = await provider.execute(async (uow) => {
         capturedUow = uow;
         return 'success';
       });
 
       expect(result).toBe('success');
       expect(capturedUow).toBeDefined();
-      expect(capturedUow).toBeInstanceOf(FakeUnitOfWork);
+      expect(capturedUow).toBeInstanceOf(InMemoryUnitOfWork);
     });
 
     it('should commit on success', async () => {
-      const uowRef = await withFakeUnitOfWork(factory, async (uow) => {
-        return uow as FakeUnitOfWork;
+      const uowRef = await provider.execute(async (uow) => {
+        return uow as InMemoryUnitOfWork;
       });
 
       expect(uowRef.hasCommitted()).toBe(true);
@@ -192,11 +190,11 @@ describe('FakeUnitOfWork', () => {
     });
 
     it('should rollback on error', async () => {
-      let uowRef: FakeUnitOfWork | undefined;
+      let uowRef: InMemoryUnitOfWork | undefined;
 
       await expect(
-        withFakeUnitOfWork(factory, async (uow) => {
-          uowRef = uow as FakeUnitOfWork;
+        provider.execute(async (uow) => {
+          uowRef = uow as InMemoryUnitOfWork;
           throw new Error('Test error');
         })
       ).rejects.toThrow('Test error');
@@ -206,38 +204,38 @@ describe('FakeUnitOfWork', () => {
       expect(uowRef?.hasRolledBack()).toBe(true);
     });
 
-    it('should share repositories across UoW instances via factory', async () => {
+    it('should share repositories across UoW instances via provider', async () => {
       // Save a user in one UoW
       const user = createTestUser({
         email: 'shared@example.com',
         username: 'shareduser',
       });
 
-      await withFakeUnitOfWork(factory, async (uow) => {
+      await provider.execute(async (uow) => {
         const userRepo = uow.getUserRepository();
         await userRepo.save(user);
       });
 
-      // A different UoW should see the user (shared repositories via factory)
-      const foundUser = await withFakeUnitOfWork(factory, async (uow) => {
+      // A different UoW should see the user (shared repositories via provider)
+      const foundUser = await provider.execute(async (uow) => {
         const userRepo = uow.getUserRepository();
         return userRepo.findById(user.id);
       });
 
-      // This should find the user because factory shares repositories across UoW instances
+      // This should find the user because provider shares repositories across UoW instances
       expect(foundUser).toBeDefined();
       expect(foundUser?.email.toString()).toBe('shared@example.com');
     });
 
-    it('should use factory shared repositories for cross-UoW persistence testing', async () => {
-      // For testing persistence, use the factory's shared repositories directly
+    it('should use provider shared repositories for cross-UoW persistence testing', async () => {
+      // For testing persistence, use the provider's shared repositories directly
       const user = createTestUser({
         email: 'persist@example.com',
         username: 'persistuser',
       });
 
-      // Save to shared repository via factory
-      const sharedUserRepo = factory.getUserRepository();
+      // Save to shared repository via provider
+      const sharedUserRepo = provider.getRepositories().user;
       await sharedUserRepo.save(user);
 
       // Verify persistence via shared repository

@@ -1,5 +1,5 @@
 /**
- * Fake Quiz Repository for testing
+ * In-Memory Quiz Repository for testing
  * @fileoverview In-memory implementation of IQuizRepository for unit tests
  */
 
@@ -12,9 +12,9 @@ import type {
 import { QuizState } from '@api/features/quiz/domain';
 
 /**
- * In-memory fake implementation of IQuizRepository
+ * In-memory implementation of IQuizRepository
  */
-export class FakeQuizRepository implements IQuizRepository {
+export class InMemoryQuizRepository implements IQuizRepository {
   private sessions: Map<string, QuizSession> = new Map();
   private userActiveSessionIndex: Map<string, QuizSession> = new Map();
 

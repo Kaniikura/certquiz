@@ -1,10 +1,12 @@
 /**
- * Test fakes barrel export
- * @fileoverview Re-exports all fake implementations
+ * In-Memory Test Implementations Barrel Export
+ * @fileoverview Re-exports all in-memory test implementations
  */
 
-export { FakeAuthUserRepository } from '@api/testing/domain/fakes/FakeAuthUserRepository';
-export { FakeQuestionRepository } from '@api/testing/domain/fakes/FakeQuestionRepository';
-export { FakeQuizRepository } from '@api/testing/domain/fakes/FakeQuizRepository';
-export { FakeUnitOfWork } from '@api/testing/domain/fakes/FakeUnitOfWork';
-export { FakeUserRepository } from '@api/testing/domain/fakes/FakeUserRepository';
+export {
+  InMemoryAuthUserRepository,
+  InMemoryQuestionRepository,
+  InMemoryQuizRepository,
+  InMemoryUnitOfWork,
+  InMemoryUserRepository,
+} from '@api/testing/domain/fakes';

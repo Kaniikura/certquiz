@@ -1,5 +1,5 @@
 /**
- * Fake Auth User Repository for Testing
+ * In-Memory Auth User Repository for Testing
  * @fileoverview In-memory auth user repository that doesn't require database
  */
 
@@ -11,7 +11,7 @@ import { UserId } from '@api/features/auth/domain';
  * In-memory auth user repository for testing
  * Provides full IUserRepository interface without database dependency
  */
-export class FakeAuthUserRepository implements IAuthUserRepository {
+export class InMemoryAuthUserRepository implements IAuthUserRepository {
   private users = new Map<string, AuthUser>();
 
   async findByEmail(email: Email): Promise<AuthUser | null> {

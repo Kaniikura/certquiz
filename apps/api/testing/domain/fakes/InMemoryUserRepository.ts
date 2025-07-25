@@ -1,5 +1,5 @@
 /**
- * Fake User Repository for Testing
+ * In-Memory User Repository for Testing
  * @fileoverview In-memory user repository that doesn't require database
  */
 
@@ -13,7 +13,7 @@ import {
  * In-memory user repository for testing
  * Provides full IUserRepository interface without database dependency
  */
-export class FakeUserRepository implements IUserRepository {
+export class InMemoryUserRepository implements IUserRepository {
   private users = new Map<string, User>();
 
   async findByEmail(email: Email): Promise<User | null> {

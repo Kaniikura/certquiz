@@ -1,7 +1,10 @@
 /**
- * Test Fakes Barrel Export
- * @fileoverview Centralized exports for all fake implementations
+ * In-Memory Test Implementations Barrel Export
+ * @fileoverview Centralized exports for all in-memory test implementations
  */
 
-export { FakeUnitOfWork, FakeUnitOfWorkFactory, withFakeUnitOfWork } from './FakeUnitOfWork';
-export { FakeUserRepository } from './FakeUserRepository';
+export { InMemoryAuthUserRepository } from './InMemoryAuthUserRepository';
+export { InMemoryQuestionRepository } from './InMemoryQuestionRepository';
+export { InMemoryQuizRepository } from './InMemoryQuizRepository';
+export { InMemoryUnitOfWork } from './InMemoryUnitOfWork';
+export { InMemoryUserRepository } from './InMemoryUserRepository';
