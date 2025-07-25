@@ -4,7 +4,7 @@
  * @fileoverview Command-line interface for database seeding
  */
 
-import { db } from '@api/infra/db/client';
+import { db, shutdownDatabase } from '@api/infra/db/client';
 import { getRootLogger } from '@api/infra/logger';
 import { Result } from '@api/shared/result';
 import { clearSeed, resetSeed, runSeed } from './run';
@@ -108,6 +108,8 @@ Example:
       stack: error instanceof Error ? error.stack : undefined,
     });
     throw error;
+  } finally {
+    await shutdownDatabase();
   }
 }
 
