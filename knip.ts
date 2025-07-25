@@ -3,7 +3,7 @@ import type { KnipConfig } from 'knip';
 const config: KnipConfig = {
   workspaces: {
     '.': {
-      entry: ['scripts/**/*.ts'],
+      entry: [],
     },
     'apps/api': {
       entry: [

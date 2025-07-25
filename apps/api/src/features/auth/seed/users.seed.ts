@@ -51,7 +51,7 @@ export function seedUuid(name: string): string {
  * Default test users
  * These are deterministic users for development and demo purposes
  */
-export const userSeeds: UserSeedData[] = [
+const userSeeds: UserSeedData[] = [
   {
     id: seedUuid('seed-admin-001'),
     email: 'admin@certquiz.test',

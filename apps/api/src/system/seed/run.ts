@@ -3,6 +3,8 @@
  * @fileoverview Main seed execution logic that coordinates all feature seeds
  */
 
+import { down as progressDown, up as progressUp } from '@api/features/auth/seed/progress.seed';
+import { down as userDown, up as userUp } from '@api/features/auth/seed/users.seed';
 import type { DB } from '@api/infra/db/client';
 import * as schema from '@api/infra/db/schema';
 import { getRootLogger } from '@api/infra/logger';
@@ -29,8 +31,8 @@ export async function runSeed(db: DB, logger?: LoggerPort): Promise<Result<void,
   try {
     log.info('Starting database seeding');
 
-    // Import seed modules dynamically to avoid circular dependencies
-    const seedModules = await loadSeedModules();
+    // Load seed modules in dependency order
+    const seedModules = loadSeedModules();
 
     // Run seeds in transaction
     await db.transaction(async (trx) => {
@@ -152,30 +154,28 @@ export async function resetSeed(db: DB, logger?: LoggerPort): Promise<Result<voi
  * Load seed modules in dependency order
  * Add new seed modules here as they are implemented
  */
-async function loadSeedModules(): Promise<SeedModule[]> {
+function loadSeedModules(): SeedModule[] {
   const modules: SeedModule[] = [];
 
   // Auth/User seeds (must be first - other data depends on users)
-  const userSeed = await import('@api/features/auth/seed/users.seed');
   modules.push({
     name: 'users',
-    up: userSeed.up,
-    down: userSeed.down,
+    up: userUp,
+    down: userDown,
   });
 
-  const progressSeed = await import('@api/features/auth/seed/progress.seed');
   modules.push({
     name: 'user-progress',
-    up: progressSeed.up,
-    down: progressSeed.down,
+    up: progressUp,
+    down: progressDown,
   });
 
   // TODO: Add question seeds when implemented
-  // const questionSeed = await import('@api/features/question/seed/questions.seed');
+  // import { up as questionUp, down as questionDown } from '@api/features/question/seed/questions.seed';
   // modules.push({
   //   name: 'questions',
-  //   up: questionSeed.up,
-  //   down: questionSeed.down,
+  //   up: questionUp,
+  //   down: questionDown,
   // });
 
   return modules;
