@@ -17,7 +17,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
-import { DrizzleUserRepository as AuthDrizzleUserRepository } from '@api/features/auth/domain';
+import { DrizzleAuthUserRepository } from '@api/features/auth/domain';
 import type { IQuestionRepository } from '@api/features/question/domain';
 import { DrizzleQuestionRepository } from '@api/features/question/domain';
 import type { IQuizRepository } from '@api/features/quiz/domain';
@@ -104,7 +104,7 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
   getAuthUserRepository(): IAuthUserRepository {
     const key = REPOSITORY_CACHE_KEYS.AUTH_USER;
     if (!this.repositoryCache.has(key)) {
-      const repo = new AuthDrizzleUserRepository(this.tx, this.logger);
+      const repo = new DrizzleAuthUserRepository(this.tx, this.logger);
       this.repositoryCache.set(key, repo);
       this.logger.debug('Auth user repository created', {
         transactionId: this.transactionId,

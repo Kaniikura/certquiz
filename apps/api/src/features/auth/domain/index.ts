@@ -17,7 +17,7 @@ export {
   UserNotActiveError,
   UserNotFoundError,
 } from './errors/AuthErrors';
-export { DrizzleUserRepository } from './repositories/DrizzleUserRepository';
+export { DrizzleUserRepository as DrizzleAuthUserRepository } from './repositories/DrizzleUserRepository';
 // Repositories
 export type { IUserRepository } from './repositories/IUserRepository';
 
