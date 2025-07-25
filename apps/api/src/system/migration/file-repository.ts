@@ -12,7 +12,7 @@ export interface MigrationFile {
   sequenceNumber: number;
 }
 
-export type FileError =
+type FileError =
   | { type: 'FileSystemError'; path: string; reason: unknown }
   | { type: 'PathTraversalError'; path: string }
   | { type: 'InvalidFilename'; filename: string }

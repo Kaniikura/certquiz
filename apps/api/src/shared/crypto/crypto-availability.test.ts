@@ -6,7 +6,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CryptoUnavailableError,
-  ensureCryptoGetRandomValues,
   ensureCryptoRandomUUID,
   generateSecureSeed,
   isCryptoGetRandomValuesAvailable,
@@ -64,21 +63,6 @@ describe('Crypto Availability Utilities', () => {
 
       expect(() => ensureCryptoRandomUUID()).toThrow(CryptoUnavailableError);
       expect(() => ensureCryptoRandomUUID()).toThrow('crypto.randomUUID is not available');
-    });
-  });
-
-  describe('ensureCryptoGetRandomValues', () => {
-    it('should not throw when crypto.getRandomValues is available', () => {
-      expect(() => ensureCryptoGetRandomValues()).not.toThrow();
-    });
-
-    it('should throw CryptoUnavailableError when crypto.getRandomValues is unavailable', () => {
-      vi.stubGlobal('crypto', undefined);
-
-      expect(() => ensureCryptoGetRandomValues()).toThrow(CryptoUnavailableError);
-      expect(() => ensureCryptoGetRandomValues()).toThrow(
-        'crypto.getRandomValues is not available'
-      );
     });
   });
 

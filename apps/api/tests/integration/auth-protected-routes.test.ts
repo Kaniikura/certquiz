@@ -125,6 +125,13 @@ describe('Authentication Protected Routes Integration', () => {
     it('POST /api/quiz/start should require authentication', async () => {
       const res = await app.request('/api/quiz/start', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          examType: 'CCNA',
+          questionCount: 10,
+        }),
       });
       expect(res.status).toBe(401);
     });
@@ -152,7 +159,8 @@ describe('Authentication Protected Routes Integration', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(body.data.roles).toContain('premium');
+      expect(body.data.premiumFeatures).toBeDefined();
+      expect(body.data.status).toBe('active');
     });
 
     it('GET /api/quiz/premium should allow admin users', async () => {
@@ -165,7 +173,8 @@ describe('Authentication Protected Routes Integration', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(body.data.roles).toContain('admin');
+      expect(body.data.premiumFeatures).toBeDefined();
+      expect(body.data.status).toBe('active');
     });
   });
 

@@ -6,7 +6,7 @@ import { drizzleMigrate } from './migrations';
 /**
  * Options for creating a test database
  */
-export interface TestDatabaseOptions {
+interface TestDatabaseOptions {
   /** Either a root connection string or a Testcontainers instance */
   root: string | StartedPostgreSqlContainer;
   /** Run migrations automatically? (default = true) */

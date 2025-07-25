@@ -11,10 +11,10 @@ import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
 
 // Seed function type
-export type SeedFunction = (db: DB, logger: LoggerPort) => Promise<Result<void, Error>>;
+type SeedFunction = (db: DB, logger: LoggerPort) => Promise<Result<void, Error>>;
 
 // Seed module interface
-export interface SeedModule {
+interface SeedModule {
   up: SeedFunction;
   down: SeedFunction;
   name: string;

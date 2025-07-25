@@ -5,7 +5,7 @@ import { join } from 'node:path';
  * Liveness probe response
  * Contains system information and process health
  */
-export interface LivenessResponse {
+interface LivenessResponse {
   status: 'healthy';
   service: string;
   version: string;
@@ -23,7 +23,7 @@ export interface LivenessResponse {
  * Readiness probe response
  * Contains external service connectivity status
  */
-export interface ReadinessResponse {
+interface ReadinessResponse {
   status: 'healthy' | 'unhealthy';
   timestamp: string;
   services: {

@@ -43,19 +43,6 @@ export function ensureCryptoRandomUUID(): void {
 }
 
 /**
- * Ensure crypto.getRandomValues is available or throw error
- * @throws CryptoUnavailableError if crypto.getRandomValues is not available
- */
-export function ensureCryptoGetRandomValues(): void {
-  if (!isCryptoGetRandomValuesAvailable()) {
-    throw new CryptoUnavailableError(
-      'crypto.getRandomValues',
-      'Ensure your environment supports the Web Crypto API and crypto.getRandomValues.'
-    );
-  }
-}
-
-/**
  * Generate secure random seed using crypto.getRandomValues
  * Falls back to Math.random() if crypto is not available
  * @returns A secure 32-bit unsigned integer seed

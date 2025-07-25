@@ -6,6 +6,7 @@
 import { buildApp } from '@api/app-factory';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeLogger } from '../helpers/app';
@@ -13,10 +14,12 @@ import { fakeLogger } from '../helpers/app';
 describe('POST /api/auth/login - E2E', () => {
   let app: ReturnType<typeof buildApp>;
   let stubAuthProvider: StubAuthProvider;
+  let unitOfWorkProvider: InMemoryUnitOfWorkProvider;
 
   beforeEach(() => {
     // Create fresh fake dependencies for each test
     stubAuthProvider = new StubAuthProvider();
+    unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
 
     // Build app with all required dependencies
     app = buildApp({
@@ -28,6 +31,7 @@ describe('POST /api/auth/login - E2E', () => {
       authProvider: stubAuthProvider,
       idGenerator: new SequentialIdGenerator('test'),
       premiumAccessService: new PremiumAccessService(),
+      unitOfWorkProvider: unitOfWorkProvider,
     });
   });
 
@@ -51,7 +55,9 @@ describe('POST /api/auth/login - E2E', () => {
     expect(response.status).toBe(401);
 
     const responseData = await response.json();
-    expect(responseData.error).toBe('Invalid credentials');
+    expect(responseData.success).toBe(false);
+    expect(responseData.error.message).toBe('Invalid credentials');
+    expect(responseData.error.code).toBe('INVALID_CREDENTIALS');
   });
 
   it('should reject user not found', async () => {
@@ -74,7 +80,9 @@ describe('POST /api/auth/login - E2E', () => {
     expect(response.status).toBe(401);
 
     const responseData = await response.json();
-    expect(responseData.error).toBe('Invalid credentials');
+    expect(responseData.success).toBe(false);
+    expect(responseData.error.message).toBe('Invalid credentials');
+    expect(responseData.error.code).toBe('INVALID_CREDENTIALS');
   });
 
   // Note: Testing inactive user requires creating a user first through registration

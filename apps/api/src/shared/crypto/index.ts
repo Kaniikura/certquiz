@@ -4,10 +4,6 @@
  */
 
 export {
-  CryptoUnavailableError,
-  ensureCryptoGetRandomValues,
   ensureCryptoRandomUUID,
   generateSecureSeed,
-  isCryptoGetRandomValuesAvailable,
-  isCryptoRandomUUIDAvailable,
 } from './crypto-availability';

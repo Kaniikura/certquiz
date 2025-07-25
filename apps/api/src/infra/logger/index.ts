@@ -7,7 +7,6 @@
 export { createDomainLogger, PinoLoggerAdapter } from './PinoLoggerAdapter';
 // Root logger and correlation utilities
 export {
-  ALS,
   getCorrelationId,
   getRootLogger,
   type Logger,

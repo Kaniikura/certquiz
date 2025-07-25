@@ -16,16 +16,12 @@
 // Database utilities - everything that talks to Postgres/Testcontainers
 export {
   closeAllTrackedClients,
-  createTestContext,
   createTestDatabase,
   createTestDb,
   drizzleMigrate,
-  resetMigrationState,
   seedAdminUser,
   seedUsers,
-  type TestDatabaseOptions,
   type TestDb,
-  type TestTransaction,
   testSchema,
   verifyMigrationTables,
   withRollback,
@@ -41,11 +37,8 @@ export {
 } from './errors';
 // Process execution utilities - anything that shells out
 export {
-  assertProcessSuccess,
   type ProcessResult,
-  type RunProcessOptions,
   runBunScript,
-  runProcessAndAssert,
 } from './process';
 // Runtime detection utilities - environment detection
 export {

@@ -5,7 +5,7 @@ import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AuthUser } from './auth/auth-user';
 
-export interface AuthOptions {
+interface AuthOptions {
   required?: boolean;
   roles?: string[];
 }

@@ -1,5 +1,3 @@
-import type { ApiResponse } from '../types';
-
 // Result type for error handling
 export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
@@ -89,28 +87,6 @@ export function sanitizeHtml(input: string): string {
     .replace(/'/g, '&#x27;')
     .replace(/\//g, '&#x2F;');
 }
-
-// Create API response
-export function apiResponse<T>(data: T, meta?: ApiResponse<T>['meta']): ApiResponse<T> {
-  return {
-    success: true,
-    data,
-    ...(meta && { meta }),
-  };
-}
-
-// Create API error response
-export function apiError(code: string, message: string, details?: unknown): ApiResponse<never> {
-  return {
-    success: false,
-    error: {
-      code,
-      message,
-      ...(details !== undefined ? { details } : {}),
-    },
-  };
-}
-
 // Debounce function
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,

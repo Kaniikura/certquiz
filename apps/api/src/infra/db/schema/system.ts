@@ -11,9 +11,6 @@ export const drizzleMigrations = pgTable('drizzle_migrations', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type DrizzleMigrationRow = typeof drizzleMigrations.$inferSelect;
-export type NewDrizzleMigrationRow = typeof drizzleMigrations.$inferInsert;
-
 // Webhook events for external integrations
 export const webhookEvent = pgTable(
   'webhook_event',
@@ -35,15 +32,9 @@ export const webhookEvent = pgTable(
   ]
 );
 
-export type WebhookEventRow = typeof webhookEvent.$inferSelect;
-export type NewWebhookEventRow = typeof webhookEvent.$inferInsert;
-
 // Test migration table for rollback convention testing
 export const testMigration = pgTable('test_migration', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
-
-export type TestMigrationRow = typeof testMigration.$inferSelect;
-export type NewTestMigrationRow = typeof testMigration.$inferInsert;

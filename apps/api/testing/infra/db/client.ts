@@ -6,7 +6,6 @@
 
 import {
   createDrizzleInstance,
-  createIsolatedConnection,
   PoolConfigs,
   performHealthCheck,
   shutdownConnection,
@@ -95,22 +94,3 @@ export function resetTestDatabase(): void {
   _testPool = undefined;
   _testDb = undefined;
 }
-
-/**
- * Create a test database connection for a specific URL
- * Used by TestContainers and isolated test databases
- */
-export function createTestConnection(databaseUrl: string): {
-  pool: postgres.Sql;
-  db: DB;
-  cleanup: () => Promise<void>;
-} {
-  return createIsolatedConnection(databaseUrl, PoolConfigs.test(), {
-    enableLogging: false,
-    environment: 'test',
-    silentCleanup: true,
-  });
-}
-
-// Export types for test usage
-export type { DB, Queryable } from '@api/infra/db/types';

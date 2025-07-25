@@ -21,7 +21,7 @@ export interface MigrationRecord {
   createdAt: Date;
 }
 
-export class InvalidDateError extends Error {
+class InvalidDateError extends Error {
   constructor(value: unknown, reason?: string) {
     const message = reason
       ? `Invalid date value: ${String(value)} (${reason})`
@@ -31,7 +31,7 @@ export class InvalidDateError extends Error {
   }
 }
 
-export type DbError =
+type DbError =
   | { type: 'DatabaseError'; operation: string; reason: unknown }
   | { type: 'TableNotFound' }
   | { type: 'ConcurrentMigration' }

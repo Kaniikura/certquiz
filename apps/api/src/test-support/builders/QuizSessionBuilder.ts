@@ -15,7 +15,7 @@ interface QuizSessionBuilderProps {
   clock?: TestClock;
 }
 
-export class QuizSessionBuilder {
+class QuizSessionBuilder {
   private props: QuizSessionBuilderProps = {};
 
   withUserId(userId: UserId): this {

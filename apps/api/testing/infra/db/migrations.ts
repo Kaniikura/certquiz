@@ -32,7 +32,7 @@ function maskDatabaseUrl(databaseUrl: string): string {
  * Execute a function with mutex protection to prevent concurrent migrations
  * Uses atomic promise chaining to avoid race conditions
  */
-export async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
+async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
   // Initialize resolveMutex with a default no-op function to ensure it is always defined
   let resolveMutex: () => void = () => {
     // No-op function to ensure resolveMutex is never undefined
@@ -92,7 +92,7 @@ async function hasMigrationsToRun(): Promise<boolean> {
  * Execute drizzle-kit migrate with environment isolation
  * Uses child process environment to avoid affecting global process.env
  */
-export async function executeMigration(databaseUrl: string): Promise<void> {
+async function executeMigration(databaseUrl: string): Promise<void> {
   try {
     // Run migrations using drizzle-kit with isolated environment
     // This ensures that other concurrent operations in the same process
@@ -237,7 +237,7 @@ async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
  *
  * @param connectionUrl - Database connection URL
  */
-export async function resetMigrationState(connectionUrl: string): Promise<void> {
+async function resetMigrationState(connectionUrl: string): Promise<void> {
   const client = postgres(connectionUrl, { max: 1 });
 
   try {

@@ -4,9 +4,7 @@
  */
 
 import { shutdownDatabase } from '@api/infra/db/client';
-import type { LoggerVariables, RequestIdVariables } from '@api/middleware';
 import { createTestDatabase } from '@api/testing/infra/db';
-import type { Hono } from 'hono';
 import { afterAll, beforeAll } from 'vitest';
 import { PostgresSingleton } from '../../tests/containers';
 
@@ -69,8 +67,3 @@ export function setupTestDatabase() {
     getDatabaseUrl: () => dbUrl,
   };
 }
-
-// Type alias for the app type used in this project
-export type AppType = Hono<{
-  Variables: LoggerVariables & RequestIdVariables;
-}>;

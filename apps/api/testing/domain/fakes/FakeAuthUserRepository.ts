@@ -4,7 +4,7 @@
  */
 
 import type { User } from '@api/features/auth/domain/entities/User';
-import type { IUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
 import type { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 
@@ -12,7 +12,7 @@ import { UserId } from '@api/features/auth/domain/value-objects/UserId';
  * In-memory auth user repository for testing
  * Provides full IUserRepository interface without database dependency
  */
-export class FakeAuthUserRepository implements IUserRepository {
+export class FakeAuthUserRepository implements IAuthUserRepository {
   private users = new Map<string, User>();
 
   async findByEmail(email: Email): Promise<User | null> {

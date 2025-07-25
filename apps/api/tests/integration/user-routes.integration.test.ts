@@ -6,18 +6,12 @@
 // Import createUserRoutes from the routes-factory
 import { createUserRoutes } from '@api/features/user/routes-factory';
 
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
-import { createUnitOfWorkMiddleware } from '@api/middleware/unit-of-work';
+import { createTransactionMiddleware } from '@api/middleware/transaction';
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
-import {
-  FakeAuthUserRepository,
-  FakeQuestionRepository,
-  FakeQuizRepository,
-  FakeUnitOfWork,
-  FakeUserRepository,
-} from '@api/testing/domain/fakes';
 import { Hono } from 'hono';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -63,17 +57,14 @@ describe('User Routes HTTP Integration', () => {
     const logger = getRootLogger();
     testApp.use('*', createLoggerMiddleware(logger));
 
-    // Add UnitOfWork middleware with shared repositories
-    const sharedAuthUserRepo = new FakeAuthUserRepository();
-    const sharedUserRepo = new FakeUserRepository();
-    const sharedQuizRepo = new FakeQuizRepository();
-    const sharedQuestionRepo = new FakeQuestionRepository();
-    const uowFactory = async () =>
-      new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
-    testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+    // Create unit of work provider for testing
+    const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+
+    // Add transaction middleware for ambient UoW pattern
+    testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
 
     // Create and mount user routes
-    const userRoutes = createUserRoutes();
+    const userRoutes = createUserRoutes(unitOfWorkProvider);
     testApp.route('/', userRoutes);
   });
 

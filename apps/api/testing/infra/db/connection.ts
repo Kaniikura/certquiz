@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { sql } from 'drizzle-orm';
 import { drizzle as baseDrizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres, { type Sql } from 'postgres';
@@ -60,46 +59,6 @@ export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>
     // Clear the promise on failure so next call can retry
     initPromise = undefined;
     throw error;
-  }
-}
-
-/**
- * Get the raw SQL client for advanced operations
- */
-export async function getSqlClient(): Promise<postgres.Sql> {
-  if (sqlClient) return sqlClient;
-
-  await getTestDb(); // This will initialize sqlClient
-
-  if (!sqlClient) {
-    throw new Error('SQL client not initialized');
-  }
-
-  return sqlClient;
-}
-
-/**
- * Close test database connections
- */
-export async function closeTestDb(): Promise<void> {
-  if (sqlClient) {
-    await sqlClient.end();
-    sqlClient = undefined;
-    testDb = undefined;
-    initPromise = undefined;
-  }
-}
-
-/**
- * Health check for test database
- */
-export async function checkTestDbHealth(): Promise<boolean> {
-  try {
-    const db = await getTestDb();
-    await db.execute(sql`SELECT 1`);
-    return true;
-  } catch {
-    return false;
   }
 }
 

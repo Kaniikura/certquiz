@@ -93,7 +93,6 @@ export const questionVersion = pgTable(
 );
 
 export type QuestionVersionRow = typeof questionVersion.$inferSelect;
-export type NewQuestionVersionRow = typeof questionVersion.$inferInsert;
 
 // Bookmarks for user question management
 export const bookmarks = pgTable(
@@ -112,6 +111,3 @@ export const bookmarks = pgTable(
     index('ix_bookmarks_user').on(table.userId),
   ]
 );
-
-export type BookmarkRow = typeof bookmarks.$inferSelect;
-export type NewBookmarkRow = typeof bookmarks.$inferInsert;

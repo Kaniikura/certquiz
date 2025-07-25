@@ -1,9 +1,9 @@
 import type * as jose from 'jose';
 import { _resetJwtVerifierCache } from '../middleware/auth';
 
-export type JwtVerifySuccess<Payload = jose.JWTPayload> = Awaited<
-  ReturnType<typeof jose.jwtVerify>
-> & { payload: Payload };
+type JwtVerifySuccess<Payload = jose.JWTPayload> = Awaited<ReturnType<typeof jose.jwtVerify>> & {
+  payload: Payload;
+};
 
 /**
  * Build a value that satisfies the return type of jose.jwtVerify

@@ -18,14 +18,6 @@ export { FakeAuthProvider } from '@api/infra/auth/AuthProvider.fake';
 export { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 // Domain test support utilities
 export { unwrapOrFail } from '@api/test-support';
-// Repository fakes - centralized domain test doubles
-export {
-  FakeAuthUserRepository,
-  FakeQuestionRepository,
-  FakeQuizRepository,
-  FakeUnitOfWork,
-  FakeUserRepository,
-} from './fakes';
 
 // Integration test helpers - orchestrates both infra and domain layers
 export { setupTestDatabase } from './integration-helpers';

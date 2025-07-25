@@ -8,7 +8,7 @@ import { generateSecureSeed } from '@api/shared/crypto';
 /**
  * Seeded Random Number Generator interface
  */
-export interface SeededRNG {
+interface SeededRNG {
   /** Generate next random number in [0, 1) range */
   next(): number;
   /** Get current seed value */

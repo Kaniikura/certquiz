@@ -87,21 +87,3 @@ export function isResult<T = unknown, E = unknown>(value: unknown): value is Res
   }
   return hasOwn(value, 'error');
 }
-
-/**
- * Type guard to check if a value is a successful Result
- */
-export function isOkResult<T = unknown, E = unknown>(
-  value: unknown
-): value is { success: true; data: T } {
-  return isResult<T, E>(value) && value.success;
-}
-
-/**
- * Type guard to check if a value is an error Result
- */
-export function isErrResult<T = unknown, E = unknown>(
-  value: unknown
-): value is { success: false; error: E } {
-  return isResult<T, E>(value) && !value.success;
-}

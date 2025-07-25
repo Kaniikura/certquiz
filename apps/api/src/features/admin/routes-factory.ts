@@ -5,14 +5,13 @@
 
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
 import { Hono } from 'hono';
 
 /**
  * Create admin routes - all require admin role
  */
-export function createAdminRoutes(): Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }> {
-  const adminRoutes = new Hono<{ Variables: { user: AuthUser } & UnitOfWorkVariables }>();
+export function createAdminRoutes(): Hono<{ Variables: { user: AuthUser } }> {
+  const adminRoutes = new Hono<{ Variables: { user: AuthUser } }>();
 
   // Apply admin authentication to all routes
   adminRoutes.use('*', auth({ roles: ['admin'] }));

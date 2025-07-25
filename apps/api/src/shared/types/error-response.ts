@@ -7,7 +7,7 @@
  * Supported HTTP status codes for error responses
  * These match the SupportedStatusCode type from route-utils to ensure type safety
  */
-export type ErrorStatusCode = 400 | 403 | 404 | 409 | 422 | 500;
+type ErrorStatusCode = 400 | 403 | 404 | 409 | 422 | 500;
 
 /**
  * Standard error response structure for HTTP API endpoints

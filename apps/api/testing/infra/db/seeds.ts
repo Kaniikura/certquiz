@@ -12,7 +12,7 @@ import type { TestDb } from './types';
  * Create a fake user for testing.
  * Generates deterministic test data that can be overridden.
  */
-export function createFakeUser(overrides?: Partial<NewTestUser>): NewTestUser {
+function _createFakeUser(overrides?: Partial<NewTestUser>): NewTestUser {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(7);
 
@@ -38,7 +38,7 @@ export async function seedUsers<DB extends TestDb>(
   count = 3,
   overrides?: Partial<NewTestUser>
 ) {
-  const users = Array.from({ length: count }, () => createFakeUser(overrides));
+  const users = Array.from({ length: count }, () => _createFakeUser(overrides));
 
   const inserted = await db.insert(testUsers).values(users).returning();
 

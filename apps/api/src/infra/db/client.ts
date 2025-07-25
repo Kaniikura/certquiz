@@ -140,4 +140,4 @@ if (typeof process !== 'undefined') {
 }
 
 // Re-export types for external use
-export type { DB, DrizzleDb, Queryable, Tx } from './types';
+export type { DB, Queryable, Tx } from './types';
