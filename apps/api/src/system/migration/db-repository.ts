@@ -10,7 +10,7 @@
  */
 
 import type { Queryable } from '@api/infra/db/types';
-import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
+import { createDomainLogger } from '@api/infra/logger';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';

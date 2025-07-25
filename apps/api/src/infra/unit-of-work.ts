@@ -46,10 +46,9 @@
 import { db } from './db/client';
 import type { IUnitOfWork } from './db/IUnitOfWork';
 import { UnitOfWorkFactory, withUnitOfWork } from './db/UnitOfWorkFactory';
-import { createDomainLogger } from './logger/PinoLoggerAdapter';
+import { createDomainLogger } from './logger';
 
 // Re-export the factory and helper for external use
-export { UnitOfWorkFactory };
 export type { TransactionContext } from './db/uow';
 
 // Create a singleton factory instance for the application

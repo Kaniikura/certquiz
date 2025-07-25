@@ -9,7 +9,6 @@
  * 5. Error handler (catches all errors)
  */
 
-export { auth } from './auth';
 export type { LoggerVariables } from './logger';
 export { createLoggerMiddleware } from './logger';
 export { errorHandler } from './on-error';

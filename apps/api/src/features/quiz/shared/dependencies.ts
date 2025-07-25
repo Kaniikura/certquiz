@@ -3,7 +3,7 @@
  * @fileoverview Centralized service instantiation and dependency injection
  */
 
-import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
+import { createDomainLogger } from '@api/infra/logger';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
