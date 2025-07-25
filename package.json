@@ -50,7 +50,10 @@
     "format:check": "biome format",
     "check": "tsc --noEmit && biome check --write --unsafe",
     "check:ci": "tsc --noEmit && biome check",
-    "typespec:compile": "cd packages/typespec && tsp compile ."
+    "typespec:compile": "cd packages/typespec && tsp compile .",
+    "knip": "knip",
+    "knip:fix": "knip --fix",
+    "knip:production": "knip --production"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
