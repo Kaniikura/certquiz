@@ -176,17 +176,6 @@ export async function deleteMigrationRecord(
   }
 }
 
-export async function tableExists(db: PostgresJsDatabase): Promise<Result<boolean, DbError>> {
-  try {
-    const rows = await db.execute<{ exists: boolean }>(
-      sql`SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL as exists`
-    );
-    return Result.ok(rows[0]?.exists ?? false);
-  } catch (error) {
-    return Result.err({ type: 'DatabaseError', operation: 'tableExists', reason: error });
-  }
-}
-
 export async function acquireMigrationLock(db: PostgresJsDatabase): Promise<Result<void, DbError>> {
   // Conditional debug logging for lock operations to reduce production volume
   if (isDebugEnabled) {

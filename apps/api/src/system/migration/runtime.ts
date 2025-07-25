@@ -88,13 +88,3 @@ export async function analyzeMigrations(
     missingDownFiles,
   });
 }
-
-/**
- * Format a list of items for console output
- */
-export function formatList(items: string[], indent = '   '): string {
-  if (items.length === 0) {
-    return `${indent}(none)`;
-  }
-  return items.map((item) => `${indent}- ${item}`).join('\n');
-}

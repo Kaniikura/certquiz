@@ -169,14 +169,6 @@ export async function findMigrationByHash(
   return Result.ok(null);
 }
 
-export async function hasDownMigration(
-  migrationsPath: string,
-  baseName: string
-): Promise<Result<boolean, FileError>> {
-  const downPath = path.join(migrationsPath, `${baseName}.down.sql`);
-  return fileExists(downPath);
-}
-
 // Export internals for testing
 export const __internal__ = {
   validateMigrationFilename,
