@@ -8,6 +8,11 @@
  * Matches standard UUID format: 8-4-4-4-12 hexadecimal characters
  * Case-insensitive
  *
+ * Note: This regex accepts any UUID version (v1-v5), not just v4. While the
+ * application generates UUID v4 using crypto.randomUUID(), we accept any valid
+ * UUID format for flexibility (e.g., when importing data or integrating with
+ * external systems that may use different UUID versions).
+ *
  * @example
  * '123e4567-e89b-12d3-a456-426614174000' // valid
  * '123e4567-e89b-12d3-a456-42661417400g' // invalid (contains 'g')
