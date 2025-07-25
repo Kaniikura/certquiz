@@ -29,6 +29,17 @@ import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';
 
 /**
+ * Repository cache keys for type-safe repository management
+ * Using constants prevents typos and enables compile-time checking
+ */
+const REPOSITORY_CACHE_KEYS = {
+  AUTH_USER: 'authUser',
+  USER: 'user',
+  QUIZ: 'quiz',
+  QUESTION: 'question',
+} as const;
+
+/**
  * Drizzle ORM specific Unit of Work implementation
  *
  * @example
@@ -91,7 +102,7 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
    * Uses caching to ensure the same instance is returned for multiple calls
    */
   getAuthUserRepository(): IAuthUserRepository {
-    const key = 'authUser';
+    const key = REPOSITORY_CACHE_KEYS.AUTH_USER;
     if (!this.repositoryCache.has(key)) {
       const repo = new AuthDrizzleUserRepository(this.tx, this.logger);
       this.repositoryCache.set(key, repo);
@@ -108,7 +119,7 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
    * Uses caching to ensure the same instance is returned for multiple calls
    */
   getUserRepository(): IUserRepository {
-    const key = 'user';
+    const key = REPOSITORY_CACHE_KEYS.USER;
     if (!this.repositoryCache.has(key)) {
       const repo = new DrizzleUserRepository(this.tx, this.logger);
       this.repositoryCache.set(key, repo);
@@ -125,7 +136,7 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
    * Uses caching to ensure the same instance is returned for multiple calls
    */
   getQuizRepository(): IQuizRepository {
-    const key = 'quiz';
+    const key = REPOSITORY_CACHE_KEYS.QUIZ;
     if (!this.repositoryCache.has(key)) {
       const repo = new DrizzleQuizRepository(this.tx, this.logger);
       this.repositoryCache.set(key, repo);
@@ -142,7 +153,7 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
    * Uses caching to ensure the same instance is returned for multiple calls
    */
   getQuestionRepository(): IQuestionRepository {
-    const key = 'question';
+    const key = REPOSITORY_CACHE_KEYS.QUESTION;
     if (!this.repositoryCache.has(key)) {
       const repo = new DrizzleQuestionRepository(this.tx, this.logger);
       this.repositoryCache.set(key, repo);
