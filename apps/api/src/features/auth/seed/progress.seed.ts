@@ -14,7 +14,7 @@ import { getActiveSeededUsers, seedUuid } from './users.seed';
 /**
  * Progress seed data structure
  */
-export interface ProgressSeedData {
+interface ProgressSeedData {
   userId: string;
   level: number;
   experience: number;

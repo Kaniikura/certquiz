@@ -20,13 +20,5 @@ export interface LoginResponse {
   };
 }
 
-/**
- * Login error types for domain error mapping
- */
-export interface LoginError {
-  code: 'INVALID_CREDENTIALS' | 'USER_NOT_ACTIVE' | 'USER_NOT_FOUND' | 'AUTH_PROVIDER_ERROR';
-  message: string;
-}
-
 // Note: LoginRequest type is now defined in validation.ts using z.infer<typeof loginSchema>
 // This ensures the DTO and validation schema never drift apart

@@ -3,17 +3,10 @@
  * @fileoverview Tests for auth routes creation with dependency injection
  */
 
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from '@api/infra/logger/root-logger';
-import { createLoggerMiddleware } from '@api/middleware/logger';
-import { createUnitOfWorkMiddleware } from '@api/middleware/unit-of-work';
+import { createLoggerMiddleware, createTransactionMiddleware } from '@api/middleware';
 import { StubAuthProvider } from '@api/testing/domain';
-import {
-  FakeAuthUserRepository,
-  FakeQuestionRepository,
-  FakeQuizRepository,
-  FakeUnitOfWork,
-  FakeUserRepository,
-} from '@api/testing/domain/fakes';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createAuthRoutes } from './routes-factory';
@@ -23,9 +16,10 @@ describe('Auth Routes Factory', () => {
     it('should create auth routes with dependencies', () => {
       // Arrange
       const stubAuthProvider = new StubAuthProvider();
+      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
 
       // Act
-      const authRoutes = createAuthRoutes(stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
 
       // Assert - Should be a valid Hono instance
       expect(authRoutes).toBeDefined();
@@ -37,7 +31,8 @@ describe('Auth Routes Factory', () => {
     it('should return healthy status', async () => {
       // Arrange
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider);
+      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
 
       // Act
       const req = new Request('http://localhost/health');
@@ -63,18 +58,13 @@ describe('Auth Routes Factory', () => {
       const logger = getRootLogger();
       testApp.use('*', createLoggerMiddleware(logger));
 
-      // Add UnitOfWork middleware with shared repositories
-      const sharedAuthUserRepo = new FakeAuthUserRepository();
-      const sharedUserRepo = new FakeUserRepository();
-      const sharedQuizRepo = new FakeQuizRepository();
-      const sharedQuestionRepo = new FakeQuestionRepository();
-      const uowFactory = async () =>
-        new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
-      testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+      // Add transaction middleware
+      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+      testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
 
       // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
       testApp.route('/', authRoutes);
 
       // Act - Test that the login route is mounted
@@ -100,18 +90,13 @@ describe('Auth Routes Factory', () => {
       const logger = getRootLogger();
       testApp.use('*', createLoggerMiddleware(logger));
 
-      // Add UnitOfWork middleware with shared repositories
-      const sharedAuthUserRepo = new FakeAuthUserRepository();
-      const sharedUserRepo = new FakeUserRepository();
-      const sharedQuizRepo = new FakeQuizRepository();
-      const sharedQuestionRepo = new FakeQuestionRepository();
-      const uowFactory = async () =>
-        new FakeUnitOfWork(sharedAuthUserRepo, sharedUserRepo, sharedQuizRepo, sharedQuestionRepo);
-      testApp.use('*', createUnitOfWorkMiddleware(uowFactory));
+      // Add transaction middleware
+      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+      testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
 
       // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
       testApp.route('/', authRoutes);
 
       // Act

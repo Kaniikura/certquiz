@@ -4,22 +4,29 @@
  */
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
+import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
 import { getRootLogger } from '@api/infra/logger';
-import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
+import { getAuthUserRepository } from '@api/infra/repositories/providers';
+import type { LoggerVariables } from '@api/middleware/logger';
+import type { TransactionVariables } from '@api/middleware/transaction';
+import { createAmbientRoute } from '@api/shared/route';
 import { Hono } from 'hono';
-import { mapAuthError } from './http/error-mapper';
-import { safeJson } from './http/request-helpers';
+import type { IUserRepository } from './domain/repositories/IUserRepository';
 import { loginHandler } from './login/handler';
+import { mapAuthError } from './shared/error-mapper';
 
 /**
  * Create auth routes with dependency injection
  * This factory allows us to inject different implementations for different environments
  */
 export function createAuthRoutes(
-  authProvider: IAuthProvider
-): Hono<{ Variables: UnitOfWorkVariables }> {
-  const authRoutes = new Hono<{ Variables: UnitOfWorkVariables }>();
-  const logger = getRootLogger().child({ module: 'auth.routes' });
+  authProvider: IAuthProvider,
+  _unitOfWorkProvider: IUnitOfWorkProvider
+): Hono<{
+  Variables: LoggerVariables & TransactionVariables;
+}> {
+  const authRoutes = new Hono<{ Variables: LoggerVariables & TransactionVariables }>();
+  const _logger = getRootLogger().child({ module: 'auth.routes' });
 
   // All auth routes are public (login, register, etc.)
   // Protected user profile routes would go in a separate user feature
@@ -27,31 +34,33 @@ export function createAuthRoutes(
   /**
    * POST /login - User authentication
    */
-  authRoutes.post('/login', async (c) => {
-    try {
-      // Get UnitOfWork from context
-      const unitOfWork = c.get('unitOfWork');
-      const userRepository = unitOfWork.getAuthUserRepository();
-
-      const body = await safeJson(c);
-      const result = await loginHandler(body, userRepository, authProvider);
-
-      if (!result.success) {
-        const { status, body: errorBody } = mapAuthError(result.error);
-        return c.json(errorBody, status);
+  authRoutes.post('/login', (c) => {
+    const route = createAmbientRoute<
+      unknown,
+      { token: string; user: { id: string; email: string; role: string } },
+      { authUserRepo: IUserRepository; authProvider: IAuthProvider },
+      LoggerVariables & TransactionVariables
+    >(
+      {
+        operation: 'login',
+        resource: 'auth',
+        requiresAuth: false,
+        errorMapper: mapAuthError,
+      },
+      async (
+        body,
+        deps: { authUserRepo: IUserRepository; authProvider: IAuthProvider },
+        _context
+      ) => {
+        return loginHandler(body, deps.authUserRepo, deps.authProvider);
       }
+    );
 
-      return c.json({
-        success: true,
-        data: result.data,
-      });
-    } catch (error) {
-      logger.error('Login route error', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-      return c.json({ error: 'Internal server error' }, 500);
-    }
+    // Inject dependencies
+    return route(c, {
+      authUserRepo: getAuthUserRepository(c),
+      authProvider: authProvider,
+    });
   });
 
   // TODO: Add future auth routes

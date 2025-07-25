@@ -16,7 +16,7 @@ import { UserRole } from '../domain/value-objects/UserRole';
 /**
  * User seed data structure
  */
-export interface UserSeedData {
+interface UserSeedData {
   id: string;
   email: string;
   username: string;
@@ -205,13 +205,6 @@ export async function down(db: DB, logger: LoggerPort): Promise<Result<void, Err
     });
     return Result.err(new Error(`User seed cleanup failed: ${error}`));
   }
-}
-
-/**
- * Get a specific seeded user by role (helper for other seeds)
- */
-export function getSeededUserByRole(role: UserRole): UserSeedData | undefined {
-  return userSeeds.find((u) => u.role === role && u.isActive);
 }
 
 /**
