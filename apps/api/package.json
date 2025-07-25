@@ -25,7 +25,8 @@
     "db:reset": "bun run db:seed reset",
     "db:seed": "bun run scripts/seed.ts seed",
     "db:seed:clear": "bun run scripts/seed.ts clear",
-    "db:seed:reset": "bun run scripts/seed.ts reset"
+    "db:seed:reset": "bun run scripts/seed.ts reset",
+    "db:test:migration": "bun run scripts/test-migration.ts"
   },
   "dependencies": {
     "@certquiz/shared": "workspace:*",

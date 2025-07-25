@@ -85,6 +85,7 @@ bun run format          # Biome formatter
 bun run db:generate      # Generate migrations
 bun run db:migrate       # Apply migrations
 bun run db:studio        # Drizzle Studio GUI
+bun run db:test:migration # Test migrations locally (CI-like)
 
 # Testing
 bun run test                # Run all tests
