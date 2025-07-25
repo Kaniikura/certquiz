@@ -1,7 +1,5 @@
 // Re-export shared value objects from auth domain
-export { Email } from '@api/features/auth/domain/value-objects/Email';
-export { UserId } from '@api/features/auth/domain/value-objects/UserId';
-export { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+export { Email, UserId, UserRole } from '@api/features/auth/domain';
 export { Accuracy } from './Accuracy';
 export { CategoryStats } from './CategoryStats';
 export { Experience } from './Experience';

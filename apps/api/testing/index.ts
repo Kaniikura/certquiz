@@ -11,6 +11,14 @@
  * @see https://docs.anthropic.com/en/docs/claude-code
  */
 
+// Re-export ambient pattern helpers
+export {
+  createTestContext,
+  createTestDependencies,
+  getTestUnitOfWork,
+  type RepositorySet,
+  type TestDependencies,
+} from './ambient-helpers';
 // Re-export domain utilities
 export * from './domain';
 // Re-export infrastructure utilities

@@ -4,6 +4,7 @@
  */
 
 import type { Clock } from '@api/shared/clock';
+import { getErrorMessage } from '@api/shared/error';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { QuizSession } from '../domain/aggregates/QuizSession';
@@ -18,7 +19,7 @@ import { startQuizSchema } from './validation';
 /**
  * Business logic error for quiz session conflicts
  */
-export class ActiveSessionError extends Error {
+class ActiveSessionError extends Error {
   constructor() {
     super(
       'User already has an active session. Complete or abandon current session before starting a new one.'
@@ -30,7 +31,7 @@ export class ActiveSessionError extends Error {
 /**
  * Business logic error for insufficient questions
  */
-export class InsufficientQuestionsError extends Error {
+class InsufficientQuestionsError extends Error {
   constructor(requested: number, available: number) {
     super(`Insufficient questions available. Requested: ${requested}, Available: ${available}`);
     this.name = 'InsufficientQuestionsError';
@@ -92,11 +93,7 @@ export async function startQuizHandler(
         difficulty: request.difficulty,
       });
     } catch (error) {
-      return Result.fail(
-        new Error(
-          `Failed to fetch questions: ${error instanceof Error ? error.message : String(error)}`
-        )
-      );
+      return Result.fail(new Error(`Failed to fetch questions: ${getErrorMessage(error)}`));
     }
 
     // 5. Validate question availability
@@ -116,11 +113,7 @@ export async function startQuizHandler(
     try {
       await quizRepository.save(session);
     } catch (error) {
-      return Result.fail(
-        new Error(
-          `Failed to save quiz session: ${error instanceof Error ? error.message : String(error)}`
-        )
-      );
+      return Result.fail(new Error(`Failed to save quiz session: ${getErrorMessage(error)}`));
     }
 
     // 8. Calculate expiration time

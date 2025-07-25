@@ -6,7 +6,7 @@ import { livenessCheckHandler, readinessCheckHandler } from './handler';
 /**
  * Dependencies for health check routes
  */
-export interface HealthDeps {
+interface HealthDeps {
   ping: () => Promise<void>; // Database ping function
   clock: () => Date; // Clock for timestamps
 }

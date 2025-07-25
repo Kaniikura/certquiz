@@ -11,24 +11,24 @@ import { EmailAlreadyTakenError, UserNotFoundError, UsernameAlreadyTakenError } 
 
 describe('mapUserError', () => {
   describe('ValidationError mapping', () => {
-    it('should map ValidationError instance to 400 with proper response structure', () => {
+    it('should map ValidationError instance to 400 with proper response structure', async () => {
       const error = new ValidationError('Invalid input data');
 
       const result = mapUserError(error);
 
-      expect(result).toEqual({
-        status: HttpStatus.BAD_REQUEST,
-        body: {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input data',
-          },
+      expect(result.status).toBe(HttpStatus.BAD_REQUEST);
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: 'Invalid input data',
+          code: 'VALIDATION_ERROR',
         },
       });
     });
 
-    it('should properly handle ValidationError instances created anywhere in the codebase', () => {
+    it('should properly handle ValidationError instances created anywhere in the codebase', async () => {
       // This test verifies that instanceof check works correctly
       // All ValidationError instances in the codebase properly extend ValidationError from shared/errors
       const testCases = [
@@ -37,12 +37,15 @@ describe('mapUserError', () => {
         new ValidationError('Invalid date format'),
       ];
 
-      testCases.forEach((error) => {
+      for (const error of testCases) {
         const result = mapUserError(error);
         expect(result.status).toBe(HttpStatus.BAD_REQUEST);
-        expect(result.body.error.code).toBe('VALIDATION_ERROR');
-        expect(result.body.error.message).toBe(error.message);
-      });
+        expect(result.body).toBeInstanceOf(Response);
+        const body = await result.body.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
+        expect(body.error.message).toBe(error.message);
+      }
     });
 
     it('should verify ValidationError inheritance chain', () => {
@@ -56,96 +59,92 @@ describe('mapUserError', () => {
   });
 
   describe('Domain-specific error mapping', () => {
-    it('should map UserNotFoundError to 404', () => {
+    it('should map UserNotFoundError to 404', async () => {
       const error = new UserNotFoundError('user123');
 
       const result = mapUserError(error);
 
-      expect(result).toEqual({
-        status: HttpStatus.NOT_FOUND,
-        body: {
-          success: false,
-          error: {
-            code: 'USER_NOT_FOUND',
-            message: error.message,
-          },
+      expect(result.status).toBe(HttpStatus.NOT_FOUND);
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: error.message,
+          code: 'USER_NOT_FOUND',
         },
       });
     });
 
-    it('should map EmailAlreadyTakenError to 409 with field info', () => {
+    it('should map EmailAlreadyTakenError to 409', async () => {
       const error = new EmailAlreadyTakenError('test@example.com');
 
       const result = mapUserError(error);
 
-      expect(result).toEqual({
-        status: HttpStatus.CONFLICT,
-        body: {
-          success: false,
-          error: {
-            code: 'EMAIL_ALREADY_TAKEN',
-            message: error.message,
-            field: 'email',
-          },
+      expect(result.status).toBe(HttpStatus.CONFLICT);
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: error.message,
+          code: 'EMAIL_ALREADY_TAKEN',
+          field: 'email',
         },
       });
     });
 
-    it('should map UsernameAlreadyTakenError to 409 with field info', () => {
+    it('should map UsernameAlreadyTakenError to 409', async () => {
       const error = new UsernameAlreadyTakenError('testuser');
 
       const result = mapUserError(error);
 
-      expect(result).toEqual({
-        status: HttpStatus.CONFLICT,
-        body: {
-          success: false,
-          error: {
-            code: 'USERNAME_ALREADY_TAKEN',
-            message: error.message,
-            field: 'username',
-          },
+      expect(result.status).toBe(HttpStatus.CONFLICT);
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: error.message,
+          code: 'USERNAME_ALREADY_TAKEN',
+          field: 'username',
         },
       });
     });
   });
 
   describe('Default error handling', () => {
-    it('should map unknown errors to 500 in production', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const error = new Error('Database connection failed');
-      const result = mapUserError(error);
-
-      expect(result).toEqual({
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        body: {
-          success: false,
-          error: {
-            code: 'REPOSITORY_ERROR',
-            message: 'Internal server error',
-          },
-        },
-      });
-
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should include error details in development', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
+    it('should map unknown errors to 500', async () => {
       const error = new Error('Database connection failed');
       const result = mapUserError(error);
 
       expect(result.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
-      expect(result.body.error.code).toBe('REPOSITORY_ERROR');
-      expect(result.body.error.message).toBe('Database connection failed');
-      expect(result.body.error.details).toBeDefined();
-      expect(result.body.error.details).toContain('Error:');
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: 'Internal server error',
+          code: 'INTERNAL_ERROR',
+        },
+      });
+    });
 
-      process.env.NODE_ENV = originalEnv;
+    it('should handle errors with custom names', async () => {
+      const error = new Error('Custom error');
+      error.name = 'CustomError';
+      const result = mapUserError(error);
+
+      expect(result.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+      expect(result.body).toBeInstanceOf(Response);
+      const body = await result.body.json();
+      expect(body).toEqual({
+        success: false,
+        error: {
+          message: 'Internal server error',
+          code: 'INTERNAL_ERROR',
+        },
+      });
     });
   });
 });

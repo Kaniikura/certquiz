@@ -5,7 +5,7 @@
 
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
-import { UUID_REGEX } from '@api/shared/validation/constants';
+import { UUID_REGEX } from '@api/shared/validation';
 
 /**
  * Maximum length for option text

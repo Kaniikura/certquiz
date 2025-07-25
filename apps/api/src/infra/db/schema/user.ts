@@ -35,10 +35,6 @@ export const authUser = pgTable(
   ]
 );
 
-// Type exports for domain mapping
-export type AuthUserRow = typeof authUser.$inferSelect;
-export type NewAuthUserRow = typeof authUser.$inferInsert;
-
 // User progress tracking (separate from auth for performance)
 export const userProgress = pgTable(
   'user_progress',
@@ -91,9 +87,6 @@ export const userProgress = pgTable(
   ]
 );
 
-export type UserProgressRow = typeof userProgress.$inferSelect;
-export type NewUserProgressRow = typeof userProgress.$inferInsert;
-
 // Subscriptions (for future premium features)
 export const subscriptions = pgTable(
   'subscriptions',
@@ -116,6 +109,3 @@ export const subscriptions = pgTable(
     uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
   ]
 );
-
-export type SubscriptionRow = typeof subscriptions.$inferSelect;
-export type NewSubscriptionRow = typeof subscriptions.$inferInsert;

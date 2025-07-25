@@ -3,9 +3,13 @@
  * @fileoverview Tests actual HTTP request/response behavior for user endpoints
  */
 
-import { userRoutes } from '@api/features/user/routes';
+// Import createUserRoutes from the routes-factory
+import { createUserRoutes } from '@api/features/user/routes-factory';
+
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createTransactionMiddleware } from '@api/middleware/transaction';
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
 import { Hono } from 'hono';
@@ -49,11 +53,18 @@ describe('User Routes HTTP Integration', () => {
     // Create test app with necessary middleware
     testApp = new Hono();
 
-    // Add logger middleware (required by withTransaction)
+    // Add logger middleware
     const logger = getRootLogger();
     testApp.use('*', createLoggerMiddleware(logger));
 
-    // Mount user routes
+    // Create unit of work provider for testing
+    const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+
+    // Add transaction middleware for ambient UoW pattern
+    testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
+
+    // Create and mount user routes
+    const userRoutes = createUserRoutes(unitOfWorkProvider);
     testApp.route('/', userRoutes);
   });
 

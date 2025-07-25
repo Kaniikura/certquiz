@@ -3,6 +3,7 @@
  * @fileoverview Business logic for submitting answers to quiz questions
  */
 
+import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
@@ -18,20 +19,10 @@ import { submitAnswerSchema } from './validation';
 /**
  * Business logic error for session not found
  */
-export class SessionNotFoundError extends Error {
+class SessionNotFoundError extends Error {
   constructor(sessionId: QuizSessionId) {
     super(`Quiz session not found: ${sessionId.toString()}`);
     this.name = 'SessionNotFoundError';
-  }
-}
-
-/**
- * Business logic error for question not found in service
- */
-export class QuestionNotFoundError extends Error {
-  constructor(questionId: QuestionId) {
-    super(`Question not found: ${questionId.toString()}`);
-    this.name = 'QuestionNotFoundError';
   }
 }
 
@@ -45,7 +36,7 @@ async function loadQuestionReference(
   try {
     const questionReference = await questionService.getQuestionReference(questionId);
     if (!questionReference) {
-      return Result.fail(new QuestionNotFoundError(questionId));
+      return Result.fail(new QuestionNotFoundError(questionId.toString()));
     }
     return Result.ok(questionReference);
   } catch (error) {

@@ -3,36 +3,22 @@
  * @fileoverview Creates question routes with proper dependency injection
  */
 
-import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { type TransactionContext, withTransaction } from '@api/infra/unit-of-work';
+import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
-import type { TxRunner } from '@api/shared/tx-runner';
-import { DrizzleTxRunner } from '@api/shared/tx-runner';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
-import { DrizzleQuestionRepository } from './domain/repositories/DrizzleQuestionRepository';
-import type { IQuestionRepository } from './domain/repositories/IQuestionRepository';
 import type { IPremiumAccessService } from './domain/services/IPremiumAccessService';
 import { getQuestionRoute } from './get-question/route';
 import { listQuestionsRoute } from './list-questions/route';
 
-/**
- * Paths that should be excluded from transaction middleware
- * These endpoints don't require database access and should respond quickly
- */
-const TRANSACTION_EXCLUDED_PATHS = new Set(['/health']);
-
 // Define context variables for question routes
 type QuestionVariables = {
-  questionRepository: IQuestionRepository;
-  premiumAccessService: IPremiumAccessService;
-  clock: Clock;
-  idGenerator: IdGenerator;
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
-};
+} & TransactionVariables;
 
 /**
  * Create question routes with dependency injection
@@ -42,7 +28,7 @@ export function createQuestionRoutes(
   premiumAccessService: IPremiumAccessService,
   clock: Clock,
   idGenerator: IdGenerator,
-  txRunner?: TxRunner
+  _unitOfWorkProvider: IUnitOfWorkProvider
 ): Hono<{
   Variables: QuestionVariables;
 }> {
@@ -50,54 +36,15 @@ export function createQuestionRoutes(
     Variables: QuestionVariables;
   }>();
 
-  // Create logger for question repository
-  const questionRepositoryLogger = createDomainLogger('question.repository');
-
   /**
    * Health check for question service (public endpoint)
    * Useful for service monitoring and debugging
-   * Note: This is outside transaction middleware to avoid unnecessary DB connections
    */
   questionRoutes.get('/health', (c) => {
     return c.json({
       service: 'question',
       status: 'healthy',
       timestamp: new Date().toISOString(),
-    });
-  });
-
-  // Use provided txRunner or create a default one
-  const runner = txRunner || new DrizzleTxRunner(withTransaction);
-
-  /**
-   * Dependency injection middleware
-   * Creates transaction-scoped repository instances for each request
-   * Applied only to routes that need database access
-   */
-  questionRoutes.use('*', async (c, next) => {
-    // Skip transaction for excluded paths
-    // When routes are mounted at a prefix, c.req.path is relative to the mount point
-    const requestPath = c.req.path;
-
-    // Check if the path should be excluded from transactions
-    if (TRANSACTION_EXCLUDED_PATHS.has(requestPath)) {
-      return next();
-    }
-
-    // Use txRunner to ensure all question operations are transactional
-    await runner.run(async (trx: TransactionContext) => {
-      // Create repository instance with transaction and logger
-      // Use the DrizzleQuestionRepository with transaction context
-      const questionRepository = new DrizzleQuestionRepository(trx, questionRepositoryLogger);
-
-      // Inject dependencies into context
-      c.set('questionRepository', questionRepository);
-      c.set('premiumAccessService', premiumAccessService);
-      c.set('clock', clock);
-      c.set('idGenerator', idGenerator);
-
-      // Continue to route handlers
-      await next();
     });
   });
 
@@ -113,11 +60,11 @@ export function createQuestionRoutes(
   protectedRoutes.use('*', auth({ required: true, roles: ['admin'] }));
 
   // Mount public routes (authentication optional, premium content requires auth)
-  publicRoutes.route('/', listQuestionsRoute);
-  publicRoutes.route('/', getQuestionRoute);
+  publicRoutes.route('/', listQuestionsRoute(premiumAccessService));
+  publicRoutes.route('/', getQuestionRoute(premiumAccessService));
 
   // Mount protected routes (authentication required, admin role)
-  protectedRoutes.route('/', createQuestionRoute);
+  protectedRoutes.route('/', createQuestionRoute({ clock, idGenerator }));
 
   // Mount both groups to questionRoutes
   questionRoutes.route('/', publicRoutes);

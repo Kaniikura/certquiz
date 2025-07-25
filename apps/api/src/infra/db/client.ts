@@ -67,7 +67,7 @@ function initializeDatabase(): { pool: postgres.Sql; db: DB } {
  * Get the database connection pool
  * Initializes on first use
  */
-export function getPool(): postgres.Sql {
+function getPool(): postgres.Sql {
   const { pool } = initializeDatabase();
   return pool;
 }
@@ -140,4 +140,4 @@ if (typeof process !== 'undefined') {
 }
 
 // Re-export types for external use
-export type { DB, DrizzleDb, Queryable, Tx } from './types';
+export type { DB, Queryable, Tx } from './types';

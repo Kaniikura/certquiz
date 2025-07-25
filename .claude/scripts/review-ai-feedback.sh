@@ -116,7 +116,7 @@ query($pull_request_id: ID!) {
 }' 2>/dev/null | jq -r '
 .data.node.reviewThreads.nodes[] as $thread |
 select($thread.isResolved == false) |
-select($thread.comments.nodes[0]?.author.login | test("copilot|gemini|coderabbit|sonar"; "i")) |
+select($thread.comments.nodes[0]?.author.login | test("copilot|gemini|coderabbit|sonar|cursor"; "i")) |
 $thread.comments.nodes[0] as $comment |
 "👤 Author: \($comment.author.login)
 📄 File: \($comment.path)

@@ -1,4 +1,4 @@
-import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { UserRole } from '@api/features/auth/domain';
 import { getRootLogger } from '@api/infra/logger';
 
 /**

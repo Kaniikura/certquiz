@@ -1,90 +1,71 @@
 /**
  * Get profile route implementation
- * @fileoverview HTTP endpoint for retrieving user profile and progress
+ * @fileoverview HTTP endpoint for retrieving user profile and progress using route utilities
  */
 
+import { getUserRepository } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
-import { UUID_REGEX } from '@api/shared/validation/constants';
+import type { TransactionVariables } from '@api/middleware/transaction';
+import type { Clock } from '@api/shared/clock';
+import { ValidationError } from '@api/shared/errors';
+import { Result } from '@api/shared/result';
+import { createAmbientRoute } from '@api/shared/route';
+import { isValidUUID } from '@api/shared/validation';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { mapUserError } from '../shared/error-mapper';
+import type { GetProfileResponse } from './dto';
 import { getProfileHandler } from './handler';
 
-// Define context variables for this route
-type GetProfileVariables = {
-  userRepository: IUserRepository;
-} & LoggerVariables;
-
-export const getProfileRoute = new Hono<{
-  Variables: GetProfileVariables;
-}>().get('/profile/:userId', async (c) => {
-  const logger = c.get('logger');
-
-  try {
-    // Get user ID from URL parameter
-    const userId = c.req.param('userId');
-
-    // Validate userId format early to fail fast
-    if (!userId || !UUID_REGEX.test(userId)) {
-      logger.warn('Invalid user ID format', {
-        userId,
-        expectedFormat: 'UUID',
-      });
-
-      return c.json(
+/**
+ * Create get profile route
+ * Clock is passed for consistency but not used in this route
+ */
+export function getProfileRoute(_clock: Clock) {
+  return new Hono<{ Variables: LoggerVariables & TransactionVariables }>().get(
+    '/profile/:userId',
+    (c) => {
+      const route = createAmbientRoute<
+        unknown,
+        GetProfileResponse,
+        { userRepo: IUserRepository },
+        LoggerVariables & TransactionVariables
+      >(
         {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid user ID format. Expected UUID.',
+          operation: 'get',
+          resource: 'profile',
+          requiresAuth: true,
+          extractLogContext: (_body, c) => {
+            const userId = c?.req.param('userId');
+            return { userId };
           },
+          extractSuccessLogData: (result: unknown) => {
+            const data = result as GetProfileResponse;
+            return {
+              userId: data.user.id,
+              username: data.user.username,
+              level: data.user.progress.level,
+              experience: data.user.progress.experience,
+            };
+          },
+          errorMapper: mapUserError,
         },
-        400
+        async (_body, deps: { userRepo: IUserRepository }, context) => {
+          // Get and validate user ID from URL parameter
+          const userId = context.req.param('userId');
+
+          if (!userId || !isValidUUID(userId)) {
+            return Result.fail(new ValidationError('Invalid user ID format. Expected UUID.'));
+          }
+
+          return getProfileHandler({ userId }, deps.userRepo);
+        }
       );
-    }
 
-    logger.info('Get profile attempt', { userId });
-
-    // Get dependencies from DI container/context
-    const userRepo = c.get('userRepository');
-
-    // Delegate to handler
-    const result = await getProfileHandler({ userId }, userRepo);
-
-    if (!result.success) {
-      const error = result.error;
-
-      // Log profile retrieval failure
-      logger.warn('Get profile failed', {
-        userId,
-        errorType: error.name,
-        errorMessage: error.message,
+      // Inject dependencies
+      return route(c, {
+        userRepo: getUserRepository(c),
       });
-
-      const { status, body: errorBody } = mapUserError(error);
-      return c.json(errorBody, status);
     }
-
-    // Log successful profile retrieval
-    logger.info('Get profile successful', {
-      userId,
-      username: result.data.user.username,
-      level: result.data.user.progress.level,
-      experience: result.data.user.progress.experience,
-    });
-
-    return c.json({
-      success: true,
-      data: result.data,
-    });
-  } catch (error) {
-    logger.error('Get profile route error', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    const { status, body: errorBody } = mapUserError(
-      error instanceof Error ? error : new Error('Unknown error')
-    );
-    return c.json(errorBody, status);
-  }
-});
+  );
+}

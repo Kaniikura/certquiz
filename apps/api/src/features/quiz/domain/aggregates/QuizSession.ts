@@ -5,8 +5,6 @@
 
 import type { Clock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
-import { AggregateRoot } from '../base/AggregateRoot';
-import { Answer } from '../entities/Answer';
 import {
   DuplicateQuestionError,
   IncompleteQuizError,
@@ -16,12 +14,14 @@ import {
   OutOfOrderAnswerError,
   QuestionAlreadyAnsweredError,
   QuestionCountMismatchError,
-  QuestionNotFoundError,
+  QuestionNotFoundInQuizError,
   type QuizDomainError,
   QuizExpiredError,
   QuizNotExpiredError,
   QuizNotInProgressError,
-} from '../errors/QuizErrors';
+} from '../../shared/errors';
+import { AggregateRoot } from '../base/AggregateRoot';
+import { Answer } from '../entities/Answer';
 import type { DomainEvent } from '../events/DomainEvent';
 import {
   AnswerSubmittedEvent,
@@ -150,7 +150,7 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizEventPayloads>
 
     // Validate question belongs to quiz
     if (!this._questionOrder.has(questionId)) {
-      return Result.fail(new QuestionNotFoundError());
+      return Result.fail(new QuestionNotFoundInQuizError());
     }
 
     // Validate QuestionReference matches the questionId
@@ -175,7 +175,7 @@ export class QuizSession extends AggregateRoot<QuizSessionId, QuizEventPayloads>
       const questionIndex = this.getQuestionIndex(questionId);
       if (questionIndex === -1) {
         // This should never happen as we already validated above, but adding safety check
-        return Result.fail(new QuestionNotFoundError());
+        return Result.fail(new QuestionNotFoundInQuizError());
       }
       if (questionIndex !== expectedIndex) {
         return Result.fail(new OutOfOrderAnswerError(expectedIndex, questionIndex));

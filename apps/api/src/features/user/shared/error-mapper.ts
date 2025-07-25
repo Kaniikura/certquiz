@@ -3,79 +3,58 @@
  * @fileoverview Provides consistent error response mapping across all user endpoints
  */
 
-import { createValidationErrorResponse, isValidationError } from '@api/shared/error-utils';
-import { HttpStatus } from '@api/shared/http-status';
-import type { ErrorResponse } from '@api/shared/types/error-response';
-import { EmailAlreadyTakenError, UserNotFoundError, UsernameAlreadyTakenError } from './errors';
+import { createErrorMapper } from '@api/shared/route';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**
- * Maps domain errors to HTTP error responses
- * @param error - The error to map
- * @returns Error response with status code and body
+ * Error mapping type definition
  */
-export function mapUserError(error: Error): ErrorResponse {
-  // Validation errors
-  if (isValidationError(error)) {
-    return createValidationErrorResponse(error);
-  }
+type ErrorMapping = {
+  errorName: string;
+  status: ContentfulStatusCode;
+  code: string;
+  field?: string;
+};
 
+/**
+ * User domain error mappings
+ */
+const userDomainErrorMappings: ErrorMapping[] = [
   // User not found
-  if (error instanceof UserNotFoundError) {
-    return {
-      status: HttpStatus.NOT_FOUND,
-      body: {
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: error.message,
-        },
-      },
-    };
-  }
-
+  {
+    errorName: 'UserNotFoundError',
+    status: 404,
+    code: 'USER_NOT_FOUND',
+  },
   // Email already taken
-  if (error instanceof EmailAlreadyTakenError) {
-    return {
-      status: HttpStatus.CONFLICT,
-      body: {
-        success: false,
-        error: {
-          code: 'EMAIL_ALREADY_TAKEN',
-          message: error.message,
-          field: 'email',
-        },
-      },
-    };
-  }
-
+  {
+    errorName: 'EmailAlreadyTakenError',
+    status: 409,
+    code: 'EMAIL_ALREADY_TAKEN',
+    field: 'email',
+  },
   // Username already taken
-  if (error instanceof UsernameAlreadyTakenError) {
-    return {
-      status: HttpStatus.CONFLICT,
-      body: {
-        success: false,
-        error: {
-          code: 'USERNAME_ALREADY_TAKEN',
-          message: error.message,
-          field: 'username',
-        },
-      },
-    };
-  }
+  {
+    errorName: 'UsernameAlreadyTakenError',
+    status: 409,
+    code: 'USERNAME_ALREADY_TAKEN',
+    field: 'username',
+  },
+  // Progress update errors
+  {
+    errorName: 'InvalidProgressError',
+    status: 422,
+    code: 'INVALID_PROGRESS',
+  },
+  {
+    errorName: 'ProgressUpdateFailedError',
+    status: 500,
+    code: 'PROGRESS_UPDATE_FAILED',
+  },
+];
 
-  // Default error response for unexpected errors
-  // In development/testing, include error details for debugging
-  const isDev = process.env.NODE_ENV !== 'production';
-  return {
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    body: {
-      success: false,
-      error: {
-        code: 'REPOSITORY_ERROR',
-        message: isDev ? error.message : 'Internal server error',
-        // Include stack trace in development for debugging
-        ...(isDev && { details: error.stack }),
-      },
-    },
-  };
-}
+/**
+ * User domain error mapper
+ * Maps domain errors to HTTP error responses
+ */
+export const mapUserError = createErrorMapper(userDomainErrorMappings);

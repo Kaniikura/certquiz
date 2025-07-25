@@ -5,7 +5,7 @@
 
 import { testIds } from '@api/test-support';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { InvalidAnswerError } from '../errors/QuizErrors';
+import { InvalidAnswerError } from '../../shared/errors';
 import type { AnswerId, OptionId, QuestionId } from '../value-objects/Ids';
 import { Answer } from './Answer';
 

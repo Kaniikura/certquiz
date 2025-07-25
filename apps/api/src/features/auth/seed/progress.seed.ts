@@ -7,14 +7,14 @@ import { userProgress } from '@api/infra/db/schema';
 import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
-import { sql } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 
 import { getActiveSeededUsers, seedUuid } from './users.seed';
 
 /**
  * Progress seed data structure
  */
-export interface ProgressSeedData {
+interface ProgressSeedData {
   userId: string;
   level: number;
   experience: number;
@@ -167,7 +167,7 @@ export async function up(db: DB, logger: LoggerPort): Promise<Result<void, Error
     // Batch check for existing progress records
     const userIds = progressData.map((p) => p.userId);
     const existingProgress = await db.query.userProgress.findMany({
-      where: sql`${userProgress.userId} = ANY(${userIds})`,
+      where: inArray(userProgress.userId, userIds),
       columns: { userId: true },
     });
 
@@ -228,7 +228,7 @@ export async function down(db: DB, logger: LoggerPort): Promise<Result<void, Err
     // Batch delete all seeded progress records
     const deleted = await db
       .delete(userProgress)
-      .where(sql`${userProgress.userId} = ANY(${seedUserIds})`)
+      .where(inArray(userProgress.userId, seedUserIds))
       .returning({ userId: userProgress.userId });
 
     logger.info(`Removed progress for ${deleted.length} users`);

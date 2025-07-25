@@ -4,10 +4,6 @@
  */
 
 export {
-  createSeededRNG,
   generateCryptoSeed,
-  randomChoice,
-  randomIntInRange,
-  type SeededRNG,
   shuffleWithSeed,
 } from './seeded-rng';

@@ -5,7 +5,7 @@
 
 import type { UserProgress } from '../domain/entities/UserProgress';
 
-export interface CategoryStatsDTO {
+interface CategoryStatsDTO {
   [category: string]: {
     correct: number;
     total: number;

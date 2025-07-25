@@ -18,34 +18,8 @@ export {
   type UserRole,
 } from './constants';
 
-// Re-export all named exports from types
-export type {
-  ApiResponse,
-  AuthResponse,
-  AuthTokens,
-  Badge,
-  CategoryStats,
-  LoginCredentials,
-  ProblemReport,
-  Question,
-  QuestionOption,
-  QuizAnswerRequest,
-  QuizAnswerResponse,
-  QuizResultQuestion,
-  QuizResults,
-  QuizSession,
-  QuizStartRequest,
-  SessionQuestion,
-  Subscription,
-  User,
-  UserBadge,
-  UserProgress,
-} from './types';
-
 // Re-export all named exports from utils
 export {
-  apiError,
-  apiResponse,
   calculateAccuracy,
   calculateDuration,
   calculateExperience,

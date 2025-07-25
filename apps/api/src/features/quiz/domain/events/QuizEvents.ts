@@ -15,7 +15,7 @@ export interface QuizStartedPayload {
   questionSnapshots?: QuestionSnapshot[];
 }
 
-export interface QuestionSnapshot {
+interface QuestionSnapshot {
   id: QuestionId;
   version: number;
   text: string;

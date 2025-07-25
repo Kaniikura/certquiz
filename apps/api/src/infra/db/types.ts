@@ -12,6 +12,3 @@ export type Tx = Parameters<DB['transaction']>[0] extends (tx: infer T) => unkno
 
 // Queryable interface for repositories to work with both DB and Tx
 export type Queryable = Pick<DB, 'select' | 'insert' | 'update' | 'delete' | 'execute' | 'query'>;
-
-// Re-export for backward compatibility
-export type DrizzleDb = DB;

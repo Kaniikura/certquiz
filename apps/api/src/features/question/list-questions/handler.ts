@@ -6,9 +6,7 @@
 import { ValidationError } from '@api/shared/errors';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
-import type { QuestionDifficulty } from '../domain/entities/Question';
-import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import type { IPremiumAccessService } from '../domain/services';
+import type { IPremiumAccessService, IQuestionRepository, QuestionDifficulty } from '../domain';
 import type { ListQuestionsResponse, QuestionSummaryDto } from './dto';
 import { type ListQuestionsRequest, listQuestionsSchema } from './validation';
 

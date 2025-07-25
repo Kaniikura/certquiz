@@ -71,8 +71,3 @@ export interface AuthProviderConfig {
     clientSecret?: string;
   };
 }
-
-/**
- * Create auth provider based on configuration
- */
-export type AuthProviderFactory = (config: AuthProviderConfig) => IAuthProvider;

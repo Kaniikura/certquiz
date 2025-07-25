@@ -7,10 +7,11 @@
 export {
   Question,
   type QuestionDifficulty,
-  type QuestionJSON,
-  type QuestionStatus,
+  QuestionStatus,
   type QuestionType,
 } from './entities/Question';
+// Repositories
+export { DrizzleQuestionRepository } from './repositories/DrizzleQuestionRepository';
 // Repository Interface
 export type {
   IQuestionRepository,
@@ -19,8 +20,8 @@ export type {
   QuestionPagination,
   QuestionSummary,
 } from './repositories/IQuestionRepository';
-// Services
 export type { IPremiumAccessService } from './services';
+// Services
 export { PremiumAccessService } from './services';
 // Value Objects
 export { QuestionOption, type QuestionOptionJSON } from './value-objects/QuestionOption';

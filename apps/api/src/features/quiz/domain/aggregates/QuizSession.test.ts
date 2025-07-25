@@ -15,11 +15,11 @@ import {
   OutOfOrderAnswerError,
   QuestionAlreadyAnsweredError,
   QuestionCountMismatchError,
-  QuestionNotFoundError,
+  QuestionNotFoundInQuizError,
   QuizExpiredError,
   QuizNotExpiredError,
   QuizNotInProgressError,
-} from '../errors/QuizErrors';
+} from '../../shared/errors';
 import {
   AnswerSubmittedEvent,
   QuizCompletedEvent,
@@ -271,7 +271,7 @@ describe('QuizSession', () => {
       // Assert
       expect(result.success).toBe(false);
       if (result.success) return;
-      expect(result.error).toBeInstanceOf(QuestionNotFoundError);
+      expect(result.error).toBeInstanceOf(QuestionNotFoundInQuizError);
     });
 
     it('should fail when question reference mismatch', () => {

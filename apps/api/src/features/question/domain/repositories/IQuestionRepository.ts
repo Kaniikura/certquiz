@@ -29,7 +29,7 @@
  * - Input sanitization for search queries
  */
 
-import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { QuestionId } from '@api/features/quiz/domain';
 import type { Question } from '../entities/Question';
 
 /**

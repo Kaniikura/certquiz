@@ -35,18 +35,5 @@ export interface QuestionSummaryDto {
   createdAt: Date;
 }
 
-/**
- * List questions error types for domain error mapping
- */
-export interface ListQuestionsError {
-  code:
-    | 'VALIDATION_ERROR'
-    | 'INVALID_QUESTION_DATA'
-    | 'REPOSITORY_ERROR'
-    | 'QUESTION_ACCESS_DENIED';
-  message: string;
-  field?: string;
-}
-
 // Note: ListQuestionsRequest type is defined in validation.ts using z.infer<typeof listQuestionsSchema>
 // This ensures the DTO and validation schema never drift apart

@@ -11,7 +11,7 @@ import type { SignJWT } from 'jose';
 /**
  * Default JWT configuration for testing
  */
-export const DEFAULT_JWT_CONFIG = {
+const DEFAULT_JWT_CONFIG = {
   issuer: 'http://localhost:8080/realms/certquiz',
   audience: 'certquiz',
   algorithm: 'RS256' as const,

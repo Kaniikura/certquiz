@@ -9,11 +9,11 @@
  * 5. Error handler (catches all errors)
  */
 
-export type { AuthOptions } from './auth';
-export { auth } from './auth';
 export type { LoggerVariables } from './logger';
 export { createLoggerMiddleware } from './logger';
-export { errorHandler, toHttpError } from './on-error';
+export { errorHandler } from './on-error';
 export type { RequestIdVariables } from './request-id';
 export { requestIdMiddleware } from './request-id';
 export { securityMiddleware } from './security';
+export type { TransactionVariables } from './transaction';
+export { createTransactionMiddleware } from './transaction';

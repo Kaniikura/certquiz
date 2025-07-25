@@ -3,21 +3,20 @@
  * @fileoverview Tests actual HTTP request/response behavior for question endpoints
  */
 
-import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
-import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
-import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
-import { createQuestionRoutes } from '@api/features/question/routes-factory';
+import type { AppDependencies } from '@api/app-factory';
+import { buildApp } from '@api/app-factory';
+import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
+import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { authUser } from '@api/infra/db/schema/user';
-import { getRootLogger } from '@api/infra/logger/root-logger';
-import { createLoggerMiddleware } from '@api/middleware/logger';
 import { SystemClock } from '@api/shared/clock';
 import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
-import { Hono } from 'hono';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeAuthProvider, fakeLogger } from '../helpers/app';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey | null = null;
@@ -44,7 +43,7 @@ describe('Question Routes HTTP Integration', () => {
   setupTestDatabase();
 
   let privateKey: CryptoKey;
-  let testApp: Hono;
+  let testApp: ReturnType<typeof buildApp>;
   let testQuestions: TestQuestion[] = [];
 
   beforeAll(async () => {
@@ -70,21 +69,30 @@ describe('Question Routes HTTP Integration', () => {
       })
       .onConflictDoNothing(); // Ignore if user already exists
 
-    // Create test app with necessary middleware
-    testApp = new Hono();
+    // Create shared Unit of Work provider with persistent repositories
+    const uowProvider = new InMemoryUnitOfWorkProvider();
 
-    // Add logger middleware (required by withTransaction)
-    const logger = getRootLogger();
-    testApp.use('*', createLoggerMiddleware(logger));
-
-    // Create dependencies for question routes
+    // Create dependencies for buildApp
     const premiumAccessService = new PremiumAccessService();
     const clock = new SystemClock();
     const idGenerator = new CryptoIdGenerator();
+    const logger = fakeLogger();
+    const authProvider = fakeAuthProvider();
 
-    // Create and mount question routes with dependencies
-    const questionRoutes = createQuestionRoutes(premiumAccessService, clock, idGenerator);
-    testApp.route('/', questionRoutes);
+    // Create test app with all dependencies
+    const deps: AppDependencies = {
+      logger,
+      clock: () => clock.now(),
+      idGenerator,
+      ping: async () => {
+        // No-op for tests
+      },
+      premiumAccessService,
+      authProvider,
+      unitOfWorkProvider: uowProvider,
+    };
+
+    testApp = buildApp(deps);
   });
 
   beforeEach(async () => {
@@ -153,7 +161,7 @@ describe('Question Routes HTTP Integration', () => {
 
   describe('GET /health', () => {
     it('should return healthy status', async () => {
-      const res = await testApp.request('/health');
+      const res = await testApp.request('/api/questions/health');
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -169,7 +177,7 @@ describe('Question Routes HTTP Integration', () => {
     describe('Authentication and Authorization', () => {
       it('should require authentication', async () => {
         const questionData = createTestQuestionData();
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(questionData),
@@ -184,7 +192,7 @@ describe('Question Routes HTTP Integration', () => {
         const token = await createTestToken(); // Regular user token (no admin role)
         const questionData = createTestQuestionData();
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -207,7 +215,7 @@ describe('Question Routes HTTP Integration', () => {
 
         const questionData = createTestQuestionData();
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -225,7 +233,7 @@ describe('Question Routes HTTP Integration', () => {
         const adminToken = await createAdminToken();
         const questionData = createTestQuestionData();
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -270,7 +278,7 @@ describe('Question Routes HTTP Integration', () => {
           difficulty: 'Beginner',
         };
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -297,7 +305,7 @@ describe('Question Routes HTTP Integration', () => {
           questionType: 'invalid_type',
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -326,7 +334,7 @@ describe('Question Routes HTTP Integration', () => {
           ],
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -356,7 +364,7 @@ describe('Question Routes HTTP Integration', () => {
           ],
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -391,7 +399,7 @@ describe('Question Routes HTTP Integration', () => {
           ],
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -418,7 +426,7 @@ describe('Question Routes HTTP Integration', () => {
           ],
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -445,7 +453,7 @@ describe('Question Routes HTTP Integration', () => {
           ],
         });
 
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -471,7 +479,7 @@ describe('Question Routes HTTP Integration', () => {
     it('should handle malformed JSON gracefully', async () => {
       const adminToken = await createAdminToken();
 
-      const res = await testApp.request('/', {
+      const res = await testApp.request('/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -486,7 +494,7 @@ describe('Question Routes HTTP Integration', () => {
     it('should handle requests with invalid JWT', async () => {
       const questionData = createTestQuestionData();
 
-      const res = await testApp.request('/', {
+      const res = await testApp.request('/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -545,7 +553,7 @@ describe('Question Routes HTTP Integration', () => {
 
       // Create all test questions
       for (const questionData of testQuestionsData) {
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -563,7 +571,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Basic Listing', () => {
       it('should return questions without authentication (non-premium only)', async () => {
-        const res = await testApp.request('/');
+        const res = await testApp.request('/api/questions');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -590,7 +598,7 @@ describe('Question Routes HTTP Integration', () => {
 
       it('should return all questions with authentication (including premium)', async () => {
         const token = await createTestToken();
-        const res = await testApp.request('/', {
+        const res = await testApp.request('/api/questions', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -610,7 +618,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Pagination', () => {
       it('should handle pagination parameters', async () => {
-        const res = await testApp.request('/?limit=2&offset=0');
+        const res = await testApp.request('/api/questions?limit=2&offset=0');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -621,7 +629,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should return 400 for invalid limit', async () => {
-        const res = await testApp.request('/?limit=0');
+        const res = await testApp.request('/api/questions?limit=0');
 
         expect(res.status).toBe(400);
         const data = await res.json();
@@ -635,7 +643,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should return 400 for negative offset', async () => {
-        const res = await testApp.request('/?offset=-1');
+        const res = await testApp.request('/api/questions?offset=-1');
 
         expect(res.status).toBe(400);
         const data = await res.json();
@@ -651,7 +659,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Filtering', () => {
       it('should filter by exam types', async () => {
-        const res = await testApp.request('/?examTypes=CCNA');
+        const res = await testApp.request('/api/questions?examTypes=CCNA');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -663,7 +671,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should filter by categories', async () => {
-        const res = await testApp.request('/?categories=Security');
+        const res = await testApp.request('/api/questions?categories=Security');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -675,7 +683,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should filter by difficulty', async () => {
-        const res = await testApp.request('/?difficulty=Beginner');
+        const res = await testApp.request('/api/questions?difficulty=Beginner');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -687,7 +695,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should handle search query', async () => {
-        const res = await testApp.request('/?searchQuery=routing');
+        const res = await testApp.request('/api/questions?searchQuery=routing');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -697,7 +705,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should return 400 for short search query', async () => {
-        const res = await testApp.request('/?searchQuery=a'); // Too short
+        const res = await testApp.request('/api/questions?searchQuery=a'); // Too short
 
         expect(res.status).toBe(400);
         const data = await res.json();
@@ -713,7 +721,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Premium Access Control', () => {
       it('should exclude premium content without authentication', async () => {
-        const res = await testApp.request('/?includePremium=true');
+        const res = await testApp.request('/api/questions?includePremium=true');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -726,7 +734,7 @@ describe('Question Routes HTTP Integration', () => {
 
       it('should include premium content with authentication', async () => {
         const token = await createTestToken();
-        const res = await testApp.request('/?includePremium=true', {
+        const res = await testApp.request('/api/questions?includePremium=true', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -742,7 +750,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Empty Results', () => {
       it('should handle empty results gracefully', async () => {
-        const res = await testApp.request('/?examTypes=NonExistentExam');
+        const res = await testApp.request('/api/questions?examTypes=NonExistentExam');
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -777,7 +785,7 @@ describe('Question Routes HTTP Integration', () => {
         isPremium: false,
       });
 
-      const regularRes = await testApp.request('/', {
+      const regularRes = await testApp.request('/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -797,7 +805,7 @@ describe('Question Routes HTTP Integration', () => {
         isPremium: true,
       });
 
-      const premiumRes = await testApp.request('/', {
+      const premiumRes = await testApp.request('/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -814,7 +822,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Basic Retrieval', () => {
       it('should retrieve non-premium question without authentication', async () => {
-        const res = await testApp.request(`/${testQuestionId}`);
+        const res = await testApp.request(`/api/questions/${testQuestionId}`);
 
         expect(res.status).toBe(200);
         const data = await res.json();
@@ -851,7 +859,7 @@ describe('Question Routes HTTP Integration', () => {
 
       it('should retrieve question with authentication', async () => {
         const token = await createTestToken();
-        const res = await testApp.request(`/${testQuestionId}`, {
+        const res = await testApp.request(`/api/questions/${testQuestionId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -866,7 +874,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Premium Access Control', () => {
       it('should deny access to premium question without authentication', async () => {
-        const res = await testApp.request(`/${premiumQuestionId}`);
+        const res = await testApp.request(`/api/questions/${premiumQuestionId}`);
 
         expect(res.status).toBe(403);
         const data = await res.json();
@@ -880,7 +888,7 @@ describe('Question Routes HTTP Integration', () => {
 
       it('should allow access to premium question with authentication', async () => {
         const token = await createTestToken();
-        const res = await testApp.request(`/${premiumQuestionId}`, {
+        const res = await testApp.request(`/api/questions/${premiumQuestionId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -897,7 +905,7 @@ describe('Question Routes HTTP Integration', () => {
     describe('Error Scenarios', () => {
       it('should return 404 for non-existent question', async () => {
         const nonExistentId = '550e8400-e29b-41d4-a716-446655440000';
-        const res = await testApp.request(`/${nonExistentId}`);
+        const res = await testApp.request(`/api/questions/${nonExistentId}`);
 
         expect(res.status).toBe(404);
         const data = await res.json();
@@ -910,7 +918,7 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should return 400 for invalid question ID format', async () => {
-        const res = await testApp.request('/invalid-uuid');
+        const res = await testApp.request('/api/questions/invalid-uuid');
 
         expect(res.status).toBe(400);
         const data = await res.json();
@@ -926,7 +934,7 @@ describe('Question Routes HTTP Integration', () => {
 
     describe('Authentication Edge Cases', () => {
       it('should reject requests with invalid JWT', async () => {
-        const res = await testApp.request(`/${testQuestionId}`, {
+        const res = await testApp.request(`/api/questions/${testQuestionId}`, {
           headers: {
             Authorization: 'Bearer invalid-token',
           },
@@ -939,7 +947,7 @@ describe('Question Routes HTTP Integration', () => {
 
       it('should handle expired JWT gracefully', async () => {
         const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
-        const res = await testApp.request(`/${testQuestionId}`, {
+        const res = await testApp.request(`/api/questions/${testQuestionId}`, {
           headers: {
             Authorization: `Bearer ${expiredToken}`,
           },

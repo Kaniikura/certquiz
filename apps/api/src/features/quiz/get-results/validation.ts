@@ -11,5 +11,3 @@ import { z } from 'zod';
  * Session ID comes from URL parameter and is validated by the route handler
  */
 export const getResultsSchema = z.object({});
-
-export type GetResultsSchemaType = z.infer<typeof getResultsSchema>;

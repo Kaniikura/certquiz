@@ -1,5 +1,5 @@
-import { User } from '@api/features/auth/domain/entities/User';
-import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { AuthUser } from '@api/features/auth';
+import { UserId } from '@api/features/auth/domain';
 import { db } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
@@ -37,7 +37,7 @@ describe('Unit of Work Integration Tests', () => {
       };
 
       // Create user entity
-      const userResult = User.fromPersistence(userData);
+      const userResult = AuthUser.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -46,7 +46,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Insert user within transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(user);
       });
 
@@ -71,7 +71,7 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult = User.fromPersistence(userData);
+      const userResult = AuthUser.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -83,7 +83,7 @@ describe('Unit of Work Integration Tests', () => {
       // Attempt to save user but throw error
       await expect(
         executeInUnitOfWork(async (uow) => {
-          const userRepo = uow.getUserRepository();
+          const userRepo = uow.getAuthUserRepository();
           await userRepo.save(user);
           throw error;
         })
@@ -120,8 +120,8 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = User.fromPersistence(userData1);
-      const userResult2 = User.fromPersistence(userData2);
+      const userResult1 = AuthUser.fromPersistence(userData1);
+      const userResult2 = AuthUser.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -132,7 +132,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Save multiple users in same transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(user1);
         await userRepo.save(user2);
       });
@@ -173,8 +173,8 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = User.fromPersistence(userData1);
-      const userResult2 = User.fromPersistence(userData2);
+      const userResult1 = AuthUser.fromPersistence(userData1);
+      const userResult2 = AuthUser.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -185,7 +185,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Start a transaction that will fail
       const failedTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(failUser);
         // Simulate some work
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -196,7 +196,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Start another transaction concurrently
       const successfulTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getAuthUserRepository();
         await userRepo.save(successUser);
       });
 
@@ -219,8 +219,8 @@ describe('Unit of Work Integration Tests', () => {
 
     it('should ensure repository instances are cached within transaction', async () => {
       await executeInUnitOfWork(async (uow) => {
-        const userRepo1 = uow.getUserRepository();
-        const userRepo2 = uow.getUserRepository();
+        const userRepo1 = uow.getAuthUserRepository();
+        const userRepo2 = uow.getAuthUserRepository();
         const quizRepo1 = uow.getQuizRepository();
         const quizRepo2 = uow.getQuizRepository();
 
@@ -242,7 +242,7 @@ describe('Unit of Work Integration Tests', () => {
           updatedAt: new Date(),
         };
 
-        const userResult = User.fromPersistence(userData);
+        const userResult = AuthUser.fromPersistence(userData);
         expect(userResult.success).toBe(true);
         if (!userResult.success) {
           throw new Error('Failed to create user');

@@ -3,32 +3,106 @@
  * @fileoverview Composition of all quiz-related HTTP routes
  */
 
-import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
+import { auth } from '@api/middleware/auth';
+import type { TransactionVariables } from '@api/middleware/transaction';
+import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
-import { createGetResultsRoute } from './get-results/route';
-import { createStartQuizRoute } from './start-quiz/route';
-import { createSubmitAnswerRoute } from './submit-answer/route';
+import { getResultsRoute } from './get-results/route';
+import { startQuizRoute } from './start-quiz/route';
+import { submitAnswerRoute } from './submit-answer/route';
 
 /**
  * Create quiz routes with all endpoints
  */
-export function createQuizRoutes(): Hono<{ Variables: { user: AuthUser } }> {
-  const app = new Hono<{ Variables: { user: AuthUser } }>();
+export function createQuizRoutes(
+  clock: Clock,
+  _unitOfWorkProvider: IUnitOfWorkProvider
+): Hono<{
+  Variables: TransactionVariables;
+}> {
+  const app = new Hono<{ Variables: TransactionVariables }>();
+
+  // Health check endpoint (no database access)
+  app.get('/health', (c) => {
+    return c.json({
+      service: 'quiz',
+      status: 'healthy',
+      timestamp: clock.now().toISOString(),
+    });
+  });
+
+  // GET /quiz - Quiz catalog (not yet implemented)
+  app.get('/', (c) => {
+    return c.json(
+      {
+        error: 'Public quiz catalog not yet implemented',
+        code: 'NOT_IMPLEMENTED',
+        message: 'Question catalog implementation is planned for future releases',
+      },
+      501
+    );
+  });
+
+  // POST /quiz - Create quiz (protected)
+  app.post('/', auth(), (c) => {
+    const user = c.get('user');
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: 'mock-quiz-id',
+          title: 'Mock Quiz',
+          status: 'created',
+          createdBy: user?.sub || 'unknown',
+        },
+      },
+      200
+    );
+  });
 
   // Quiz management routes
-  const startQuizRoute = createStartQuizRoute();
-  const submitAnswerRoute = createSubmitAnswerRoute();
-  const getResultsRoute = createGetResultsRoute();
+  const startQuiz = startQuizRoute(clock);
+  const submitAnswer = submitAnswerRoute(clock);
+  const getResults = getResultsRoute(clock);
 
-  // Mount routes with proper path structure
-  // POST /quiz/start - Start a new quiz session
-  app.route('/quiz', startQuizRoute);
+  // Mount routes with proper path structure (protected routes)
+  // POST /start - Start a new quiz session (protected)
+  app.route('/', startQuiz);
 
-  // POST /quiz/:sessionId/submit-answer - Submit an answer to a question
-  app.route('/quiz', submitAnswerRoute);
+  // POST /:sessionId/submit-answer - Submit an answer to a question
+  app.route('/', submitAnswer);
 
-  // GET /quiz/:sessionId/results - Get quiz results
-  app.route('/quiz', getResultsRoute);
+  // GET /:sessionId/results - Get quiz results
+  app.route('/', getResults);
+
+  // Premium routes (protected with premium role) - must come before :id route
+  app.get('/premium', auth({ roles: ['premium', 'admin'] }), (c) => {
+    return c.json(
+      {
+        success: true,
+        data: {
+          premiumFeatures: ['feature1', 'feature2'],
+          status: 'active',
+        },
+      },
+      200
+    );
+  });
+
+  // GET /quiz/:id - Quiz preview (not yet implemented)
+  // This catch-all route must come after more specific routes
+  app.get('/:id', (c) => {
+    const id = c.req.param('id');
+    return c.json(
+      {
+        error: 'Quiz preview not yet implemented',
+        code: 'NOT_IMPLEMENTED',
+        message: `Preview for quiz ${id} requires Question catalog implementation`,
+      },
+      501
+    );
+  });
 
   return app;
 }

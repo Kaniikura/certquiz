@@ -4,7 +4,7 @@
  */
 
 import { Result } from '@api/shared/result';
-import { InvalidQuestionCountError, InvalidTimeLimitError } from '../errors/QuizErrors';
+import { InvalidQuestionCountError, InvalidTimeLimitError } from '../../shared/errors';
 import type { Category, Difficulty, ExamType } from './ExamTypes';
 
 // DTO for event storage and serialization

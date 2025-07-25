@@ -11,7 +11,7 @@
 5. **Vertical Slice Architecture** - Features in folders, not layers
 6. **Domain-Driven Design** - Rich models with business logic
 7. **Repository Pattern** - Interfaces in domain, implementations alongside
-8. **Transaction Boundaries** - All handlers use `withTransaction`
+8. **Transaction Boundaries** - All handlers use `IUnitOfWork` from middleware (NOT `withTransaction`)
 9. **Co-located Tests** - `.test.ts` files next to source
 
 ## Project Structure
@@ -63,14 +63,15 @@ export class DrizzleQuizRepository implements IQuizRepository {
 }
 ```
 
-### Handler with Transaction
+### Handler with UnitOfWork
 ```typescript
 export async function startQuizHandler(c: Context) {
   const input = c.req.valid('json');
+  const unitOfWork = c.get('unitOfWork'); // From middleware
   
-  const result = await withTransaction(async (trx) => {
-    const repo = new DrizzleQuizRepository(trx);
-    // All DB operations share same transaction
+  const result = await (async () => {
+    const repo = unitOfWork.getQuizRepository();
+    // All DB operations share same transaction via UnitOfWork
     return startQuiz(input, repo);
   });
   
@@ -130,7 +131,8 @@ type Result<T, E = Error> =
 import { Hono } from 'hono';
 
 // 2. Infrastructure
-import { withTransaction } from '@/infra/unit-of-work';
+// NOTE: Route handlers should NOT import withTransaction directly!
+// Use IUnitOfWork from middleware context instead
 
 // 3. Domain
 import { QuizSession } from '../domain/aggregates/QuizSession';
@@ -138,6 +140,33 @@ import { QuizSession } from '../domain/aggregates/QuizSession';
 // 4. Local
 import { startQuizSchema } from './validation';
 ```
+
+## Anti-Patterns to Avoid
+
+### ❌ Direct Transaction Usage in Routes
+**NEVER** use `withTransaction` directly in route handlers:
+
+```typescript
+// ❌ BAD - Direct transaction usage
+export async function badHandler(c: Context) {
+  const result = await withTransaction(async (trx) => {
+    // This bypasses the UnitOfWork pattern!
+  });
+}
+
+// ✅ GOOD - Use UnitOfWork from middleware
+export async function goodHandler(c: Context) {
+  const unitOfWork = c.get('unitOfWork');
+  const repository = unitOfWork.getQuizRepository();
+  // Transaction is managed by middleware
+}
+```
+
+**Why this matters**:
+- Direct `withTransaction` usage prevents proper test isolation
+- Breaks the Unit of Work pattern's transaction management
+- Makes it impossible to mock repositories in tests
+- Violates the dependency injection principle
 
 ---
 

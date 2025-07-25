@@ -126,22 +126,3 @@ function mapErrorToStatus(err: unknown): ContentfulStatusCode {
   // Default to 500
   return 500;
 }
-
-/**
- * Helper to convert Result errors to HTTPException
- * Used in route handlers to throw appropriate errors
- *
- * @example
- * ```typescript
- * const result = await createUser(data);
- * if (!result.success) throw toHttpError(result.error);
- * ```
- */
-export function toHttpError(error: unknown): HTTPException {
-  const status = mapErrorToStatus(error);
-  const message = isErrorLike(error) ? error.message : 'Error';
-  return new HTTPException(status, {
-    message,
-    cause: error,
-  });
-}

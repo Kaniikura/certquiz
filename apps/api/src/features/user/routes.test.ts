@@ -3,13 +3,20 @@
  * @fileoverview Basic tests for user routes structure
  */
 
+import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { describe, expect, it } from 'vitest';
 
 describe('User Routes Structure', () => {
-  it('should export userRoutes as a Hono instance', async () => {
-    const { userRoutes } = await import('./routes');
+  it('should export createUserRoutes factory function', async () => {
+    const { createUserRoutes } = await import('./routes-factory');
 
-    // Assert - Should be a valid Hono instance
+    // Assert - Should be a function that creates a Hono instance
+    expect(createUserRoutes).toBeDefined();
+    expect(typeof createUserRoutes).toBe('function');
+
+    // Test that it creates a valid Hono instance
+    const provider = new InMemoryUnitOfWorkProvider();
+    const userRoutes = createUserRoutes(provider);
     expect(userRoutes).toBeDefined();
     expect(typeof userRoutes.fetch).toBe('function');
   });

@@ -3,7 +3,7 @@
  * @fileoverview Unit and integration tests for Question repository implementation
  */
 
-import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { QuestionId } from '@api/features/quiz/domain';
 import { authUser, userProgress } from '@api/infra/db/schema/user';
 import type { Queryable } from '@api/infra/db/types';
 import { TestClock } from '@api/test-support';

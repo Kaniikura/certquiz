@@ -3,7 +3,7 @@
  * @fileoverview Input and output types for question/get-question
  */
 
-import type { QuestionDifficulty, QuestionStatus, QuestionType } from '../domain/entities/Question';
+import type { QuestionDifficulty, QuestionStatus, QuestionType } from '../domain';
 
 /**
  * Get question response type for detailed question retrieval
@@ -42,15 +42,6 @@ export interface QuestionOptionDto {
   id: string;
   text: string;
   isCorrect: boolean;
-}
-
-/**
- * Get question error types for domain error mapping
- */
-export interface GetQuestionError {
-  code: 'VALIDATION_ERROR' | 'QUESTION_NOT_FOUND' | 'QUESTION_ACCESS_DENIED' | 'REPOSITORY_ERROR';
-  message: string;
-  field?: string;
 }
 
 // Note: GetQuestionRequest type is defined in validation.ts using z.infer<typeof getQuestionSchema>

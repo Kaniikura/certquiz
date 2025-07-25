@@ -3,18 +3,13 @@
  * @fileoverview Tests for app factory with fake dependencies
  */
 
-import { createNoopTxRunner } from '@api/testing/infra';
-import type { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import type { AppDependencies } from './app-factory';
 import { buildApp } from './app-factory';
-import type { IUserRepository } from './features/auth/domain/repositories/IUserRepository';
-import type { IQuestionRepository } from './features/question/domain/repositories/IQuestionRepository';
-import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
-import type { IQuizRepository } from './features/quiz/domain/repositories/IQuizRepository';
+import { PremiumAccessService } from './features/question/domain';
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
+import { InMemoryUnitOfWorkProvider } from './infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from './infra/logger/root-logger';
-import type { LoggerVariables, RequestIdVariables } from './middleware';
 import { CryptoIdGenerator } from './shared/id-generator';
 
 /**
@@ -29,30 +24,16 @@ function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDep
     ping: async () => {
       /* no-op */
     },
-    userRepository: {} as IUserRepository,
-    quizRepository: {} as IQuizRepository,
-    questionRepository: {} as IQuestionRepository,
     premiumAccessService: new PremiumAccessService(),
     authProvider: new FakeAuthProvider(),
-    txRunner: createNoopTxRunner(),
+    unitOfWorkProvider: new InMemoryUnitOfWorkProvider(),
     ...overrides,
   };
 }
 
-/**
- * Creates a test app instance with fake dependencies
- * Encapsulates the common setup pattern used across tests
- */
-function createTestApp(
-  overrides?: Partial<AppDependencies>
-): Hono<{ Variables: LoggerVariables & RequestIdVariables }> {
-  const dependencies = createFakeAppDependencies(overrides);
-  return buildApp(dependencies);
-}
-
 describe('App Factory', () => {
   it('builds app with fake dependencies', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test root endpoint
     const res = await app.request('/');
@@ -67,7 +48,7 @@ describe('App Factory', () => {
   });
 
   it('returns 404 for non-existent endpoints', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test non-existent endpoint
     const res = await app.request('/non-existent');
@@ -84,7 +65,7 @@ describe('App Factory', () => {
   });
 
   it('health endpoint responds without database', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test health endpoint
     const res = await app.request('/health');

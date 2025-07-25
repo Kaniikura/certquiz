@@ -6,8 +6,9 @@
  * configurations without side effects or environment-specific concerns.
  */
 
+import { sanitizeErrorForLogging } from '@api/shared/error';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import type postgres from 'postgres';
 import { getRootLogger } from '../logger/root-logger';
 import * as schema from './schema';
 import type { DB } from './types';
@@ -16,7 +17,7 @@ import type { DB } from './types';
  * Common database connection configuration
  * Shared timeout and connection settings used across environments
  */
-export const DB_CONNECTION_DEFAULTS = {
+const _DB_CONNECTION_DEFAULTS = {
   idle_timeout: 30, // Close idle connections after 30 seconds
   max_lifetime: 60 * 60, // Recycle connections after 1 hour
   connect_timeout: 10, // 10 second connection timeout
@@ -25,7 +26,7 @@ export const DB_CONNECTION_DEFAULTS = {
 /**
  * Database URL validation options
  */
-export interface DatabaseUrlOptions {
+interface DatabaseUrlOptions {
   /** Custom error message for missing URL */
   missingMessage?: string;
   /** Custom error message for invalid protocol */
@@ -76,11 +77,11 @@ export function validateDatabaseUrl(
  * @param overrides - Custom configuration to merge with defaults
  * @returns Complete postgres.js configuration
  */
-export function buildPoolConfig(
+function buildPoolConfig(
   overrides: Partial<postgres.Options<Record<string, never>>> = {}
 ): postgres.Options<Record<string, never>> {
   return {
-    ...DB_CONNECTION_DEFAULTS,
+    ..._DB_CONNECTION_DEFAULTS,
     ...overrides,
   };
 }
@@ -148,54 +149,6 @@ export function createDrizzleInstance(
 }
 
 /**
- * Helper to safely extract string properties from an object
- */
-function extractStringProperty(obj: unknown, key: string): string | undefined {
-  if (obj && typeof obj === 'object' && key in obj) {
-    const value = (obj as Record<string, unknown>)[key];
-    return typeof value === 'string' ? value : undefined;
-  }
-  return undefined;
-}
-
-/**
- * Sanitize error objects to ensure no sensitive information is exposed
- * Uses a whitelist approach to only include known-safe properties
- *
- * @param error - The error to sanitize
- * @returns Sanitized error object safe for logging
- */
-function sanitizeError(error: unknown): Record<string, unknown> {
-  // Default safe error object
-  const safeError: Record<string, unknown> = {
-    message: 'Unknown error',
-    type: 'unknown',
-  };
-
-  // Handle different error types
-  if (error instanceof Error) {
-    safeError.message = error.message;
-    safeError.type = error.constructor.name;
-
-    // Extract additional safe properties
-    const safeProperties = ['code', 'constraint', 'severity'];
-    for (const prop of safeProperties) {
-      const value = extractStringProperty(error, prop);
-      if (value) safeError[prop] = value;
-    }
-  } else if (typeof error === 'string') {
-    safeError.message = error;
-    safeError.type = 'string';
-  } else if (error && typeof error === 'object') {
-    const message = extractStringProperty(error, 'message');
-    if (message) safeError.message = message;
-    safeError.type = 'object';
-  }
-
-  return safeError;
-}
-
-/**
  * Generic shutdown handler
  * Handles connection cleanup with timeout and error handling
  *
@@ -222,51 +175,9 @@ export async function shutdownConnection(
     } else if (!silent) {
       // Default error handling for production with sanitized logging
       const logger = getRootLogger();
-      const sanitizedError = sanitizeError(error);
+      const sanitizedError = sanitizeErrorForLogging(error);
       logger.error(sanitizedError, '[database] Error during shutdown');
     }
     // Test environments: silent = true, no logging
   }
-}
-
-/**
- * Database connection factory result
- */
-export interface DatabaseConnection {
-  pool: postgres.Sql;
-  db: DB;
-  cleanup: () => Promise<void>;
-}
-
-/**
- * Create isolated database connection
- * Used by TestContainers and isolated test scenarios
- *
- * @param databaseUrl - Database connection URL
- * @param poolConfig - postgres.js configuration
- * @param options - Additional options
- * @returns Database connection with cleanup function
- */
-export function createIsolatedConnection(
-  databaseUrl: string,
-  poolConfig: postgres.Options<Record<string, never>>,
-  options: {
-    enableLogging?: boolean;
-    environment?: string;
-    silentCleanup?: boolean;
-  } = {}
-): DatabaseConnection {
-  const { enableLogging = false, environment, silentCleanup = true } = options;
-
-  // Validate URL first
-  const validUrl = validateDatabaseUrl(databaseUrl);
-
-  // Create connection
-  const pool = postgres(validUrl, poolConfig);
-  const db = createDrizzleInstance(pool, { enableLogging, environment });
-
-  // Create cleanup function
-  const cleanup = () => shutdownConnection(pool, { silent: silentCleanup });
-
-  return { pool, db, cleanup };
 }

@@ -7,8 +7,8 @@ import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { mapAuthError } from '../http/error-mapper';
-import { safeJson } from '../http/request-helpers';
+import { mapAuthError } from '../shared/error-mapper';
+import { safeJson } from '../shared/request-helpers';
 import { loginHandler } from './handler';
 
 // Define context variables for this route

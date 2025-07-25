@@ -17,5 +17,3 @@ export const submitAnswerSchema = z.object({
       'Duplicate option IDs are not allowed'
     ),
 });
-
-export type SubmitAnswerSchemaType = z.infer<typeof submitAnswerSchema>;

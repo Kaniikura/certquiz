@@ -14,5 +14,4 @@ export { sql } from 'drizzle-orm';
 // Export database utilities
 export { ping } from './client';
 
-// Internal exports for the unit-of-work facade
-export { type TransactionContext, withTransaction } from './uow';
+export type { TransactionContext } from './uow';

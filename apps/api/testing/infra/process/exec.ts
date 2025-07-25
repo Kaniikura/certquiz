@@ -8,7 +8,7 @@ import { execa } from 'execa';
 /**
  * Options for running test processes
  */
-export interface RunProcessOptions {
+interface RunProcessOptions {
   timeout?: number;
   cwd?: string;
   env?: Record<string, string>;
@@ -93,55 +93,4 @@ export async function runBunScript(
   options: RunProcessOptions = {}
 ): Promise<ProcessResult> {
   return runProcess('bun', ['run', scriptPath], options);
-}
-
-/**
- * Validates that a process completed successfully
- * Throws descriptive error if the process failed
- *
- * @param result - Process execution result
- * @param expectedPattern - Optional pattern to check in output
- */
-export function assertProcessSuccess(result: ProcessResult, expectedPattern?: RegExp): void {
-  if (result.failed || result.exitCode !== 0) {
-    const errorMsg = [
-      `Process failed: ${result.command}`,
-      `Exit code: ${result.exitCode}`,
-      result.stderr && `Stderr: ${result.stderr}`,
-      result.stdout && `Stdout: ${result.stdout}`,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    throw new Error(errorMsg);
-  }
-
-  if (expectedPattern && !expectedPattern.test(result.stdout)) {
-    throw new Error(
-      `Process output did not match expected pattern ${expectedPattern}.\n` +
-        `Stdout: ${result.stdout}\n` +
-        `Stderr: ${result.stderr}`
-    );
-  }
-}
-
-/**
- * Runs a process and asserts it succeeds
- * Convenience function that combines runProcess and assertProcessSuccess
- *
- * @param command - Command to run
- * @param args - Command arguments
- * @param options - Execution options
- * @param expectedPattern - Optional pattern to check in output
- * @returns Process execution result
- */
-export async function runProcessAndAssert(
-  command: string,
-  args: string[] = [],
-  options: RunProcessOptions = {},
-  expectedPattern?: RegExp
-): Promise<ProcessResult> {
-  const result = await runProcess(command, args, options);
-  assertProcessSuccess(result, expectedPattern);
-  return result;
 }

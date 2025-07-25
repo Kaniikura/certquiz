@@ -12,9 +12,3 @@ import { z } from 'zod';
 export const getProfileSchema = z.object({
   userId: z.string().min(1, 'User ID is required').uuid('Invalid user ID format'),
 });
-
-/**
- * Inferred type from validation schema
- * This ensures DTO and validation schema never drift apart
- */
-export type GetProfileRequest = z.infer<typeof getProfileSchema>;

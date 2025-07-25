@@ -1,9 +1,9 @@
-import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { UserRole } from '@api/features/auth/domain';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { IRoleMapper } from './RoleMapper';
 
-export interface JwtVerifierOptions {
+interface JwtVerifierOptions {
   jwksUri: string;
   audience: string;
   issuer: string;

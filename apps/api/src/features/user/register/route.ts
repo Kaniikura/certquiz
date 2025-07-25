@@ -1,88 +1,65 @@
 /**
  * Register route implementation
- * @fileoverview HTTP endpoint for user registration
+ * @fileoverview HTTP endpoint for user registration using route utilities
  */
 
-import { safeJson } from '@api/features/quiz/shared/route-utils';
+import { getUserRepository } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
+import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
+import { createAmbientRoute } from '@api/shared/route';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { mapUserError } from '../shared/error-mapper';
+import type { RegisterResponse } from './dto';
 import { registerHandler } from './handler';
 
-// Define context variables for this route
-type RegisterVariables = {
-  userRepository: IUserRepository;
-  clock: Clock;
-} & LoggerVariables;
+/**
+ * Create register route with injected dependencies
+ */
+export function registerRoute(clock: Clock) {
+  return new Hono<{ Variables: LoggerVariables & TransactionVariables }>().post(
+    '/register',
+    (c) => {
+      const route = createAmbientRoute<
+        unknown,
+        RegisterResponse,
+        { userRepo: IUserRepository; clock: Clock },
+        LoggerVariables & TransactionVariables
+      >(
+        {
+          operation: 'register',
+          resource: 'user',
+          successStatusCode: 201,
+          extractLogContext: (body) => {
+            // Extract safe log data from request body
+            const data = body as Record<string, unknown>;
+            return {
+              email: data?.email,
+              username: data?.username,
+            };
+          },
+          extractSuccessLogData: (result: unknown) => {
+            const data = result as RegisterResponse;
+            return {
+              userId: data.user.id,
+              email: data.user.email,
+              username: data.user.username,
+              role: data.user.role,
+            };
+          },
+          errorMapper: mapUserError,
+        },
+        async (body, deps: { userRepo: IUserRepository; clock: Clock }, _context) => {
+          return registerHandler(body, deps.userRepo, deps.clock);
+        }
+      );
 
-export const registerRoute = new Hono<{
-  Variables: RegisterVariables;
-}>().post('/register', async (c) => {
-  const logger = c.get('logger');
-
-  try {
-    // Get request body
-    const body = await safeJson(c);
-
-    // Log registration attempt (without sensitive data)
-    const email =
-      body && typeof body === 'object' && 'email' in body
-        ? (body as { email?: unknown }).email
-        : undefined;
-    const username =
-      body && typeof body === 'object' && 'username' in body
-        ? (body as { username?: unknown }).username
-        : undefined;
-
-    logger.info('Registration attempt', { email, username });
-
-    // Get dependencies from DI container/context
-    const userRepo = c.get('userRepository');
-    const clock = c.get('clock');
-
-    // Delegate to handler
-    const result = await registerHandler(body, userRepo, clock);
-
-    if (!result.success) {
-      const error = result.error;
-
-      // Log registration failure
-      logger.warn('Registration failed', {
-        email,
-        username,
-        errorType: error.name,
-        errorMessage: error.message,
+      // Inject dependencies
+      return route(c, {
+        userRepo: getUserRepository(c),
+        clock: clock,
       });
-
-      const { status, body: errorBody } = mapUserError(error);
-      return c.json(errorBody, status);
     }
-
-    // Log successful registration
-    logger.info('Registration successful', {
-      userId: result.data.user.id,
-      email: result.data.user.email,
-      username: result.data.user.username,
-      role: result.data.user.role,
-    });
-
-    return c.json(
-      {
-        success: true,
-        data: result.data,
-      },
-      201
-    );
-  } catch (error) {
-    logger.error('Registration route error', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    const { status, body: errorBody } = mapUserError(
-      error instanceof Error ? error : new Error('Unknown error')
-    );
-    return c.json(errorBody, status);
-  }
-});
+  );
+}

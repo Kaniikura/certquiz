@@ -21,12 +21,6 @@ export const questionStatusEnum = pgEnum('question_status', [
 export const quizStateEnum = pgEnum('quiz_state', ['IN_PROGRESS', 'COMPLETED', 'EXPIRED']);
 
 // Exam related enums
-export const examTypeEnum = pgEnum('exam_type', [
-  'CCNA',
-  'CCNP_ENCOR',
-  'CCNP_ENARSI',
-  'SECURITY_PLUS',
-]);
 export const difficultyEnum = pgEnum('difficulty', [
   'Beginner',
   'Intermediate',

@@ -42,7 +42,6 @@ export const quizSessionEvent = pgTable(
 );
 
 export type QuizSessionEventRow = typeof quizSessionEvent.$inferSelect;
-export type NewQuizSessionEventRow = typeof quizSessionEvent.$inferInsert;
 
 // Snapshot store for fast queries (read-side)
 export const quizSessionSnapshot = pgTable(
@@ -109,6 +108,3 @@ export const quizSessionSnapshot = pgTable(
     ),
   ]
 );
-
-export type QuizSessionSnapshotRow = typeof quizSessionSnapshot.$inferSelect;
-export type NewQuizSessionSnapshotRow = typeof quizSessionSnapshot.$inferInsert;

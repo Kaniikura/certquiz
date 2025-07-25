@@ -78,7 +78,7 @@ export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
       ]);
     } catch (error) {
       throw new Error(
-        `Failed to create UUID extension. Is Docker running? Error: ${
+        `Failed to create UUID extension: Is Docker running? Error: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`
       );
