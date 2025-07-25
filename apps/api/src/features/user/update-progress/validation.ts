@@ -31,9 +31,3 @@ export const updateProgressSchema = z
     message: 'Correct answers cannot exceed total questions',
     path: ['correctAnswers'],
   });
-
-/**
- * Inferred type from validation schema
- * This ensures DTO and validation schema never drift apart
- */
-export type UpdateProgressRequest = z.infer<typeof updateProgressSchema>;

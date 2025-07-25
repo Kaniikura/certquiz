@@ -26,9 +26,3 @@ export const registerSchema = z.object({
   identityProviderId: z.string().optional(),
   role: z.enum(['guest', 'user', 'premium', 'admin']).optional().default('user'),
 });
-
-/**
- * Inferred type from validation schema
- * This ensures DTO and validation schema never drift apart
- */
-export type RegisterRequest = z.infer<typeof registerSchema>;

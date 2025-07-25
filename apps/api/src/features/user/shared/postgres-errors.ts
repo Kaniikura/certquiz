@@ -66,7 +66,7 @@ function findPostgresErrorInCauseChain(
  *
  * This function checks only the top-level error object itself
  */
-export function isDirectPgUniqueViolation(error: unknown): error is PostgresError {
+function isDirectPgUniqueViolation(error: unknown): error is PostgresError {
   if (!error || typeof error !== 'object') {
     return false;
   }
@@ -81,7 +81,7 @@ export function isDirectPgUniqueViolation(error: unknown): error is PostgresErro
  * This function recursively unwraps nested causes to handle multiple wrapper layers
  * (e.g., driver → drizzle adapter → transaction wrapper)
  */
-export function isDrizzleWrappedPgUniqueViolation(error: unknown): error is PostgresError {
+function isDrizzleWrappedPgUniqueViolation(error: unknown): error is PostgresError {
   if (!error || typeof error !== 'object') {
     return false;
   }

@@ -38,15 +38,3 @@ export interface GetProfileResponse {
     };
   };
 }
-
-/**
- * Get profile error types for domain error mapping
- */
-export interface GetProfileError {
-  code: 'USER_NOT_FOUND' | 'VALIDATION_ERROR' | 'REPOSITORY_ERROR';
-  message: string;
-  field?: string;
-}
-
-// Note: GetProfileRequest type is defined in validation.ts using z.infer<typeof getProfileSchema>
-// This ensures the DTO and validation schema never drift apart

@@ -25,15 +25,3 @@ export interface UpdateProgressResponse {
     };
   };
 }
-
-/**
- * Update progress error types for domain error mapping
- */
-export interface UpdateProgressError {
-  code: 'USER_NOT_FOUND' | 'VALIDATION_ERROR' | 'REPOSITORY_ERROR';
-  message: string;
-  field?: string;
-}
-
-// Note: UpdateProgressRequest type is defined in validation.ts using z.infer<typeof updateProgressSchema>
-// This ensures the DTO and validation schema never drift apart
