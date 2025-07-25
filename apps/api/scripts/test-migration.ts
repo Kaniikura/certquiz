@@ -15,7 +15,7 @@
  * Usage: bun run db:test:migration
  */
 
-import { spawn } from 'node:child_process';
+import { exec } from 'node:child_process';
 import { setTimeout } from 'node:timers/promises';
 
 // ============================================================================
@@ -159,40 +159,15 @@ function validateEnvironment(): string {
  */
 async function runCommand(command: string): Promise<{ success: boolean; error?: string }> {
   return new Promise((resolve) => {
-    const [cmd, ...args] = command.split(' ');
-
-    const child = spawn(cmd, args, {
-      env: { ...process.env },
-      shell: true,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('error', (error) => {
-      resolve({
-        success: false,
-        error: `Failed to start command: ${error.message}`,
-      });
-    });
-
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve({ success: true });
-      } else {
-        const errorMessage = stderr || stdout || `Command exited with code ${code}`;
+    exec(command, { env: { ...process.env } }, (error, stdout, stderr) => {
+      if (error) {
+        const errorMessage = stderr || stdout || error.message;
         resolve({
           success: false,
           error: errorMessage.trim(),
         });
+      } else {
+        resolve({ success: true });
       }
     });
   });
