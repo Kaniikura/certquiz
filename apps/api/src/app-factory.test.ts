@@ -3,15 +3,13 @@
  * @fileoverview Tests for app factory with fake dependencies
  */
 
-import type { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import type { AppDependencies } from './app-factory';
 import { buildApp } from './app-factory';
 import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
+import { InMemoryUnitOfWorkProvider } from './infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from './infra/logger/root-logger';
-import type { LoggerVariables, RequestIdVariables } from './middleware';
-import type { UnitOfWorkVariables } from './middleware/unit-of-work';
 import { CryptoIdGenerator } from './shared/id-generator';
 
 /**
@@ -28,24 +26,14 @@ function createFakeAppDependencies(overrides?: Partial<AppDependencies>): AppDep
     },
     premiumAccessService: new PremiumAccessService(),
     authProvider: new FakeAuthProvider(),
+    unitOfWorkProvider: new InMemoryUnitOfWorkProvider(),
     ...overrides,
   };
 }
 
-/**
- * Creates a test app instance with fake dependencies
- * Encapsulates the common setup pattern used across tests
- */
-function createTestApp(
-  overrides?: Partial<AppDependencies>
-): Hono<{ Variables: LoggerVariables & RequestIdVariables & UnitOfWorkVariables }> {
-  const dependencies = createFakeAppDependencies(overrides);
-  return buildApp(dependencies);
-}
-
 describe('App Factory', () => {
   it('builds app with fake dependencies', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test root endpoint
     const res = await app.request('/');
@@ -60,7 +48,7 @@ describe('App Factory', () => {
   });
 
   it('returns 404 for non-existent endpoints', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test non-existent endpoint
     const res = await app.request('/non-existent');
@@ -77,7 +65,7 @@ describe('App Factory', () => {
   });
 
   it('health endpoint responds without database', async () => {
-    const app = createTestApp();
+    const app = buildApp(createFakeAppDependencies());
 
     // Test health endpoint
     const res = await app.request('/health');

@@ -1,8 +1,30 @@
-import { buildProductionApp } from './app-factory';
+import { buildApp } from './app-factory';
+import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
+import { createAuthProvider } from './infra/auth/AuthProviderFactory.prod';
+import { ping } from './infra/db/client';
+import { DrizzleUnitOfWorkProvider } from './infra/db/DrizzleUnitOfWorkProvider';
 import { getRootLogger } from './infra/logger/root-logger';
+import { SystemClock } from './shared/clock';
+import { CryptoIdGenerator } from './shared/id-generator';
+
+// Create production dependencies
+const logger = getRootLogger();
+const authProvider = createAuthProvider();
+const idGenerator = new CryptoIdGenerator();
+const premiumAccessService = new PremiumAccessService();
+const clock = new SystemClock();
+const unitOfWorkProvider = new DrizzleUnitOfWorkProvider(logger);
 
 // Build production app with real dependencies
-export const app = await buildProductionApp();
+export const app = buildApp({
+  logger,
+  clock: () => clock.now(),
+  idGenerator,
+  ping,
+  premiumAccessService,
+  authProvider,
+  unitOfWorkProvider,
+});
 
 // -----------------------------------------------------------------
 // Bun automatically starts the server when it sees this default export
