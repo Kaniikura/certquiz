@@ -28,6 +28,13 @@ interface ApiResponse<T = unknown> {
 }
 
 /**
+ * Variables that include authentication context
+ */
+interface AuthenticatedVariables extends LoggerVariables {
+  user?: AuthUser;
+}
+
+/**
  * Safely parse JSON from request body
  */
 async function safeParseJson(c: Context): Promise<unknown> {
@@ -41,13 +48,13 @@ async function safeParseJson(c: Context): Promise<unknown> {
 /**
  * Helper function to handle authentication check
  */
-function checkAuthentication<TVariables extends LoggerVariables>(
+function checkAuthentication<TVariables extends AuthenticatedVariables>(
   c: Context<{ Variables: TVariables }>,
   requiresAuth: boolean
 ): ApiResponse | null {
   if (!requiresAuth) return null;
 
-  const user = c.get('user' as keyof TVariables) as AuthUser | undefined;
+  const user = c.get('user');
   if (!user) {
     return {
       success: false,
@@ -119,7 +126,7 @@ export function createAmbientRoute<
     try {
       // Check authentication
       const authError = checkAuthentication(
-        c as Context<{ Variables: TVariables }>,
+        c as Context<{ Variables: TVariables & AuthenticatedVariables }>,
         config.requiresAuth || false
       );
       if (authError) {
