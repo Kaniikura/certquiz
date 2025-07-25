@@ -20,8 +20,9 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
   }
 
   async findById(id: UserId): Promise<User | null> {
+    const idString = UserId.toString(id);
     for (const user of this.users.values()) {
-      if (UserId.toString(user.id) === UserId.toString(id)) {
+      if (UserId.toString(user.id) === idString) {
         return user;
       }
     }
