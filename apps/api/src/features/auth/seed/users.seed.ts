@@ -8,7 +8,7 @@ import { authUser } from '@api/infra/db/schema';
 import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger';
 import { Result } from '@api/shared/result';
-import { sql } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 
 import { Email } from '../domain/value-objects/Email';
 import { UserRole } from '../domain/value-objects/UserRole';
@@ -136,7 +136,7 @@ export async function up(db: DB, logger: LoggerPort): Promise<Result<void, Error
     // Batch check for existing users
     const emails = validatedSeeds.map((u) => u.email);
     const existingUsers = await db.query.authUser.findMany({
-      where: sql`${authUser.email} = ANY(${emails})`,
+      where: inArray(authUser.email, emails),
       columns: { email: true },
     });
 
@@ -194,7 +194,7 @@ export async function down(db: DB, logger: LoggerPort): Promise<Result<void, Err
     // Batch delete all seeded users
     const deleted = await db
       .delete(authUser)
-      .where(sql`${authUser.userId} = ANY(${seedUserIds})`)
+      .where(inArray(authUser.userId, seedUserIds))
       .returning({ userId: authUser.userId });
 
     logger.info(`Removed ${deleted.length} users`);
