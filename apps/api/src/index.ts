@@ -1,5 +1,5 @@
 import { buildApp } from './app-factory';
-import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
+import { PremiumAccessService } from './features/question/domain';
 import { createAuthProvider } from './infra/auth/AuthProviderFactory.prod';
 import { ping } from './infra/db/client';
 import { DrizzleUnitOfWorkProvider } from './infra/db/DrizzleUnitOfWorkProvider';

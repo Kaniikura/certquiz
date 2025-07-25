@@ -3,23 +3,22 @@
  * @fileoverview In-memory auth user repository that doesn't require database
  */
 
-import type { User } from '@api/features/auth/domain/entities/User';
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-import type { Email } from '@api/features/auth/domain/value-objects/Email';
-import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { AuthUser } from '@api/features/auth';
+import type { Email, IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import { UserId } from '@api/features/auth/domain';
 
 /**
  * In-memory auth user repository for testing
  * Provides full IUserRepository interface without database dependency
  */
 export class FakeAuthUserRepository implements IAuthUserRepository {
-  private users = new Map<string, User>();
+  private users = new Map<string, AuthUser>();
 
-  async findByEmail(email: Email): Promise<User | null> {
+  async findByEmail(email: Email): Promise<AuthUser | null> {
     return this.users.get(email.toString()) || null;
   }
 
-  async findById(id: UserId): Promise<User | null> {
+  async findById(id: UserId): Promise<AuthUser | null> {
     const idString = UserId.toString(id);
     for (const user of this.users.values()) {
       if (UserId.toString(user.id) === idString) {
@@ -29,7 +28,7 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
+  async findByIdentityProviderId(identityProviderId: string): Promise<AuthUser | null> {
     for (const user of this.users.values()) {
       if (user.identityProviderId === identityProviderId) {
         return user;
@@ -38,7 +37,7 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<AuthUser | null> {
     for (const user of this.users.values()) {
       if (user.username === username) {
         return user;
@@ -47,7 +46,7 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async save(user: User): Promise<void> {
+  async save(user: AuthUser): Promise<void> {
     this.users.set(user.email.toString(), user);
   }
 
@@ -78,7 +77,7 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
   /**
    * Add a user directly for testing
    */
-  async addUser(user: User): Promise<void> {
+  async addUser(user: AuthUser): Promise<void> {
     await this.save(user);
   }
 
@@ -92,7 +91,7 @@ export class FakeAuthUserRepository implements IAuthUserRepository {
   /**
    * Get all users for testing
    */
-  getAllUsers(): User[] {
+  getAllUsers(): AuthUser[] {
     return Array.from(this.users.values());
   }
 

@@ -41,7 +41,6 @@ export const question = pgTable(
 );
 
 export type QuestionRow = typeof question.$inferSelect;
-export type NewQuestionRow = typeof question.$inferInsert;
 
 // Question versions for immutability
 export const questionVersion = pgTable(

@@ -63,27 +63,3 @@ export const Result = {
     return defaultValue;
   },
 };
-
-/**
- * Helper to avoid TypeScript's structural/`in` quirks
- */
-const hasOwn = <K extends PropertyKey>(value: object, key: K): value is Record<K, unknown> =>
-  // biome-ignore lint/suspicious/noPrototypeBuiltins: Using Object.prototype.hasOwnProperty.call is the safe way
-  Object.prototype.hasOwnProperty.call(value, key);
-
-/**
- * Type guard to check if a value is a Result type
- * Verifies the discriminant and the correct payload key
- */
-export function isResult<T = unknown, E = unknown>(value: unknown): value is Result<T, E> {
-  if (typeof value !== 'object' || value === null) return false;
-  if (!hasOwn(value, 'success')) return false;
-
-  const success = (value as Record<'success', unknown>).success;
-  if (typeof success !== 'boolean') return false;
-
-  if (success) {
-    return hasOwn(value, 'data');
-  }
-  return hasOwn(value, 'error');
-}

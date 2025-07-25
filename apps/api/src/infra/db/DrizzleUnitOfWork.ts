@@ -16,14 +16,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { DrizzleUserRepository as AuthDrizzleUserRepository } from '@api/features/auth/domain/repositories/DrizzleUserRepository';
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-import { DrizzleQuestionRepository } from '@api/features/question/domain/repositories/DrizzleQuestionRepository';
-import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
-import { DrizzleQuizRepository } from '@api/features/quiz/domain/repositories/DrizzleQuizRepository';
-import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
-import { DrizzleUserRepository } from '@api/features/user/domain/repositories/DrizzleUserRepository';
-import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import { DrizzleUserRepository as AuthDrizzleUserRepository } from '@api/features/auth/domain';
+import type { IQuestionRepository } from '@api/features/question/domain';
+import { DrizzleQuestionRepository } from '@api/features/question/domain';
+import type { IQuizRepository } from '@api/features/quiz/domain';
+import { DrizzleQuizRepository } from '@api/features/quiz/domain';
+import type { IUserRepository } from '@api/features/user/domain';
+import { DrizzleUserRepository } from '@api/features/user/domain';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';

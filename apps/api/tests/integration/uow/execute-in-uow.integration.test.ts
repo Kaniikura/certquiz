@@ -1,5 +1,5 @@
-import { User } from '@api/features/auth/domain/entities/User';
-import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { AuthUser } from '@api/features/auth';
+import { UserId } from '@api/features/auth/domain';
 import { db } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
@@ -37,7 +37,7 @@ describe('Unit of Work Integration Tests', () => {
       };
 
       // Create user entity
-      const userResult = User.fromPersistence(userData);
+      const userResult = AuthUser.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -71,7 +71,7 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult = User.fromPersistence(userData);
+      const userResult = AuthUser.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -120,8 +120,8 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = User.fromPersistence(userData1);
-      const userResult2 = User.fromPersistence(userData2);
+      const userResult1 = AuthUser.fromPersistence(userData1);
+      const userResult2 = AuthUser.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -173,8 +173,8 @@ describe('Unit of Work Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = User.fromPersistence(userData1);
-      const userResult2 = User.fromPersistence(userData2);
+      const userResult1 = AuthUser.fromPersistence(userData1);
+      const userResult2 = AuthUser.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -242,7 +242,7 @@ describe('Unit of Work Integration Tests', () => {
           updatedAt: new Date(),
         };
 
-        const userResult = User.fromPersistence(userData);
+        const userResult = AuthUser.fromPersistence(userData);
         expect(userResult.success).toBe(true);
         if (!userResult.success) {
           throw new Error('Failed to create user');

@@ -5,6 +5,5 @@
 
 export {
   generateCryptoSeed,
-  randomChoice,
   shuffleWithSeed,
 } from './seeded-rng';

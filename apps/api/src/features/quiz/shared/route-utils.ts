@@ -5,20 +5,6 @@
 
 import { AuthorizationError } from '@api/shared/errors';
 import { HttpStatus } from '@api/shared/http-status';
-import type { Context } from 'hono';
-
-/**
- * Safely parse JSON from request body
- * @param c - Hono context
- * @returns Parsed JSON or null if parsing fails
- */
-export async function safeJson(c: Context): Promise<unknown> {
-  try {
-    return await c.req.json();
-  } catch (_error) {
-    return null;
-  }
-}
 
 /**
  * Error mapping configuration

@@ -5,9 +5,8 @@
 
 import type { AppDependencies } from '@api/app-factory';
 import { buildApp } from '@api/app-factory';
-import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
-import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
-import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
+import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
+import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { authUser } from '@api/infra/db/schema/user';

@@ -3,7 +3,7 @@
  * @fileoverview CRUD operations for Question catalog with versioning support
  */
 
-import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionId } from '@api/features/quiz/domain';
 import {
   type QuestionRow,
   type QuestionVersionRow,

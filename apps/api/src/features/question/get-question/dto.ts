@@ -3,7 +3,7 @@
  * @fileoverview Input and output types for question/get-question
  */
 
-import type { QuestionDifficulty, QuestionStatus, QuestionType } from '../domain/entities/Question';
+import type { QuestionDifficulty, QuestionStatus, QuestionType } from '../domain';
 
 /**
  * Get question response type for detailed question retrieval

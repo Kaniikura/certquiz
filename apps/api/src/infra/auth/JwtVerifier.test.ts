@@ -1,4 +1,4 @@
-import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { UserRole } from '@api/features/auth/domain';
 import { jwtVerifySuccess } from '@api/test-support/jwt-helpers';
 import * as jose from 'jose';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

@@ -8,7 +8,7 @@ import pkg from '../package.json';
 import { createAdminRoutes } from './features/admin/routes-factory';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
-import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
+import type { IPremiumAccessService } from './features/question/domain';
 import { createQuestionRoutes } from './features/question/routes-factory';
 import { createQuizRoutes } from './features/quiz/routes';
 import { createUserRoutes } from './features/user/routes-factory';

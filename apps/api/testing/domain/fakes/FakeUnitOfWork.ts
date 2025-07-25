@@ -6,10 +6,10 @@
  * business logic in isolation from database infrastructure.
  */
 
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain/repositories/IUserRepository';
-import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
-import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
-import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
+import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import type { IQuestionRepository } from '@api/features/question/domain';
+import type { IQuizRepository } from '@api/features/quiz/domain';
+import type { IUserRepository } from '@api/features/user/domain';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { FakeAuthUserRepository } from './FakeAuthUserRepository';
 import { FakeQuestionRepository } from './FakeQuestionRepository';

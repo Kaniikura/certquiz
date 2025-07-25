@@ -2,8 +2,7 @@
  * Tests for FakeUnitOfWork implementation
  */
 
-import { User } from '@api/features/user/domain/entities/User';
-import { Email, UserRole } from '@api/features/user/domain/value-objects';
+import { Email, User, UserRole } from '@api/features/user/domain';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { SystemClock } from '@api/shared/clock';
 import {

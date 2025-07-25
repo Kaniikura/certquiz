@@ -77,7 +77,7 @@ export function validateDatabaseUrl(
  * @param overrides - Custom configuration to merge with defaults
  * @returns Complete postgres.js configuration
  */
-export function buildPoolConfig(
+function buildPoolConfig(
   overrides: Partial<postgres.Options<Record<string, never>>> = {}
 ): postgres.Options<Record<string, never>> {
   return {

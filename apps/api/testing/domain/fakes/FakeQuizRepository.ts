@@ -3,13 +3,13 @@
  * @fileoverview In-memory implementation of IQuizRepository for unit tests
  */
 
-import type { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
-import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
 import type {
+  IQuizRepository,
+  QuizSession,
   QuizSessionId,
   UserId as QuizUserId,
-} from '@api/features/quiz/domain/value-objects/Ids';
-import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
+} from '@api/features/quiz/domain';
+import { QuizState } from '@api/features/quiz/domain';
 
 /**
  * In-memory fake implementation of IQuizRepository

@@ -4,7 +4,7 @@
  */
 
 import { buildApp } from '@api/app-factory';
-import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
+import { PremiumAccessService } from '@api/features/question/domain';
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { SequentialIdGenerator } from '@api/shared/id-generator';

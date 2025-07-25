@@ -3,7 +3,7 @@
  * @fileoverview Business logic for admin question creation with validation
  */
 
-import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionId } from '@api/features/quiz/domain';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { validateAndHandle } from '@api/shared/handler';

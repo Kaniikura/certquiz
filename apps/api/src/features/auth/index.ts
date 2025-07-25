@@ -3,11 +3,10 @@
  * @fileoverview Public API for auth bounded context
  */
 
-// Export domain entities for other bounded contexts (if needed)
-export { User } from './domain/entities/User';
+// Export User entity as AuthUser for auth bounded context
+export { User as AuthUser } from './domain/entities/User';
 // Export domain errors for error handling
 export {
-  AuthError,
   InvalidCredentialsError,
   UserNotActiveError,
   UserNotFoundError,

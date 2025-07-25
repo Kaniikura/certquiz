@@ -4,9 +4,8 @@
  */
 
 import { TestClock, testIds } from '@api/test-support';
-import { QuizSession } from '../../features/quiz/domain/aggregates/QuizSession';
-import type { QuestionId, UserId } from '../../features/quiz/domain/value-objects/Ids';
-import { QuizConfig } from '../../features/quiz/domain/value-objects/QuizConfig';
+import type { QuestionId, UserId } from '../../features/quiz/domain';
+import { QuizConfig, QuizSession } from '../../features/quiz/domain';
 
 interface QuizSessionBuilderProps {
   userId?: UserId;

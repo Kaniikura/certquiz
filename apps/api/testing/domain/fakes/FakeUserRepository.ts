@@ -3,9 +3,7 @@
  * @fileoverview In-memory user repository that doesn't require database
  */
 
-import type { User } from '@api/features/user/domain/entities/User';
-import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
-import type { Email, UserId } from '@api/features/user/domain/value-objects';
+import type { Email, IUserRepository, User, UserId } from '@api/features/user/domain';
 import {
   EmailAlreadyTakenError,
   UsernameAlreadyTakenError,

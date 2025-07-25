@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AppDependencies } from './app-factory';
 import { buildApp } from './app-factory';
-import { PremiumAccessService } from './features/question/domain/services/PremiumAccessService';
+import { PremiumAccessService } from './features/question/domain';
 import { FakeAuthProvider } from './infra/auth/AuthProvider.fake';
 import { InMemoryUnitOfWorkProvider } from './infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from './infra/logger/root-logger';

@@ -3,7 +3,7 @@
  * @fileoverview Business logic for retrieving detailed question information
  */
 
-import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionId } from '@api/features/quiz/domain';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';

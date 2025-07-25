@@ -5,7 +5,7 @@
 
 import type { AppDependencies } from '@api/app-factory';
 import { buildApp } from '@api/app-factory';
-import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
+import { PremiumAccessService } from '@api/features/question/domain';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { setupTestDatabase } from '@api/testing/domain';
