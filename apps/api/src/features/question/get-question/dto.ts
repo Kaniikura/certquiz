@@ -44,14 +44,5 @@ export interface QuestionOptionDto {
   isCorrect: boolean;
 }
 
-/**
- * Get question error types for domain error mapping
- */
-export interface GetQuestionError {
-  code: 'VALIDATION_ERROR' | 'QUESTION_NOT_FOUND' | 'QUESTION_ACCESS_DENIED' | 'REPOSITORY_ERROR';
-  message: string;
-  field?: string;
-}
-
 // Note: GetQuestionRequest type is defined in validation.ts using z.infer<typeof getQuestionSchema>
 // This ensures the DTO and validation schema never drift apart

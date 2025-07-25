@@ -7,7 +7,6 @@
 export {
   Question,
   type QuestionDifficulty,
-  type QuestionJSON,
   type QuestionStatus,
   type QuestionType,
 } from './entities/Question';

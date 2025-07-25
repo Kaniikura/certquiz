@@ -32,7 +32,7 @@ export enum QuestionStatus {
 /**
  * Question JSON representation for persistence
  */
-export interface QuestionJSON {
+interface QuestionJSON {
   id: string;
   version: number;
   questionText: string;

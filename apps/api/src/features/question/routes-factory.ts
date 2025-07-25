@@ -3,32 +3,22 @@
  * @fileoverview Creates question routes with proper dependency injection
  */
 
+import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { UnitOfWorkVariables } from '@api/middleware/unit-of-work';
+import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
-import type { IQuestionRepository } from './domain/repositories/IQuestionRepository';
 import type { IPremiumAccessService } from './domain/services/IPremiumAccessService';
 import { getQuestionRoute } from './get-question/route';
 import { listQuestionsRoute } from './list-questions/route';
 
-/**
- * Paths that should be excluded from transaction middleware
- * These endpoints don't require database access and should respond quickly
- */
-const TRANSACTION_EXCLUDED_PATHS = new Set(['/health']);
-
 // Define context variables for question routes
 type QuestionVariables = {
-  questionRepository: IQuestionRepository;
-  premiumAccessService: IPremiumAccessService;
-  clock: Clock;
-  idGenerator: IdGenerator;
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
-} & UnitOfWorkVariables;
+} & TransactionVariables;
 
 /**
  * Create question routes with dependency injection
@@ -37,7 +27,8 @@ type QuestionVariables = {
 export function createQuestionRoutes(
   premiumAccessService: IPremiumAccessService,
   clock: Clock,
-  idGenerator: IdGenerator
+  idGenerator: IdGenerator,
+  _unitOfWorkProvider: IUnitOfWorkProvider
 ): Hono<{
   Variables: QuestionVariables;
 }> {
@@ -48,7 +39,6 @@ export function createQuestionRoutes(
   /**
    * Health check for question service (public endpoint)
    * Useful for service monitoring and debugging
-   * Note: This is outside transaction middleware to avoid unnecessary DB connections
    */
   questionRoutes.get('/health', (c) => {
     return c.json({
@@ -56,35 +46,6 @@ export function createQuestionRoutes(
       status: 'healthy',
       timestamp: new Date().toISOString(),
     });
-  });
-
-  /**
-   * Dependency injection middleware
-   * Creates transaction-scoped repository instances for each request
-   * Applied only to routes that need database access
-   */
-  questionRoutes.use('*', async (c, next) => {
-    // Skip transaction for excluded paths
-    // When routes are mounted at a prefix, c.req.path is relative to the mount point
-    const requestPath = c.req.path;
-
-    // Check if the path should be excluded from transactions
-    if (TRANSACTION_EXCLUDED_PATHS.has(requestPath)) {
-      return next();
-    }
-
-    // Get UnitOfWork from context (provided by global middleware)
-    const unitOfWork = c.get('unitOfWork');
-    const questionRepository = unitOfWork.getQuestionRepository();
-
-    // Inject dependencies into context
-    c.set('questionRepository', questionRepository);
-    c.set('premiumAccessService', premiumAccessService);
-    c.set('clock', clock);
-    c.set('idGenerator', idGenerator);
-
-    // Continue to route handlers
-    await next();
   });
 
   // Create separate groups for public and protected routes
@@ -99,11 +60,11 @@ export function createQuestionRoutes(
   protectedRoutes.use('*', auth({ required: true, roles: ['admin'] }));
 
   // Mount public routes (authentication optional, premium content requires auth)
-  publicRoutes.route('/', listQuestionsRoute);
-  publicRoutes.route('/', getQuestionRoute);
+  publicRoutes.route('/', listQuestionsRoute(premiumAccessService));
+  publicRoutes.route('/', getQuestionRoute(premiumAccessService));
 
   // Mount protected routes (authentication required, admin role)
-  protectedRoutes.route('/', createQuestionRoute);
+  protectedRoutes.route('/', createQuestionRoute({ clock, idGenerator }));
 
   // Mount both groups to questionRoutes
   questionRoutes.route('/', publicRoutes);

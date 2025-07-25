@@ -6,8 +6,10 @@
 import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import { validateAndHandle } from '@api/shared/handler';
 import type { IdGenerator } from '@api/shared/id-generator';
 import { Result } from '@api/shared/result';
+import type { ZodSchema } from 'zod';
 import { Question } from '../domain/entities/Question';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
 import type { QuestionOption } from '../domain/value-objects/QuestionOption';
@@ -21,31 +23,24 @@ import { type CreateQuestionRequest, createQuestionSchema } from './validation';
  * Create question use case handler
  * Creates new question with admin authorization and validation
  */
-export async function createQuestionHandler(
-  input: unknown,
-  questionRepository: IQuestionRepository,
-  clock: Clock,
-  idGenerator: IdGenerator,
-  userId: string,
-  userRoles: string[] = []
-): Promise<Result<CreateQuestionResponse, Error>> {
-  try {
-    // 1. Check admin authorization
+export const createQuestionHandler = validateAndHandle(
+  createQuestionSchema as ZodSchema<CreateQuestionRequest>,
+  async (
+    request: CreateQuestionRequest,
+    questionRepository: IQuestionRepository,
+    clock: Clock,
+    idGenerator: IdGenerator,
+    userId: string,
+    userRoles: string[] = []
+  ): Promise<Result<CreateQuestionResponse, Error>> => {
+    // Check admin authorization
     if (!userRoles.includes('admin')) {
       return Result.fail(
         new QuestionAccessDeniedError('*', 'Admin role required to create questions')
       );
     }
 
-    // 2. Validate input using Zod schema with business rules
-    const validationResult = createQuestionSchema.safeParse(input);
-    if (!validationResult.success) {
-      return Result.fail(new ValidationError(validationResult.error.message));
-    }
-
-    const request: CreateQuestionRequest = validationResult.data;
-
-    // 3. Create and validate question options in a single pass
+    // Create and validate question options in a single pass
     const options: QuestionOption[] = [];
     for (const optionDto of request.options) {
       const optionResult = QuestionOptionFactory.create({
@@ -67,7 +62,7 @@ export async function createQuestionHandler(
       );
     }
 
-    // 4. Create question entity
+    // Create question entity
     const now = clock.now();
     const questionId = QuestionId.generate();
 
@@ -97,10 +92,10 @@ export async function createQuestionHandler(
       );
     }
 
-    // 5. Save question to repository
+    // Save question to repository
     const createdQuestion = await questionRepository.createQuestion(questionResult.data);
 
-    // 6. Return creation response
+    // Return creation response
     return Result.ok({
       question: {
         id: createdQuestion.id,
@@ -112,8 +107,5 @@ export async function createQuestionHandler(
         createdAt: createdQuestion.createdAt,
       },
     });
-  } catch (error) {
-    // Handle unexpected errors
-    return Result.fail(error instanceof Error ? error : new Error('Unknown error'));
   }
-}
+);
