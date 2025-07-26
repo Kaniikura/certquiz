@@ -2,63 +2,197 @@ import path from 'node:path';
 import { drizzle as baseDrizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres, { type Sql } from 'postgres';
+import { getRootLogger } from '../../../src/infra/logger';
 import { getPostgres } from '../../../tests/containers/postgres';
 import * as testSchema from './schema';
 import type { TestDb } from './types';
 
-let testDb: PostgresJsDatabase<typeof testSchema> | undefined;
-let sqlClient: postgres.Sql | undefined;
-let initPromise: Promise<PostgresJsDatabase<typeof testSchema>> | undefined;
+// Map to store per-worker database instances
+const workerDatabases = new Map<
+  string,
+  {
+    db: PostgresJsDatabase<typeof testSchema>;
+    client: postgres.Sql;
+    connectionUri: string;
+  }
+>();
+
+// Map to store initialization promises to prevent race conditions
+const initPromises = new Map<
+  string,
+  Promise<{
+    db: PostgresJsDatabase<typeof testSchema>;
+    client: postgres.Sql;
+    connectionUri: string;
+  }>
+>();
+
+// Logger instance for database operations
+const logger = getRootLogger();
+
+// Security: Database name prefix for all test databases
+const TEST_DB_PREFIX = 'certquiz_test_worker_';
+
+// Security: Regex pattern for valid worker IDs (alphanumeric only)
+const VALID_WORKER_ID_PATTERN = /^[a-zA-Z0-9]+$/;
 
 /**
- * Internal function to initialize the test database.
- * This includes applying test-only schema after migrations.
+ * Validates that a worker ID contains only safe characters (alphanumeric only).
+ * This prevents SQL injection attacks when using worker IDs in database names.
+ * Security: Restricted to alphanumeric characters only, following principle of least privilege.
+ * @internal Exported for testing
  */
-async function initializeTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
-  const container = await getPostgres();
-  const connectionUri = container.getConnectionUri();
+export function validateWorkerId(workerId: string): void {
+  if (!VALID_WORKER_ID_PATTERN.test(workerId)) {
+    throw new Error(
+      `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters (no underscores).`
+    );
+  }
+}
 
-  // Create postgres client with test-specific config
-  sqlClient = postgres(connectionUri, {
+/**
+ * Safely quotes a PostgreSQL identifier (database name) to prevent SQL injection.
+ * Follows PostgreSQL identifier quoting rules: double quotes with internal quotes escaped.
+ * @internal Exported for testing
+ */
+export function quoteIdentifier(identifier: string): string {
+  // Escape any double quotes within the identifier
+  const escaped = identifier.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
+/**
+ * Constructs a safe database name for a worker.
+ * Validates the worker ID and returns a properly quoted database name.
+ * @internal Exported for testing
+ */
+export function getWorkerDatabaseName(workerId: string): { raw: string; quoted: string } {
+  // Validate worker ID first
+  validateWorkerId(workerId);
+
+  // Construct the database name
+  const dbName = `${TEST_DB_PREFIX}${workerId}`;
+
+  // Additional whitelist validation - ensure it matches expected pattern
+  const expectedPattern = new RegExp(`^${TEST_DB_PREFIX}[a-zA-Z0-9]+$`);
+  if (!expectedPattern.test(dbName)) {
+    throw new Error(
+      `Database name "${dbName}" does not match expected pattern. Possible security issue.`
+    );
+  }
+
+  return {
+    raw: dbName,
+    quoted: quoteIdentifier(dbName),
+  };
+}
+
+/**
+ * Internal function to initialize a test database for a specific worker.
+ * Creates a unique database per worker and applies real application migrations.
+ */
+async function initializeWorkerDb(): Promise<{
+  db: PostgresJsDatabase<typeof testSchema>;
+  client: postgres.Sql;
+  connectionUri: string;
+}> {
+  const container = await getPostgres();
+  const workerId = process.env.VITEST_WORKER_ID ?? '0';
+
+  // Get safe database name with validation and quoting
+  const { raw: dbName, quoted: quotedDbName } = getWorkerDatabaseName(workerId);
+
+  // Get base connection parameters
+  const baseUri = container.getConnectionUri();
+  const baseUrl = new URL(baseUri);
+  const adminConfig = {
+    host: baseUrl.hostname,
+    port: parseInt(baseUrl.port, 10),
+    user: 'postgres',
+    password: 'password',
+    database: 'postgres', // Connect to postgres db for admin operations
+  };
+
+  // Create admin client
+  const adminClient = postgres(adminConfig);
+
+  try {
+    // Drop database if exists (for clean slate)
+    // Note: Database names cannot be parameterized in PostgreSQL, but we use proper quoting
+    await adminClient.unsafe(`DROP DATABASE IF EXISTS ${quotedDbName}`);
+
+    // Create new database
+    await adminClient.unsafe(`CREATE DATABASE ${quotedDbName}`);
+
+    // Create UUID extension
+    const workerUrl = new URL(baseUri);
+    workerUrl.pathname = `/${dbName}`;
+    const workerUri = workerUrl.toString();
+
+    const setupClient = postgres(workerUri);
+    await setupClient`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    await setupClient.end();
+  } finally {
+    await adminClient.end();
+  }
+
+  // Connect to the worker database
+  const workerUrl = new URL(baseUri);
+  workerUrl.pathname = `/${dbName}`;
+  const workerUri = workerUrl.toString();
+
+  const sqlClient = postgres(workerUri, {
     max: 10, // Smaller pool for tests
     idle_timeout: 20,
     connect_timeout: 10,
   });
 
-  // Apply test-only schema using Drizzle migrations
-  try {
-    const migrationsPath = path.join(__dirname, 'migrations');
-    const tempDb = baseDrizzle(sqlClient);
-    await migrate(tempDb, { migrationsFolder: migrationsPath });
-  } catch (_error) {
-    // Silently ignore if migrations don't exist or fail
-    // This allows tests to run without test-specific tables
-  }
+  // Apply REAL application migrations
+  const tempDb = baseDrizzle(sqlClient);
+  const realMigrationsPath = path.join(__dirname, '../../../src/infra/db/migrations');
+  await migrate(tempDb, { migrationsFolder: realMigrationsPath });
 
-  return baseDrizzle(sqlClient, { schema: testSchema });
+  // Apply test-specific migrations (for test_users table, etc.)
+  const testMigrationsPath = path.join(__dirname, 'migrations');
+  await migrate(tempDb, { migrationsFolder: testMigrationsPath });
+
+  // Create database instance with schema
+  const db = baseDrizzle(sqlClient, { schema: testSchema });
+
+  return { db, client: sqlClient, connectionUri: workerUri };
 }
 
 /**
  * Get or create a Drizzle database instance for tests.
- * Automatically connects to the test container.
- * Thread-safe: concurrent calls will share the same initialization promise.
+ * Each worker gets its own isolated database with real migrations applied.
+ * Thread-safe: concurrent calls within the same worker share the same database.
  */
 export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
-  if (testDb) return testDb;
+  const workerId = process.env.VITEST_WORKER_ID ?? '0';
 
-  // If initialization is in progress, wait for it
-  if (initPromise) return initPromise;
+  // Validate worker ID (additional validation layer)
+  validateWorkerId(workerId);
 
-  // Start initialization and cache the promise
-  initPromise = initializeTestDb();
+  // Check if we already have a database for this worker
+  const existing = workerDatabases.get(workerId);
+  if (existing) return existing.db;
+
+  // Check if initialization is already in progress for this worker
+  let initPromise = initPromises.get(workerId);
+  if (!initPromise) {
+    // No initialization in progress, start a new one
+    initPromise = initializeWorkerDb();
+    initPromises.set(workerId, initPromise);
+  }
 
   try {
-    testDb = await initPromise;
-    return testDb;
-  } catch (error) {
-    // Clear the promise on failure so next call can retry
-    initPromise = undefined;
-    throw error;
+    // Wait for initialization to complete (either new or existing promise)
+    const workerDb = await initPromise;
+    workerDatabases.set(workerId, workerDb);
+    return workerDb.db;
+  } finally {
+    // Clean up the promise once initialization is complete
+    initPromises.delete(workerId);
   }
 }
 
@@ -94,4 +228,90 @@ export async function withTestDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> 
   } finally {
     await client.end({ timeout: 5 });
   }
+}
+
+/**
+ * Clean up worker databases after tests complete.
+ * This should be called in a global teardown hook.
+ */
+export async function cleanupWorkerDatabases(): Promise<void> {
+  // Early return if no databases to clean up
+  if (workerDatabases.size === 0 && initPromises.size === 0) {
+    return;
+  }
+
+  // Wait for any pending initializations to complete
+  if (initPromises.size > 0) {
+    try {
+      await Promise.all(initPromises.values());
+    } catch (error) {
+      // Log but don't throw - we still want to clean up what we can
+      logger.warn({ error }, 'Error waiting for pending database initializations during cleanup');
+    }
+  }
+
+  const container = await getPostgres();
+  const baseUri = container.getConnectionUri();
+  const baseUrl = new URL(baseUri);
+  const adminConfig = {
+    host: baseUrl.hostname,
+    port: parseInt(baseUrl.port, 10),
+    user: 'postgres',
+    password: 'password',
+    database: 'postgres',
+  };
+
+  const adminClient = postgres(adminConfig);
+
+  try {
+    // Close all worker connections in parallel
+    await Promise.all(
+      Array.from(workerDatabases.entries()).map(async ([workerId, workerDb]) => {
+        try {
+          await workerDb.client.end({ timeout: 5 });
+        } catch (error) {
+          logger.warn({ workerId, error }, 'Failed to close connection for worker');
+        }
+      })
+    );
+
+    // Drop all worker databases in parallel
+    await Promise.all(
+      Array.from(workerDatabases.keys()).map(async (workerId) => {
+        // Get safe database name with validation and quoting
+        let dbName: string;
+        let quotedDbName: string;
+        try {
+          const dbNameInfo = getWorkerDatabaseName(workerId);
+          dbName = dbNameInfo.raw;
+          quotedDbName = dbNameInfo.quoted;
+        } catch (validationError) {
+          logger.warn(
+            { workerId, error: validationError },
+            'Invalid worker ID or database name, skipping database cleanup'
+          );
+          return;
+        }
+
+        try {
+          // Note: Database names cannot be parameterized, but we use proper quoting
+          await adminClient.unsafe(`DROP DATABASE IF EXISTS ${quotedDbName} WITH (FORCE)`);
+        } catch (error) {
+          logger.warn({ workerId, dbName, error }, 'Failed to drop database for worker');
+        }
+      })
+    );
+  } finally {
+    await adminClient.end();
+    workerDatabases.clear();
+  }
+}
+
+/**
+ * @internal Test-only helper to reset isolation state
+ * Used to ensure clean state between tests
+ */
+export function _resetIsolationState(): void {
+  workerDatabases.clear();
+  initPromises.clear();
 }

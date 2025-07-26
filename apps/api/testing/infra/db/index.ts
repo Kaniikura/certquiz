@@ -3,7 +3,7 @@
  */
 
 // Fakes are exported from testing/domain instead to maintain proper layer separation
-export { createTestDb, withTestDb } from './connection';
+export { cleanupWorkerDatabases, createTestDb, withTestDb } from './connection';
 export { closeAllTrackedClients } from './container';
 export { createTestDatabase } from './core';
 export { drizzleMigrate, verifyMigrationTables } from './migrations';
