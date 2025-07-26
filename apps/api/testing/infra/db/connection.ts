@@ -31,14 +31,15 @@ const initPromises = new Map<
 const logger = getRootLogger();
 
 /**
- * Validates that a worker ID contains only safe characters (alphanumeric and underscore).
+ * Validates that a worker ID contains only safe characters (alphanumeric only).
  * This prevents SQL injection attacks when using worker IDs in database names.
+ * Security: Restricted to alphanumeric characters only, following principle of least privilege.
  * @internal Exported for testing
  */
 export function validateWorkerId(workerId: string): void {
-  if (!/^[a-zA-Z0-9_]+$/.test(workerId)) {
+  if (!/^[a-zA-Z0-9]+$/.test(workerId)) {
     throw new Error(
-      `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters and underscores.`
+      `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters (no underscores).`
     );
   }
 }

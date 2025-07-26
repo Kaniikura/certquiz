@@ -51,27 +51,27 @@ describe('Worker Database Isolation - Integration Tests', () => {
     _resetIsolationState();
 
     // Create database for worker 1
-    await withEnv({ VITEST_WORKER_ID: 'integration_1' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'integration1' }, async () => {
       const db1 = await getTestDb();
       expect(db1).toBeDefined();
 
       // Verify database exists
       const result = await adminClient`
         SELECT datname FROM pg_database 
-        WHERE datname = 'certquiz_test_worker_integration_1'
+        WHERE datname = 'certquiz_test_worker_integration1'
       `;
       expect(result).toHaveLength(1);
     });
 
     // Create database for worker 2
-    await withEnv({ VITEST_WORKER_ID: 'integration_2' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'integration2' }, async () => {
       const db2 = await getTestDb();
       expect(db2).toBeDefined();
 
       // Verify second database exists
       const result = await adminClient`
         SELECT datname FROM pg_database 
-        WHERE datname = 'certquiz_test_worker_integration_2'
+        WHERE datname = 'certquiz_test_worker_integration2'
       `;
       expect(result).toHaveLength(1);
     });
@@ -79,19 +79,19 @@ describe('Worker Database Isolation - Integration Tests', () => {
     // Verify both databases exist
     const allDbs = await adminClient`
       SELECT datname FROM pg_database 
-      WHERE datname LIKE 'certquiz_test_worker_integration_%'
+      WHERE datname IN ('certquiz_test_worker_integration1', 'certquiz_test_worker_integration2')
       ORDER BY datname
     `;
     expect(allDbs).toHaveLength(2);
-    expect(allDbs[0].datname).toBe('certquiz_test_worker_integration_1');
-    expect(allDbs[1].datname).toBe('certquiz_test_worker_integration_2');
+    expect(allDbs[0].datname).toBe('certquiz_test_worker_integration1');
+    expect(allDbs[1].datname).toBe('certquiz_test_worker_integration2');
   });
 
   it('should return the same instance for concurrent calls within same worker', async () => {
     // Reset state before test
     _resetIsolationState();
 
-    await withEnv({ VITEST_WORKER_ID: 'concurrent_test' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'concurrenttest' }, async () => {
       // Start multiple concurrent requests
       const promises = Array(5)
         .fill(null)
@@ -109,7 +109,7 @@ describe('Worker Database Isolation - Integration Tests', () => {
       // Verify only one database was created
       const result = await adminClient`
         SELECT COUNT(*) as count FROM pg_database 
-        WHERE datname = 'certquiz_test_worker_concurrent_test'
+        WHERE datname = 'certquiz_test_worker_concurrenttest'
       `;
       expect(parseInt(result[0].count)).toBe(1);
     });
@@ -119,13 +119,13 @@ describe('Worker Database Isolation - Integration Tests', () => {
     // Reset state before test
     _resetIsolationState();
 
-    await withEnv({ VITEST_WORKER_ID: 'migration_test' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'migrationtest' }, async () => {
       await getTestDb();
 
       // Connect to the worker database to check migrations
       const baseUri = container.getConnectionUri();
       const workerUrl = new URL(baseUri);
-      workerUrl.pathname = '/certquiz_test_worker_migration_test';
+      workerUrl.pathname = '/certquiz_test_worker_migrationtest';
       const workerClient = postgres(workerUrl.toString());
 
       try {
@@ -157,7 +157,7 @@ describe('Worker Database Isolation - Integration Tests', () => {
     // Clean up any leftover databases from previous runs first
     const existingDbs = await adminClient`
       SELECT datname FROM pg_database 
-      WHERE datname LIKE 'certquiz_test_worker_cleanup_%'
+      WHERE datname LIKE 'certquiz_test_worker_cleanup%'
     `;
 
     // Drop any existing cleanup test databases
@@ -166,18 +166,18 @@ describe('Worker Database Isolation - Integration Tests', () => {
     }
 
     // Create databases for cleanup test
-    await withEnv({ VITEST_WORKER_ID: 'cleanup_1' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'cleanup1' }, async () => {
       await getTestDb();
     });
 
-    await withEnv({ VITEST_WORKER_ID: 'cleanup_2' }, async () => {
+    await withEnv({ VITEST_WORKER_ID: 'cleanup2' }, async () => {
       await getTestDb();
     });
 
     // Verify databases exist
     const beforeCleanup = await adminClient`
       SELECT datname FROM pg_database 
-      WHERE datname LIKE 'certquiz_test_worker_cleanup_%'
+      WHERE datname LIKE 'certquiz_test_worker_cleanup%'
     `;
     expect(beforeCleanup).toHaveLength(2);
 
@@ -187,7 +187,7 @@ describe('Worker Database Isolation - Integration Tests', () => {
     // Verify databases are gone
     const afterCleanup = await adminClient`
       SELECT datname FROM pg_database 
-      WHERE datname LIKE 'certquiz_test_worker_cleanup_%'
+      WHERE datname LIKE 'certquiz_test_worker_cleanup%'
     `;
     expect(afterCleanup).toHaveLength(0);
   });

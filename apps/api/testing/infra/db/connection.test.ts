@@ -9,11 +9,11 @@ describe('Worker Database Isolation - Unit Tests', () => {
 
   describe('validateWorkerId', () => {
     it('should accept valid worker IDs', () => {
-      // Valid patterns
+      // Valid patterns - alphanumeric only
       expect(() => validateWorkerId('0')).not.toThrow();
-      expect(() => validateWorkerId('worker_1')).not.toThrow();
-      expect(() => validateWorkerId('test_worker_123')).not.toThrow();
-      expect(() => validateWorkerId('ABC123_xyz')).not.toThrow();
+      expect(() => validateWorkerId('worker1')).not.toThrow();
+      expect(() => validateWorkerId('test123')).not.toThrow();
+      expect(() => validateWorkerId('ABC123xyz')).not.toThrow();
     });
 
     it('should reject worker IDs with special characters', () => {
@@ -24,6 +24,9 @@ describe('Worker Database Isolation - Unit Tests', () => {
       expect(() => validateWorkerId('worker with space')).toThrow('Invalid worker ID');
       expect(() => validateWorkerId('worker/slash')).toThrow('Invalid worker ID');
       expect(() => validateWorkerId('worker$dollar')).toThrow('Invalid worker ID');
+      // Underscores are now also rejected
+      expect(() => validateWorkerId('worker_1')).toThrow('Invalid worker ID');
+      expect(() => validateWorkerId('test_worker')).toThrow('Invalid worker ID');
     });
 
     it('should reject empty worker IDs', () => {
@@ -32,7 +35,7 @@ describe('Worker Database Isolation - Unit Tests', () => {
 
     it('should provide helpful error messages', () => {
       expect(() => validateWorkerId('worker@email')).toThrow(
-        'Invalid worker ID: "worker@email". Worker IDs must contain only alphanumeric characters and underscores.'
+        'Invalid worker ID: "worker@email". Worker IDs must contain only alphanumeric characters (no underscores).'
       );
     });
   });
