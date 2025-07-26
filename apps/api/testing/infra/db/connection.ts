@@ -189,36 +189,40 @@ export async function cleanupWorkerDatabases(): Promise<void> {
   const adminClient = postgres(adminConfig);
 
   try {
-    // Close all worker connections
-    for (const [workerId, workerDb] of workerDatabases) {
-      try {
-        await workerDb.client.end({ timeout: 5 });
-      } catch (error) {
-        logger.warn({ workerId, error }, 'Failed to close connection for worker');
-      }
-    }
+    // Close all worker connections in parallel
+    await Promise.all(
+      Array.from(workerDatabases.entries()).map(async ([workerId, workerDb]) => {
+        try {
+          await workerDb.client.end({ timeout: 5 });
+        } catch (error) {
+          logger.warn({ workerId, error }, 'Failed to close connection for worker');
+        }
+      })
+    );
 
-    // Drop all worker databases
-    for (const workerId of workerDatabases.keys()) {
-      // Validate worker ID before using in database name
-      try {
-        validateWorkerId(workerId);
-      } catch (validationError) {
-        logger.warn(
-          { workerId, error: validationError },
-          'Invalid worker ID, skipping database cleanup'
-        );
-        continue;
-      }
+    // Drop all worker databases in parallel
+    await Promise.all(
+      Array.from(workerDatabases.keys()).map(async (workerId) => {
+        // Validate worker ID before using in database name
+        try {
+          validateWorkerId(workerId);
+        } catch (validationError) {
+          logger.warn(
+            { workerId, error: validationError },
+            'Invalid worker ID, skipping database cleanup'
+          );
+          return;
+        }
 
-      const dbName = `certquiz_test_worker_${workerId}`;
-      try {
-        // Note: Database names cannot be parameterized, so we use unsafe after validation
-        await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
-      } catch (error) {
-        logger.warn({ workerId, dbName, error }, 'Failed to drop database for worker');
-      }
-    }
+        const dbName = `certquiz_test_worker_${workerId}`;
+        try {
+          // Note: Database names cannot be parameterized, so we use unsafe after validation
+          await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
+        } catch (error) {
+          logger.warn({ workerId, dbName, error }, 'Failed to drop database for worker');
+        }
+      })
+    );
   } finally {
     await adminClient.end();
     workerDatabases.clear();
