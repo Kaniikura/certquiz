@@ -4,9 +4,14 @@
  */
 
 import { shutdownDatabase } from '@api/infra/db/client';
+import { cleanupWorkerDatabases } from '@api/testing/infra/db';
 import { afterAll } from 'vitest';
 
 // Global teardown to ensure database connections are closed
 afterAll(async () => {
+  // Clean up per-worker test databases
+  await cleanupWorkerDatabases();
+
+  // Shutdown main database connections
   await shutdownDatabase();
 });

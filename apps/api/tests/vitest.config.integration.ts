@@ -24,6 +24,7 @@
  * - Only includes *.integration.test.ts and e2e test files
  */
 
+import { cpus } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
@@ -63,15 +64,13 @@ export default defineConfig(({ mode }) => {
       // Use forks pool to ensure proper container management
       pool: 'forks',
 
-      // Conservative parallelization: Limited concurrent test files to balance
-      // performance with stability. Each test file manages database isolation
-      // through setupTestDatabase(), but we limit concurrency to prevent
-      // resource contention and environment variable conflicts
+      // Optimized parallelization: Each worker gets its own isolated database
+      // with real migrations applied. This enables safe scaling to CPU core count.
       poolOptions: {
         forks: {
-          // Limit to 2 concurrent forks to reduce resource contention
-          // while still providing performance benefits over sequential execution
-          maxForks: 2,
+          // Scale to available CPU cores for maximum test performance
+          // Each worker has complete isolation via separate databases
+          maxForks: cpus().length,
           minForks: 1,
         },
       },
