@@ -30,6 +30,12 @@ const initPromises = new Map<
 // Logger instance for database operations
 const logger = getRootLogger();
 
+// Security: Database name prefix for all test databases
+const TEST_DB_PREFIX = 'certquiz_test_worker_';
+
+// Security: Regex pattern for valid worker IDs (alphanumeric only)
+const VALID_WORKER_ID_PATTERN = /^[a-zA-Z0-9]+$/;
+
 /**
  * Validates that a worker ID contains only safe characters (alphanumeric only).
  * This prevents SQL injection attacks when using worker IDs in database names.
@@ -37,11 +43,48 @@ const logger = getRootLogger();
  * @internal Exported for testing
  */
 export function validateWorkerId(workerId: string): void {
-  if (!/^[a-zA-Z0-9]+$/.test(workerId)) {
+  if (!VALID_WORKER_ID_PATTERN.test(workerId)) {
     throw new Error(
       `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters (no underscores).`
     );
   }
+}
+
+/**
+ * Safely quotes a PostgreSQL identifier (database name) to prevent SQL injection.
+ * Follows PostgreSQL identifier quoting rules: double quotes with internal quotes escaped.
+ * @internal Exported for testing
+ */
+export function quoteIdentifier(identifier: string): string {
+  // Escape any double quotes within the identifier
+  const escaped = identifier.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
+/**
+ * Constructs a safe database name for a worker.
+ * Validates the worker ID and returns a properly quoted database name.
+ * @internal Exported for testing
+ */
+export function getWorkerDatabaseName(workerId: string): { raw: string; quoted: string } {
+  // Validate worker ID first
+  validateWorkerId(workerId);
+
+  // Construct the database name
+  const dbName = `${TEST_DB_PREFIX}${workerId}`;
+
+  // Additional whitelist validation - ensure it matches expected pattern
+  const expectedPattern = new RegExp(`^${TEST_DB_PREFIX}[a-zA-Z0-9]+$`);
+  if (!expectedPattern.test(dbName)) {
+    throw new Error(
+      `Database name "${dbName}" does not match expected pattern. Possible security issue.`
+    );
+  }
+
+  return {
+    raw: dbName,
+    quoted: quoteIdentifier(dbName),
+  };
 }
 
 /**
@@ -56,10 +99,8 @@ async function initializeWorkerDb(): Promise<{
   const container = await getPostgres();
   const workerId = process.env.VITEST_WORKER_ID ?? '0';
 
-  // Validate worker ID to prevent SQL injection
-  validateWorkerId(workerId);
-
-  const dbName = `certquiz_test_worker_${workerId}`;
+  // Get safe database name with validation and quoting
+  const { raw: dbName, quoted: quotedDbName } = getWorkerDatabaseName(workerId);
 
   // Get base connection parameters
   const baseUri = container.getConnectionUri();
@@ -77,11 +118,11 @@ async function initializeWorkerDb(): Promise<{
 
   try {
     // Drop database if exists (for clean slate)
-    // Note: Database names cannot be parameterized in PostgreSQL, so we use unsafe after validation
-    await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName}`);
+    // Note: Database names cannot be parameterized in PostgreSQL, but we use proper quoting
+    await adminClient.unsafe(`DROP DATABASE IF EXISTS ${quotedDbName}`);
 
     // Create new database
-    await adminClient.unsafe(`CREATE DATABASE ${dbName}`);
+    await adminClient.unsafe(`CREATE DATABASE ${quotedDbName}`);
 
     // Create UUID extension
     const workerUrl = new URL(baseUri);
@@ -129,7 +170,7 @@ async function initializeWorkerDb(): Promise<{
 export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
   const workerId = process.env.VITEST_WORKER_ID ?? '0';
 
-  // Validate worker ID to prevent SQL injection
+  // Validate worker ID (additional validation layer)
   validateWorkerId(workerId);
 
   // Check if we already have a database for this worker
@@ -237,21 +278,24 @@ export async function cleanupWorkerDatabases(): Promise<void> {
     // Drop all worker databases in parallel
     await Promise.all(
       Array.from(workerDatabases.keys()).map(async (workerId) => {
-        // Validate worker ID before using in database name
+        // Get safe database name with validation and quoting
+        let dbName: string;
+        let quotedDbName: string;
         try {
-          validateWorkerId(workerId);
+          const dbNameInfo = getWorkerDatabaseName(workerId);
+          dbName = dbNameInfo.raw;
+          quotedDbName = dbNameInfo.quoted;
         } catch (validationError) {
           logger.warn(
             { workerId, error: validationError },
-            'Invalid worker ID, skipping database cleanup'
+            'Invalid worker ID or database name, skipping database cleanup'
           );
           return;
         }
 
-        const dbName = `certquiz_test_worker_${workerId}`;
         try {
-          // Note: Database names cannot be parameterized, so we use unsafe after validation
-          await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
+          // Note: Database names cannot be parameterized, but we use proper quoting
+          await adminClient.unsafe(`DROP DATABASE IF EXISTS ${quotedDbName} WITH (FORCE)`);
         } catch (error) {
           logger.warn({ workerId, dbName, error }, 'Failed to drop database for worker');
         }
