@@ -1,5 +1,6 @@
 // Question bounded context schema - Versioned catalog
 
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -8,13 +9,12 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { difficultyEnum, questionStatusEnum, questionTypeEnum } from './enums';
-import { authUser } from './user';
 
 // Question master table
 export const question = pgTable(
@@ -68,8 +68,8 @@ export const questionVersion = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('pk_question_version').on(table.questionId, table.version),
-    index('ix_question_version_current').on(table.questionId, table.version),
+    // Composite primary key for versioned questions
+    primaryKey({ columns: [table.questionId, table.version] }),
 
     // Full-text search on question content
     index('ix_question_text_search').on(sql`to_tsvector('english', ${table.questionText})`),
@@ -92,21 +92,3 @@ export const questionVersion = pgTable(
 );
 
 export type QuestionVersionRow = typeof questionVersion.$inferSelect;
-
-// Bookmarks for user question management
-export const bookmarks = pgTable(
-  'bookmarks',
-  {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => authUser.userId, { onDelete: 'cascade' }),
-    questionId: uuid('question_id')
-      .notNull()
-      .references(() => question.questionId, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('pk_bookmarks').on(table.userId, table.questionId),
-    index('ix_bookmarks_user').on(table.userId),
-  ]
-);

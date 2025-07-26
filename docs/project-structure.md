@@ -15,12 +15,8 @@ This document describes the project structure for CertQuiz using **Vertical Slic
 
 ```
 certquiz/
-├── CLAUDE.md                    # Project context at root (required by Claude Code)
-├── README.md                    # Public project documentation
-├── .env.example                 # Environment template
-├── .gitignore
+├── CLAUDE.md                    # Project context at root
 ├── package.json                 # Root monorepo config
-├── bun.lock
 ├── tsconfig.json               # Root TypeScript config
 ├── biome.json                  # Biome linter/formatter config
 │
@@ -28,116 +24,89 @@ certquiz/
 │   ├── web/                    # SvelteKit frontend
 │   │   ├── src/
 │   │   │   ├── lib/
-│   │   │   │   ├── api/       # API client
-│   │   │   │   ├── stores/    # Svelte stores
+│   │   │   │   ├── api/
+│   │   │   │   ├── stores/
 │   │   │   │   └── utils/
-│   │   │   ├── routes/
-│   │   │   └── app.html
+│   │   │   └── routes/
 │   │   ├── static/
-│   │   ├── package.json
-│   │   └── svelte.config.js
+│   │   └── package.json
 │   │
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
 │       │   ├── features/       # Feature slices (vertical slices)
-│       │   │   ├── quiz/       # Quiz bounded context
-│       │   │   │   ├── start-quiz/     # Use case folders
-│       │   │   │   ├── submit-answer/  # (handler, dto, validation, route, tests)
-│       │   │   │   ├── get-results/
-│       │   │   │   └── domain/         # Domain layer
-│       │   │   │       ├── entities/
-│       │   │   │       ├── value-objects/
-│       │   │   │       ├── aggregates/
-│       │   │   │       └── repositories/
-│       │   │   ├── user/       # User bounded context
-│       │   │   │   ├── register/       # User registration use case
-│       │   │   │   ├── update-progress/ # Progress tracking use case
-│       │   │   │   ├── get-profile/    # Profile retrieval use case
-│       │   │   │   ├── domain/         # Domain layer
-│       │   │   │   │   ├── entities/   # User, UserProgress
-│       │   │   │   │   ├── value-objects/ # Email, UserId, Level, Experience, etc.
-│       │   │   │   │   └── repositories/ # IUserRepository, DrizzleUserRepository
-│       │   │   │   └── shared/         # Error handling, utilities
-│       │   │   ├── auth/       # Auth bounded context
-│       │   │   │   ├── login/         # User authentication use case
-│       │   │   │   └── domain/         # Domain layer
-│       │   │   └── question/   # Question bounded context
-│       │   │   │   ├── list-questions/ # Question listing with filters
-│       │   │   │   ├── get-question/   # Single question retrieval
-│       │   │   │   ├── create-question/# Admin question creation
-│       │   │   │   ├── domain/         # Domain layer
-│       │   │   │   │   ├── entities/   # Question
-│       │   │   │   │   ├── value-objects/ # QuestionOptions, QuestionOption
-│       │   │   │   │   └── repositories/ # IQuestionRepository, DrizzleQuestionRepository
-│       │   │   │   └── shared/         # Error handling, utilities
+│       │   │   ├── quiz/
+│       │   │   │   ├── [use-cases]/    # start-quiz, submit-answer, get-results
+│       │   │   │   ├── domain/
+│       │   │   │   │   ├── entities/
+│       │   │   │   │   ├── value-objects/
+│       │   │   │   │   ├── aggregates/
+│       │   │   │   │   └── repositories/  # Interfaces only
+│       │   │   │   ├── infrastructure/
+│       │   │   │   │   └── drizzle/      # Repository implementations & mappers
+│       │   │   │   └── shared/
+│       │   │   ├── user/
+│       │   │   │   ├── [use-cases]/    # register, update-progress, get-profile
+│       │   │   │   ├── domain/
+│       │   │   │   │   ├── entities/
+│       │   │   │   │   ├── value-objects/
+│       │   │   │   │   └── repositories/
+│       │   │   │   ├── infrastructure/
+│       │   │   │   │   └── drizzle/
+│       │   │   │   └── shared/
+│       │   │   ├── auth/
+│       │   │   │   ├── [use-cases]/    # login, refresh-token
+│       │   │   │   ├── domain/
+│       │   │   │   └── infrastructure/
+│       │   │   └── question/
+│       │   │       ├── [use-cases]/    # list-questions, get-question, create-question
+│       │   │       ├── domain/
+│       │   │       └── infrastructure/
 │       │   ├── system/         # System/operational features
-│       │   │   ├── health/     # Health checks
-│       │   │   └── migration/  # Database migration tooling
-│       │   ├── infra/          # Infrastructure layer
-│       │   │   ├── db/         # Database client, schema, migrations
-│       │   │   ├── events/     # Domain event dispatcher
-│       │   │   ├── logger/     # Logging infrastructure
-│       │   │   ├── auth/       # Auth provider implementations
-│       │   │   └── email/      # Email service
-│       │   ├── shared/         # Shared kernel (cross-feature utilities)
-│       │   │   ├── errors.ts   # Application-wide error classes
-│       │   │   ├── result.ts   # Result<T,E> type for error handling
-│       │   │   ├── http-status.ts # HTTP status code constants
-│       │   │   ├── clock.ts    # Clock abstraction for testing
-│       │   │   ├── logger/     # Domain logging interface
-│       │   │   └── repository/ # Base repository classes
-│       │   ├── test-support/   # Feature-specific domain test utilities
-│       │   └── middleware/     # Global HTTP middleware
-│       ├── testing/            # Unified test infrastructure (DDD layers)
-│       │   ├── infra/          # Infrastructure layer test utilities
-│       │   │   ├── db/         # Database, testcontainers, transactions
-│       │   │   ├── errors/     # Error type guards & utilities
-│       │   │   ├── process/    # Process execution helpers
-│       │   │   ├── runtime/    # Environment detection
-│       │   │   └── vitest/     # Test configuration utilities
-│       │   ├── domain/         # Domain layer test utilities
-│       │   │   ├── fakes/      # Repository fakes, test doubles
-│       │   │   └── integration-helpers.ts
-│       │   └── index.ts        # Barrel exports
-│       ├── tests/              # Test organization
-│       │   ├── integration/    # Multi-feature tests
-│       │   ├── e2e/            # End-to-end tests
-│       │   └── fixtures/       # Test data factories
+│       │   │   ├── health/
+│       │   │   └── migration/
+│       │   ├── infra/          # Cross-cutting infrastructure
+│       │   │   ├── db/
+│       │   │   ├── events/
+│       │   │   ├── logger/
+│       │   │   ├── auth/
+│       │   │   └── email/
+│       │   ├── shared/         # Shared kernel
+│       │   │   ├── errors.ts
+│       │   │   ├── result.ts
+│       │   │   └── repository/
+│       │   ├── test-support/
+│       │   └── middleware/
+│       ├── testing/            # Test infrastructure
+│       │   ├── infra/
+│       │   └── domain/
+│       ├── tests/
+│       │   ├── integration/
+│       │   ├── e2e/
+│       │   └── fixtures/
 │       └── package.json
 │
-├── packages/                   # Shared packages
-│   ├── shared/                 # Cross-app shared code
-│   │   ├── src/
-│   │   │   ├── types/         # Shared domain types
-│   │   │   ├── constants/     # App-wide constants
-│   │   │   └── utils/         # Shared utilities
-│   │   └── package.json
-│   └── typespec/              # API specifications
-│       ├── main.tsp           # TypeSpec definitions
-│       └── package.json
+├── packages/
+│   ├── shared/
+│   └── typespec/
 │
-├── docs/                      # Documentation
-│   ├── project-structure.md   # THIS FILE
-│   ├── database-schema-v2.md
-│   ├── api-specification.md
-│   ├── vsa-implementation-plan.md
-│   └── adr/                   # Architecture Decision Records
+├── docs/
+│   ├── project-structure.md
+│   └── adr/
 │
-├── docker/                    # Container configurations
-│   ├── Dockerfile.api
-│   ├── Dockerfile.web
-│   └── docker-compose.yml
+├── docker/
 │
-└── scripts/                   # Utility scripts
-    ├── migrate.ts             # Database migration runner
-    ├── seed.ts                # Database seeder
-    └── codegen.ts             # Code generation scripts
+└── scripts/
 ```
+
+**Legend**:
+- `[use-cases]/` = Multiple use case folders (e.g., `start-quiz/`, `submit-answer/`, `get-results/`)
+- Only essential files and all directories are shown for clarity
 
 > 📝 **Key Conventions**:
 > - **Co-located tests**: Unit tests use `.test.ts` suffix next to source files
 > - **Integration tests**: Single-slice tests use `.integration.test.ts` co-located, multi-slice tests in `tests/integration/`
-> - **Repository pattern**: Interface in domain, implementation alongside
+> - **Repository pattern**: Interface in domain, Drizzle implementation in infrastructure/drizzle/
+> - **Mapper pattern**: Pure data transformation functions in infrastructure/drizzle/
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
@@ -149,30 +118,31 @@ certquiz/
 ## Architecture Layers
 
 ### 1. Presentation Layer
-- **routes/**: HTTP route definitions with validation and middleware
+- **[use-cases]/route.ts**: HTTP route definitions with validation and middleware
 - Thin layer that delegates to application handlers
 
 ### 2. Application Layer
-- **handlers/**: Orchestrate use cases with transaction boundaries
+- **[use-cases]/handler.ts**: Orchestrate use cases with transaction boundaries
 - Coordinate between domain and infrastructure layers
 
 ### 3. Domain Layer
-- **aggregates/**: Rich domain models with business logic
-- **entities/**: Core domain objects
-- **value-objects/**: Immutable domain concepts
-- **repositories/**: Domain interfaces for persistence
+- **domain/aggregates/**: Rich domain models with business logic
+- **domain/entities/**: Core domain objects
+- **domain/value-objects/**: Immutable domain concepts
+- **domain/repositories/**: Domain interfaces for persistence
 - Pure TypeScript with no framework dependencies
 
 ### 4. Infrastructure Layer
-- **repositories/**: Concrete implementations using Drizzle ORM
-- **db/**: Database schema, migrations, and connection management
-- **auth/**: External authentication provider integrations
+- **infrastructure/drizzle/**: Concrete implementations using Drizzle ORM
+- Repository implementations with colocated mapper functions
+- **infra/**: Cross-cutting concerns (db, auth, logger, events)
 
 ## Key Design Decisions
 
 ### 1. Repository Pattern with Domain Focus 🎯
 - **Interfaces in domain**: Part of the ubiquitous language
-- **Implementations in infrastructure**: Swappable persistence
+- **Implementations in infrastructure/drizzle**: Colocated with mappers
+- **Pure mappers**: Testable data transformation functions separate from SQL
 - **Thin abstraction**: Only methods needed by use cases
 - **No generic repositories**: Each repository is domain-specific
 
@@ -209,7 +179,8 @@ Start simple, add complexity as needed:
 
 ### 2. Repository Pattern
 - **Interface Definition**: Domain interfaces in `domain/repositories/`
-- **Implementation**: Drizzle-based implementations alongside interfaces
+- **Implementation**: Drizzle-based implementations in `infrastructure/drizzle/`
+- **Mapper Extraction**: Pure functions for data transformation in same directory
 - **Transaction Management**: All operations wrapped with `withTransaction`
 
 ## Migration Strategy

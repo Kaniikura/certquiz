@@ -6,9 +6,6 @@
 // Base infrastructure
 export { AggregateRoot } from './base/AggregateRoot';
 
-// Entities
-export { User } from './entities/User';
-
 // Errors
 export {
   AuthError,
@@ -17,7 +14,6 @@ export {
   UserNotActiveError,
   UserNotFoundError,
 } from './errors/AuthErrors';
-export { DrizzleUserRepository as DrizzleAuthUserRepository } from './repositories/DrizzleUserRepository';
 // Repositories
 export type { IUserRepository } from './repositories/IUserRepository';
 

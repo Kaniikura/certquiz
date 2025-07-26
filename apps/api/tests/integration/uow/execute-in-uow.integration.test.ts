@@ -1,7 +1,7 @@
 import { AuthUser } from '@api/features/auth';
 import { UserId } from '@api/features/auth/domain';
 import { db } from '@api/infra/db/client';
-import { authUser } from '@api/infra/db/schema/user';
+import { authUser } from '@api/infra/db/schema';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
 import { setupTestDatabase } from '@api/testing/domain';
 import { eq } from 'drizzle-orm';
@@ -183,18 +183,27 @@ describe('Unit of Work Integration Tests', () => {
       const failUser = userResult1.data;
       const successUser = userResult2.data;
 
+      // Create synchronization mechanism to ensure proper transaction overlap
+      let firstTransactionSaveCompleted: () => void;
+      const saveCompletedPromise = new Promise<void>((resolve) => {
+        firstTransactionSaveCompleted = resolve;
+      });
+
       // Start a transaction that will fail
       const failedTransaction = executeInUnitOfWork(async (uow) => {
         const userRepo = uow.getAuthUserRepository();
         await userRepo.save(failUser);
-        // Simulate some work
+        // Signal that the save is completed so second transaction can start
+        firstTransactionSaveCompleted();
+        // Simulate some work to keep transaction open
         await new Promise((resolve) => setTimeout(resolve, 50));
         throw new Error('Transaction failure');
       }).catch(() => {
         // Expected to fail
       });
 
-      // Start another transaction concurrently
+      // Wait for first transaction to complete its save, then start second transaction
+      await saveCompletedPromise;
       const successfulTransaction = executeInUnitOfWork(async (uow) => {
         const userRepo = uow.getAuthUserRepository();
         await userRepo.save(successUser);

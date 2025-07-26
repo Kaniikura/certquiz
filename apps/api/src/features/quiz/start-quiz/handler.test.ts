@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { QuestionId, UserId } from '../domain/value-objects/Ids';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
+import type { QuizStateValue } from '../infrastructure/drizzle/schema/enums';
 import type { StartQuizRequest, StartQuizResponse } from './dto';
 import { startQuizHandler } from './handler';
 
@@ -98,7 +99,7 @@ describe('startQuizHandler', () => {
       const savedSession = mockQuizRepository.save.mock.calls[0][0] as QuizSession;
       expect(savedSession.userId).toBe(userId);
       expect(savedSession.config.questionCount).toBe(3);
-      expect(savedSession.state).toBe('IN_PROGRESS');
+      expect(savedSession.state).toBe('IN_PROGRESS' satisfies QuizStateValue);
     });
 
     it('should handle quiz without time limit', async () => {

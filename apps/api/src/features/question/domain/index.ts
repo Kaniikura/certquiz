@@ -10,8 +10,6 @@ export {
   QuestionStatus,
   type QuestionType,
 } from './entities/Question';
-// Repositories
-export { DrizzleQuestionRepository } from './repositories/DrizzleQuestionRepository';
 // Repository Interface
 export type {
   IQuestionRepository,

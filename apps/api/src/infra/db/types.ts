@@ -8,7 +8,3 @@ import type * as schema from './schema';
 
 // Core database types
 export type DB = PostgresJsDatabase<typeof schema>;
-export type Tx = Parameters<DB['transaction']>[0] extends (tx: infer T) => unknown ? T : never;
-
-// Queryable interface for repositories to work with both DB and Tx
-export type Queryable = Pick<DB, 'select' | 'insert' | 'update' | 'delete' | 'execute' | 'query'>;

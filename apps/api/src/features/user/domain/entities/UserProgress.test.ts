@@ -26,6 +26,81 @@ describe('UserProgress', () => {
     });
   });
 
+  describe('constructor', () => {
+    it('should create valid UserProgress instance', () => {
+      const clock = new TestClock(new Date('2025-01-01T12:00:00Z'));
+      const level = Level.create(1);
+      const experience = Experience.create(0);
+      const accuracy = Accuracy.create(80);
+      const studyTime = StudyTime.create(120);
+      const streak = Streak.create(7);
+      const categoryStats = CategoryStats.createEmpty();
+
+      if (
+        !level.success ||
+        !experience.success ||
+        !accuracy.success ||
+        !studyTime.success ||
+        !streak.success ||
+        !categoryStats.success
+      ) {
+        throw new Error('Failed to create value objects');
+      }
+
+      const progress = new UserProgress(
+        level.data,
+        experience.data,
+        100, // totalQuestions
+        80, // correctAnswers
+        accuracy.data,
+        studyTime.data,
+        streak.data,
+        null,
+        categoryStats.data,
+        clock.now()
+      );
+
+      expect(progress.totalQuestions).toBe(100);
+      expect(progress.correctAnswers).toBe(80);
+    });
+
+    it('should throw error when correctAnswers exceed totalQuestions', () => {
+      const clock = new TestClock(new Date('2025-01-01T12:00:00Z'));
+      const level = Level.create(1);
+      const experience = Experience.create(0);
+      const accuracy = Accuracy.create(80);
+      const studyTime = StudyTime.create(120);
+      const streak = Streak.create(7);
+      const categoryStats = CategoryStats.createEmpty();
+
+      if (
+        !level.success ||
+        !experience.success ||
+        !accuracy.success ||
+        !studyTime.success ||
+        !streak.success ||
+        !categoryStats.success
+      ) {
+        throw new Error('Failed to create value objects');
+      }
+
+      expect(() => {
+        new UserProgress(
+          level.data,
+          experience.data,
+          50, // totalQuestions
+          100, // correctAnswers - invalid: more than total
+          accuracy.data,
+          studyTime.data,
+          streak.data,
+          null,
+          categoryStats.data,
+          clock.now()
+        );
+      }).toThrow('Invalid progress data: correctAnswers (100) cannot exceed totalQuestions (50)');
+    });
+  });
+
   describe('fromPersistence', () => {
     it('should restore from database row', () => {
       const dbRow = {
@@ -82,6 +157,28 @@ describe('UserProgress', () => {
 
       expect(() => UserProgress.fromPersistence(dbRow)).toThrow(
         'Invalid accuracy value in database: invalid-number'
+      );
+    });
+
+    it('should throw error when correctAnswers exceed totalQuestions', () => {
+      const dbRow = {
+        level: 5,
+        experience: 400,
+        totalQuestions: 50,
+        correctAnswers: 100, // Invalid: more correct answers than total questions
+        accuracy: '80.00',
+        studyTimeMinutes: 120,
+        currentStreak: 7,
+        lastStudyDate: new Date('2025-01-01T12:00:00Z'),
+        categoryStats: {
+          version: 1,
+          categories: {},
+        },
+        updatedAt: new Date('2025-01-01T12:00:00Z'),
+      };
+
+      expect(() => UserProgress.fromPersistence(dbRow)).toThrow(
+        'Invalid progress data: correctAnswers (100) cannot exceed totalQuestions (50)'
       );
     });
   });

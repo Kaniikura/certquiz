@@ -17,13 +17,13 @@
 
 import { randomUUID } from 'node:crypto';
 import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
-import { DrizzleAuthUserRepository } from '@api/features/auth/domain';
+import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/drizzle/DrizzleAuthUserRepository';
 import type { IQuestionRepository } from '@api/features/question/domain';
-import { DrizzleQuestionRepository } from '@api/features/question/domain';
+import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';
 import type { IQuizRepository } from '@api/features/quiz/domain';
-import { DrizzleQuizRepository } from '@api/features/quiz/domain';
+import { DrizzleQuizRepository } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuizRepository';
 import type { IUserRepository } from '@api/features/user/domain';
-import { DrizzleUserRepository } from '@api/features/user/domain';
+import { DrizzleUserRepository } from '@api/features/user/infrastructure/drizzle/DrizzleUserRepository';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';

@@ -33,10 +33,9 @@ describe('User Routes Structure', () => {
   });
 
   it('should have the repository interface defined', async () => {
-    const { DrizzleUserRepository } = await import('./domain/repositories/DrizzleUserRepository');
+    const IUserRepository = await import('./domain/repositories/IUserRepository');
 
-    expect(DrizzleUserRepository).toBeDefined();
-    expect(typeof DrizzleUserRepository).toBe('function'); // Constructor function
+    expect(IUserRepository).toBeDefined();
   });
 
   it('should have all use case handlers defined', async () => {
