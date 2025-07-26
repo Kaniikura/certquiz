@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
         forks: {
           // Scale to available CPU cores for maximum test performance
           // Each worker has complete isolation via separate databases
-          maxForks: cpus().length,
+          maxForks: Math.min(cpus().length, 16), // Cap at 16 for resource-constrained CI
           minForks: 1,
         },
       },
