@@ -331,6 +331,11 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
 
       return this.mapRowToQuestion(rows[0].master, rows[0].version);
     } catch (error) {
+      // Re-throw domain errors
+      if (error instanceof InvalidQuestionDataError) {
+        throw error;
+      }
+
       this.logger.error('Failed to find question with details', {
         questionId,
         error: this.getErrorDetails(error),
