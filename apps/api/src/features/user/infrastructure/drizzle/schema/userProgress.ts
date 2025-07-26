@@ -1,39 +1,17 @@
-// User bounded context schema
+// User progress tracking schema
+
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
   decimal,
   index,
   integer,
   jsonb,
   pgTable,
-  text,
   timestamp,
-  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { subscriptionPlanEnum, subscriptionStatusEnum, userRoleEnum } from './enums';
-
-// Local user table synchronized with identity provider
-export const authUser = pgTable(
-  'auth_user',
-  {
-    userId: uuid('user_id').primaryKey(),
-    email: text('email').notNull().unique(),
-    username: text('username').notNull().unique(),
-    identityProviderId: text('identity_provider_id').unique(),
-    role: userRoleEnum('role').notNull().default('user'),
-    isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index('ix_user_email').on(table.email),
-    index('ix_user_identity_provider').on(table.identityProviderId),
-    index('ix_user_role_active').on(table.role, table.isActive),
-  ]
-);
 
 // User progress tracking (separate from auth for performance)
 export const userProgress = pgTable(
@@ -87,29 +65,5 @@ export const userProgress = pgTable(
   ]
 );
 
-// Subscriptions (for future premium features)
-export const subscriptions = pgTable(
-  'subscriptions',
-  {
-    userId: uuid('user_id')
-      .primaryKey()
-      .references(() => authUser.userId, { onDelete: 'cascade' }),
-    plan: subscriptionPlanEnum('plan').notNull().default('free'),
-    status: subscriptionStatusEnum('status').notNull().default('active'),
-    buyMeACoffeeEmail: text('buy_me_a_coffee_email'),
-    startDate: timestamp('start_date', { withTimezone: true }).notNull().defaultNow(),
-    endDate: timestamp('end_date', { withTimezone: true }),
-    autoRenew: boolean('auto_renew').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index('ix_subscriptions_bmac_email').on(table.buyMeACoffeeEmail),
-    index('ix_subscriptions_status').on(table.status),
-    uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
-  ]
-);
-
-// Type exports for row inference
-export type AuthUserRow = typeof authUser.$inferSelect;
+// Type export for row inference
 export type UserProgressRow = typeof userProgress.$inferSelect;

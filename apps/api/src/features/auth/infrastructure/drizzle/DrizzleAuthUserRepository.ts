@@ -1,4 +1,3 @@
-import { authUser } from '@api/infra/db/schema/user';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
@@ -7,6 +6,7 @@ import { User } from '../../domain/entities/User';
 import type { IUserRepository } from '../../domain/repositories/IUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
 import type { UserId } from '../../domain/value-objects/UserId';
+import { authUser } from './schema';
 
 /**
  * Drizzle implementation of User repository

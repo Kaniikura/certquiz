@@ -3,7 +3,6 @@
  * @fileoverview CRUD operations for Question catalog with versioning support
  */
 
-import { question, questionVersion } from '@api/infra/db/schema/question';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
@@ -30,6 +29,7 @@ import {
   mapRowToQuestion,
   mapToQuestionSummary,
 } from './QuestionRowMapper';
+import { question, questionVersion } from './schema/question';
 
 /**
  * Drizzle implementation of Question repository for catalog operations

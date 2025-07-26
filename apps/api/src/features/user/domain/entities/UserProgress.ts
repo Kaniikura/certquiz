@@ -47,7 +47,14 @@ export class UserProgress {
     public readonly lastStudyDate: Date | null,
     public readonly categoryStats: CategoryStats,
     public readonly updatedAt: Date
-  ) {}
+  ) {
+    // Validate that correctAnswers doesn't exceed totalQuestions
+    if (correctAnswers > totalQuestions) {
+      throw new Error(
+        `Invalid progress data: correctAnswers (${correctAnswers}) cannot exceed totalQuestions (${totalQuestions})`
+      );
+    }
+  }
 
   /**
    * Create new UserProgress with default values
@@ -102,6 +109,13 @@ export class UserProgress {
     const studyTime = StudyTime.create(row.studyTimeMinutes);
     const streak = Streak.create(row.currentStreak);
     const categoryStats = CategoryStats.create(row.categoryStats);
+
+    // Validate that correctAnswers doesn't exceed totalQuestions
+    if (row.correctAnswers > row.totalQuestions) {
+      throw new Error(
+        `Invalid progress data: correctAnswers (${row.correctAnswers}) cannot exceed totalQuestions (${row.totalQuestions})`
+      );
+    }
 
     if (
       !level.success ||

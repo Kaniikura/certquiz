@@ -1,8 +1,8 @@
 import { QuestionId } from '@api/features/quiz/domain';
-import type { QuestionRow, QuestionVersionRow } from '@api/infra/db/schema/question';
 import { Result } from '@api/shared/result';
 import { Question, QuestionStatus, type QuestionType } from '../../domain/entities/Question';
 import type { QuestionSummary } from '../../domain/repositories/IQuestionRepository';
+import type { QuestionRow, QuestionVersionRow } from './schema/question';
 
 /**
  * Map entity question type to database question type
@@ -126,7 +126,38 @@ export function mapRowToQuestion(
   versionRow: QuestionVersionRow
 ): Result<Question, Error> {
   try {
-    const questionResult = Question.fromJSON({
+    // Validate that the rows match
+    if (masterRow.questionId !== versionRow.questionId) {
+      return Result.fail(new Error('Question ID mismatch between master and version rows'));
+    }
+
+    if (masterRow.currentVersion !== versionRow.version) {
+      return Result.fail(
+        new Error(
+          `Version mismatch: master has version ${masterRow.currentVersion} but version row has ${versionRow.version}`
+        )
+      );
+    }
+
+    // Validate options structure
+    if (!Array.isArray(versionRow.options)) {
+      return Result.fail(new Error('Invalid options: must be an array'));
+    }
+
+    // Validate at least one correct answer exists
+    const hasCorrectAnswer = versionRow.options.some(
+      (opt): opt is { isCorrect: true } =>
+        typeof opt === 'object' &&
+        opt !== null &&
+        'isCorrect' in opt &&
+        typeof opt.isCorrect === 'boolean' &&
+        opt.isCorrect === true
+    );
+    if (!hasCorrectAnswer) {
+      return Result.fail(new Error('Question must have at least one correct answer'));
+    }
+
+    const jsonData = {
       id: masterRow.questionId,
       version: masterRow.currentVersion,
       questionText: versionRow.questionText,
@@ -149,7 +180,9 @@ export function mapRowToQuestion(
       createdById: masterRow.createdById,
       createdAt: masterRow.createdAt.toISOString(),
       updatedAt: masterRow.updatedAt.toISOString(),
-    });
+    };
+
+    const questionResult = Question.fromJSON(jsonData);
 
     return questionResult;
   } catch (error) {

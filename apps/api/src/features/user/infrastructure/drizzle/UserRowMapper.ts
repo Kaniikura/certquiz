@@ -1,5 +1,15 @@
+import { User as AuthUser } from '@api/features/auth/domain/entities/User';
+import type { AuthUserRow } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import { Result } from '@api/shared/result';
 import { User } from '../../domain/entities/User';
+
+/**
+ * Map auth user row to User entity (without progress)
+ * Pure function testable without database dependencies
+ */
+export function mapAuthUserRowToUser(row: AuthUserRow): Result<AuthUser, Error> {
+  return AuthUser.fromPersistence(row);
+}
 
 /**
  * Interface representing a joined row from authUser and userProgress tables

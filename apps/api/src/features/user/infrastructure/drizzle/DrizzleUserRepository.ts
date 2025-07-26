@@ -1,4 +1,4 @@
-import { authUser, userProgress } from '@api/infra/db/schema/user';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
@@ -11,6 +11,7 @@ import {
   mapPgUniqueViolationToDomainError,
   type PostgresError,
 } from '../../shared/postgres-errors';
+import { userProgress } from './schema/userProgress';
 import { mapJoinedRowToUser } from './UserRowMapper';
 
 /**

@@ -6,6 +6,7 @@
 import { QuestionId } from '@api/features/quiz/domain';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { QuestionDifficulty } from '../../infrastructure/drizzle/schema/enums';
 import type { QuestionSummary } from '../repositories/IQuestionRepository';
 import { QuestionOptions } from '../value-objects/QuestionOptions';
 
@@ -14,10 +15,8 @@ import { QuestionOptions } from '../value-objects/QuestionOptions';
  */
 export type QuestionType = 'multiple_choice' | 'multiple_select' | 'true_false';
 
-/**
- * Question difficulty levels
- */
-export type QuestionDifficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Mixed';
+// Re-export for backward compatibility
+export type { QuestionDifficulty };
 
 /**
  * Question status in the system

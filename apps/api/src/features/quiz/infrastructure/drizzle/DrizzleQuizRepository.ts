@@ -3,12 +3,13 @@
  * @fileoverview Event-sourcing implementation using Drizzle ORM with optimistic locking
  */
 
-import { quizSessionEvent, quizSessionSnapshot } from '@api/infra/db/schema/quiz';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
 import postgres from 'postgres';
+import type { QuizStateValue } from './schema/enums';
+import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 
 // Extract PostgresError using property access to avoid CJS/ESM interop issues
 const { PostgresError } = postgres;
@@ -129,7 +130,10 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
       .select()
       .from(quizSessionSnapshot)
       .where(
-        and(eq(quizSessionSnapshot.state, 'IN_PROGRESS'), lt(quizSessionSnapshot.expiresAt, now))
+        and(
+          eq(quizSessionSnapshot.state, 'IN_PROGRESS' satisfies QuizStateValue),
+          lt(quizSessionSnapshot.expiresAt, now)
+        )
       )
       .limit(limit);
 
@@ -153,7 +157,10 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
       .select()
       .from(quizSessionSnapshot)
       .where(
-        and(eq(quizSessionSnapshot.ownerId, userId), eq(quizSessionSnapshot.state, 'IN_PROGRESS'))
+        and(
+          eq(quizSessionSnapshot.ownerId, userId),
+          eq(quizSessionSnapshot.state, 'IN_PROGRESS' satisfies QuizStateValue)
+        )
       )
       .limit(1);
 

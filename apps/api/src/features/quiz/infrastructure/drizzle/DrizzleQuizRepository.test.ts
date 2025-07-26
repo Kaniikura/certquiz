@@ -259,10 +259,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         eventSequence: 1,
         eventType: 'quiz.started',
         payload: {
-          userId: userId.toString(),
-          questionCount: 2,
-          questionIds: questionIds.map((id) => id.toString()),
-          configSnapshot: {
+          sessionId: sessionId.toString(),
+          ownerId: userId.toString(),
+          config: {
             examType: 'CCNA',
             category: null,
             questionCount: 2,
@@ -273,6 +272,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
             autoCompleteWhenAllAnswered: true,
             fallbackLimitSeconds: 14400,
           },
+          questionIds: questionIds.map((id) => id.toString()),
+          startedAt: new Date('2025-01-01T10:00:00Z'),
+          expiresAt: new Date('2025-01-01T14:00:00Z'),
         },
         occurredAt: new Date('2025-01-01T10:00:00Z'),
       };
@@ -511,10 +513,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         eventSequence: 1,
         eventType: 'quiz.started',
         payload: {
-          userId: userId.toString(),
-          questionCount: 1,
-          questionIds: [QuestionId.generate().toString()],
-          configSnapshot: {
+          sessionId: sessionId.toString(),
+          ownerId: userId.toString(),
+          config: {
             examType: 'CCNA',
             category: null,
             questionCount: 1,
@@ -525,6 +526,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
             autoCompleteWhenAllAnswered: true,
             fallbackLimitSeconds: 14400,
           },
+          questionIds: [QuestionId.generate().toString()],
+          startedAt: new Date('2025-01-01T13:00:00Z'),
+          expiresAt: expiredTime,
         },
         occurredAt: new Date('2025-01-01T13:00:00Z'),
       });
@@ -567,10 +571,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         eventSequence: 1,
         eventType: 'quiz.started',
         payload: {
-          userId: userId.toString(),
-          questionCount: 1,
-          questionIds: [QuestionId.generate().toString()],
-          configSnapshot: {
+          sessionId: sessionId.toString(),
+          ownerId: userId.toString(),
+          config: {
             examType: 'CCNA',
             category: null,
             questionCount: 1,
@@ -581,6 +584,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
             autoCompleteWhenAllAnswered: true,
             fallbackLimitSeconds: 14400,
           },
+          questionIds: [QuestionId.generate().toString()],
+          startedAt: new Date('2025-01-01T12:00:00Z'),
+          expiresAt: new Date('2025-01-01T16:00:00Z'),
         },
         occurredAt: new Date('2025-01-01T12:00:00Z'),
       });
@@ -609,10 +615,11 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         eventSequence: 1,
         eventType: 'quiz.answer_submitted',
         payload: {
+          sessionId: sessionId.toString(),
           answerId: answerId.toString(),
           questionId: questionId.toString(),
-          selectedOptionIds: [OptionId.generate().toString()],
-          answeredAt: new Date('2025-01-01T12:05:00Z'),
+          selectedOptions: [OptionId.generate().toString()],
+          submittedAt: new Date('2025-01-01T12:05:00Z'),
         },
         occurredAt: new Date('2025-01-01T12:05:00Z'),
       });
@@ -623,10 +630,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         eventSequence: 1,
         eventType: 'quiz.started',
         payload: {
-          userId: userId.toString(),
-          questionCount: 1,
-          questionIds: [questionId],
-          configSnapshot: {
+          sessionId: sessionId.toString(),
+          ownerId: userId.toString(),
+          config: {
             examType: 'CCNA',
             category: null,
             questionCount: 1,
@@ -637,6 +643,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
             autoCompleteWhenAllAnswered: true,
             fallbackLimitSeconds: 14400,
           },
+          questionIds: [questionId.toString()],
+          startedAt: new Date('2025-01-01T12:00:00Z'),
+          expiresAt: new Date('2025-01-01T16:00:00Z'),
         },
         occurredAt: new Date('2025-01-01T12:00:00Z'),
       });
