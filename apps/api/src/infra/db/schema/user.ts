@@ -109,3 +109,7 @@ export const subscriptions = pgTable(
     uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
   ]
 );
+
+// Type exports for row inference
+export type AuthUserRow = typeof authUser.$inferSelect;
+export type UserProgressRow = typeof userProgress.$inferSelect;
