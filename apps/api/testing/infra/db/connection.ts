@@ -17,14 +17,25 @@ const workerDatabases = new Map<
   }
 >();
 
+// Map to store initialization promises to prevent race conditions
+const initPromises = new Map<
+  string,
+  Promise<{
+    db: PostgresJsDatabase<typeof testSchema>;
+    client: postgres.Sql;
+    connectionUri: string;
+  }>
+>();
+
 // Logger instance for database operations
 const logger = getRootLogger();
 
 /**
  * Validates that a worker ID contains only safe characters (alphanumeric and underscore).
  * This prevents SQL injection attacks when using worker IDs in database names.
+ * @internal Exported for testing
  */
-function validateWorkerId(workerId: string): void {
+export function validateWorkerId(workerId: string): void {
   if (!/^[a-zA-Z0-9_]+$/.test(workerId)) {
     throw new Error(
       `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters and underscores.`
@@ -124,11 +135,23 @@ export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>
   const existing = workerDatabases.get(workerId);
   if (existing) return existing.db;
 
-  // Initialize new database for this worker
-  const workerDb = await initializeWorkerDb();
-  workerDatabases.set(workerId, workerDb);
+  // Check if initialization is already in progress for this worker
+  let initPromise = initPromises.get(workerId);
+  if (!initPromise) {
+    // No initialization in progress, start a new one
+    initPromise = initializeWorkerDb();
+    initPromises.set(workerId, initPromise);
+  }
 
-  return workerDb.db;
+  try {
+    // Wait for initialization to complete (either new or existing promise)
+    const workerDb = await initPromise;
+    workerDatabases.set(workerId, workerDb);
+    return workerDb.db;
+  } finally {
+    // Clean up the promise once initialization is complete
+    initPromises.delete(workerId);
+  }
 }
 
 /**
@@ -171,8 +194,18 @@ export async function withTestDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> 
  */
 export async function cleanupWorkerDatabases(): Promise<void> {
   // Early return if no databases to clean up
-  if (workerDatabases.size === 0) {
+  if (workerDatabases.size === 0 && initPromises.size === 0) {
     return;
+  }
+
+  // Wait for any pending initializations to complete
+  if (initPromises.size > 0) {
+    try {
+      await Promise.all(initPromises.values());
+    } catch (error) {
+      // Log but don't throw - we still want to clean up what we can
+      logger.warn({ error }, 'Error waiting for pending database initializations during cleanup');
+    }
   }
 
   const container = await getPostgres();
@@ -227,4 +260,13 @@ export async function cleanupWorkerDatabases(): Promise<void> {
     await adminClient.end();
     workerDatabases.clear();
   }
+}
+
+/**
+ * @internal Test-only helper to reset isolation state
+ * Used to ensure clean state between tests
+ */
+export function _resetIsolationState(): void {
+  workerDatabases.clear();
+  initPromises.clear();
 }
