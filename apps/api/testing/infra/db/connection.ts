@@ -21,6 +21,18 @@ const workerDatabases = new Map<
 const logger = getRootLogger();
 
 /**
+ * Validates that a worker ID contains only safe characters (alphanumeric and underscore).
+ * This prevents SQL injection attacks when using worker IDs in database names.
+ */
+function validateWorkerId(workerId: string): void {
+  if (!/^[a-zA-Z0-9_]+$/.test(workerId)) {
+    throw new Error(
+      `Invalid worker ID: "${workerId}". Worker IDs must contain only alphanumeric characters and underscores.`
+    );
+  }
+}
+
+/**
  * Internal function to initialize a test database for a specific worker.
  * Creates a unique database per worker and applies real application migrations.
  */
@@ -31,6 +43,10 @@ async function initializeWorkerDb(): Promise<{
 }> {
   const container = await getPostgres();
   const workerId = process.env.VITEST_WORKER_ID ?? '0';
+
+  // Validate worker ID to prevent SQL injection
+  validateWorkerId(workerId);
+
   const dbName = `certquiz_test_worker_${workerId}`;
 
   // Get base connection parameters
@@ -49,10 +65,11 @@ async function initializeWorkerDb(): Promise<{
 
   try {
     // Drop database if exists (for clean slate)
-    await adminClient`DROP DATABASE IF EXISTS ${adminClient(dbName)}`;
+    // Note: Database names cannot be parameterized in PostgreSQL, so we use unsafe after validation
+    await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName}`);
 
     // Create new database
-    await adminClient`CREATE DATABASE ${adminClient(dbName)}`;
+    await adminClient.unsafe(`CREATE DATABASE ${dbName}`);
 
     // Create UUID extension
     const workerUrl = new URL(baseUri);
@@ -99,6 +116,9 @@ async function initializeWorkerDb(): Promise<{
  */
 export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
   const workerId = process.env.VITEST_WORKER_ID ?? '0';
+
+  // Validate worker ID to prevent SQL injection
+  validateWorkerId(workerId);
 
   // Check if we already have a database for this worker
   const existing = workerDatabases.get(workerId);
@@ -180,9 +200,21 @@ export async function cleanupWorkerDatabases(): Promise<void> {
 
     // Drop all worker databases
     for (const workerId of workerDatabases.keys()) {
+      // Validate worker ID before using in database name
+      try {
+        validateWorkerId(workerId);
+      } catch (validationError) {
+        logger.warn(
+          { workerId, error: validationError },
+          'Invalid worker ID, skipping database cleanup'
+        );
+        continue;
+      }
+
       const dbName = `certquiz_test_worker_${workerId}`;
       try {
-        await adminClient`DROP DATABASE IF EXISTS ${adminClient(dbName)} WITH (FORCE)`;
+        // Note: Database names cannot be parameterized, so we use unsafe after validation
+        await adminClient.unsafe(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
       } catch (error) {
         logger.warn({ workerId, dbName, error }, 'Failed to drop database for worker');
       }
