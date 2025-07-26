@@ -54,7 +54,7 @@ async function initializeWorkerDb(): Promise<{
   const baseUrl = new URL(baseUri);
   const adminConfig = {
     host: baseUrl.hostname,
-    port: parseInt(baseUrl.port),
+    port: parseInt(baseUrl.port, 10),
     user: 'postgres',
     password: 'password',
     database: 'postgres', // Connect to postgres db for admin operations
@@ -180,7 +180,7 @@ export async function cleanupWorkerDatabases(): Promise<void> {
   const baseUrl = new URL(baseUri);
   const adminConfig = {
     host: baseUrl.hostname,
-    port: parseInt(baseUrl.port),
+    port: parseInt(baseUrl.port, 10),
     user: 'postgres',
     password: 'password',
     database: 'postgres',
