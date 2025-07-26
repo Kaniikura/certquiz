@@ -6,9 +6,9 @@
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { TestClock } from '@api/test-support/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { User } from '../../domain/entities/User';
+import { Email, UserId, UserRole } from '../../domain/value-objects';
 import * as postgresErrors from '../../shared/postgres-errors';
-import { User } from '../entities/User';
-import { Email, UserId, UserRole } from '../value-objects';
 import { DrizzleUserRepository } from './DrizzleUserRepository';
 
 // Mock types for testing
@@ -87,8 +87,8 @@ class MockLogger implements LoggerPort {
   }
 }
 
-// Type alias for test repository using never to bypass type constraints in tests
-type TestUserRepository = DrizzleUserRepository<never>;
+// Type alias for test repository
+type TestUserRepository = DrizzleUserRepository;
 
 // Mock database connection with sophisticated context-aware operations
 class MockDatabaseConnection {
@@ -502,7 +502,7 @@ describe('DrizzleUserRepository (Unit Tests)', () => {
       mockConn.setFindByIdContext(userId.toString());
 
       await expect(repository.findById(userId)).rejects.toThrow(
-        `Invalid categoryStats in database for user ${userId}: must be an object`
+        `Invalid categoryStats for user ${userId}: must be an object`
       );
     });
 
@@ -576,7 +576,9 @@ describe('DrizzleUserRepository (Unit Tests)', () => {
 
       mockConn.setFindByIdContext(userId.toString());
 
-      await expect(repository.findById(userId)).rejects.toThrow('Invalid user data in database');
+      await expect(repository.findById(userId)).rejects.toThrow(
+        'Invalid email in database: invalid-email'
+      );
 
       expect(mockLogger.errorMessages).toContainEqual(
         expect.objectContaining({
@@ -1207,7 +1209,7 @@ describe('DrizzleUserRepository (Unit Tests)', () => {
     it('should execute operations within transaction context', async () => {
       let transactionExecuted = false;
 
-      const result = await repository.withTransaction(async (txRepo) => {
+      const result = await repository.withTransaction(async (txRepo: DrizzleUserRepository) => {
         expect(txRepo).toBeInstanceOf(DrizzleUserRepository);
         transactionExecuted = true;
         return 'success';

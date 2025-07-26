@@ -7,10 +7,16 @@ import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { TestClock } from '@api/test-support/TestClock';
 import postgres from 'postgres';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { QuizSession } from '../aggregates/QuizSession';
-import type { ExamType } from '../value-objects/ExamTypes';
-import { AnswerId, OptionId, QuestionId, QuizSessionId, UserId } from '../value-objects/Ids';
-import { QuizConfig } from '../value-objects/QuizConfig';
+import { QuizSession } from '../../domain/aggregates/QuizSession';
+import type { ExamType } from '../../domain/value-objects/ExamTypes';
+import {
+  AnswerId,
+  OptionId,
+  QuestionId,
+  QuizSessionId,
+  UserId,
+} from '../../domain/value-objects/Ids';
+import { QuizConfig } from '../../domain/value-objects/QuizConfig';
 import { DrizzleQuizRepository } from './DrizzleQuizRepository';
 
 // Extract PostgresError for proper mocking

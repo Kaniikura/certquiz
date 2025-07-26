@@ -6,6 +6,13 @@
 import { QuestionId } from '@api/features/quiz/domain';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { Question, QuestionStatus } from '../../domain/entities/Question';
+import type {
+  QuestionFilters,
+  QuestionPagination,
+} from '../../domain/repositories/IQuestionRepository';
+import { QuestionOption } from '../../domain/value-objects/QuestionOption';
+import { QuestionOptions } from '../../domain/value-objects/QuestionOptions';
 import {
   InvalidQuestionDataError,
   QuestionNotFoundError,
@@ -13,11 +20,7 @@ import {
   QuestionRepositoryError,
   QuestionVersionConflictError,
 } from '../../shared/errors';
-import { Question, QuestionStatus } from '../entities/Question';
-import { QuestionOption } from '../value-objects/QuestionOption';
-import { QuestionOptions } from '../value-objects/QuestionOptions';
 import { DrizzleQuestionRepository } from './DrizzleQuestionRepository';
-import type { QuestionFilters, QuestionPagination } from './IQuestionRepository';
 
 // Mock types for testing
 interface MockQuestionRow {
@@ -76,8 +79,8 @@ class MockLogger implements LoggerPort {
   }
 }
 
-// Type alias for test repository using never to bypass type constraints in tests
-type TestRepository = DrizzleQuestionRepository<never>;
+// Type alias for test repository
+type TestRepository = DrizzleQuestionRepository;
 
 // Mock database connection with sophisticated context-aware operations
 // Uses type assertions for test mocking while maintaining business logic type safety
@@ -1461,7 +1464,7 @@ describe('DrizzleQuestionRepository (Unit Tests)', () => {
     it('should execute operations within transaction context', async () => {
       let transactionExecuted = false;
 
-      const result = await repository.withTransaction(async (txRepo) => {
+      const result = await repository.withTransaction(async (txRepo: DrizzleQuestionRepository) => {
         expect(txRepo).toBeInstanceOf(DrizzleQuestionRepository);
         transactionExecuted = true;
         return 'success';

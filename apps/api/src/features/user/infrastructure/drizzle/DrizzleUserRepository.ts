@@ -1,63 +1,28 @@
-import type { Queryable, Tx } from '@api/infra/db/client';
 import { authUser, userProgress } from '@api/infra/db/schema/user';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
+import type { User } from '../../domain/entities/User';
+import type { IUserRepository } from '../../domain/repositories/IUserRepository';
+import type { Email, UserId } from '../../domain/value-objects';
 import {
   isPgUniqueViolation,
   mapPgUniqueViolationToDomainError,
   type PostgresError,
 } from '../../shared/postgres-errors';
-import { User } from '../entities/User';
-import type { Email, UserId } from '../value-objects';
-import type { IUserRepository } from './IUserRepository';
-
-/**
- * Interface for database connections that support transactions
- */
-interface TransactionalConnection extends Queryable {
-  transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
-}
-
-/**
- * Interface representing a joined row from authUser and userProgress tables
- */
-interface JoinedUserRow {
-  // Auth user fields
-  userId: string;
-  email: string;
-  username: string;
-  role: string;
-  identityProviderId: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  // Progress fields
-  level: number;
-  experience: number;
-  totalQuestions: number;
-  correctAnswers: number;
-  accuracy: string;
-  studyTimeMinutes: number;
-  currentStreak: number;
-  lastStudyDate: Date | null;
-  categoryStats: unknown;
-  progressUpdatedAt: Date;
-}
+import { mapJoinedRowToUser } from './UserRowMapper';
 
 /**
  * Drizzle implementation of User repository for user domain
  * Handles rich User aggregate with progress tracking across two tables
  * Uses transactions to ensure consistency between authUser and userProgress
  */
-export class DrizzleUserRepository<TConnection extends Queryable>
-  extends BaseRepository
-  implements IUserRepository
-{
+export class DrizzleUserRepository extends BaseRepository implements IUserRepository {
   private readonly validRoles = ['guest', 'user', 'premium', 'admin'] as const;
 
   constructor(
-    private readonly conn: TConnection,
+    private readonly conn: TransactionContext,
     logger: LoggerPort
   ) {
     super(logger);
@@ -116,7 +81,15 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         return null;
       }
 
-      return this.mapRowToUser(rows[0]);
+      const result = mapJoinedRowToUser(rows[0]);
+      if (!result.success) {
+        this.logger.error('Invalid user data in database', {
+          userId: id,
+          error: result.error.message,
+        });
+        throw result.error;
+      }
+      return result.data;
     } catch (error) {
       this.logger.error('Failed to find user by ID', {
         userId: id,
@@ -139,7 +112,15 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         return null;
       }
 
-      return this.mapRowToUser(rows[0]);
+      const result = mapJoinedRowToUser(rows[0]);
+      if (!result.success) {
+        this.logger.error('Invalid user data in database', {
+          email: email.toString(),
+          error: result.error.message,
+        });
+        throw result.error;
+      }
+      return result.data;
     } catch (error) {
       this.logger.error('Failed to find user by email', {
         email: email.toString(),
@@ -162,7 +143,15 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         return null;
       }
 
-      return this.mapRowToUser(rows[0]);
+      const result = mapJoinedRowToUser(rows[0]);
+      if (!result.success) {
+        this.logger.error('Invalid user data in database', {
+          identityProviderId,
+          error: result.error.message,
+        });
+        throw result.error;
+      }
+      return result.data;
     } catch (error) {
       this.logger.error('Failed to find user by identity provider ID', {
         identityProviderId,
@@ -185,7 +174,15 @@ export class DrizzleUserRepository<TConnection extends Queryable>
         return null;
       }
 
-      return this.mapRowToUser(rows[0]);
+      const result = mapJoinedRowToUser(rows[0]);
+      if (!result.success) {
+        this.logger.error('Invalid user data in database', {
+          username,
+          error: result.error.message,
+        });
+        throw result.error;
+      }
+      return result.data;
     } catch (error) {
       this.logger.error('Failed to find user by username', {
         username,
@@ -430,12 +427,11 @@ export class DrizzleUserRepository<TConnection extends Queryable>
     }
   }
 
-  async withTransaction<T>(fn: (repo: DrizzleUserRepository<Tx>) => Promise<T>): Promise<T> {
+  async withTransaction<T>(fn: (repo: DrizzleUserRepository) => Promise<T>): Promise<T> {
     // For now, delegate to the connection's transaction method
     // This assumes the connection supports transactions
     if ('transaction' in this.conn && typeof this.conn.transaction === 'function') {
-      const transactionalConn = this.conn as TransactionalConnection;
-      return await transactionalConn.transaction(async (tx: Tx) => {
+      return await this.conn.transaction(async (tx) => {
         const txRepo = new DrizzleUserRepository(tx, this.logger);
         return await fn(txRepo);
       });
@@ -445,56 +441,5 @@ export class DrizzleUserRepository<TConnection extends Queryable>
           'Ensure your database connection is properly configured with transaction support.'
       );
     }
-  }
-
-  /**
-   * Map joined database row to User domain entity
-   */
-  private mapRowToUser(row: JoinedUserRow): User {
-    // Validate categoryStats is an object
-    if (typeof row.categoryStats !== 'object' || row.categoryStats === null) {
-      this.logger.error('Invalid categoryStats in database', {
-        userId: row.userId,
-        categoryStats: row.categoryStats,
-      });
-      throw new Error(
-        `Invalid categoryStats in database for user ${row.userId}: must be an object`
-      );
-    }
-
-    const authRow = {
-      userId: row.userId,
-      email: row.email,
-      username: row.username,
-      role: row.role,
-      identityProviderId: row.identityProviderId,
-      isActive: row.isActive,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    };
-
-    const progressRow = {
-      level: row.level,
-      experience: row.experience,
-      totalQuestions: row.totalQuestions,
-      correctAnswers: row.correctAnswers,
-      accuracy: row.accuracy,
-      studyTimeMinutes: row.studyTimeMinutes,
-      currentStreak: row.currentStreak,
-      lastStudyDate: row.lastStudyDate,
-      categoryStats: row.categoryStats,
-      updatedAt: row.progressUpdatedAt,
-    };
-
-    const result = User.fromPersistence(authRow, progressRow);
-    if (!result.success) {
-      this.logger.error('Invalid user data in database', {
-        userId: row.userId,
-        error: result.error.message,
-      });
-      throw new Error(`Invalid user data in database: ${result.error.message}`);
-    }
-
-    return result.data;
   }
 }

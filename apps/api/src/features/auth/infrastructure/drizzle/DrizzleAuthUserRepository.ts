@@ -1,23 +1,20 @@
-import type { Queryable } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema/user';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
-import { User } from '../entities/User';
-import type { Email } from '../value-objects/Email';
-import type { UserId } from '../value-objects/UserId';
-import type { IUserRepository } from './IUserRepository';
+import { User } from '../../domain/entities/User';
+import type { IUserRepository } from '../../domain/repositories/IUserRepository';
+import type { Email } from '../../domain/value-objects/Email';
+import type { UserId } from '../../domain/value-objects/UserId';
 
 /**
  * Drizzle implementation of User repository
  * Uses Queryable interface to work with both DB client and transactions
  */
-export class DrizzleUserRepository<TConnection extends Queryable>
-  extends BaseRepository
-  implements IUserRepository
-{
+export class DrizzleAuthUserRepository extends BaseRepository implements IUserRepository {
   constructor(
-    private readonly conn: TConnection,
+    private readonly conn: TransactionContext,
     logger: LoggerPort
   ) {
     super(logger);

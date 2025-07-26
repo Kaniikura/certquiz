@@ -54,7 +54,6 @@ bun.lockb
 *.db
 *.sqlite
 *.sqlite3
-drizzle/
 
 # OS files
 .DS_Store
