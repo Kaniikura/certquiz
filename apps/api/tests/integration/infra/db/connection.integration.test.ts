@@ -9,12 +9,31 @@ import { getPostgres } from '../../../containers/postgres';
 
 // Helper to temporarily override env in a test
 async function withEnv(vars: Record<string, string>, fn: () => unknown) {
-  const old = { ...process.env };
+  // Store original values of variables we're going to change
+  const originalValues: Record<string, string | undefined> = {};
+  const keysToRestore = Object.keys(vars);
+
+  // Save original values
+  for (const key of keysToRestore) {
+    originalValues[key] = process.env[key];
+  }
+
+  // Apply new values
   Object.assign(process.env, vars);
+
   try {
     return await fn();
   } finally {
-    process.env = old;
+    // Restore original values properly
+    for (const key of keysToRestore) {
+      if (originalValues[key] === undefined) {
+        // Variable didn't exist before, so delete it
+        delete process.env[key];
+      } else {
+        // Restore original value
+        process.env[key] = originalValues[key];
+      }
+    }
   }
 }
 
@@ -44,6 +63,32 @@ describe('Worker Database Isolation - Integration Tests', () => {
 
     // Close admin client
     await adminClient.end();
+  });
+
+  it('should properly restore environment variables after withEnv', async () => {
+    // Test variable that doesn't exist
+    const testKey1 = 'TEST_NONEXISTENT_VAR';
+    expect(process.env[testKey1]).toBeUndefined();
+
+    // Test variable that exists
+    const testKey2 = 'VITEST_WORKER_ID';
+    const originalValue = process.env[testKey2];
+
+    await withEnv(
+      {
+        [testKey1]: 'temporary_value',
+        [testKey2]: 'modified_value',
+      },
+      async () => {
+        // Inside withEnv, variables should be set
+        expect(process.env[testKey1]).toBe('temporary_value');
+        expect(process.env[testKey2]).toBe('modified_value');
+      }
+    );
+
+    // After withEnv, variables should be restored
+    expect(process.env[testKey1]).toBeUndefined(); // Should be deleted
+    expect(process.env[testKey2]).toBe(originalValue); // Should be restored
   });
 
   it('should create unique databases for different workers', async () => {
