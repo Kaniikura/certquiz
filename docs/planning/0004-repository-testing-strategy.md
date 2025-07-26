@@ -62,11 +62,13 @@ User, UserRole │ IUserRepository │ DrizzleUserRepository
 
 ## 4 — Implementation Plan
 
-### Phase 1: Extract Pure Mapping Logic (Week 1)
+### Phase 1: Extract Pure Mapping Logic for All Repositories (Week 1)
 
-#### 4.1.1 Create Mapper Module
+**Parallel Implementation**: All four repositories will be migrated simultaneously to ensure consistency and shared learning across the team.
 
-**File**: `apps/api/src/features/user/infrastructure/mappers/UserRowMapper.ts`
+#### 4.1.1 User Repository Mapper
+
+**File**: `apps/api/src/features/user/infrastructure/drizzle/UserRowMapper.ts`
 
 ```typescript
 import { Result } from '@api/shared/result';
@@ -113,7 +115,106 @@ export function mapJoinedRowToUser(row: JoinedUserRow): Result<User, Error> {
 }
 ```
 
-#### 4.1.2 Update Repository Implementation
+#### 4.1.2 Question Repository Mapper
+
+**File**: `apps/api/src/features/question/infrastructure/drizzle/QuestionRowMapper.ts`
+
+```typescript
+import { Result } from '@api/shared/result';
+import { Question } from '@api/features/question/domain';
+import type { QuestionRow, QuestionVersionRow } from '../types';
+
+export function mapRowToQuestion(
+  masterRow: QuestionRow,
+  versionRow: QuestionVersionRow
+): Result<Question, Error> {
+  try {
+    const questionResult = Question.fromJSON({
+      id: masterRow.questionId,
+      version: masterRow.currentVersion,
+      questionText: versionRow.questionText,
+      questionType: mapQuestionTypeFromDb(
+        versionRow.questionType,
+        versionRow.options
+      ),
+      explanation: versionRow.explanation,
+      detailedExplanation: versionRow.detailedExplanation ?? undefined,
+      options: versionRow.options,
+      examTypes: versionRow.examTypes ?? [],
+      categories: versionRow.categories ?? [],
+      difficulty: versionRow.difficulty,
+      tags: versionRow.tags ?? [],
+      images: versionRow.images ?? [],
+      isPremium: masterRow.isPremium,
+      status: mapQuestionStatusFromDb(masterRow.status),
+      createdById: masterRow.createdById,
+      createdAt: masterRow.createdAt.toISOString(),
+      updatedAt: masterRow.updatedAt.toISOString(),
+    });
+
+    return questionResult;
+  } catch (error) {
+    return Result.fail(
+      error instanceof Error ? error : new Error('Question mapping failed')
+    );
+  }
+}
+```
+
+#### 4.1.3 Quiz Repository Event Mapper (Event Sourcing Pattern)
+
+**File**: `apps/api/src/features/quiz/infrastructure/drizzle/QuizEventMapper.ts`
+
+```typescript
+import { Result } from '@api/shared/result';
+import { QuizSession } from '@api/features/quiz/domain';
+import type { QuizEventRow } from '../types';
+
+export function mapEventToAggregate(
+  event: QuizEventRow
+): Result<QuizEvent, Error> {
+  try {
+    // Validate event structure
+    if (!event.eventType || !event.payload) {
+      return Result.fail(new Error('Invalid event structure'));
+    }
+
+    // Map based on event type
+    switch (event.eventType) {
+      case 'quiz.started':
+        return mapQuizStartedEvent(event);
+      case 'quiz.answer_submitted':
+        return mapAnswerSubmittedEvent(event);
+      case 'quiz.completed':
+        return mapQuizCompletedEvent(event);
+      default:
+        return Result.fail(new Error(`Unknown event type: ${event.eventType}`));
+    }
+  } catch (error) {
+    return Result.fail(
+      error instanceof Error ? error : new Error('Event mapping failed')
+    );
+  }
+}
+```
+
+#### 4.1.4 Auth User Repository (Simple Case)
+
+**Note**: The auth/UserRepository doesn't need a mapper as it directly uses `User.fromPersistence()`. However, we can still extract the validation logic:
+
+**File**: `apps/api/src/features/auth/infrastructure/drizzle/AuthUserValidator.ts`
+
+```typescript
+import { Result } from '@api/shared/result';
+import { User } from '@api/features/auth/domain';
+import type { AuthUserRow } from '../types';
+
+export function validateAndMapAuthUser(row: AuthUserRow): Result<User, Error> {
+  return User.fromPersistence(row);
+}
+```
+
+#### 4.1.5 Update All Repository Implementations
 
 ```typescript
 // DrizzleUserRepository.ts
@@ -145,9 +246,11 @@ export class DrizzleUserRepository implements IUserRepository {
 }
 ```
 
-### Phase 2: Create Mapper Unit Tests (Week 1)
+### Phase 2: Create Mapper Unit Tests for All Repositories (Week 1)
 
-**File**: `apps/api/src/features/user/infrastructure/mappers/UserRowMapper.test.ts`
+#### 4.2.1 User Repository Mapper Tests
+
+**File**: `apps/api/src/features/user/infrastructure/drizzle/UserRowMapper.test.ts`
 
 ```typescript
 import { describe, it, expect } from 'vitest';
@@ -357,15 +460,36 @@ createUserRepositoryContractTests(
 
 ## 5 — Migration Strategy
 
-### 5.1 Gradual Migration
+### 5.1 Simultaneous Migration Approach
 
-1. **Week 1**: Extract mappers for User repository
-2. **Week 2**: Create integration tests, refactor unit tests
-3. **Week 3**: Apply pattern to Question repository
-4. **Week 4**: Apply pattern to Quiz repository
-5. **Week 5**: Contract testing implementation
+**Rationale for Parallel Migration**: 
+- **Consistency**: All repositories follow the same pattern from day one
+- **Team Learning**: Developers learn the pattern once and apply it everywhere
+- **Reduced Migration Time**: 2 weeks instead of 5 weeks
+- **Immediate Benefits**: Clean architecture benefits realized across entire codebase
 
-### 5.2 Backward Compatibility
+**Week 1 - Extract and Test All Mappers**:
+1. Extract mapper functions for all 4 repositories in parallel
+2. Create comprehensive unit tests for each mapper
+3. Update all repository implementations to use mappers
+4. Ensure all existing tests continue to pass
+
+**Week 2 - Integration Tests and Cleanup**:
+1. Create integration test files for all repositories
+2. Refactor existing mock-based tests
+3. Implement contract testing pattern
+4. Update documentation and team guidelines
+
+### 5.2 Repository-Specific Considerations
+
+| Repository | Special Considerations | Mapper Complexity |
+|------------|----------------------|-------------------|
+| **user/UserRepository** | Two-table join (auth + progress) | Medium |
+| **question/QuestionRepository** | Versioned data, type mapping | High |
+| **quiz/QuizRepository** | Event sourcing pattern | High |
+| **auth/UserRepository** | Simple single table | Low |
+
+### 5.3 Backward Compatibility
 
 - Keep existing tests running during migration
 - Mark old tests as `@deprecated` 
@@ -412,17 +536,24 @@ Overall Target: 90% coverage with meaningful tests
 
 ## 7 — Implementation Checklist
 
-- [ ] Create mapper module structure
-- [ ] Extract `mapJoinedRowToUser` from DrizzleUserRepository
-- [ ] Create comprehensive mapper unit tests
-- [ ] Update repository to use extracted mapper
-- [ ] Create DrizzleUserRepository integration tests
+### Week 1 - Mapper Extraction and Testing
+- [ ] Create mapper module structure for all repositories
+- [ ] Extract `mapJoinedRowToUser` from user/DrizzleUserRepository
+- [ ] Extract `mapRowToQuestion` from DrizzleQuestionRepository
+- [ ] Extract event mapping logic from DrizzleQuizRepository
+- [ ] Create validator wrapper for auth/DrizzleUserRepository
+- [ ] Create comprehensive unit tests for all mappers
+- [ ] Update all 4 repositories to use extracted mappers
+- [ ] Ensure all existing tests pass
+
+### Week 2 - Integration Tests and Cleanup
+- [ ] Create integration test files for all 4 repositories
 - [ ] Refactor existing mock-based tests
-- [ ] Apply pattern to QuestionRepository
-- [ ] Apply pattern to QuizRepository  
-- [ ] Implement contract testing pattern
+- [ ] Implement contract testing pattern for all interfaces
+- [ ] Remove deprecated test code
 - [ ] Update test documentation
 - [ ] Measure and report coverage improvements
+- [ ] Team knowledge sharing session
 
 ---
 
@@ -439,12 +570,14 @@ Overall Target: 90% coverage with meaningful tests
 
 ## 9 — Success Criteria
 
-1. ✅ All skipped tests replaced with working tests
-2. ✅ 90% unit test coverage maintained
-3. ✅ Test execution time < 5 seconds for unit tests
-4. ✅ Zero mock-related test failures
-5. ✅ Clear separation of pure/impure code
-6. ✅ Team adoption of new pattern
+1. ✅ All skipped tests replaced with working tests across all repositories
+2. ✅ 90% unit test coverage maintained for all 4 repositories
+3. ✅ Test execution time < 5 seconds for all unit tests combined
+4. ✅ Zero mock-related test failures in any repository
+5. ✅ Clear separation of pure/impure code in all implementations
+6. ✅ Consistent pattern applied across all repositories
+7. ✅ Team adoption with shared understanding of the pattern
+8. ✅ All 4 repositories migrated within 2-week timeline
 
 ---
 
@@ -541,3 +674,59 @@ export function createMockJoinedRow(overrides?: Partial<JoinedUserRow>): JoinedU
   };
 }
 ```
+
+## 7 — Implementation Progress
+
+### Completed Tasks ✅
+
+#### Phase 1: Infrastructure Reorganization (Completed)
+- **Repository Movement**: All DrizzleRepository implementations moved from `domain/repositories/` to `infrastructure/drizzle/` following VSA+DDD principles
+  - ✅ DrizzleUserRepository → `features/user/infrastructure/drizzle/`
+  - ✅ DrizzleQuestionRepository → `features/question/infrastructure/drizzle/`
+  - ✅ DrizzleQuizRepository → `features/quiz/infrastructure/drizzle/`
+  - ✅ DrizzleAuthUserRepository → `features/auth/infrastructure/drizzle/` (renamed from DrizzleUserRepository)
+  
+#### Phase 2: Mapper Extraction (Completed)
+- **Pure Mapper Functions**: Successfully extracted data transformation logic into testable mapper functions
+  - ✅ UserRowMapper: `mapAuthUserRowToUser()`, `mapJoinedRowToUser()`
+  - ✅ QuestionRowMapper: `mapRowToQuestion()`, `mapToQuestionSummary()`, type converters
+  - ✅ QuizEventMapper: `mapEventToQuizEvent()`, `mapRowToQuizState()`, optimistic locking
+  - ✅ AuthUserValidator: Validation logic for auth user data
+
+#### Phase 3: Import Path Updates (Completed)
+- **Type System Updates**: Replaced `Queryable`/`Tx` with `TransactionContext` throughout codebase
+- **Import Path Fixes**: Updated all import paths to reference new infrastructure locations
+- **Generic Type Removal**: Simplified repository classes by removing unnecessary generic parameters
+- **Test Updates**: Fixed test files to work with updated repository signatures
+
+### Pending Tasks 📋
+
+#### High Priority
+- [ ] **Move Drizzle Schemas**: Relocate schema definitions to `features/*/infrastructure/drizzle/schema/`
+- [ ] **Create Mapper Unit Tests**: Dedicated test files for each mapper function with edge cases
+- [ ] **Update Test Coverage Strategy**: Document the new testing approach with mappers
+
+#### Medium Priority
+- [ ] **Create DI Registration Modules**: Feature-specific dependency injection setup
+- [ ] **Create Repository Integration Tests**: Comprehensive integration tests for each repository
+
+### Key Achievements 🎯
+
+1. **Clean Architecture Separation**: Successfully separated infrastructure concerns from domain layer
+2. **Improved Testability**: Pure mapper functions can be unit tested without database dependencies
+3. **VSA Compliance**: Each feature now contains its complete vertical slice including infrastructure
+4. **Type Safety**: Eliminated `any` types and improved type definitions throughout
+
+### Lessons Learned 📚
+
+1. **o3 Consultation Value**: External architectural guidance helped validate VSA+DDD approach
+2. **Incremental Migration**: Moving files in logical groups prevented breaking changes
+3. **Type System Challenges**: Removing generic parameters required careful coordination
+4. **Import Path Management**: Systematic approach needed for large-scale refactoring
+
+### Next Steps 🚀
+
+1. **Week 2**: Focus on creating comprehensive mapper unit tests
+2. **Week 3**: Implement repository integration tests with real database
+3. **Week 4**: Move schemas and create DI modules
+4. **Ongoing**: Monitor test coverage and refine testing strategy
