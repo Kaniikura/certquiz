@@ -1,7 +1,7 @@
 // Question bookmarks schema
 
 import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
-import { index, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { index, pgTable, primaryKey, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { question } from './question';
 
 // Bookmarks for user question management
@@ -17,7 +17,7 @@ export const bookmarks = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('pk_bookmarks').on(table.userId, table.questionId),
+    primaryKey({ columns: [table.userId, table.questionId] }),
     index('ix_bookmarks_user').on(table.userId),
   ]
 );
