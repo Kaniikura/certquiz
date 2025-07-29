@@ -4,6 +4,7 @@
  */
 
 import { QuestionId } from '@api/features/quiz/domain';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Question, QuestionStatus } from '../../domain/entities/Question';
@@ -101,12 +102,17 @@ class MockDatabaseConnection {
     pagination?: QuestionPagination;
     operation?: string;
   } = {};
+  private queryCallStack: Array<{ method: string; args: unknown[] }> = [];
+  private statsQueryCount = 0;
 
   // Mock select operations with context-aware filtering
   select(fields?: unknown) {
     if (this.selectShouldFail && this.selectFailureError) {
       throw this.selectFailureError;
     }
+
+    // Track query for analysis
+    this.queryCallStack.push({ method: 'select', args: [fields] });
 
     // Check query type by looking at the selected fields
     const isStatsQuery = this.isStatsQuery(fields);
@@ -140,10 +146,13 @@ class MockDatabaseConnection {
                 };
               },
             }),
-            where: (_condition: unknown) => {
+            where: (condition: unknown) => {
+              // Track where conditions for analysis
+              this.queryCallStack.push({ method: 'where', args: [condition] });
+
               if (isCountQuery) {
                 // For simple count queries on question table (stats method)
-                return this.getStatsCountResults();
+                return this.getStatsCountResults(condition);
               }
               return {
                 limit: (n: number) => {
@@ -294,8 +303,8 @@ class MockDatabaseConnection {
     this.currentQueryContext = { type: 'findQuestions', filters, pagination };
   }
 
-  setGetStatsContext(): void {
-    this.currentQueryContext = { type: 'getStats' };
+  setGetStatsContext(operation?: string): void {
+    this.currentQueryContext = { type: 'getStats', operation };
   }
 
   setSelectContext(questionId?: string, operation?: string): void {
@@ -304,7 +313,8 @@ class MockDatabaseConnection {
 
   clearQueryContext(): void {
     this.currentQueryContext = {};
-    this.statsCallCount = 0;
+    this.queryCallStack = [];
+    this.statsQueryCount = 0;
   }
 
   private getJoinQueryResults(): MockJoinedQuestionRow[] {
@@ -464,26 +474,83 @@ class MockDatabaseConnection {
     return [{ count: filtered.length }];
   }
 
-  private statsCallCount = 0;
-
-  private getStatsCountResults(): Array<{ count: number }> {
-    // For stats queries, handle different calls differently
-    this.statsCallCount++;
-
+  private getStatsCountResults(whereCondition?: unknown): Array<{ count: number }> {
     const activeQuestions = this.questions.filter((q) => q.status === 'active');
 
-    // Track call count to differentiate between total and premium queries
+    // When getQuestionStats is called, it makes two separate count queries:
+    // 1. First query: counts all active questions (simple WHERE condition)
+    // 2. Second query: counts active AND premium questions (complex WHERE with AND)
 
-    // First call: total questions (active)
-    // Second call: premium questions (active AND premium)
-    if (this.statsCallCount === 1) {
-      return [{ count: activeQuestions.length }];
-    } else if (this.statsCallCount === 2) {
-      const premiumQuestions = activeQuestions.filter((q) => q.isPremium);
-      return [{ count: premiumQuestions.length }];
+    // Track which query this is when in stats context
+    if (this.currentQueryContext.type === 'getStats') {
+      this.statsQueryCount++;
+
+      // First query is always the total count (simple condition)
+      // Second query is the premium count (complex condition with AND)
+      if (this.statsQueryCount === 2) {
+        const premiumQuestions = activeQuestions.filter((q) => q.isPremium);
+        return [{ count: premiumQuestions.length }];
+      }
+    } else {
+      // For non-stats queries, use condition analysis
+      const isPremiumQuery =
+        this.hasMultipleWhereConditions(whereCondition) ||
+        this.containsPremiumCondition(whereCondition);
+
+      if (isPremiumQuery) {
+        const premiumQuestions = activeQuestions.filter((q) => q.isPremium);
+        return [{ count: premiumQuestions.length }];
+      }
     }
 
+    // Default: return total active questions count
     return [{ count: activeQuestions.length }];
+  }
+
+  private hasMultipleWhereConditions(condition: unknown): boolean {
+    // In a real WHERE with AND conditions, there would be multiple conditions
+    // Check if this is an AND condition with multiple parts
+    if (typeof condition === 'object' && condition !== null) {
+      // Simple heuristic: if the condition has nested structure, it's likely an AND
+      const keys = Object.keys(condition as Record<string, unknown>);
+      return keys.length > 1 || keys.some((key) => key.toLowerCase() === 'and');
+    }
+    return false;
+  }
+
+  private containsPremiumCondition(condition: unknown): boolean {
+    // Recursively check if the condition references isPremium field
+    if (typeof condition !== 'object' || condition === null) {
+      return false;
+    }
+
+    // Check if any property name contains 'isPremium'
+    for (const [key, value] of Object.entries(condition as Record<string, unknown>)) {
+      if (key.includes('isPremium')) {
+        return true;
+      }
+      // Check nested objects recursively, but avoid circular references
+      if (typeof value === 'object' && value !== null && !this.isCircularReference(value)) {
+        if (this.containsPremiumCondition(value)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private isCircularReference(obj: unknown): boolean {
+    // Simple check to avoid circular references in Drizzle objects
+    if (typeof obj !== 'object' || obj === null) return false;
+    const objWithConstructor = obj as { constructor?: { name?: string } };
+    const constructorName = objWithConstructor.constructor?.name;
+    // Skip known Drizzle ORM objects that have circular references
+    return (
+      constructorName === 'PgTable' ||
+      constructorName === 'PgUUID' ||
+      constructorName === 'PgColumn' ||
+      constructorName === 'PgEnum'
+    );
   }
 
   private isStatsQuery(fields: unknown): boolean {
@@ -583,7 +650,10 @@ describe('DrizzleQuestionRepository (Unit Tests)', () => {
   beforeEach(() => {
     mockConn = new MockDatabaseConnection();
     mockLogger = new MockLogger();
-    repository = new DrizzleQuestionRepository(mockConn as never, mockLogger);
+    repository = new DrizzleQuestionRepository(
+      mockConn as unknown as TransactionContext,
+      mockLogger
+    );
     mockConn.clearQueryContext();
   });
 
@@ -597,12 +667,18 @@ describe('DrizzleQuestionRepository (Unit Tests)', () => {
       };
 
       expect(
-        () => new DrizzleQuestionRepository(nonTransactionalConn as never, mockLogger)
+        () =>
+          new DrizzleQuestionRepository(
+            nonTransactionalConn as unknown as TransactionContext,
+            mockLogger
+          )
       ).toThrow(QuestionRepositoryConfigurationError);
     });
 
     it('should validate transaction support on initialization', () => {
-      expect(() => new DrizzleQuestionRepository(mockConn as never, mockLogger)).not.toThrow();
+      expect(
+        () => new DrizzleQuestionRepository(mockConn as unknown as TransactionContext, mockLogger)
+      ).not.toThrow();
     });
   });
 
