@@ -34,7 +34,21 @@ export const subscriptions = pgTable(
     index('ix_subscriptions_status').on(table.status),
     uniqueIndex('unq_bmac_email').on(table.buyMeACoffeeEmail),
 
-    // Check constraint to ensure endDate is not before startDate
+    /**
+     * Business Rule: Subscription Date Range Validation
+     *
+     * This CHECK constraint enforces that subscription end dates must be either:
+     * - NULL: Representing an indefinite/lifetime subscription with no expiration
+     * - Greater than or equal to the start date: Ensuring logical consistency in subscription periods
+     *
+     * This prevents data integrity issues where a subscription would end before it begins,
+     * which could cause billing errors, access control problems, or reporting inconsistencies.
+     *
+     * Examples:
+     * - Valid: startDate='2025-01-01', endDate=NULL (indefinite subscription)
+     * - Valid: startDate='2025-01-01', endDate='2025-12-31' (annual subscription)
+     * - Invalid: startDate='2025-01-01', endDate='2024-12-31' (ends before it starts)
+     */
     check(
       'ck_subscription_date_range',
       sql`${table.endDate} IS NULL OR ${table.endDate} >= ${table.startDate}`

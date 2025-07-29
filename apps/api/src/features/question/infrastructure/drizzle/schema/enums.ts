@@ -2,7 +2,28 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 import { QUESTION_DIFFICULTY_VALUES } from '../../../domain/value-objects/QuestionDifficulty';
 
-// Question related enums
+/**
+ * Question Type Database Mapping
+ *
+ * PostgreSQL enum 'question_type' uses simplified values for storage efficiency:
+ * - 'single': Questions where only ONE answer can be selected
+ * - 'multiple': Questions where MULTIPLE answers can be selected
+ *
+ * These map to richer domain types through QuestionRowMapper functions:
+ * - 'single' → 'multiple_choice' (standard single-answer questions)
+ * - 'single' → 'true_false' (special case when options are exactly ["True", "False"])
+ * - 'multiple' → 'multiple_select' (checkbox-style multi-answer questions)
+ *
+ * Why this design?
+ * - Database simplicity: Only two fundamental answer selection modes
+ * - Domain expressiveness: Business logic distinguishes true/false as a special case
+ * - Storage efficiency: Minimizes enum values in the database
+ * - Future extensibility: New question types can map to existing DB values
+ *
+ * See QuestionRowMapper.ts for the mapping implementation:
+ * - mapQuestionTypeToDb(): Domain → Database
+ * - mapQuestionTypeFromDb(): Database → Domain (with true/false detection)
+ */
 const questionTypeValues = ['single', 'multiple'] as const;
 export const questionTypeEnum = pgEnum('question_type', questionTypeValues);
 

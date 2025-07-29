@@ -27,7 +27,25 @@ type QuizEventPayloads =
   | QuizCompletedPayload
   | QuizExpiredPayload;
 
-// Constant UUID namespace for deterministic event ID generation
+/**
+ * UUID Namespace for Deterministic Event ID Generation
+ *
+ * This namespace UUID is used with UUIDv5 to generate deterministic event IDs based on:
+ * - sessionId: The quiz session identifier
+ * - version: The aggregate version number
+ * - eventSequence: The sequence number within that version
+ *
+ * Why this specific UUID?
+ * - Generated once during initial system design (not a well-known namespace)
+ * - Ensures event IDs are reproducible across event replays
+ * - Prevents ID collisions across different quiz sessions
+ * - Enables idempotent event processing (same input = same ID)
+ *
+ * IMPORTANT: Do not change this value as it would break event replay consistency.
+ * All historical events depend on this namespace for their ID generation.
+ *
+ * Example: UUIDv5("session123:1:0", EVENT_NAMESPACE) → always produces same event ID
+ */
 const EVENT_NAMESPACE = '4b8f1d23-2196-4f1c-8ff0-03162b57c824';
 
 /* ──────────────────────────────────────────────────────────────────
