@@ -18,8 +18,10 @@ type ErrorMapping = {
 
 /**
  * Common quiz domain error mappings
+ * Note: This comprehensive list documents all possible quiz domain errors.
+ * Individual route handlers use specific subsets of these mappings.
  */
-const _quizDomainErrorMappings: ErrorMapping[] = [
+export const quizDomainErrorMappings: ErrorMapping[] = [
   // Session errors
   {
     errorName: 'SessionNotFoundError',
@@ -102,6 +104,13 @@ const _quizDomainErrorMappings: ErrorMapping[] = [
     errorName: 'InvalidTransitionError',
     status: 409,
     code: 'INVALID_TRANSITION',
+  },
+
+  // Infrastructure errors
+  {
+    errorName: 'QuizRepositoryError',
+    status: 500,
+    code: 'QUIZ_REPOSITORY_ERROR',
   },
 ];
 

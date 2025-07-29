@@ -3,6 +3,8 @@
  * @fileoverview Comprehensive error hierarchy for quiz domain operations
  */
 
+import { AppError } from '@api/shared/errors';
+
 export enum QuizErrorCode {
   // State errors
   QUIZ_NOT_IN_PROGRESS = 'QUIZ_NOT_IN_PROGRESS',
@@ -156,5 +158,15 @@ export class ConcurrencyError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ConcurrencyError';
+  }
+}
+
+/**
+ * Error thrown when repository operations fail
+ */
+export class QuizRepositoryError extends AppError {
+  constructor(operation: string, cause: string) {
+    super(`Quiz repository ${operation} failed: ${cause}`, 'QUIZ_REPOSITORY_ERROR', 500);
+    this.name = 'QuizRepositoryError';
   }
 }

@@ -17,7 +17,7 @@ const { PostgresError } = postgres;
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../../domain/repositories/IQuizRepository';
 import type { QuizSessionId, UserId } from '../../domain/value-objects/Ids';
-import { OptimisticLockError } from '../../shared/errors';
+import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
@@ -117,8 +117,9 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         sessionId: session.id,
         error: this.getErrorMessage(error),
       });
-      throw new OptimisticLockError(
-        `Failed to save quiz session due to database error: ${this.getErrorMessage(error)}`
+      throw new QuizRepositoryError(
+        'save',
+        `Failed to save quiz session: ${this.getErrorMessage(error)}`
       );
     }
   }

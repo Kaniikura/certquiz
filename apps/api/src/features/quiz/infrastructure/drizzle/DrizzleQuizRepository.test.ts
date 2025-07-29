@@ -468,7 +468,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       mockTrx.simulateInsertFailure(dbError);
 
       await expect(repository.save(session)).rejects.toThrow(
-        'Failed to save quiz session due to database error'
+        'Quiz repository save failed: Failed to save quiz session'
       );
 
       expect(mockLogger.errorMessages).toContainEqual(
