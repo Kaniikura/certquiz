@@ -6,8 +6,8 @@
 import { QuestionId } from '@api/features/quiz/domain';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
-import type { QuestionDifficulty } from '../../infrastructure/drizzle/schema/enums';
 import type { QuestionSummary } from '../repositories/IQuestionRepository';
+import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 import { QuestionOptions } from '../value-objects/QuestionOptions';
 
 /**

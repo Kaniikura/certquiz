@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { QuestionStatus } from '../domain/entities/Question';
+import { QUESTION_DIFFICULTY_VALUES, QuestionStatus } from '../domain';
 
 /**
  * Available question types for creation
@@ -14,7 +14,7 @@ const QuestionTypeSchema = z.enum(['multiple_choice', 'multiple_select', 'true_f
 /**
  * Available question difficulties for creation
  */
-const QuestionDifficultySchema = z.enum(['Beginner', 'Intermediate', 'Advanced', 'Mixed']);
+const QuestionDifficultySchema = z.enum(QUESTION_DIFFICULTY_VALUES);
 
 /**
  * Available question statuses for creation

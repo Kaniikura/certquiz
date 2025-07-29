@@ -31,6 +31,7 @@
 
 import type { QuestionId } from '@api/features/quiz/domain';
 import type { Question } from '../entities/Question';
+import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 
 /**
  * Pagination parameters for question listing
@@ -51,7 +52,7 @@ export interface QuestionFilters {
   /** Filter by categories */
   categories?: string[];
   /** Filter by difficulty level */
-  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Mixed';
+  difficulty?: QuestionDifficulty;
   /** Include premium content (requires premium role) */
   includePremium?: boolean;
   /** Full-text search query */

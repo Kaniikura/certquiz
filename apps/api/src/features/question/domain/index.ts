@@ -6,7 +6,6 @@
 // Entities
 export {
   Question,
-  type QuestionDifficulty,
   QuestionStatus,
   type QuestionType,
 } from './entities/Question';
@@ -21,6 +20,12 @@ export type {
 export type { IPremiumAccessService } from './services';
 // Services
 export { PremiumAccessService } from './services';
+export {
+  getQuestionDifficultyValues,
+  isQuestionDifficulty,
+  QUESTION_DIFFICULTY_VALUES,
+  type QuestionDifficulty,
+} from './value-objects/QuestionDifficulty';
 // Value Objects
 export { QuestionOption, type QuestionOptionJSON } from './value-objects/QuestionOption';
 export { QuestionOptions } from './value-objects/QuestionOptions';
