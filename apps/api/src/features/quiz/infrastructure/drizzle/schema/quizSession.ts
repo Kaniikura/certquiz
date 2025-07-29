@@ -96,9 +96,9 @@ export const quizSessionSnapshot = pgTable(
       'ck_session_state_consistency',
       sql`
       CASE 
-        WHEN ${table.state} = ${'IN_PROGRESS' satisfies QuizStateValue} THEN true
+        WHEN ${table.state} = ${'IN_PROGRESS' satisfies QuizStateValue} THEN ${table.expiresAt} IS NOT NULL
         WHEN ${table.state} = ${'COMPLETED' satisfies QuizStateValue} THEN ${table.completedAt} IS NOT NULL
-        WHEN ${table.state} = 'EXPIRED' THEN ${table.completedAt} IS NOT NULL
+        WHEN ${table.state} = ${'EXPIRED' satisfies QuizStateValue} THEN ${table.completedAt} IS NOT NULL
         ELSE true
       END
     `
