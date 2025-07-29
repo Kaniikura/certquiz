@@ -37,6 +37,18 @@ export class UserProgress {
   private static readonly XP_PER_INCORRECT_ANSWER = 2;
   private static readonly PERFECT_SCORE_BONUS_MULTIPLIER = 0.5; // 50% bonus
 
+  /**
+   * Validates that the number of correct answers does not exceed total questions
+   * @throws {ValidationError} if correctAnswers > totalQuestions
+   */
+  private static validateQuestionCounts(correctAnswers: number, totalQuestions: number): void {
+    if (correctAnswers > totalQuestions) {
+      throw new ValidationError(
+        `Invalid progress data: correctAnswers (${correctAnswers}) cannot exceed totalQuestions (${totalQuestions})`
+      );
+    }
+  }
+
   constructor(
     public readonly level: Level,
     public readonly experience: Experience,
@@ -49,12 +61,7 @@ export class UserProgress {
     public readonly categoryStats: CategoryStats,
     public readonly updatedAt: Date
   ) {
-    // Validate that correctAnswers doesn't exceed totalQuestions
-    if (correctAnswers > totalQuestions) {
-      throw new ValidationError(
-        `Invalid progress data: correctAnswers (${correctAnswers}) cannot exceed totalQuestions (${totalQuestions})`
-      );
-    }
+    UserProgress.validateQuestionCounts(correctAnswers, totalQuestions);
   }
 
   /**
@@ -111,12 +118,7 @@ export class UserProgress {
     const streak = Streak.create(row.currentStreak);
     const categoryStats = CategoryStats.create(row.categoryStats);
 
-    // Validate that correctAnswers doesn't exceed totalQuestions
-    if (row.correctAnswers > row.totalQuestions) {
-      throw new ValidationError(
-        `Invalid progress data: correctAnswers (${row.correctAnswers}) cannot exceed totalQuestions (${row.totalQuestions})`
-      );
-    }
+    UserProgress.validateQuestionCounts(row.correctAnswers, row.totalQuestions);
 
     if (
       !level.success ||
