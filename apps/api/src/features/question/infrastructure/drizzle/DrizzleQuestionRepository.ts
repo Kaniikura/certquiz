@@ -3,17 +3,19 @@
  * @fileoverview CRUD operations for Question catalog with versioning support
  */
 
-import { QuestionId } from '@api/features/quiz/domain';
-import {
-  type QuestionRow,
-  type QuestionVersionRow,
-  question,
-  questionVersion,
-} from '@api/infra/db/schema/question';
-import type { Queryable, Tx } from '@api/infra/db/types';
+import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, arrayContains, count, eq, ilike, or } from 'drizzle-orm';
+import type { QuestionId } from '../../../quiz/domain/value-objects/Ids';
+import type { Question } from '../../domain/entities/Question';
+import type {
+  IQuestionRepository,
+  PaginatedQuestions,
+  QuestionFilters,
+  QuestionPagination,
+  QuestionSummary,
+} from '../../domain/repositories/IQuestionRepository';
 import {
   InvalidQuestionDataError,
   QuestionNotFoundError,
@@ -21,33 +23,22 @@ import {
   QuestionRepositoryError,
   QuestionVersionConflictError,
 } from '../../shared/errors';
-import { Question, QuestionStatus, type QuestionType } from '../entities/Question';
-import type {
-  IQuestionRepository,
-  PaginatedQuestions,
-  QuestionFilters,
-  QuestionPagination,
-  QuestionSummary,
-} from './IQuestionRepository';
-
-/**
- * Interface for database connections that support transactions
- */
-interface TransactionalConnection extends Queryable {
-  transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
-}
+import {
+  mapQuestionStatusToDb,
+  mapQuestionTypeToDb,
+  mapRowToQuestion,
+  mapToQuestionSummary,
+} from './QuestionRowMapper';
+import { question, questionVersion } from './schema/question';
 
 /**
  * Drizzle implementation of Question repository for catalog operations
  * Handles versioned questions with two-table design (master + versions)
  * Enforces transaction support at the type level for data consistency
  */
-export class DrizzleQuestionRepository<TConnection extends TransactionalConnection>
-  extends BaseRepository
-  implements IQuestionRepository
-{
+export class DrizzleQuestionRepository extends BaseRepository implements IQuestionRepository {
   constructor(
-    private readonly db: TConnection,
+    private readonly db: TransactionContext,
     logger: LoggerPort
   ) {
     super(logger);
@@ -58,116 +49,6 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
         'Database connection must support transactions. Ensure your connection implements the transaction method.'
       );
     }
-  }
-
-  /**
-   * Map entity question type to database question type
-   */
-  private mapQuestionTypeToDb(type: QuestionType): 'single' | 'multiple' {
-    switch (type) {
-      case 'multiple_choice':
-      case 'true_false':
-        return 'single';
-      case 'multiple_select':
-        return 'multiple';
-      default: {
-        // Exhaustive check
-        const _exhaustiveCheck: never = type;
-        return _exhaustiveCheck;
-      }
-    }
-  }
-
-  /**
-   * Map database question type to entity question type
-   * @param type Database question type
-   * @param options Question options (optional) for inferring true/false questions
-   */
-  private mapQuestionTypeFromDb(type: 'single' | 'multiple', options?: unknown): QuestionType {
-    // Multiple select is straightforward
-    if (type === 'multiple') {
-      return 'multiple_select';
-    }
-
-    // For single answer questions, check if it's a true/false question
-    if (options && this.isTrueFalseQuestion(options)) {
-      return 'true_false';
-    }
-
-    // Default to multiple choice for other single answer questions
-    return 'multiple_choice';
-  }
-
-  /**
-   * Determine if a question is a true/false question based on its options
-   * @param options The question options from the database
-   */
-  private isTrueFalseQuestion(options: unknown): boolean {
-    if (!Array.isArray(options)) {
-      return false;
-    }
-
-    // True/False questions must have exactly 2 options
-    if (options.length !== 2) {
-      return false;
-    }
-
-    // Check if options are variations of true/false
-    const normalizedTexts = options
-      .map((opt) => {
-        if (typeof opt === 'object' && opt !== null && 'text' in opt) {
-          return String(opt.text).toLowerCase().trim();
-        }
-        return '';
-      })
-      .filter(Boolean)
-      .sort();
-
-    // Common true/false patterns
-    const trueFalsePatterns = [
-      ['false', 'true'],
-      ['no', 'yes'],
-      ['incorrect', 'correct'],
-    ];
-
-    return trueFalsePatterns.some(
-      (pattern) =>
-        normalizedTexts.length === 2 &&
-        normalizedTexts[0] === pattern[0] &&
-        normalizedTexts[1] === pattern[1]
-    );
-  }
-
-  /**
-   * Map entity question status to database question status
-   */
-  private mapQuestionStatusToDb(
-    status: QuestionStatus
-  ): 'draft' | 'active' | 'inactive' | 'archived' {
-    switch (status) {
-      case QuestionStatus.ACTIVE:
-        return 'active';
-      case QuestionStatus.INACTIVE:
-        return 'inactive';
-      case QuestionStatus.ARCHIVED:
-        return 'archived';
-      case QuestionStatus.DRAFT:
-        return 'draft';
-      default: {
-        // Exhaustive check
-        const _exhaustiveCheck: never = status;
-        return _exhaustiveCheck;
-      }
-    }
-  }
-
-  /**
-   * Map database question status to entity question status
-   */
-  private mapQuestionStatusFromDb(
-    status: 'draft' | 'active' | 'inactive' | 'archived'
-  ): QuestionStatus {
-    return status as QuestionStatus;
   }
 
   async createQuestion(questionEntity: Question): Promise<Question> {
@@ -182,7 +63,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
           currentVersion: questionEntity.version,
           createdById: questionEntity.createdById,
           isPremium: questionEntity.isPremium,
-          status: this.mapQuestionStatusToDb(questionEntity.status),
+          status: mapQuestionStatusToDb(questionEntity.status),
           createdAt: questionEntity.createdAt,
           updatedAt: questionEntity.updatedAt,
         });
@@ -192,7 +73,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
           questionId: questionEntity.id,
           version: questionEntity.version,
           questionText: questionEntity.questionText,
-          questionType: this.mapQuestionTypeToDb(questionEntity.questionType),
+          questionType: mapQuestionTypeToDb(questionEntity.questionType),
           explanation: questionEntity.explanation,
           detailedExplanation: questionEntity.detailedExplanation,
           options: questionEntity.options.toJSON(),
@@ -260,7 +141,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
           .set({
             currentVersion: questionEntity.version,
             isPremium: questionEntity.isPremium,
-            status: this.mapQuestionStatusToDb(questionEntity.status),
+            status: mapQuestionStatusToDb(questionEntity.status),
             updatedAt: questionEntity.updatedAt,
           })
           .where(eq(question.questionId, questionEntity.id));
@@ -270,7 +151,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
           questionId: questionEntity.id,
           version: questionEntity.version,
           questionText: questionEntity.questionText,
-          questionType: this.mapQuestionTypeToDb(questionEntity.questionType),
+          questionType: mapQuestionTypeToDb(questionEntity.questionType),
           explanation: questionEntity.explanation,
           detailedExplanation: questionEntity.detailedExplanation,
           options: questionEntity.options.toJSON(),
@@ -329,8 +210,19 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
         return null;
       }
 
-      return this.mapRowToQuestion(rows[0].master, rows[0].version);
+      const result = mapRowToQuestion(rows[0].master, rows[0].version);
+      if (!result.success) {
+        throw new InvalidQuestionDataError(
+          `Failed to reconstruct question from database: ${result.error.message}`
+        );
+      }
+      return result.data;
     } catch (error) {
+      // Re-throw domain errors
+      if (error instanceof InvalidQuestionDataError) {
+        throw error;
+      }
+
       this.logger.error('Failed to find question with details', {
         questionId,
         error: this.getErrorDetails(error),
@@ -374,7 +266,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
       }
 
       const { master, version } = rows[0];
-      return this.mapToQuestionSummary(master, version);
+      return mapToQuestionSummary(master, version);
     } catch (error) {
       this.logger.error('Failed to find question by ID', {
         questionId,
@@ -428,9 +320,7 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
         .limit(pagination.limit)
         .offset(pagination.offset);
 
-      const questions = rows.map(({ master, version }) =>
-        this.mapToQuestionSummary(master, version)
-      );
+      const questions = rows.map(({ master, version }) => mapToQuestionSummary(master, version));
 
       return {
         questions,
@@ -528,8 +418,8 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
    * Execute a callback within a transaction
    * Transaction support is guaranteed by type constraints and constructor validation
    */
-  async withTransaction<T>(fn: (repo: DrizzleQuestionRepository<Tx>) => Promise<T>): Promise<T> {
-    return await this.db.transaction(async (tx: Tx) => {
+  async withTransaction<T>(fn: (repo: DrizzleQuestionRepository) => Promise<T>): Promise<T> {
+    return await this.db.transaction(async (tx) => {
       const txRepo = new DrizzleQuestionRepository(tx, this.logger);
       return await fn(txRepo);
     });
@@ -576,80 +466,5 @@ export class DrizzleQuestionRepository<TConnection extends TransactionalConnecti
     }
 
     return conditions;
-  }
-
-  /**
-   * Map database rows to Question entity
-   */
-  private mapRowToQuestion(masterRow: QuestionRow, versionRow: QuestionVersionRow): Question {
-    const questionResult = Question.fromJSON({
-      id: masterRow.questionId,
-      version: masterRow.currentVersion,
-      questionText: versionRow.questionText,
-      questionType: this.mapQuestionTypeFromDb(
-        versionRow.questionType as 'single' | 'multiple',
-        versionRow.options
-      ),
-      explanation: versionRow.explanation,
-      detailedExplanation: versionRow.detailedExplanation ?? undefined,
-      options: versionRow.options,
-      examTypes: versionRow.examTypes ?? [],
-      categories: versionRow.categories ?? [],
-      difficulty: versionRow.difficulty,
-      tags: versionRow.tags ?? [],
-      images: versionRow.images ?? [],
-      isPremium: masterRow.isPremium,
-      status: this.mapQuestionStatusFromDb(
-        masterRow.status as 'draft' | 'active' | 'inactive' | 'archived'
-      ),
-      createdById: masterRow.createdById,
-      createdAt: masterRow.createdAt.toISOString(),
-      updatedAt: masterRow.updatedAt.toISOString(),
-    });
-
-    if (!questionResult.success) {
-      throw new InvalidQuestionDataError(
-        `Failed to reconstruct question from database: ${questionResult.error.message}`
-      );
-    }
-
-    return questionResult.data;
-  }
-
-  /**
-   * Map to question summary (without answers)
-   */
-  private mapToQuestionSummary(
-    masterRow: QuestionRow,
-    versionRow: QuestionVersionRow
-  ): QuestionSummary {
-    // Parse options to get count
-    let optionCount = 0;
-    try {
-      const options = versionRow.options;
-      if (Array.isArray(options)) {
-        optionCount = options.length;
-      }
-    } catch {
-      // Log malformed data but don't fail the summary
-      this.logger.warn('Malformed options data', { questionId: masterRow.questionId });
-    }
-
-    return {
-      questionId: QuestionId.of(masterRow.questionId),
-      questionText: versionRow.questionText,
-      questionType: this.mapQuestionTypeFromDb(
-        versionRow.questionType as 'single' | 'multiple',
-        versionRow.options
-      ),
-      examTypes: versionRow.examTypes ?? [],
-      categories: versionRow.categories ?? [],
-      difficulty: versionRow.difficulty,
-      isPremium: masterRow.isPremium,
-      hasImages: (versionRow.images?.length ?? 0) > 0,
-      optionCount,
-      tags: versionRow.tags ?? [],
-      createdAt: masterRow.createdAt,
-    };
   }
 }

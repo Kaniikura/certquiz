@@ -1,5 +1,6 @@
 // Quiz bounded context schema - Event Sourcing
 
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 import {
   check,
@@ -7,13 +8,13 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { quizStateEnum } from './enums';
-import { authUser } from './user';
+import { type QuizStateValue, quizStateEnum } from './enums';
 
 // Event store for QuizSession aggregate (write-side)
 export const quizSessionEvent = pgTable(
@@ -27,8 +28,10 @@ export const quizSessionEvent = pgTable(
     eventSequence: integer('event_sequence').notNull().default(1), // Sequence within version
   },
   (table) => [
-    // Composite primary key for optimistic locking
-    uniqueIndex('pk_quiz_session_event').on(table.sessionId, table.version, table.eventSequence),
+    // Composite primary key for event sourcing and optimistic locking
+    // - Ensures each event in the event store is uniquely identifiable by sessionId, version, and eventSequence.
+    // - Supports optimistic locking by detecting concurrent updates to the same session/version.
+    primaryKey({ columns: [table.sessionId, table.version, table.eventSequence] }),
     // Performance indexes
     index('ix_quiz_event_session_version').on(table.sessionId, table.version),
     index('ix_quiz_event_occurred').on(table.occurredAt),
@@ -71,7 +74,7 @@ export const quizSessionSnapshot = pgTable(
     // Unique active session per user (partial index)
     uniqueIndex('ix_snapshot_active_user')
       .on(table.ownerId)
-      .where(eq(table.state, 'IN_PROGRESS')),
+      .where(eq(table.state, 'IN_PROGRESS' satisfies QuizStateValue)),
 
     // Covering index for owner queries (will be created manually in migration)
     index('ix_snapshot_owner_state').on(table.ownerId, table.state),
@@ -83,21 +86,21 @@ export const quizSessionSnapshot = pgTable(
     // Partial index for expired sessions (for cleanup queries)
     index('ix_snapshot_expired_cleanup')
       .on(table.completedAt)
-      .where(inArray(table.state, ['COMPLETED', 'EXPIRED'])),
+      .where(inArray(table.state, ['COMPLETED', 'EXPIRED'] satisfies QuizStateValue[])),
 
     // Partial index for in-progress sessions with expiry
     index('ix_snapshot_active_expiry')
       .on(table.expiresAt)
-      .where(eq(table.state, 'IN_PROGRESS')),
+      .where(eq(table.state, 'IN_PROGRESS' satisfies QuizStateValue)),
 
     // Check constraints for data integrity
     check(
       'ck_session_state_consistency',
       sql`
       CASE 
-        WHEN ${table.state} = 'IN_PROGRESS' THEN ${table.expiresAt} IS NOT NULL
-        WHEN ${table.state} = 'COMPLETED' THEN ${table.completedAt} IS NOT NULL
-        WHEN ${table.state} = 'EXPIRED' THEN ${table.completedAt} IS NOT NULL
+        WHEN ${table.state} = ${'IN_PROGRESS' satisfies QuizStateValue} THEN ${table.expiresAt} IS NOT NULL
+        WHEN ${table.state} = ${'COMPLETED' satisfies QuizStateValue} THEN ${table.completedAt} IS NOT NULL
+        WHEN ${table.state} = ${'EXPIRED' satisfies QuizStateValue} THEN ${table.completedAt} IS NOT NULL
         ELSE true
       END
     `

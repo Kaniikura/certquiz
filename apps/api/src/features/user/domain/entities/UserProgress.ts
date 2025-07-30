@@ -1,4 +1,5 @@
 import type { Clock } from '@api/shared/clock';
+import { ValidationError } from '@api/shared/errors';
 import { Accuracy } from '../value-objects/Accuracy';
 import { CategoryStats } from '../value-objects/CategoryStats';
 import { Experience } from '../value-objects/Experience';
@@ -36,6 +37,18 @@ export class UserProgress {
   private static readonly XP_PER_INCORRECT_ANSWER = 2;
   private static readonly PERFECT_SCORE_BONUS_MULTIPLIER = 0.5; // 50% bonus
 
+  /**
+   * Validates that the number of correct answers does not exceed total questions
+   * @throws {ValidationError} if correctAnswers > totalQuestions
+   */
+  private static validateQuestionCounts(correctAnswers: number, totalQuestions: number): void {
+    if (correctAnswers > totalQuestions) {
+      throw new ValidationError(
+        `Invalid progress data: correctAnswers (${correctAnswers}) cannot exceed totalQuestions (${totalQuestions})`
+      );
+    }
+  }
+
   constructor(
     public readonly level: Level,
     public readonly experience: Experience,
@@ -47,7 +60,9 @@ export class UserProgress {
     public readonly lastStudyDate: Date | null,
     public readonly categoryStats: CategoryStats,
     public readonly updatedAt: Date
-  ) {}
+  ) {
+    UserProgress.validateQuestionCounts(correctAnswers, totalQuestions);
+  }
 
   /**
    * Create new UserProgress with default values
@@ -68,7 +83,7 @@ export class UserProgress {
       !streak.success ||
       !categoryStats.success
     ) {
-      throw new Error('Failed to create default UserProgress value objects');
+      throw new ValidationError('Failed to create default UserProgress value objects');
     }
 
     return new UserProgress(
@@ -95,13 +110,15 @@ export class UserProgress {
     // Validate parseFloat result before passing to Accuracy
     const parsedAccuracy = parseFloat(row.accuracy);
     if (Number.isNaN(parsedAccuracy)) {
-      throw new Error(`Invalid accuracy value in database: ${row.accuracy}`);
+      throw new ValidationError(`Invalid accuracy value in database: ${row.accuracy}`);
     }
     const accuracy = Accuracy.create(parsedAccuracy);
 
     const studyTime = StudyTime.create(row.studyTimeMinutes);
     const streak = Streak.create(row.currentStreak);
     const categoryStats = CategoryStats.create(row.categoryStats);
+
+    UserProgress.validateQuestionCounts(row.correctAnswers, row.totalQuestions);
 
     if (
       !level.success ||
@@ -111,7 +128,7 @@ export class UserProgress {
       !streak.success ||
       !categoryStats.success
     ) {
-      throw new Error('Failed to restore UserProgress from persistence - invalid data');
+      throw new ValidationError('Failed to restore UserProgress from persistence - invalid data');
     }
 
     return new UserProgress(
@@ -161,7 +178,7 @@ export class UserProgress {
     const experienceGained = this.calculateExperienceGain(result);
     const newExperienceResult = this.experience.add(experienceGained);
     if (!newExperienceResult.success) {
-      throw new Error('Failed to add experience points');
+      throw new ValidationError('Failed to add experience points');
     }
     return newExperienceResult.data;
   }
@@ -192,7 +209,7 @@ export class UserProgress {
   private addStudyTime(result: QuizResult): StudyTime {
     const newStudyTimeResult = this.studyTime.addMinutes(result.studyTimeMinutes);
     if (!newStudyTimeResult.success) {
-      throw new Error('Failed to add study time minutes');
+      throw new ValidationError('Failed to add study time minutes');
     }
     return newStudyTimeResult.data;
   }
@@ -218,7 +235,7 @@ export class UserProgress {
       // First time studying
       const newStreak = Streak.create(1);
       if (!newStreak.success) {
-        throw new Error('Failed to create initial streak');
+        throw new ValidationError('Failed to create initial streak');
       }
       return new UserProgress(
         this.level,
@@ -244,7 +261,7 @@ export class UserProgress {
       } else {
         const streakResult = Streak.create(1);
         if (!streakResult.success) {
-          throw new Error('Failed to create streak');
+          throw new ValidationError('Failed to create streak');
         }
         newStreak = streakResult.data;
       }
@@ -255,7 +272,7 @@ export class UserProgress {
       // Gap > 1 day, reset streak to 1
       const streakResult = Streak.create(1);
       if (!streakResult.success) {
-        throw new Error('Failed to reset streak');
+        throw new ValidationError('Failed to reset streak');
       }
       newStreak = streakResult.data;
     }

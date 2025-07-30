@@ -9,7 +9,7 @@ import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question
 import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
-import { authUser } from '@api/infra/db/schema/user';
+import { authUser } from '@api/infra/db/schema';
 import { SystemClock } from '@api/shared/clock';
 import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';

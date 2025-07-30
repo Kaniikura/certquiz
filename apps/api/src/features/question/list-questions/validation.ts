@@ -5,11 +5,12 @@
 
 import { parseCommaSeparated, parseFlexibleBoolean } from '@api/shared/validation/query-params';
 import { z } from 'zod';
+import { QUESTION_DIFFICULTY_VALUES } from '../domain';
 
 /**
  * Available question difficulties for filtering
  */
-const QuestionDifficultySchema = z.enum(['Beginner', 'Intermediate', 'Advanced', 'Mixed']);
+const QuestionDifficultySchema = z.enum(QUESTION_DIFFICULTY_VALUES);
 
 /**
  * Pagination limit schema - validates limit parameter

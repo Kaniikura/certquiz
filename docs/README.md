@@ -3,6 +3,7 @@
 ## Project Documentation Structure
 
 ### Core Documentation
+- [Business Requirements Document](./business-requirements-document.md) - Comprehensive business context and requirements
 - [Task List](./task-list.md) - Current implementation tasks and progress
 - [Project Structure](./project-structure.md) - VSA + Repository Pattern architecture
 - [API Specification](./api-specification.md) - RESTful API endpoints
