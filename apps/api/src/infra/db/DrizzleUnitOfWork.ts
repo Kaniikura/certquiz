@@ -16,7 +16,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import type { IAuthUserRepository } from '@api/features/auth/domain';
 import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/drizzle/DrizzleAuthUserRepository';
 import type { IQuestionRepository } from '@api/features/question/domain';
 import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';

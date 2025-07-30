@@ -6,6 +6,7 @@
 import type { AppDependencies } from '@api/app-factory';
 import { buildApp } from '@api/app-factory';
 import type { IPremiumAccessService } from '@api/features/question/domain';
+import { QuestionAccessDeniedError } from '@api/features/question/shared/errors';
 import { DrizzleUnitOfWorkProvider } from '@api/infra/db/DrizzleUnitOfWorkProvider';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
@@ -58,10 +59,8 @@ function fakePremiumAccessService(): IPremiumAccessService {
       if (!isPremiumContent || isAuthenticated) {
         return Result.ok(undefined);
       }
-      // Create a proper QuestionAccessDeniedError (simplified for testing)
-      const error = new Error(`Question access denied: ${questionId}`) as Error & { code: string };
-      error.code = 'QUESTION_ACCESS_DENIED';
-      return Result.err(error);
+      // Create a proper QuestionAccessDeniedError
+      return Result.err(new QuestionAccessDeniedError(questionId, 'Premium access required'));
     },
   };
 }

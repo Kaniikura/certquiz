@@ -6,14 +6,14 @@
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { LoggerVariables } from '@api/middleware/logger';
 import { Hono } from 'hono';
-import type { IUserRepository } from '../domain/repositories/IUserRepository';
+import type { IAuthUserRepository } from '../domain/repositories/IAuthUserRepository';
 import { mapAuthError } from '../shared/error-mapper';
 import { safeJson } from '../shared/request-helpers';
 import { loginHandler } from './handler';
 
 // Define context variables for this route
 type LoginVariables = {
-  userRepository: IUserRepository;
+  userRepository: IAuthUserRepository;
   authProvider: IAuthProvider;
 } & LoggerVariables;
 

@@ -15,7 +15,7 @@ export {
   UserNotFoundError,
 } from './errors/AuthErrors';
 // Repositories
-export type { IUserRepository } from './repositories/IUserRepository';
+export type { IAuthUserRepository } from './repositories/IAuthUserRepository';
 
 // Value Objects
 export { Email } from './value-objects/Email';

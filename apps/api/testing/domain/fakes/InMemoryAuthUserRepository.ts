@@ -4,7 +4,7 @@
  */
 
 import type { AuthUser } from '@api/features/auth';
-import type { Email, IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import type { Email, IAuthUserRepository } from '@api/features/auth/domain';
 import { UserId } from '@api/features/auth/domain';
 
 /**

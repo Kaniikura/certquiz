@@ -1,4 +1,4 @@
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import type { IAuthUserRepository } from '@api/features/auth/domain';
 import type { IQuestionRepository } from '@api/features/question/domain';
 import type { IQuizRepository } from '@api/features/quiz/domain';
 import type { IUserRepository } from '@api/features/user/domain';

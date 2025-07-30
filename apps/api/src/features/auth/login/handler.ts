@@ -11,7 +11,7 @@ import {
   UserNotActiveError,
   UserNotFoundError,
 } from '../domain/errors/AuthErrors';
-import type { IUserRepository } from '../domain/repositories/IUserRepository';
+import type { IAuthUserRepository } from '../domain/repositories/IAuthUserRepository';
 import { Email } from '../domain/value-objects/Email';
 import { UserId } from '../domain/value-objects/UserId';
 import type { LoginResponse } from './dto';
@@ -25,7 +25,7 @@ export const loginHandler = validateAndHandle(
   loginSchema,
   async (
     input: LoginRequest,
-    userRepository: IUserRepository,
+    userRepository: IAuthUserRepository,
     authProvider: IAuthProvider
   ): Promise<Result<LoginResponse>> => {
     const { email, password } = input;
