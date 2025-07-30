@@ -63,4 +63,7 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
-*.temp.serena/
+*.temp
+# Serena MCP configuration (track project.yml only)
+.serena/*
+!.serena/project.yml
