@@ -11,9 +11,9 @@ import { PostgresSingleton } from '../../tests/containers';
 /**
  * Setup isolated test database for integration tests
  *
- * @deprecated While this function is still necessary for database isolation in integration tests,
- * consider using the unified test app factory pattern from `@api/tests/setup/test-app-factory`
- * instead of manual app setup. This function will remain for database lifecycle management.
+ * While this function is still necessary for database isolation in integration tests,
+ * use the unified test app factory pattern from `@api/tests/setup/test-app-factory`
+ * instead of manual app setup. This function remains for database lifecycle management.
  *
  * This helper encapsulates the common pattern used across integration tests:
  * 1. Creates an isolated PostgreSQL database using test containers
@@ -23,7 +23,7 @@ import { PostgresSingleton } from '../../tests/containers';
  *
  * @example
  * ```typescript
- * // Preferred: Use test app factory
+ * // Use test app factory with DI container
  * import { createIntegrationTestApp } from '@api/tests/setup/test-app-factory';
  * import { setupTestDatabase } from '@api/testing/domain';
  *
@@ -32,7 +32,7 @@ import { PostgresSingleton } from '../../tests/containers';
  *
  *   let testApp: TestApp;
  *   beforeEach(() => {
- *     testApp = createIntegrationTestApp(); // Use factory instead of manual setup
+ *     testApp = createIntegrationTestApp(); // Use DI-based factory
  *   });
  *
  *   it('should work with isolated database', async () => {

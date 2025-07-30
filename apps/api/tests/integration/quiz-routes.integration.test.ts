@@ -3,7 +3,6 @@
  * @fileoverview Tests for quiz submit-answer and get-results routes with session ID validation
  */
 
-import { PremiumAccessService } from '@api/features/question/domain';
 import { setupTestDatabase } from '@api/testing/domain';
 import { generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,11 +45,8 @@ describe('Quiz Routes Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    // Create integration test app with real database connections for each test
-    testApp = createIntegrationTestApp({
-      premiumAccessService: new PremiumAccessService(),
-      clock: () => new Date(),
-    });
+    // Create integration test app using DI container with real database connections for each test
+    testApp = createIntegrationTestApp();
   });
 
   async function createUserToken(

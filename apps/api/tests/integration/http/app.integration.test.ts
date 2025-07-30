@@ -10,7 +10,7 @@ describe('App Integration Tests', () => {
   let testApp: TestApp;
 
   beforeEach(async () => {
-    // Create integration test app for full app behavior testing
+    // Create integration test app using DI container for full app behavior testing
     testApp = createIntegrationTestApp();
   });
 

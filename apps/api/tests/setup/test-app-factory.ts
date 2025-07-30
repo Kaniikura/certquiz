@@ -3,67 +3,13 @@
  * @fileoverview Provides consistent app creation patterns for different test scenarios
  */
 
-import type { AppDependencies } from '@api/app-factory';
-import { buildApp } from '@api/app-factory';
-import type { IPremiumAccessService } from '@api/features/question/domain';
-import { QuestionAccessDeniedError } from '@api/features/question/shared/errors';
-import { DrizzleUnitOfWorkProvider } from '@api/infra/db/DrizzleUnitOfWorkProvider';
+import { buildAppWithContainer } from '@api/app-factory';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
-import { getRootLogger } from '@api/infra/logger/root-logger';
-import { SystemClock } from '@api/shared/clock';
-import { CryptoIdGenerator } from '@api/shared/id-generator';
-import { Result } from '@api/shared/result';
+import { createConfiguredContainer } from '@api/infra/di/container-config';
+import type { DIContainer } from '@api/infra/di/DIContainer';
+import { UNIT_OF_WORK_PROVIDER_TOKEN } from '@api/infra/di/tokens';
 import type { Hono } from 'hono';
-import { fakeAuthProvider, fakeLogger } from '../helpers/app';
-
-/**
- * Configuration options for test app creation
- */
-export interface TestConfig {
-  /** Override unit of work provider */
-  unitOfWorkProvider?: IUnitOfWorkProvider;
-  /** Override logger (defaults to fake logger for testing) */
-  logger?: AppDependencies['logger'];
-  /** Override auth provider (defaults to fake auth provider) */
-  authProvider?: AppDependencies['authProvider'];
-  /** Override premium access service (defaults to fake service) */
-  premiumAccessService?: IPremiumAccessService;
-  /** Override clock function */
-  clock?: AppDependencies['clock'];
-  /** Override ID generator */
-  idGenerator?: AppDependencies['idGenerator'];
-  /** Custom ping function for health checks */
-  ping?: AppDependencies['ping'];
-}
-
-/**
- * Create a fake premium access service for testing
- */
-function fakePremiumAccessService(): IPremiumAccessService {
-  return {
-    shouldIncludePremiumContent: (isAuthenticated: boolean, requestedPremiumAccess: boolean) => {
-      return isAuthenticated && requestedPremiumAccess;
-    },
-    validatePremiumAccess: (isAuthenticated: boolean, isPremiumContent: boolean) => {
-      if (!isPremiumContent || isAuthenticated) {
-        return Result.ok(undefined);
-      }
-      return Result.err(new Error('Premium access denied'));
-    },
-    validateQuestionPremiumAccess: (
-      isAuthenticated: boolean,
-      isPremiumContent: boolean,
-      questionId: string
-    ) => {
-      if (!isPremiumContent || isAuthenticated) {
-        return Result.ok(undefined);
-      }
-      // Create a proper QuestionAccessDeniedError
-      return Result.err(new QuestionAccessDeniedError(questionId, 'Premium access required'));
-    },
-  };
-}
 
 /**
  * Test app wrapper with cleanup capabilities
@@ -78,18 +24,17 @@ export interface TestApp {
 }
 
 /**
- * Create integration test app with real database connections
+ * Create integration test app using DI container
  *
- * Use this for tests that need to verify database behavior, transactions,
- * and data persistence. Requires a real database connection via DATABASE_URL.
+ * Uses development environment configuration with real database connections.
  *
- * @param config Optional configuration overrides
+ * @param container Optional pre-configured container (defaults to development container)
  * @returns Test app instance with real database connections
  *
  * @example
  * ```typescript
  * describe('Integration Test', () => {
- *   setupTestDatabase(); // Sets up isolated test database
+ *   setupTestDatabase();
  *
  *   let testApp: TestApp;
  *
@@ -104,30 +49,12 @@ export interface TestApp {
  * });
  * ```
  */
-export function createIntegrationTestApp(config?: TestConfig): TestApp {
-  // Use real logger or fallback to fake for testing
-  const logger = config?.logger ?? fakeLogger();
+export function createIntegrationTestApp(container?: DIContainer): TestApp {
+  // Use development container for integration tests (real database)
+  const diContainer = container ?? createConfiguredContainer('development');
 
-  // Create real database unit of work provider
-  const unitOfWorkProvider = config?.unitOfWorkProvider ?? new DrizzleUnitOfWorkProvider(logger);
-
-  // Create default dependencies with real database connections
-  const deps: AppDependencies = {
-    logger,
-    clock: config?.clock ?? (() => new SystemClock().now()),
-    idGenerator: config?.idGenerator ?? new CryptoIdGenerator(),
-    ping:
-      config?.ping ??
-      (async () => {
-        // Health check for integration tests - could verify database connectivity
-      }),
-    premiumAccessService: config?.premiumAccessService ?? fakePremiumAccessService(),
-    authProvider: config?.authProvider ?? fakeAuthProvider(),
-    unitOfWorkProvider,
-  };
-
-  // Build the app with real dependencies
-  const app = buildApp(deps);
+  // Build app using container
+  const app = buildAppWithContainer(diContainer);
 
   // Create TestApp wrapper
   const testApp: TestApp = {
@@ -136,19 +63,21 @@ export function createIntegrationTestApp(config?: TestConfig): TestApp {
       // Cleanup logic for integration tests
       // Database cleanup is typically handled by setupTestDatabase()
     },
-    getUnitOfWorkProvider: () => unitOfWorkProvider,
+    getUnitOfWorkProvider: () => {
+      // Extract unit of work provider from container for assertions
+      return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+    },
   };
 
   return testApp;
 }
 
 /**
- * Create HTTP layer test app with in-memory providers
+ * Create HTTP layer test app using DI container
  *
- * Use this for fast HTTP layer testing that doesn't require database persistence.
- * All data is stored in memory and automatically cleaned up between tests.
+ * Uses test environment configuration with in-memory providers.
  *
- * @param config Optional configuration overrides
+ * @param container Optional pre-configured container (defaults to test container)
  * @returns Test app instance with in-memory providers
  *
  * @example
@@ -171,55 +100,28 @@ export function createIntegrationTestApp(config?: TestConfig): TestApp {
  * });
  * ```
  */
-export function createHttpTestApp(config?: TestConfig): TestApp {
-  // Always use fake logger for HTTP tests (fast and lightweight)
-  const logger = config?.logger ?? fakeLogger();
+export function createHttpTestApp(container?: DIContainer): TestApp {
+  // Use test container for HTTP tests (in-memory)
+  const diContainer = container ?? createConfiguredContainer('test');
 
-  // Create in-memory unit of work provider for fast testing
-  const unitOfWorkProvider = config?.unitOfWorkProvider ?? new InMemoryUnitOfWorkProvider();
-
-  // Create dependencies optimized for HTTP testing
-  const deps: AppDependencies = {
-    logger,
-    clock: config?.clock ?? (() => new Date()),
-    idGenerator: config?.idGenerator ?? new CryptoIdGenerator(),
-    ping:
-      config?.ping ??
-      (async () => {
-        // No-op ping for HTTP tests
-      }),
-    premiumAccessService: config?.premiumAccessService ?? fakePremiumAccessService(),
-    authProvider: config?.authProvider ?? fakeAuthProvider(),
-    unitOfWorkProvider,
-  };
-
-  // Build the app with in-memory dependencies
-  const app = buildApp(deps);
+  // Build app using container
+  const app = buildAppWithContainer(diContainer);
 
   // Create TestApp wrapper
   const testApp: TestApp = {
     request: app.request.bind(app),
     cleanup: async () => {
-      // Clear in-memory data between tests
+      // Get unit of work provider and clear if it's in-memory
+      const unitOfWorkProvider = diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
       if (unitOfWorkProvider instanceof InMemoryUnitOfWorkProvider) {
         unitOfWorkProvider.clear();
       }
     },
-    getUnitOfWorkProvider: () => unitOfWorkProvider,
+    getUnitOfWorkProvider: () => {
+      // Extract unit of work provider from container for assertions
+      return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+    },
   };
 
   return testApp;
-}
-
-/**
- * Create test unit of work provider for integration tests
- *
- * Helper function to create a properly configured DrizzleUnitOfWorkProvider
- * for integration testing scenarios.
- *
- * @returns Configured DrizzleUnitOfWorkProvider for testing
- */
-export function createTestUnitOfWorkProvider(): DrizzleUnitOfWorkProvider {
-  const logger = getRootLogger();
-  return new DrizzleUnitOfWorkProvider(logger);
 }

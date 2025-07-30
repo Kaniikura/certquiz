@@ -15,6 +15,15 @@ import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
 import type { IUnitOfWorkProvider } from './infra/db/IUnitOfWorkProvider';
+import type { DIContainer } from './infra/di/DIContainer';
+import {
+  AUTH_PROVIDER_TOKEN,
+  CLOCK_TOKEN,
+  ID_GENERATOR_TOKEN,
+  LOGGER_TOKEN,
+  PREMIUM_ACCESS_SERVICE_TOKEN,
+  UNIT_OF_WORK_PROVIDER_TOKEN,
+} from './infra/di/tokens';
 import type { Logger } from './infra/logger';
 import {
   createLoggerMiddleware,
@@ -26,6 +35,7 @@ import {
   securityMiddleware,
   type TransactionVariables,
 } from './middleware';
+import type { Clock } from './shared/clock';
 import type { IdGenerator } from './shared/id-generator';
 import { createHealthRoute } from './system/health/route';
 
@@ -35,7 +45,7 @@ import { createHealthRoute } from './system/health/route';
 export interface AppDependencies {
   // Cross-cutting concerns
   logger: Logger;
-  clock: () => Date;
+  clock: Clock;
   idGenerator: IdGenerator;
 
   // Health & infrastructure
@@ -70,7 +80,7 @@ export function buildApp(deps: AppDependencies): Hono<{
   app.use('/api/*', createTransactionMiddleware(deps.unitOfWorkProvider));
 
   // Mount routes with injected dependencies
-  app.route('/health', createHealthRoute({ ping: deps.ping, clock: deps.clock }));
+  app.route('/health', createHealthRoute({ ping: deps.ping, clock: () => deps.clock.now() }));
 
   // Public auth routes (login, register, etc.)
   app.route('/api/auth', createAuthRoutes(deps.authProvider, deps.unitOfWorkProvider));
@@ -80,14 +90,14 @@ export function buildApp(deps: AppDependencies): Hono<{
     '/api/questions',
     createQuestionRoutes(
       deps.premiumAccessService,
-      { now: deps.clock },
+      deps.clock,
       deps.idGenerator,
       deps.unitOfWorkProvider
     )
   );
 
   // Quiz routes (public + protected sections)
-  app.route('/api/quiz', createQuizRoutes({ now: deps.clock }, deps.unitOfWorkProvider));
+  app.route('/api/quiz', createQuizRoutes(deps.clock, deps.unitOfWorkProvider));
 
   // User routes (public + protected sections)
   app.route('/api/users', createUserRoutes(deps.unitOfWorkProvider));
@@ -122,4 +132,47 @@ export function buildApp(deps: AppDependencies): Hono<{
   });
 
   return app;
+}
+
+/**
+ * Build app using DI container
+ * This is a gradual migration step that uses DI container to resolve dependencies
+ * and passes them to the existing buildApp function
+ *
+ * @param container - Configured DI container
+ * @returns Hono app instance
+ */
+export function buildAppWithContainer(container: DIContainer): Hono<{
+  Variables: LoggerVariables & RequestIdVariables & TransactionVariables;
+}> {
+  // Resolve dependencies from container
+  const logger = container.resolve(LOGGER_TOKEN);
+  const clock = container.resolve(CLOCK_TOKEN);
+  const authProvider = container.resolve(AUTH_PROVIDER_TOKEN);
+  const unitOfWorkProvider = container.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+  const premiumAccessService = container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN);
+  const idGenerator = container.resolve(ID_GENERATOR_TOKEN);
+
+  // Create other dependencies that aren't in the container yet
+  const ping = async () => {
+    // Use the database from the UnitOfWorkProvider
+    await unitOfWorkProvider.execute(async () => {
+      // Basic connectivity check - UoW creation is enough
+      return;
+    });
+  };
+
+  // Build dependencies object
+  const deps: AppDependencies = {
+    logger,
+    clock,
+    idGenerator,
+    ping,
+    premiumAccessService,
+    authProvider,
+    unitOfWorkProvider,
+  };
+
+  // Use existing buildApp function
+  return buildApp(deps);
 }

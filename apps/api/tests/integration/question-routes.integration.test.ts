@@ -4,7 +4,6 @@
  */
 
 import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
-import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
@@ -65,10 +64,8 @@ describe('Question Routes HTTP Integration', () => {
       })
       .onConflictDoNothing(); // Ignore if user already exists
 
-    // Create integration test app with real database connections
-    testApp = createIntegrationTestApp({
-      premiumAccessService: new PremiumAccessService(),
-    });
+    // Create integration test app using DI container with real database connections
+    testApp = createIntegrationTestApp();
   });
 
   beforeEach(async () => {

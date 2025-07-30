@@ -18,7 +18,7 @@ const unitOfWorkProvider = new DrizzleUnitOfWorkProvider(logger);
 // Build production app with real dependencies
 export const app = buildApp({
   logger,
-  clock: () => clock.now(),
+  clock,
   idGenerator,
   ping,
   premiumAccessService,

@@ -17,7 +17,7 @@ describe('Unit of Work Integration Tests', () => {
   let testApp: TestApp;
 
   beforeEach(async () => {
-    // Create integration test app for database access
+    // Create integration test app using DI container for database access
     testApp = createIntegrationTestApp();
 
     // Clean up users table before each test

@@ -40,7 +40,7 @@ describe('User Routes HTTP Integration', () => {
     testPublicKey = keyPair.publicKey;
     privateKey = testPrivateKey;
 
-    // Create HTTP test app with in-memory providers
+    // Create HTTP test app using DI container with in-memory providers
     testApp = createHttpTestApp();
   });
 
