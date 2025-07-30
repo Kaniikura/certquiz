@@ -28,7 +28,9 @@ export const quizSessionEvent = pgTable(
     eventSequence: integer('event_sequence').notNull().default(1), // Sequence within version
   },
   (table) => [
-    // Composite primary key for optimistic locking
+    // Composite primary key for event sourcing and optimistic locking
+    // - Ensures each event in the event store is uniquely identifiable by sessionId, version, and eventSequence.
+    // - Supports optimistic locking by detecting concurrent updates to the same session/version.
     primaryKey({ columns: [table.sessionId, table.version, table.eventSequence] }),
     // Performance indexes
     index('ix_quiz_event_session_version').on(table.sessionId, table.version),

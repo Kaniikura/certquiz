@@ -48,6 +48,9 @@ export const subscriptions = pgTable(
      * - Valid: startDate='2025-01-01', endDate=NULL (indefinite subscription)
      * - Valid: startDate='2025-01-01', endDate='2025-12-31' (annual subscription)
      * - Invalid: startDate='2025-01-01', endDate='2024-12-31' (ends before it starts)
+     *
+     * Reference: See Business Requirements Document (BRD) Section 7.4 Subscription Rules (BR-SB)
+     * for detailed business rules on subscription date validation and grace period handling.
      */
     check(
       'ck_subscription_date_range',
