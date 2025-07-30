@@ -3,7 +3,7 @@
  * @fileoverview HTTP endpoint for submitting answers to quiz questions using route utilities
  */
 
-import { getQuizRepository } from '@api/infra/repositories/providers';
+import { getRepository } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { TransactionVariables } from '@api/middleware/transaction';
@@ -11,6 +11,7 @@ import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
+import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
@@ -109,7 +110,7 @@ export function submitAnswerRoute(clock: Clock) {
 
     // Inject dependencies
     return route(c, {
-      quizRepo: getQuizRepository(c),
+      quizRepo: getRepository(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
       clock: clock,
     });

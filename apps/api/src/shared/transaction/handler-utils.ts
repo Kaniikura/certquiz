@@ -28,7 +28,7 @@ import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
  *   input: CreateUserInput
  * ) {
  *   const result = await executeWithUnitOfWork(provider, async (uow) => {
- *     const userRepo = uow.getUserRepository();
+ *     const userRepo = uow.getRepository(USER_REPO_TOKEN);
  *     const user = User.create(input);
  *     await userRepo.save(user);
  *     return user;

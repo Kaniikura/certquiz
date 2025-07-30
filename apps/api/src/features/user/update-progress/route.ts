@@ -3,11 +3,12 @@
  * @fileoverview HTTP endpoint for updating user progress after quiz completion using route utilities
  */
 
-import { getUserRepository } from '@api/infra/repositories/providers';
+import { getRepository } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { TransactionVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { createAmbientRoute } from '@api/shared/route';
+import { USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { mapUserError } from '../shared/error-mapper';
@@ -58,7 +59,7 @@ export function updateProgressRoute(clock: Clock) {
 
     // Inject dependencies
     return route(c, {
-      userRepo: getUserRepository(c),
+      userRepo: getRepository(c, USER_REPO_TOKEN),
       clock: clock,
     });
   });

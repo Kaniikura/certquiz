@@ -10,8 +10,8 @@
  * await withUnitOfWork(async (uow) => {
  *   await uow.begin(); // Start transaction (Phase 1: no-op)
  *
- *   const userRepo = uow.getUserRepository();
- *   const quizRepo = uow.getQuizRepository();
+ *   const userRepo = uow.getRepository(USER_REPO_TOKEN);
+ *   const quizRepo = uow.getRepository(QUIZ_REPO_TOKEN);
  *
  *   // All operations share the same transaction
  *   const user = await userRepo.findById(userId);
@@ -27,10 +27,7 @@
  * interface compatibility and future migration to explicit transaction control.
  */
 
-import type { IAuthUserRepository } from '@api/features/auth/domain';
-import type { IQuestionRepository } from '@api/features/question/domain';
-import type { IQuizRepository } from '@api/features/quiz/domain';
-import type { IUserRepository } from '@api/features/user/domain';
+import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
 
 export interface IUnitOfWork {
   /**
@@ -64,33 +61,21 @@ export interface IUnitOfWork {
   rollback(): Promise<void>;
 
   /**
-   * Get the Auth User repository instance for this unit of work
+   * Get a repository instance by its token (type-safe)
    *
-   * @returns Auth user repository that operates within the current transaction context
-   */
-  getAuthUserRepository(): IAuthUserRepository;
-
-  /**
-   * Get the User repository instance for this unit of work
+   * This method provides type-safe repository access using tokens,
+   * eliminating the need for casting or type assertions.
    *
-   * @returns User repository that operates within the current transaction context
-   */
-  getUserRepository(): IUserRepository;
-
-  /**
-   * Get the Quiz repository instance for this unit of work
+   * @param token - Type-safe repository token
+   * @returns Repository instance that operates within the current transaction context
    *
-   * @returns Quiz repository that operates within the current transaction context
+   * @example
+   * ```typescript
+   * const userRepo = uow.getRepository(USER_REPO_TOKEN);
+   * // userRepo is correctly typed as IUserRepository
+   * ```
    */
-  getQuizRepository(): IQuizRepository;
+  getRepository<T>(token: RepositoryToken<T>): T;
 
-  /**
-   * Get the Question repository instance for this unit of work
-   *
-   * @returns Question repository that operates within the current transaction context
-   */
-  getQuestionRepository(): IQuestionRepository;
-
-  // Future repository accessors can be added here:
-  // getProgressRepository(): IProgressRepository;
+  // Future repositories can be added by creating new tokens
 }

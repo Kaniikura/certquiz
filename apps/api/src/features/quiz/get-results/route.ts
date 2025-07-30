@@ -3,7 +3,7 @@
  * @fileoverview HTTP endpoint for retrieving quiz results and scoring using route utilities
  */
 
-import { getQuizRepository } from '@api/infra/repositories/providers';
+import { getRepository } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { TransactionVariables } from '@api/middleware/transaction';
@@ -11,6 +11,7 @@ import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
+import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation';
 import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
@@ -93,7 +94,7 @@ export function getResultsRoute(_clock: Clock) {
 
       // Inject dependencies
       return route(c, {
-        quizRepo: getQuizRepository(c),
+        quizRepo: getRepository(c, QUIZ_REPO_TOKEN),
         questionDetailsService: questionDetailsService,
       });
     }

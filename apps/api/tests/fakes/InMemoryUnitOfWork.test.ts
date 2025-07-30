@@ -6,6 +6,7 @@ import { Email, User, UserRole } from '@api/features/user/domain';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { SystemClock } from '@api/shared/clock';
+import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { InMemoryUnitOfWork, InMemoryUserRepository } from '@api/testing/domain/fakes';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -85,19 +86,19 @@ describe('InMemoryUnitOfWork', () => {
 
   describe('Repository Access', () => {
     it('should provide access to user repository', () => {
-      const userRepo = uow.getUserRepository();
+      const userRepo = uow.getRepository(USER_REPO_TOKEN);
       expect(userRepo).toBeDefined();
       expect(userRepo).toBeInstanceOf(InMemoryUserRepository);
     });
 
     it('should provide access to quiz repository', () => {
-      const quizRepo = uow.getQuizRepository();
+      const quizRepo = uow.getRepository(QUIZ_REPO_TOKEN);
       expect(quizRepo).toBeDefined();
     });
 
     it('should return the same repository instance on multiple calls', () => {
-      const userRepo1 = uow.getUserRepository();
-      const userRepo2 = uow.getUserRepository();
+      const userRepo1 = uow.getRepository(USER_REPO_TOKEN);
+      const userRepo2 = uow.getRepository(USER_REPO_TOKEN);
       expect(userRepo1).toBe(userRepo2);
     });
   });
@@ -212,13 +213,13 @@ describe('InMemoryUnitOfWork', () => {
       });
 
       await provider.execute(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getRepository(USER_REPO_TOKEN);
         await userRepo.save(user);
       });
 
       // A different UoW should see the user (shared repositories via provider)
       const foundUser = await provider.execute(async (uow) => {
-        const userRepo = uow.getUserRepository();
+        const userRepo = uow.getRepository(USER_REPO_TOKEN);
         return userRepo.findById(user.id);
       });
 

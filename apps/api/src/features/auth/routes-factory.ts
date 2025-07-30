@@ -5,10 +5,11 @@
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
 import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
-import { getAuthUserRepository } from '@api/infra/repositories/providers';
+import { getRepository } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { TransactionVariables } from '@api/middleware/transaction';
 import { createAmbientRoute } from '@api/shared/route';
+import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IAuthUserRepository } from './domain/repositories/IAuthUserRepository';
 import { loginHandler } from './login/handler';
@@ -56,7 +57,7 @@ export function createAuthRoutes(
 
     // Inject dependencies
     return route(c, {
-      authUserRepo: getAuthUserRepository(c),
+      authUserRepo: getRepository(c, AUTH_USER_REPO_TOKEN),
       authProvider: authProvider,
     });
   });

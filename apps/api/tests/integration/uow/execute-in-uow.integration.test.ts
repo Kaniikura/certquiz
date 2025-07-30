@@ -3,6 +3,7 @@ import { UserId } from '@api/features/auth/domain';
 import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
+import { AUTH_USER_REPO_TOKEN, QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { setupTestDatabase } from '@api/testing/domain';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -55,7 +56,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Insert user within transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user);
       });
 
@@ -64,7 +65,7 @@ describe('Unit of Work Integration Tests', () => {
       if (!uowProvider) throw new Error('UoW provider not available');
 
       await uowProvider.execute(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
         const savedUser = await userRepo.findById(user.id);
         expect(savedUser).toBeDefined();
         expect(savedUser?.email.toString()).toBe(userData.email);
@@ -95,7 +96,7 @@ describe('Unit of Work Integration Tests', () => {
       // Attempt to save user but throw error
       await expect(
         executeInUnitOfWork(async (uow) => {
-          const userRepo = uow.getAuthUserRepository();
+          const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
           await userRepo.save(user);
           throw error;
         })
@@ -146,7 +147,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Save multiple users in same transaction
       await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user1);
         await userRepo.save(user2);
       });
@@ -207,7 +208,7 @@ describe('Unit of Work Integration Tests', () => {
 
       // Start a transaction that will fail
       const failedTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(failUser);
         // Signal that the save is completed so second transaction can start
         firstTransactionSaveCompleted();
@@ -221,7 +222,7 @@ describe('Unit of Work Integration Tests', () => {
       // Wait for first transaction to complete its save, then start second transaction
       await saveCompletedPromise;
       const successfulTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(successUser);
       });
 
@@ -246,10 +247,10 @@ describe('Unit of Work Integration Tests', () => {
 
     it('should ensure repository instances are cached within transaction', async () => {
       await executeInUnitOfWork(async (uow) => {
-        const userRepo1 = uow.getAuthUserRepository();
-        const userRepo2 = uow.getAuthUserRepository();
-        const quizRepo1 = uow.getQuizRepository();
-        const quizRepo2 = uow.getQuizRepository();
+        const userRepo1 = uow.getRepository(AUTH_USER_REPO_TOKEN);
+        const userRepo2 = uow.getRepository(AUTH_USER_REPO_TOKEN);
+        const quizRepo1 = uow.getRepository(QUIZ_REPO_TOKEN);
+        const quizRepo2 = uow.getRepository(QUIZ_REPO_TOKEN);
 
         // Same instances should be returned
         expect(userRepo1).toBe(userRepo2);

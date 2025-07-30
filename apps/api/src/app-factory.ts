@@ -10,7 +10,7 @@ import { createAdminRoutes } from './features/admin/routes-factory';
 import { createAuthRoutes } from './features/auth/routes-factory';
 import type { IPremiumAccessService } from './features/question/domain';
 import { createQuestionRoutes } from './features/question/routes-factory';
-import { createQuizRoutes } from './features/quiz/routes';
+import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';

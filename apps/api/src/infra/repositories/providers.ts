@@ -1,8 +1,5 @@
-import type { IAuthUserRepository } from '@api/features/auth/domain';
-import type { IQuestionRepository } from '@api/features/question/domain';
-import type { IQuizRepository } from '@api/features/quiz/domain';
-import type { IUserRepository } from '@api/features/user/domain';
 import type { TransactionVariables } from '@api/middleware/transaction';
+import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
 import type { Context } from 'hono';
 
 /**
@@ -11,57 +8,27 @@ import type { Context } from 'hono';
  */
 
 /**
- * Gets the AuthUser repository from the ambient transaction context.
+ * Gets a repository from the ambient transaction context using a type-safe token.
+ * This is the preferred method for accessing repositories as it provides compile-time type safety.
+ *
+ * @param c - Hono context with transaction variables
+ * @param token - Type-safe repository token
+ * @returns Repository instance of the correct type
  * @throws {Error} If no active transaction is found
+ *
+ * @example
+ * ```typescript
+ * const userRepo = getRepository(c, USER_REPO_TOKEN);
+ * // userRepo is correctly typed as IUserRepository
+ * ```
  */
-export function getAuthUserRepository<T extends TransactionVariables>(
-  c: Context<{ Variables: T }>
-): IAuthUserRepository {
+export function getRepository<T, V extends TransactionVariables = TransactionVariables>(
+  c: Context<{ Variables: V }>,
+  token: RepositoryToken<T>
+): T {
   const uow = c.get('uow');
   if (!uow) {
     throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
   }
-  return uow.getAuthUserRepository();
-}
-
-/**
- * Gets the User repository from the ambient transaction context.
- * @throws {Error} If no active transaction is found
- */
-export function getUserRepository<T extends TransactionVariables>(
-  c: Context<{ Variables: T }>
-): IUserRepository {
-  const uow = c.get('uow');
-  if (!uow) {
-    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
-  }
-  return uow.getUserRepository();
-}
-
-/**
- * Gets the Quiz repository from the ambient transaction context.
- * @throws {Error} If no active transaction is found
- */
-export function getQuizRepository<T extends TransactionVariables>(
-  c: Context<{ Variables: T }>
-): IQuizRepository {
-  const uow = c.get('uow');
-  if (!uow) {
-    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
-  }
-  return uow.getQuizRepository();
-}
-
-/**
- * Gets the Question repository from the ambient transaction context.
- * @throws {Error} If no active transaction is found
- */
-export function getQuestionRepository<T extends TransactionVariables>(
-  c: Context<{ Variables: T }>
-): IQuestionRepository {
-  const uow = c.get('uow');
-  if (!uow) {
-    throw new Error('No active transaction. Ensure `createTransactionMiddleware` is applied.');
-  }
-  return uow.getQuestionRepository();
+  return uow.getRepository(token);
 }
