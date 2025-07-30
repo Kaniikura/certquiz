@@ -3,35 +3,29 @@
  * @fileoverview End-to-end tests for complete login flow through HTTP
  */
 
-import { buildApp } from '@api/app-factory';
 import { PremiumAccessService } from '@api/features/question/domain';
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { SequentialIdGenerator } from '@api/shared/id-generator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeLogger } from '../helpers/app';
+import type { TestApp } from '../setup/test-app-factory';
+import { createHttpTestApp } from '../setup/test-app-factory';
 
 describe('POST /api/auth/login - E2E', () => {
-  let app: ReturnType<typeof buildApp>;
+  let app: TestApp;
   let stubAuthProvider: StubAuthProvider;
-  let unitOfWorkProvider: InMemoryUnitOfWorkProvider;
 
   beforeEach(() => {
     // Create fresh fake dependencies for each test
     stubAuthProvider = new StubAuthProvider();
-    unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
 
-    // Build app with all required dependencies
-    app = buildApp({
+    // Create HTTP test app with in-memory providers
+    app = createHttpTestApp({
       logger: fakeLogger(),
       clock: () => new Date('2025-01-01T00:00:00Z'),
-      ping: async () => {
-        // No-op for tests
-      },
       authProvider: stubAuthProvider,
       idGenerator: new SequentialIdGenerator('test'),
       premiumAccessService: new PremiumAccessService(),
-      unitOfWorkProvider: unitOfWorkProvider,
     });
   });
 

@@ -3,20 +3,16 @@
  * @fileoverview Tests actual HTTP request/response behavior for question endpoints
  */
 
-import type { AppDependencies } from '@api/app-factory';
-import { buildApp } from '@api/app-factory';
 import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
 import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { authUser } from '@api/infra/db/schema';
-import { SystemClock } from '@api/shared/clock';
-import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeAuthProvider, fakeLogger } from '../helpers/app';
+import type { TestApp } from '../setup/test-app-factory';
+import { createIntegrationTestApp } from '../setup/test-app-factory';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey | null = null;
@@ -43,7 +39,7 @@ describe('Question Routes HTTP Integration', () => {
   setupTestDatabase();
 
   let privateKey: CryptoKey;
-  let testApp: ReturnType<typeof buildApp>;
+  let testApp: TestApp;
   let testQuestions: TestQuestion[] = [];
 
   beforeAll(async () => {
@@ -69,30 +65,10 @@ describe('Question Routes HTTP Integration', () => {
       })
       .onConflictDoNothing(); // Ignore if user already exists
 
-    // Create shared Unit of Work provider with persistent repositories
-    const uowProvider = new InMemoryUnitOfWorkProvider();
-
-    // Create dependencies for buildApp
-    const premiumAccessService = new PremiumAccessService();
-    const clock = new SystemClock();
-    const idGenerator = new CryptoIdGenerator();
-    const logger = fakeLogger();
-    const authProvider = fakeAuthProvider();
-
-    // Create test app with all dependencies
-    const deps: AppDependencies = {
-      logger,
-      clock: () => clock.now(),
-      idGenerator,
-      ping: async () => {
-        // No-op for tests
-      },
-      premiumAccessService,
-      authProvider,
-      unitOfWorkProvider: uowProvider,
-    };
-
-    testApp = buildApp(deps);
+    // Create integration test app with real database connections
+    testApp = createIntegrationTestApp({
+      premiumAccessService: new PremiumAccessService(),
+    });
   });
 
   beforeEach(async () => {

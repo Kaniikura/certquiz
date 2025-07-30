@@ -1,18 +1,27 @@
 import { AuthUser } from '@api/features/auth';
 import { UserId } from '@api/features/auth/domain';
-import { db } from '@api/infra/db/client';
+import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
 import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
 import { setupTestDatabase } from '@api/testing/domain';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { TestApp } from '../../setup/test-app-factory';
+import { createIntegrationTestApp } from '../../setup/test-app-factory';
 
 describe('Unit of Work Integration Tests', () => {
   // Setup isolated test database
   setupTestDatabase();
 
+  let testApp: TestApp;
+
   beforeEach(async () => {
+    // Create integration test app for database access
+    testApp = createIntegrationTestApp();
+
     // Clean up users table before each test
+    // For UoW testing, we use direct DB access for cleanup since we're testing the abstraction
+    const db = getDb();
     await db.delete(authUser);
   });
 
@@ -50,13 +59,16 @@ describe('Unit of Work Integration Tests', () => {
         await userRepo.save(user);
       });
 
-      // Verify user was saved
-      const savedUsers = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(user.id)));
-      expect(savedUsers).toHaveLength(1);
-      expect(savedUsers[0].email).toBe(userData.email);
+      // Verify user was saved through UoW
+      const uowProvider = testApp.getUnitOfWorkProvider?.();
+      if (!uowProvider) throw new Error('UoW provider not available');
+
+      await uowProvider.execute(async (uow) => {
+        const userRepo = uow.getAuthUserRepository();
+        const savedUser = await userRepo.findById(user.id);
+        expect(savedUser).toBeDefined();
+        expect(savedUser?.email.toString()).toBe(userData.email);
+      });
     });
 
     it('should rollback transaction on error', async () => {
@@ -90,6 +102,8 @@ describe('Unit of Work Integration Tests', () => {
       ).rejects.toThrow(error);
 
       // Verify user was NOT saved due to rollback
+      // Use direct DB access for verification since we're testing the UoW abstraction
+      const db = getDb();
       const savedUsers = await db
         .select()
         .from(authUser)
@@ -138,6 +152,8 @@ describe('Unit of Work Integration Tests', () => {
       });
 
       // Verify both users were saved
+      // Use direct DB access for verification since we're testing the UoW abstraction
+      const db = getDb();
       const savedUser1 = await db
         .select()
         .from(authUser)
@@ -213,6 +229,8 @@ describe('Unit of Work Integration Tests', () => {
       await Promise.all([failedTransaction, successfulTransaction]);
 
       // Verify only the successful transaction's user was saved
+      // Use direct DB access for verification since we're testing the UoW abstraction
+      const db = getDb();
       const failedUserRows = await db
         .select()
         .from(authUser)

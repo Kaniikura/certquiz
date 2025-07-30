@@ -1,14 +1,22 @@
-import { app } from '@api/index';
 import { setupTestDatabase } from '@api/testing/domain';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { TestApp } from '../../setup/test-app-factory';
+import { createIntegrationTestApp } from '../../setup/test-app-factory';
 
 describe('App Integration Tests', () => {
   // Setup isolated test database
   setupTestDatabase();
 
+  let testApp: TestApp;
+
+  beforeEach(async () => {
+    // Create integration test app for full app behavior testing
+    testApp = createIntegrationTestApp();
+  });
+
   describe('Error handling', () => {
     it('returns 404 for non-existent endpoints', async () => {
-      const res = await app.request('/non-existent');
+      const res = await testApp.request('/non-existent');
 
       expect(res.status).toBe(404);
 
@@ -23,7 +31,7 @@ describe('App Integration Tests', () => {
     });
 
     it('returns proper error format with request ID', async () => {
-      const res = await app.request('/this-does-not-exist');
+      const res = await testApp.request('/this-does-not-exist');
 
       expect(res.status).toBe(404);
       expect(res.headers.get('x-request-id')).toBeDefined();
@@ -36,7 +44,7 @@ describe('App Integration Tests', () => {
 
   describe('Root endpoint', () => {
     it('returns API information', async () => {
-      const res = await app.request('/');
+      const res = await testApp.request('/');
 
       expect(res.status).toBe(200);
 
