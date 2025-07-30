@@ -18,6 +18,9 @@ export type UnitOfWorkVariables = {
 /**
  * Creates middleware that injects a Unit of Work provider into the request context
  *
+ * @deprecated Consider using `createTransactionMiddleware` from `@api/middleware/transaction`
+ * for the Ambient UoW pattern, which manages transaction lifecycle automatically.
+ *
  * This middleware enables dependency injection of the Unit of Work provider,
  * allowing different implementations (production vs test) to be injected
  * at application startup rather than determined by environment variables.
@@ -27,11 +30,7 @@ export type UnitOfWorkVariables = {
  *
  * @example
  * ```typescript
- * // In production app setup
- * const provider = new DrizzleUnitOfWorkProvider(logger);
- * app.use('*', createUnitOfWorkMiddleware(provider));
- *
- * // In test app setup
+ * // Deprecated pattern
  * const provider = new InMemoryUnitOfWorkProvider();
  * app.use('*', createUnitOfWorkMiddleware(provider));
  *
@@ -40,6 +39,15 @@ export type UnitOfWorkVariables = {
  * const result = await provider.execute(async (uow) => {
  *   // Use unit of work
  * });
+ *
+ * // Preferred: Use transaction middleware (Ambient UoW pattern)
+ * import { createTransactionMiddleware } from '@api/middleware/transaction';
+ * const provider = new InMemoryUnitOfWorkProvider();
+ * app.use('*', createTransactionMiddleware(provider));
+ *
+ * // In handlers - UoW is automatically available
+ * const uow = c.get('uow');
+ * // Use unit of work directly, transaction lifecycle is managed automatically
  * ```
  */
 export function createUnitOfWorkMiddleware(provider: IUnitOfWorkProvider) {
