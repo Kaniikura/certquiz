@@ -6,17 +6,17 @@
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Business Objectives](#business-objectives)
-3. [Project Scope](#project-scope)
-4. [Stakeholders](#stakeholders)
-5. [Functional Requirements](#functional-requirements)
-6. [Non-Functional Requirements](#non-functional-requirements)
-7. [Business Rules](#business-rules)
-8. [User Stories](#user-stories)
-9. [Success Criteria](#success-criteria)
-10. [Risks and Assumptions](#risks-and-assumptions)
-11. [Implementation Roadmap](#implementation-roadmap)
+1. [Executive Summary](#1-executive-summary)
+2. [Business Objectives](#2-business-objectives)
+3. [Project Scope](#3-project-scope)
+4. [Stakeholders](#4-stakeholders)
+5. [Functional Requirements](#5-functional-requirements)
+6. [Non-Functional Requirements](#6-non-functional-requirements)
+7. [Business Rules](#7-business-rules)
+8. [User Stories](#8-user-stories)
+9. [Success Criteria](#9-success-criteria)
+10. [Risks and Assumptions](#10-risks-and-assumptions)
+11. [Implementation Roadmap](#11-implementation-roadmap)
 
 ## 1. Executive Summary
 
@@ -83,13 +83,13 @@ The IT certification market continues to grow as professionals seek to validate 
 ## 4. Stakeholders
 
 ### 4.1 Primary Stakeholders
-| Stakeholder | Role | Interest | Influence |
-|-------------|------|----------|-----------|
-| End Users | Certification candidates | High-quality practice content | High |
-| Content Team | Question creators/curators | Efficient content management | High |
-| Product Owner | Business decision maker | ROI, user growth | High |
-| Development Team | Platform builders | Technical feasibility | Medium |
-| Premium Subscribers | Paying customers | Advanced features, support | High |
+| Stakeholder         | Role                       | Interest                      | Influence |
+| ------------------- | -------------------------- | ----------------------------- | --------- |
+| End Users           | Certification candidates   | High-quality practice content | High      |
+| Content Team        | Question creators/curators | Efficient content management  | High      |
+| Product Owner       | Business decision maker    | ROI, user growth              | High      |
+| Development Team    | Platform builders          | Technical feasibility         | Medium    |
+| Premium Subscribers | Paying customers           | Advanced features, support    | High      |
 
 ### 4.2 User Personas
 
@@ -545,13 +545,13 @@ The IT certification market continues to grow as professionals seek to validate 
 
 ### 10.1 Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|---------|------------|
-| Content quality issues | Medium | High | Rigorous review process, user feedback system |
-| Low premium conversion | Medium | High | A/B testing, feature optimization, pricing experiments |
-| Technical scalability | Low | High | Cloud infrastructure, performance monitoring |
-| Competition from free resources | High | Medium | Superior UX, gamification, community features |
-| Certification vendor legal issues | Low | High | Clear disclaimers, no official branding |
+| Risk                              | Probability | Impact | Mitigation                                             |
+| --------------------------------- | ----------- | ------ | ------------------------------------------------------ |
+| Content quality issues            | Medium      | High   | Rigorous review process, user feedback system          |
+| Low premium conversion            | Medium      | High   | A/B testing, feature optimization, pricing experiments |
+| Technical scalability             | Low         | High   | Cloud infrastructure, performance monitoring           |
+| Competition from free resources   | High        | Medium | Superior UX, gamification, community features          |
+| Certification vendor legal issues | Low         | High   | Clear disclaimers, no official branding                |
 
 ### 10.2 Assumptions
 - Users prefer interactive learning over passive content
@@ -648,6 +648,6 @@ The IT certification market continues to grow as professionals seek to validate 
 - API Specification Document
 
 ### Appendix C: Document History
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-01-29 | AI Assistant | Initial draft based on codebase analysis |
+| Version | Date       | Author       | Changes                                  |
+| ------- | ---------- | ------------ | ---------------------------------------- |
+| 1.0     | 2025-01-29 | AI Assistant | Initial draft based on codebase analysis |
