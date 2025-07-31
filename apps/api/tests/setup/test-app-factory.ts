@@ -4,11 +4,13 @@
  */
 
 import { buildAppWithContainer } from '@api/app-factory';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
 import { createConfiguredContainer } from '@api/infra/di/container-config';
 import type { DIContainer } from '@api/infra/di/DIContainer';
-import { UNIT_OF_WORK_PROVIDER_TOKEN } from '@api/infra/di/tokens';
+import { DATABASE_CONTEXT_TOKEN, UNIT_OF_WORK_PROVIDER_TOKEN } from '@api/infra/di/tokens';
+import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import type { Hono } from 'hono';
 
 /**
@@ -19,8 +21,10 @@ export interface TestApp {
   request: Hono['request'];
   /** Clean up test data and resources */
   cleanup?: () => Promise<void>;
-  /** Get the underlying unit of work provider for assertions */
+  /** Get the underlying unit of work provider for assertions (deprecated) */
   getUnitOfWorkProvider?: () => IUnitOfWorkProvider;
+  /** Get the database context for assertions */
+  getDatabaseContext?: () => IDatabaseContext;
 }
 
 /**
@@ -64,8 +68,12 @@ export function createIntegrationTestApp(container?: DIContainer): TestApp {
       // Database cleanup is typically handled by setupTestDatabase()
     },
     getUnitOfWorkProvider: () => {
-      // Extract unit of work provider from container for assertions
+      // Extract unit of work provider from container for assertions (deprecated)
       return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+    },
+    getDatabaseContext: () => {
+      // Extract database context from container for assertions
+      return diContainer.resolve(DATABASE_CONTEXT_TOKEN);
     },
   };
 
@@ -111,15 +119,24 @@ export function createHttpTestApp(container?: DIContainer): TestApp {
   const testApp: TestApp = {
     request: app.request.bind(app),
     cleanup: async () => {
-      // Get unit of work provider and clear if it's in-memory
+      // Clear both UnitOfWork provider and DatabaseContext for comprehensive cleanup
       const unitOfWorkProvider = diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
       if (unitOfWorkProvider instanceof InMemoryUnitOfWorkProvider) {
         unitOfWorkProvider.clear();
       }
+
+      const databaseContext = diContainer.resolve(DATABASE_CONTEXT_TOKEN);
+      if (databaseContext instanceof InMemoryDatabaseContext) {
+        databaseContext.clear();
+      }
     },
     getUnitOfWorkProvider: () => {
-      // Extract unit of work provider from container for assertions
+      // Extract unit of work provider from container for assertions (deprecated)
       return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+    },
+    getDatabaseContext: () => {
+      // Extract database context from container for assertions
+      return diContainer.resolve(DATABASE_CONTEXT_TOKEN);
     },
   };
 

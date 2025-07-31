@@ -1,6 +1,26 @@
 /**
  * Unit of Work interface for transaction management
  *
+ * @deprecated Use IDatabaseContext instead. This interface will be removed in a future version.
+ * IDatabaseContext provides a more intuitive API while internally using UnitOfWork components.
+ *
+ * Migration guide:
+ * ```typescript
+ * // Old pattern:
+ * await provider.execute(async (uow) => {
+ *   const userRepo = uow.getRepository(USER_REPO_TOKEN);
+ *   const user = await userRepo.findById(userId);
+ *   await userRepo.save(user);
+ * });
+ *
+ * // New pattern:
+ * await dbContext.withinTransaction(async (ctx) => {
+ *   const userRepo = ctx.getRepository(USER_REPO_TOKEN);
+ *   const user = await userRepo.findById(userId);
+ *   await userRepo.save(user);
+ * });
+ * ```
+ *
  * This interface follows the standard Unit of Work pattern, providing
  * a clean abstraction for managing database transactions and coordinating
  * multiple repository operations within a single transaction context.

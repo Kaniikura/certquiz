@@ -1,33 +1,33 @@
-import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
-import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import type { Context, Next } from 'hono';
 import type { LoggerVariables } from './logger';
 
-export interface TransactionVariables {
-  uow: IUnitOfWork;
+export interface DatabaseContextVariables {
+  dbContext: IDatabaseContext;
 }
 
 /**
- * Creates transaction middleware for Ambient UoW pattern.
- * This middleware manages the transaction lifecycle and stores the UoW in the request context.
+ * Creates database context middleware for unified database access pattern.
+ * This middleware provides direct access to DatabaseContext, replacing the two-tier
+ * UnitOfWork pattern with a more intuitive single-tier approach.
  */
-export function createTransactionMiddleware(provider: IUnitOfWorkProvider) {
-  return async (c: Context<{ Variables: LoggerVariables & TransactionVariables }>, next: Next) => {
+export function createDatabaseContextMiddleware(dbContext: IDatabaseContext) {
+  return async (
+    c: Context<{ Variables: LoggerVariables & DatabaseContextVariables }>,
+    next: Next
+  ) => {
     const logger = c.get('logger');
 
-    // Execute within transaction scope
-    await provider.execute(async (uow) => {
-      // Store UoW in request context
-      c.set('uow', uow);
+    // Store DatabaseContext in request context
+    c.set('dbContext', dbContext);
 
-      try {
-        logger.debug('Transaction started');
-        await next();
-        logger.debug('Transaction committed');
-      } catch (error) {
-        logger.error('Transaction rolled back', { error });
-        throw error;
-      }
-    });
+    try {
+      logger.debug('Database context available');
+      await next();
+      logger.debug('Request completed');
+    } catch (error) {
+      logger.error('Request failed', { error });
+      throw error;
+    }
   };
 }

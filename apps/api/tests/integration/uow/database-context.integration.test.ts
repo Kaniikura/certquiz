@@ -2,7 +2,7 @@ import { AuthUser } from '@api/features/auth';
 import { UserId } from '@api/features/auth/domain';
 import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
-import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
+import { executeInDatabaseContext } from '@api/infra/unit-of-work';
 import { AUTH_USER_REPO_TOKEN, QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { setupTestDatabase } from '@api/testing/domain';
 import { eq } from 'drizzle-orm';
@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { TestApp } from '../../setup/test-app-factory';
 import { createIntegrationTestApp } from '../../setup/test-app-factory';
 
-describe('Unit of Work Integration Tests', () => {
+describe('Database Context Integration Tests', () => {
   // Setup isolated test database
   setupTestDatabase();
 
@@ -26,14 +26,7 @@ describe('Unit of Work Integration Tests', () => {
     await db.delete(authUser);
   });
 
-  describe('withTransaction', () => {
-    it('should be exported and be a function', () => {
-      expect(withTransaction).toBeDefined();
-      expect(typeof withTransaction).toBe('function');
-    });
-  });
-
-  describe('executeInUnitOfWork', () => {
+  describe('executeInDatabaseContext', () => {
     it('should execute database operations within transaction', async () => {
       const userData = {
         userId: UserId.generate(),
@@ -54,18 +47,19 @@ describe('Unit of Work Integration Tests', () => {
       }
       const user = userResult.data;
 
+      // Get database context from test app
+      const dbContext = testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Insert user within transaction
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user);
       });
 
-      // Verify user was saved through UoW
-      const uowProvider = testApp.getUnitOfWorkProvider?.();
-      if (!uowProvider) throw new Error('UoW provider not available');
-
-      await uowProvider.execute(async (uow) => {
-        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+      // Verify user was saved through DatabaseContext
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         const savedUser = await userRepo.findById(user.id);
         expect(savedUser).toBeDefined();
         expect(savedUser?.email.toString()).toBe(userData.email);
@@ -93,10 +87,14 @@ describe('Unit of Work Integration Tests', () => {
 
       const error = new Error('Rollback test error');
 
+      // Get database context from test app
+      const dbContext = testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Attempt to save user but throw error
       await expect(
-        executeInUnitOfWork(async (uow) => {
-          const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+        executeInDatabaseContext(dbContext, async (ctx) => {
+          const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
           await userRepo.save(user);
           throw error;
         })
@@ -145,9 +143,13 @@ describe('Unit of Work Integration Tests', () => {
       const user1 = userResult1.data;
       const user2 = userResult2.data;
 
+      // Get database context from test app
+      const dbContext = testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Save multiple users in same transaction
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user1);
         await userRepo.save(user2);
       });
@@ -200,6 +202,10 @@ describe('Unit of Work Integration Tests', () => {
       const failUser = userResult1.data;
       const successUser = userResult2.data;
 
+      // Get database context from test app
+      const dbContext = testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Create synchronization mechanism to ensure proper transaction overlap
       let firstTransactionSaveCompleted: () => void;
       const saveCompletedPromise = new Promise<void>((resolve) => {
@@ -207,8 +213,8 @@ describe('Unit of Work Integration Tests', () => {
       });
 
       // Start a transaction that will fail
-      const failedTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+      const failedTransaction = executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(failUser);
         // Signal that the save is completed so second transaction can start
         firstTransactionSaveCompleted();
@@ -221,8 +227,8 @@ describe('Unit of Work Integration Tests', () => {
 
       // Wait for first transaction to complete its save, then start second transaction
       await saveCompletedPromise;
-      const successfulTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getRepository(AUTH_USER_REPO_TOKEN);
+      const successfulTransaction = executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(successUser);
       });
 
@@ -246,11 +252,15 @@ describe('Unit of Work Integration Tests', () => {
     });
 
     it('should ensure repository instances are cached within transaction', async () => {
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo1 = uow.getRepository(AUTH_USER_REPO_TOKEN);
-        const userRepo2 = uow.getRepository(AUTH_USER_REPO_TOKEN);
-        const quizRepo1 = uow.getRepository(QUIZ_REPO_TOKEN);
-        const quizRepo2 = uow.getRepository(QUIZ_REPO_TOKEN);
+      // Get database context from test app
+      const dbContext = testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo1 = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const userRepo2 = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const quizRepo1 = ctx.getRepository(QUIZ_REPO_TOKEN);
+        const quizRepo2 = ctx.getRepository(QUIZ_REPO_TOKEN);
 
         // Same instances should be returned
         expect(userRepo1).toBe(userRepo2);

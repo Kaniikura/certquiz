@@ -3,10 +3,10 @@
  * @fileoverview HTTP endpoint for retrieving detailed question information
  */
 
-import { getRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
@@ -23,7 +23,7 @@ import { getQuestionHandler } from './handler';
 type GetQuestionVariables = {
   user?: AuthUser; // Optional for public access with premium logic
 } & LoggerVariables &
-  TransactionVariables;
+  DatabaseContextVariables;
 
 export function getQuestionRoute(premiumAccessService: IPremiumAccessService) {
   return new Hono<{
@@ -91,7 +91,7 @@ export function getQuestionRoute(premiumAccessService: IPremiumAccessService) {
 
     // Inject dependencies
     return route(c, {
-      questionRepo: getRepository(c, QUESTION_REPO_TOKEN),
+      questionRepo: getRepositoryFromContext(c, QUESTION_REPO_TOKEN),
       premiumAccessService: premiumAccessService,
     });
   });

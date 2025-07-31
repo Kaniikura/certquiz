@@ -4,6 +4,7 @@
  */
 
 export { InMemoryAuthUserRepository } from './InMemoryAuthUserRepository';
+export { InMemoryDatabaseContext } from './InMemoryDatabaseContext';
 export { InMemoryQuestionRepository } from './InMemoryQuestionRepository';
 export { InMemoryQuizRepository } from './InMemoryQuizRepository';
 export { InMemoryUnitOfWork } from './InMemoryUnitOfWork';

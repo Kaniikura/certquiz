@@ -3,10 +3,10 @@
  * @fileoverview Tests for auth routes creation with dependency injection
  */
 
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { getRootLogger } from '@api/infra/logger/root-logger';
-import { createLoggerMiddleware, createTransactionMiddleware } from '@api/middleware';
+import { createDatabaseContextMiddleware, createLoggerMiddleware } from '@api/middleware';
 import { StubAuthProvider } from '@api/testing/domain';
+import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createAuthRoutes } from './routes-factory';
@@ -16,10 +16,10 @@ describe('Auth Routes Factory', () => {
     it('should create auth routes with dependencies', () => {
       // Arrange
       const stubAuthProvider = new StubAuthProvider();
-      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
+      const databaseContext = new InMemoryDatabaseContext();
 
       // Act
-      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, databaseContext);
 
       // Assert - Should be a valid Hono instance
       expect(authRoutes).toBeDefined();
@@ -31,8 +31,8 @@ describe('Auth Routes Factory', () => {
     it('should return healthy status', async () => {
       // Arrange
       const stubAuthProvider = new StubAuthProvider();
-      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
+      const databaseContext = new InMemoryDatabaseContext();
+      const authRoutes = createAuthRoutes(stubAuthProvider, databaseContext);
 
       // Act
       const req = new Request('http://localhost/health');
@@ -58,13 +58,13 @@ describe('Auth Routes Factory', () => {
       const logger = getRootLogger();
       testApp.use('*', createLoggerMiddleware(logger));
 
-      // Add transaction middleware
-      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
-      testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
+      // Add database context middleware
+      const databaseContext = new InMemoryDatabaseContext();
+      testApp.use('*', createDatabaseContextMiddleware(databaseContext));
 
       // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, databaseContext);
       testApp.route('/', authRoutes);
 
       // Act - Test that the login route is mounted
@@ -90,13 +90,13 @@ describe('Auth Routes Factory', () => {
       const logger = getRootLogger();
       testApp.use('*', createLoggerMiddleware(logger));
 
-      // Add transaction middleware
-      const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
-      testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
+      // Add database context middleware
+      const databaseContext = new InMemoryDatabaseContext();
+      testApp.use('*', createDatabaseContextMiddleware(databaseContext));
 
       // Mount auth routes
       const stubAuthProvider = new StubAuthProvider();
-      const authRoutes = createAuthRoutes(stubAuthProvider, unitOfWorkProvider);
+      const authRoutes = createAuthRoutes(stubAuthProvider, databaseContext);
       testApp.route('/', authRoutes);
 
       // Act

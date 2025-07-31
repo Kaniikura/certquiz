@@ -3,7 +3,7 @@
  * @fileoverview Basic tests for user routes structure
  */
 
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
+import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { describe, expect, it } from 'vitest';
 
 describe('User Routes Structure', () => {
@@ -15,8 +15,8 @@ describe('User Routes Structure', () => {
     expect(typeof createUserRoutes).toBe('function');
 
     // Test that it creates a valid Hono instance
-    const provider = new InMemoryUnitOfWorkProvider();
-    const userRoutes = createUserRoutes(provider);
+    const databaseContext = new InMemoryDatabaseContext();
+    const userRoutes = createUserRoutes(databaseContext);
     expect(userRoutes).toBeDefined();
     expect(typeof userRoutes.fetch).toBe('function');
   });

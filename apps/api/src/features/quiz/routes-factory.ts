@@ -3,9 +3,9 @@
  * @fileoverview Composition of all quiz-related HTTP routes
  */
 
-import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { auth } from '@api/middleware/auth';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
 import { getResultsRoute } from './get-results/route';
@@ -17,11 +17,11 @@ import { submitAnswerRoute } from './submit-answer/route';
  */
 export function createQuizRoutes(
   clock: Clock,
-  _unitOfWorkProvider: IUnitOfWorkProvider
+  _databaseContext: IDatabaseContext
 ): Hono<{
-  Variables: TransactionVariables;
+  Variables: DatabaseContextVariables;
 }> {
-  const app = new Hono<{ Variables: TransactionVariables }>();
+  const app = new Hono<{ Variables: DatabaseContextVariables }>();
 
   // Health check endpoint (no database access)
   app.get('/health', (c) => {

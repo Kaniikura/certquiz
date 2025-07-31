@@ -3,8 +3,8 @@
  * @fileoverview Simple DI container for managing service dependencies and environment-specific configurations
  */
 
-export type ServiceFactory<T = unknown> = () => T;
-export type ServiceToken<T = unknown> = symbol & { __brand: T };
+type ServiceFactory<T = unknown> = () => T;
+type ServiceToken<T = unknown> = symbol & { __brand: T };
 export type Environment = 'test' | 'development' | 'production';
 
 interface ServiceRegistration {
@@ -200,6 +200,3 @@ export class DIContainer {
 export function createServiceToken<T>(name: string): ServiceToken<T> {
   return Symbol(name) as ServiceToken<T>;
 }
-
-// Export singleton instance for convenience
-export const defaultContainer = new DIContainer();

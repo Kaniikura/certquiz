@@ -14,26 +14,26 @@ import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
-import type { IUnitOfWorkProvider } from './infra/db/IUnitOfWorkProvider';
+import type { IDatabaseContext } from './infra/db/IDatabaseContext';
 import type { DIContainer } from './infra/di/DIContainer';
 import {
   AUTH_PROVIDER_TOKEN,
   CLOCK_TOKEN,
+  DATABASE_CONTEXT_TOKEN,
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
-  UNIT_OF_WORK_PROVIDER_TOKEN,
 } from './infra/di/tokens';
 import type { Logger } from './infra/logger';
 import {
+  createDatabaseContextMiddleware,
   createLoggerMiddleware,
-  createTransactionMiddleware,
+  type DatabaseContextVariables,
   errorHandler,
   type LoggerVariables,
   type RequestIdVariables,
   requestIdMiddleware,
   securityMiddleware,
-  type TransactionVariables,
 } from './middleware';
 import type { Clock } from './shared/clock';
 import type { IdGenerator } from './shared/id-generator';
@@ -55,8 +55,8 @@ export interface AppDependencies {
   premiumAccessService: IPremiumAccessService;
   authProvider: IAuthProvider;
 
-  // Transaction management
-  unitOfWorkProvider: IUnitOfWorkProvider;
+  // Database context management
+  databaseContext: IDatabaseContext;
 }
 
 /**
@@ -64,11 +64,11 @@ export interface AppDependencies {
  * Creates Hono app with injected dependencies for clean architecture
  */
 export function buildApp(deps: AppDependencies): Hono<{
-  Variables: LoggerVariables & RequestIdVariables & TransactionVariables;
+  Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
 }> {
   // Create app with proper type for context variables
   const app = new Hono<{
-    Variables: LoggerVariables & RequestIdVariables & TransactionVariables;
+    Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
   }>();
 
   // Global middleware (order matters!)
@@ -76,14 +76,14 @@ export function buildApp(deps: AppDependencies): Hono<{
   app.use('*', createLoggerMiddleware(deps.logger));
   app.use('*', securityMiddleware());
 
-  // Transaction middleware for ambient UoW pattern (applies to all API routes)
-  app.use('/api/*', createTransactionMiddleware(deps.unitOfWorkProvider));
+  // Database context middleware for database access (applies to all API routes)
+  app.use('/api/*', createDatabaseContextMiddleware(deps.databaseContext));
 
   // Mount routes with injected dependencies
   app.route('/health', createHealthRoute({ ping: deps.ping, clock: () => deps.clock.now() }));
 
   // Public auth routes (login, register, etc.)
-  app.route('/api/auth', createAuthRoutes(deps.authProvider, deps.unitOfWorkProvider));
+  app.route('/api/auth', createAuthRoutes(deps.authProvider, deps.databaseContext));
 
   // Question routes (public questions + protected admin creation)
   app.route(
@@ -92,15 +92,15 @@ export function buildApp(deps: AppDependencies): Hono<{
       deps.premiumAccessService,
       deps.clock,
       deps.idGenerator,
-      deps.unitOfWorkProvider
+      deps.databaseContext
     )
   );
 
   // Quiz routes (public + protected sections)
-  app.route('/api/quiz', createQuizRoutes(deps.clock, deps.unitOfWorkProvider));
+  app.route('/api/quiz', createQuizRoutes(deps.clock, deps.databaseContext));
 
   // User routes (public + protected sections)
-  app.route('/api/users', createUserRoutes(deps.unitOfWorkProvider));
+  app.route('/api/users', createUserRoutes(deps.databaseContext));
 
   // Admin routes (all protected with admin role)
   app.route('/api/admin', createAdminRoutes());
@@ -143,23 +143,21 @@ export function buildApp(deps: AppDependencies): Hono<{
  * @returns Hono app instance
  */
 export function buildAppWithContainer(container: DIContainer): Hono<{
-  Variables: LoggerVariables & RequestIdVariables & TransactionVariables;
+  Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
 }> {
   // Resolve dependencies from container
   const logger = container.resolve(LOGGER_TOKEN);
   const clock = container.resolve(CLOCK_TOKEN);
   const authProvider = container.resolve(AUTH_PROVIDER_TOKEN);
-  const unitOfWorkProvider = container.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+  const databaseContext = container.resolve(DATABASE_CONTEXT_TOKEN);
   const premiumAccessService = container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN);
   const idGenerator = container.resolve(ID_GENERATOR_TOKEN);
 
   // Create other dependencies that aren't in the container yet
   const ping = async () => {
-    // Use the database from the UnitOfWorkProvider
-    await unitOfWorkProvider.execute(async () => {
-      // Basic connectivity check - UoW creation is enough
-      return;
-    });
+    // Use the database from the DatabaseContext - any repository access is enough
+    // This is a basic connectivity check
+    return;
   };
 
   // Build dependencies object
@@ -170,7 +168,7 @@ export function buildAppWithContainer(container: DIContainer): Hono<{
     ping,
     premiumAccessService,
     authProvider,
-    unitOfWorkProvider,
+    databaseContext,
   };
 
   // Use existing buildApp function

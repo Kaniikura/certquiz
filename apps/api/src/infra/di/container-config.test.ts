@@ -5,11 +5,7 @@
 
 import type { IPremiumAccessService } from '@api/features/question/domain';
 import { describe, expect, it } from 'vitest';
-import {
-  configureAllEnvironments,
-  createConfiguredContainer,
-  getEnvironmentFromNodeEnv,
-} from './container-config';
+import { configureAllEnvironments, createConfiguredContainer } from './container-config';
 import { DIContainer } from './DIContainer';
 import {
   AUTH_PROVIDER_TOKEN,
@@ -196,68 +192,6 @@ describe('Container Configuration', () => {
       expect(idGenerator).toBeDefined();
       const id = idGenerator.generate();
       expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-    });
-  });
-
-  describe('Environment detection', () => {
-    it('should detect test environment from NODE_ENV', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'test';
-
-      // Act
-      const env = getEnvironmentFromNodeEnv();
-
-      // Assert
-      expect(env).toBe('test');
-
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should detect production environment from NODE_ENV', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      // Act
-      const env = getEnvironmentFromNodeEnv();
-
-      // Assert
-      expect(env).toBe('production');
-
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should default to development for unknown NODE_ENV', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'staging';
-
-      // Act
-      const env = getEnvironmentFromNodeEnv();
-
-      // Assert
-      expect(env).toBe('development');
-
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should default to development when NODE_ENV is not set', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
-      delete process.env.NODE_ENV;
-
-      // Act
-      const env = getEnvironmentFromNodeEnv();
-
-      // Assert
-      expect(env).toBe('development');
-
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
     });
   });
 

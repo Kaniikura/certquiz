@@ -2,6 +2,7 @@ import { buildApp } from './app-factory';
 import { PremiumAccessService } from './features/question/domain';
 import { createAuthProvider } from './infra/auth/AuthProviderFactory.prod';
 import { ping } from './infra/db/client';
+import { DrizzleDatabaseContext } from './infra/db/DrizzleDatabaseContext';
 import { DrizzleUnitOfWorkProvider } from './infra/db/DrizzleUnitOfWorkProvider';
 import { getRootLogger } from './infra/logger/root-logger';
 import { SystemClock } from './shared/clock';
@@ -14,6 +15,7 @@ const idGenerator = new CryptoIdGenerator();
 const premiumAccessService = new PremiumAccessService();
 const clock = new SystemClock();
 const unitOfWorkProvider = new DrizzleUnitOfWorkProvider(logger);
+const databaseContext = new DrizzleDatabaseContext(logger, unitOfWorkProvider);
 
 // Build production app with real dependencies
 export const app = buildApp({
@@ -23,7 +25,7 @@ export const app = buildApp({
   ping,
   premiumAccessService,
   authProvider,
-  unitOfWorkProvider,
+  databaseContext,
 });
 
 // -----------------------------------------------------------------

@@ -3,10 +3,10 @@
  * @fileoverview HTTP endpoint for retrieving paginated question lists with filtering
  */
 
-import { getRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { createAmbientRoute } from '@api/shared/route';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
@@ -21,7 +21,7 @@ import { listQuestionsHandler } from './handler';
 type ListQuestionsVariables = {
   user?: AuthUser; // Optional for public access with premium logic
 } & LoggerVariables &
-  TransactionVariables;
+  DatabaseContextVariables;
 
 export function listQuestionsRoute(premiumAccessService: IPremiumAccessService) {
   return new Hono<{
@@ -106,7 +106,7 @@ export function listQuestionsRoute(premiumAccessService: IPremiumAccessService) 
 
     // Inject dependencies
     return route(c, {
-      questionRepo: getRepository(c, QUESTION_REPO_TOKEN),
+      questionRepo: getRepositoryFromContext(c, QUESTION_REPO_TOKEN),
       logger: c.get('logger'),
       premiumAccessService: premiumAccessService,
     });

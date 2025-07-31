@@ -34,10 +34,3 @@ export const QUIZ_REPO_TOKEN: RepositoryToken<IQuizRepository> =
 
 export const QUESTION_REPO_TOKEN: RepositoryToken<IQuestionRepository> =
   createToken<IQuestionRepository>('QUESTION_REPOSITORY');
-
-/**
- * Type guard to check if a symbol is a repository token
- */
-export function isRepositoryToken(value: unknown): value is RepositoryToken<unknown> {
-  return typeof value === 'symbol';
-}

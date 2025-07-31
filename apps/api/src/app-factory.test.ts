@@ -3,14 +3,13 @@
  * @fileoverview Tests for app factory with DI container integration
  */
 
+import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { nanoid } from 'nanoid';
 import { describe, expect, it } from 'vitest';
 import type { AppDependencies } from './app-factory';
 import { buildApp, buildAppWithContainer } from './app-factory';
 import type { IPremiumAccessService } from './features/question/domain';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from './infra/auth/AuthProvider';
-import type { IUnitOfWork } from './infra/db/IUnitOfWork';
-import type { IUnitOfWorkProvider } from './infra/db/IUnitOfWorkProvider';
 import { createConfiguredContainer } from './infra/di/container-config';
 import type { Logger } from './infra/logger';
 import { Result } from './shared/result';
@@ -93,12 +92,7 @@ describe('App Factory', () => {
               refreshToken: 'new-mock-refresh',
             } satisfies AuthToken),
         } satisfies IAuthProvider,
-        unitOfWorkProvider: {
-          execute: async <T>(fn: (uow: IUnitOfWork) => Promise<T>) => {
-            const mockUnitOfWork = {} as IUnitOfWork;
-            return fn(mockUnitOfWork);
-          },
-        } satisfies IUnitOfWorkProvider,
+        databaseContext: new InMemoryDatabaseContext(),
       };
 
       // Act

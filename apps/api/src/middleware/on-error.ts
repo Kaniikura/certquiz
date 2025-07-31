@@ -1,3 +1,4 @@
+import { isProduction } from '@api/config/env';
 import { AppError, AuthenticationError, NotFoundError, ValidationError } from '@api/shared/errors';
 import type { ErrorHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -20,13 +21,6 @@ type ErrorBody<C extends string = string> = {
  */
 function isErrorLike(e: unknown): e is Error {
   return typeof e === 'object' && e !== null && 'message' in e;
-}
-
-/**
- * Check if running in production environment
- */
-function isProd(): boolean {
-  return process.env.NODE_ENV === 'production';
 }
 
 /**
@@ -76,7 +70,7 @@ export const errorHandler: ErrorHandler = (err, c) => {
         message: err.message,
         code: err.code,
         // Only include details for validation errors and not in production
-        ...(status === 400 && err.details && !isProd() ? { details: err.details } : {}),
+        ...(status === 400 && err.details && !isProduction() ? { details: err.details } : {}),
       },
     };
 
@@ -88,7 +82,7 @@ export const errorHandler: ErrorHandler = (err, c) => {
 
   const body: ErrorBody<'INTERNAL_ERROR'> = {
     error: {
-      message: isProd()
+      message: isProduction()
         ? 'Internal server error'
         : isErrorLike(err)
           ? err.message

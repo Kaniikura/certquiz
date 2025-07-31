@@ -3,10 +3,10 @@
  * @fileoverview HTTP endpoint for admin question creation using route utilities
  */
 
-import { getRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
 import { createAmbientRoute } from '@api/shared/route';
@@ -21,7 +21,7 @@ import { createQuestionHandler } from './handler';
 type CreateQuestionVariables = {
   user: AuthUser; // Required for admin authorization
 } & LoggerVariables &
-  TransactionVariables;
+  DatabaseContextVariables;
 
 export function createQuestionRoute(deps: { clock: Clock; idGenerator: IdGenerator }) {
   return new Hono<{
@@ -79,7 +79,7 @@ export function createQuestionRoute(deps: { clock: Clock; idGenerator: IdGenerat
 
     // Inject dependencies
     return route(c, {
-      questionRepo: getRepository(c, QUESTION_REPO_TOKEN),
+      questionRepo: getRepositoryFromContext(c, QUESTION_REPO_TOKEN),
       clock: deps.clock,
       idGenerator: deps.idGenerator,
     });
