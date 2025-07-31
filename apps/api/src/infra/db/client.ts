@@ -31,6 +31,9 @@ function getPoolConfig(environment: string) {
   }
 }
 
+// Database singleton for legacy compatibility
+// NOTE: New code should use IDatabaseProvider from DI container instead
+
 // Lazy initialization variables
 let _pool: postgres.Sql | undefined;
 let _db: DB | undefined;

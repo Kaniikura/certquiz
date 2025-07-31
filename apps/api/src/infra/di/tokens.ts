@@ -10,6 +10,7 @@ import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
 import type { IAuthProvider } from '../auth/AuthProvider';
 import type { IDatabaseContext } from '../db/IDatabaseContext';
+import type { IDatabaseProvider } from '../db/IDatabaseProvider';
 import type { IUnitOfWorkProvider } from '../db/IUnitOfWorkProvider';
 import type { DB } from '../db/types';
 import type { Logger } from '../logger';
@@ -18,6 +19,7 @@ import { createServiceToken } from './DIContainer';
 // Database Services
 export const DATABASE_CLIENT_TOKEN = createServiceToken<DB>('DATABASE_CLIENT');
 export const DATABASE_CONTEXT_TOKEN = createServiceToken<IDatabaseContext>('DATABASE_CONTEXT');
+export const DATABASE_PROVIDER_TOKEN = createServiceToken<IDatabaseProvider>('DATABASE_PROVIDER');
 export const UNIT_OF_WORK_PROVIDER_TOKEN =
   createServiceToken<IUnitOfWorkProvider>('UNIT_OF_WORK_PROVIDER');
 

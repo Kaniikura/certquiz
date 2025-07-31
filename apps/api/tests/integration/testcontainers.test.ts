@@ -6,7 +6,6 @@ import {
   seedAdminUser,
   seedUsers,
   type TestDb,
-  withRollback,
 } from '../../testing/infra/db';
 import { testUsers } from '../../testing/infra/db/schema';
 import { PostgresSingleton } from '../containers/postgres';
@@ -110,13 +109,23 @@ describe('Testcontainers Infrastructure', () => {
       const beforeCount = await db.select().from(testUsers);
 
       // Run test in transaction that will be rolled back
-      await withRollback(async (db) => {
-        const users = await seedUsers(db, 3);
-        expect(users).toHaveLength(3);
+      try {
+        await db.transaction(async (tx) => {
+          const users = await seedUsers(tx, 3);
+          expect(users).toHaveLength(3);
 
-        const count = await db.select().from(testUsers);
-        expect(count).toHaveLength(beforeCount.length + 3);
-      });
+          const count = await tx.select().from(testUsers);
+          expect(count).toHaveLength(beforeCount.length + 3);
+
+          // Force rollback by throwing an error
+          throw new Error('ROLLBACK_TEST');
+        });
+      } catch (error) {
+        // Ignore the intentional rollback error
+        if (error instanceof Error && error.message !== 'ROLLBACK_TEST') {
+          throw error;
+        }
+      }
 
       // Verify rollback - count should be same as before
       const afterCount = await db.select().from(testUsers);
@@ -125,7 +134,7 @@ describe('Testcontainers Infrastructure', () => {
 
     it('should handle errors in transaction', async () => {
       await expect(
-        withRollback(async () => {
+        db.transaction(async () => {
           throw new Error('Test error');
         })
       ).rejects.toThrow('Test error');
@@ -134,30 +143,50 @@ describe('Testcontainers Infrastructure', () => {
 
   describe('Seed Helpers', () => {
     it('should create test users', async () => {
-      await withRollback(async (db) => {
-        const users = await seedUsers(db, 5);
+      try {
+        await db.transaction(async (tx) => {
+          const users = await seedUsers(tx, 5);
 
-        expect(users).toHaveLength(5);
-        users.forEach((user: (typeof users)[0]) => {
-          expect(user.id).toBeDefined();
-          expect(user.email).toMatch(/^test-.*@example\.com$/);
-          expect(user.isActive).toBe(true);
+          expect(users).toHaveLength(5);
+          users.forEach((user: (typeof users)[0]) => {
+            expect(user.id).toBeDefined();
+            expect(user.email).toMatch(/^test-.*@example\.com$/);
+            expect(user.isActive).toBe(true);
+          });
+
+          // Verify emails are unique
+          const emails = users.map((u: (typeof users)[0]) => u.email);
+          const uniqueEmails = new Set(emails);
+          expect(uniqueEmails.size).toBe(emails.length);
+
+          // Force rollback to avoid persisting test data
+          throw new Error('ROLLBACK_TEST');
         });
-
-        // Verify emails are unique
-        const emails = users.map((u: (typeof users)[0]) => u.email);
-        const uniqueEmails = new Set(emails);
-        expect(uniqueEmails.size).toBe(emails.length);
-      });
+      } catch (error) {
+        // Ignore the intentional rollback error
+        if (error instanceof Error && error.message !== 'ROLLBACK_TEST') {
+          throw error;
+        }
+      }
     });
 
     it('should create admin user', async () => {
-      await withRollback(async (db) => {
-        const admin = await seedAdminUser(db);
+      try {
+        await db.transaction(async (tx) => {
+          const admin = await seedAdminUser(tx);
 
-        expect(admin.name).toBe('Admin User');
-        expect(admin.email).toBe('admin@example.com');
-      });
+          expect(admin.name).toBe('Admin User');
+          expect(admin.email).toBe('admin@example.com');
+
+          // Force rollback to avoid persisting test data
+          throw new Error('ROLLBACK_TEST');
+        });
+      } catch (error) {
+        // Ignore the intentional rollback error
+        if (error instanceof Error && error.message !== 'ROLLBACK_TEST') {
+          throw error;
+        }
+      }
     });
   });
 

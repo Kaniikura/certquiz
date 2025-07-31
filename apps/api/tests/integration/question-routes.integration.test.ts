@@ -65,7 +65,7 @@ describe('Question Routes HTTP Integration', () => {
       .onConflictDoNothing(); // Ignore if user already exists
 
     // Create integration test app using DI container with real database connections
-    testApp = createIntegrationTestApp();
+    testApp = await createIntegrationTestApp();
   });
 
   beforeEach(async () => {

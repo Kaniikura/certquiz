@@ -41,7 +41,7 @@ describe('User Routes HTTP Integration', () => {
     privateKey = testPrivateKey;
 
     // Create HTTP test app using DI container with in-memory providers
-    testApp = createHttpTestApp();
+    testApp = await createHttpTestApp();
   });
 
   beforeEach(async () => {

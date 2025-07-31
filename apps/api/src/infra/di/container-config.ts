@@ -1,7 +1,9 @@
 /**
- * DI Container configuration for different environments
- * @fileoverview Configures service registrations for test, development, and production environments
+ * Async DI Container configuration for different environments
+ * @fileoverview Configures service registrations using async container for environments requiring async initialization
  */
+
+// Feature flag removed - async database provider is now the default
 
 import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
@@ -10,14 +12,12 @@ import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-obje
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
-import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { FakeAuthProvider } from '../auth/AuthProvider.fake';
 import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';
-import { getDb } from '../db/client';
-import { DrizzleDatabaseContext } from '../db/DrizzleDatabaseContext';
-import { DrizzleUnitOfWorkProvider } from '../db/DrizzleUnitOfWorkProvider';
-import { InMemoryUnitOfWorkProvider } from '../db/InMemoryUnitOfWorkProvider';
+import { AsyncDatabaseContext } from '../db/AsyncDatabaseContext';
+import { ProductionDatabaseProvider } from '../db/ProductionDatabaseProvider';
+import { TestDatabaseProvider } from '../db/TestDatabaseProvider';
 import { getRootLogger } from '../logger/root-logger';
 import { DIContainer, type Environment } from './DIContainer';
 import {
@@ -25,12 +25,12 @@ import {
   CLOCK_TOKEN,
   DATABASE_CLIENT_TOKEN,
   DATABASE_CONTEXT_TOKEN,
+  DATABASE_PROVIDER_TOKEN,
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
   QUESTION_DETAILS_SERVICE_TOKEN,
   QUESTION_SERVICE_TOKEN,
-  UNIT_OF_WORK_PROVIDER_TOKEN,
 } from './tokens';
 
 /**
@@ -76,11 +76,36 @@ function configureTestContainer(container: DIContainer): void {
     c.register(CLOCK_TOKEN, () => systemClock);
     c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
 
-    // Database - Use in-memory for unit tests
-    c.register(DATABASE_CONTEXT_TOKEN, () => new InMemoryDatabaseContext(), { singleton: true });
-    c.register(UNIT_OF_WORK_PROVIDER_TOKEN, () => new InMemoryUnitOfWorkProvider(), {
-      singleton: true,
-    });
+    // Database configuration with async provider
+    c.register(
+      DATABASE_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        return new TestDatabaseProvider(logger);
+      },
+      { singleton: true }
+    );
+
+    // Register database client from provider
+    c.register(
+      DATABASE_CLIENT_TOKEN,
+      async () => {
+        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        // TestDatabaseProvider will handle async initialization internally
+        return provider.getDatabase();
+      },
+      { singleton: false } // New instance per test for isolation
+    );
+
+    c.register(
+      DATABASE_CONTEXT_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        return new AsyncDatabaseContext(logger, databaseProvider);
+      },
+      { singleton: false } // New instance per test for isolation
+    );
 
     // Auth - Use stub for predictable testing
     c.register(AUTH_PROVIDER_TOKEN, () => new StubAuthProvider(), { singleton: true });
@@ -110,22 +135,41 @@ function configureDevelopmentContainer(container: DIContainer): void {
     c.register(CLOCK_TOKEN, () => systemClock);
     c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
 
-    // Database - Use real database connection
-    c.register(DATABASE_CLIENT_TOKEN, () => getDb(), { singleton: true });
+    // Database configuration with async provider
     c.register(
-      DATABASE_CONTEXT_TOKEN,
-      () => {
-        const logger = c.resolve(LOGGER_TOKEN);
-        const unitOfWorkProvider = c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        return new DrizzleDatabaseContext(logger, unitOfWorkProvider);
+      DATABASE_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL environment variable is required');
+        }
+        const config = {
+          databaseUrl,
+          enableLogging: true,
+          environment: 'development',
+        };
+        return new ProductionDatabaseProvider(logger, config);
       },
       { singleton: true }
     );
+
+    // Register database client from provider
     c.register(
-      UNIT_OF_WORK_PROVIDER_TOKEN,
-      () => {
-        const logger = c.resolve(LOGGER_TOKEN);
-        return new DrizzleUnitOfWorkProvider(logger);
+      DATABASE_CLIENT_TOKEN,
+      async () => {
+        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        return provider.getDatabase();
+      },
+      { singleton: true }
+    );
+
+    c.register(
+      DATABASE_CONTEXT_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        return new AsyncDatabaseContext(logger, databaseProvider);
       },
       { singleton: true }
     );
@@ -168,22 +212,44 @@ function configureProductionContainer(container: DIContainer): void {
     c.register(CLOCK_TOKEN, () => systemClock);
     c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
 
-    // Database - Use real database connection
-    c.register(DATABASE_CLIENT_TOKEN, () => getDb(), { singleton: true });
+    // Database configuration with async provider
     c.register(
-      DATABASE_CONTEXT_TOKEN,
-      () => {
-        const logger = c.resolve(LOGGER_TOKEN);
-        const unitOfWorkProvider = c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        return new DrizzleDatabaseContext(logger, unitOfWorkProvider);
+      DATABASE_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL environment variable is required');
+        }
+        const config = {
+          databaseUrl,
+          enableLogging: false,
+          environment: 'production',
+          defaultPoolConfig: {
+            max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+          },
+        };
+        return new ProductionDatabaseProvider(logger, config);
       },
       { singleton: true }
     );
+
+    // Register database client from provider
     c.register(
-      UNIT_OF_WORK_PROVIDER_TOKEN,
-      () => {
-        const logger = c.resolve(LOGGER_TOKEN);
-        return new DrizzleUnitOfWorkProvider(logger);
+      DATABASE_CLIENT_TOKEN,
+      async () => {
+        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        return provider.getDatabase();
+      },
+      { singleton: true }
+    );
+
+    c.register(
+      DATABASE_CONTEXT_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        return new AsyncDatabaseContext(logger, databaseProvider);
       },
       { singleton: true }
     );
@@ -214,9 +280,9 @@ export function configureAllEnvironments(container: DIContainer): void {
 }
 
 /**
- * Create and configure a new container
+ * Create and configure a new async container
  * @param environment - Target environment
- * @returns Configured DI container
+ * @returns Configured async DI container
  */
 export function createConfiguredContainer(environment: Environment): DIContainer {
   const container = new DIContainer();

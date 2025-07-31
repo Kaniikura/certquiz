@@ -46,7 +46,7 @@ describe('Quiz Routes Integration Tests', () => {
 
   beforeEach(async () => {
     // Create integration test app using DI container with real database connections for each test
-    testApp = createIntegrationTestApp();
+    testApp = await createIntegrationTestApp();
   });
 
   async function createUserToken(

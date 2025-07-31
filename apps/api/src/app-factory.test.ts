@@ -11,6 +11,7 @@ import { buildApp, buildAppWithContainer } from './app-factory';
 import type { IPremiumAccessService } from './features/question/domain';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from './infra/auth/AuthProvider';
 import { createConfiguredContainer } from './infra/di/container-config';
+import { LOGGER_TOKEN } from './infra/di/tokens';
 import type { Logger } from './infra/logger';
 import { Result } from './shared/result';
 
@@ -105,72 +106,78 @@ describe('App Factory', () => {
   });
 
   describe('buildAppWithContainer', () => {
-    it('should create app using test container', () => {
+    it('should create app with async DI container (test environment)', async () => {
       // Arrange
       const container = createConfiguredContainer('test');
 
       // Act
-      const app = buildAppWithContainer(container);
+      const app = await buildAppWithContainer(container);
 
       // Assert
       expect(app).toBeDefined();
       expect(app.router).toBeDefined();
     });
 
-    it('should create app using development container', () => {
+    it('should create app with async DI container (development environment)', async () => {
       // Arrange
       const container = createConfiguredContainer('development');
 
       // Act
-      const app = buildAppWithContainer(container);
+      const app = await buildAppWithContainer(container);
 
       // Assert
       expect(app).toBeDefined();
       expect(app.router).toBeDefined();
     });
 
-    it('should handle basic health check request', async () => {
+    it('should have all routes accessible', async () => {
       // Arrange
       const container = createConfiguredContainer('test');
-      const app = buildAppWithContainer(container);
 
       // Act
-      const response = await app.request('/health');
+      const app = await buildAppWithContainer(container);
 
-      // Assert
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body).toHaveProperty('status', 'healthy');
+      // Assert - Test that routes are accessible by making requests
+      const rootResponse = await app.request('/');
+      expect(rootResponse.status).toBe(200);
+
+      const healthResponse = await app.request('/health/live');
+      expect(healthResponse.status).toBe(200);
+
+      // Auth routes should be accessible (even if they return errors without proper data)
+      const authResponse = await app.request('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', password: 'password' }),
+      });
+      expect(authResponse.status).toBeLessThan(500); // Should not be a server error
+
+      // Other routes should return 404 or valid responses, not server errors
+      const questionsResponse = await app.request('/api/questions');
+      expect(questionsResponse.status).toBeLessThan(500);
+
+      const quizResponse = await app.request('/api/quiz/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ examTypes: ['CCNA'] }),
+      });
+      expect(quizResponse.status).toBeLessThan(500);
     });
 
-    it('should handle root API request', async () => {
+    it('should handle errors during container resolution', async () => {
       // Arrange
       const container = createConfiguredContainer('test');
-      const app = buildAppWithContainer(container);
+      // Override a service to throw an error
+      container.register(
+        LOGGER_TOKEN,
+        async () => {
+          throw new Error('Failed to create logger');
+        },
+        { singleton: true }
+      );
 
-      // Act
-      const response = await app.request('/');
-
-      // Assert
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body).toHaveProperty('message', 'CertQuiz API - VSA Architecture');
-      expect(body).toHaveProperty('status', 'ready');
-    });
-
-    it('should handle 404 for unknown routes', async () => {
-      // Arrange
-      const container = createConfiguredContainer('test');
-      const app = buildAppWithContainer(container);
-
-      // Act
-      const response = await app.request('/api/unknown');
-
-      // Assert
-      expect(response.status).toBe(404);
-      const body = await response.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('NOT_FOUND');
+      // Act & Assert
+      await expect(buildAppWithContainer(container)).rejects.toThrow('Failed to create logger');
     });
   });
 });

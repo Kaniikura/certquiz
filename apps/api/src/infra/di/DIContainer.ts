@@ -1,16 +1,17 @@
 /**
- * Lightweight Dependency Injection Container
- * @fileoverview Simple DI container for managing service dependencies and environment-specific configurations
+ * Async Dependency Injection Container
+ * @fileoverview Async DI container supporting both sync and async service factories
  */
 
-type ServiceFactory<T = unknown> = () => T;
+type AsyncServiceFactory<T = unknown> = () => T | Promise<T>;
 type ServiceToken<T = unknown> = symbol & { __brand: T };
 export type Environment = 'test' | 'development' | 'production';
 
 interface ServiceRegistration {
-  factory: ServiceFactory;
+  factory: AsyncServiceFactory;
   singleton: boolean;
   instance?: unknown;
+  instancePromise?: Promise<unknown>;
 }
 
 interface EnvironmentConfiguration {
@@ -18,8 +19,9 @@ interface EnvironmentConfiguration {
 }
 
 /**
- * Lightweight dependency injection container
+ * Async dependency injection container
  * Supports:
+ * - Async and sync service factories
  * - Service registration with factory functions
  * - Singleton and transient lifetimes
  * - Environment-specific configurations
@@ -33,12 +35,12 @@ export class DIContainer {
   /**
    * Register a service factory with the container
    * @param token - Unique symbol identifying the service
-   * @param factory - Factory function that creates the service instance
+   * @param factory - Factory function that creates the service instance (can be async)
    * @param options - Registration options (singleton, etc.)
    */
   register<T>(
     token: ServiceToken<T> | symbol,
-    factory: ServiceFactory<T>,
+    factory: AsyncServiceFactory<T>,
     options: { singleton?: boolean } = { singleton: true }
   ): void {
     const registration: ServiceRegistration = {
@@ -52,10 +54,10 @@ export class DIContainer {
   /**
    * Resolve a service from the container
    * @param token - Service token to resolve
-   * @returns The resolved service instance
+   * @returns Promise of the resolved service instance
    * @throws Error if service is not registered
    */
-  resolve<T>(token: ServiceToken<T> | symbol): T {
+  async resolve<T>(token: ServiceToken<T> | symbol): Promise<T> {
     const registration = this.getRegistration(token as symbol);
 
     if (!registration) {
@@ -65,19 +67,42 @@ export class DIContainer {
     }
 
     // Return existing instance for singletons
-    if (registration.singleton && registration.instance !== undefined) {
-      return registration.instance as T;
+    if (registration.singleton) {
+      if (registration.instance !== undefined) {
+        return registration.instance as T;
+      }
+
+      // If there's an ongoing instance creation, wait for it
+      if (registration.instancePromise !== undefined) {
+        return registration.instancePromise as Promise<T>;
+      }
     }
 
     // Create new instance
-    const instance = registration.factory();
+    const instancePromise = Promise.resolve(registration.factory());
 
-    // Cache singleton instances
+    // For singletons, store the promise to prevent concurrent creation
     if (registration.singleton) {
-      registration.instance = instance;
+      registration.instancePromise = instancePromise;
     }
 
-    return instance as T;
+    try {
+      const instance = await instancePromise;
+
+      // Cache singleton instances
+      if (registration.singleton) {
+        registration.instance = instance;
+        registration.instancePromise = undefined; // Clear the promise
+      }
+
+      return instance as T;
+    } catch (error) {
+      // Clean up on error
+      if (registration.singleton) {
+        registration.instancePromise = undefined;
+      }
+      throw error;
+    }
   }
 
   /**

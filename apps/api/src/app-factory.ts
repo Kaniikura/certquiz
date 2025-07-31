@@ -16,6 +16,7 @@ import { createUserRoutes } from './features/user/routes-factory';
 import type { IAuthProvider } from './infra/auth/AuthProvider';
 import type { IDatabaseContext } from './infra/db/IDatabaseContext';
 import type { DIContainer } from './infra/di/DIContainer';
+
 import {
   AUTH_PROVIDER_TOKEN,
   CLOCK_TOKEN,
@@ -135,23 +136,34 @@ export function buildApp(deps: AppDependencies): Hono<{
 }
 
 /**
- * Build app using DI container
- * This is a gradual migration step that uses DI container to resolve dependencies
- * and passes them to the existing buildApp function
+ * Build app using async DI container
+ * This supports async service factories for complex initialization
  *
- * @param container - Configured DI container
- * @returns Hono app instance
+ * @param container - Configured async DI container
+ * @returns Promise of Hono app instance
  */
-export function buildAppWithContainer(container: DIContainer): Hono<{
-  Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
-}> {
-  // Resolve dependencies from container
-  const logger = container.resolve(LOGGER_TOKEN);
-  const clock = container.resolve(CLOCK_TOKEN);
-  const authProvider = container.resolve(AUTH_PROVIDER_TOKEN);
-  const databaseContext = container.resolve(DATABASE_CONTEXT_TOKEN);
-  const premiumAccessService = container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN);
-  const idGenerator = container.resolve(ID_GENERATOR_TOKEN);
+export async function buildAppWithContainer(container: DIContainer): Promise<
+  Hono<{
+    Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
+  }>
+> {
+  // Resolve dependencies from async container
+  const [logger, clock, authProvider, databaseContext, premiumAccessService, idGenerator] =
+    await Promise.all([
+      container.resolve(LOGGER_TOKEN),
+      container.resolve(CLOCK_TOKEN),
+      container.resolve(AUTH_PROVIDER_TOKEN),
+      container.resolve(DATABASE_CONTEXT_TOKEN),
+      container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN),
+      container.resolve(ID_GENERATOR_TOKEN),
+    ]);
+
+  // Initialize AsyncDatabaseContext if it has an initialize method
+  // This ensures the database connection is ready for non-transactional repository access
+  if ('initialize' in databaseContext && typeof databaseContext.initialize === 'function') {
+    await databaseContext.initialize();
+    logger.debug('Initialized AsyncDatabaseContext for non-transactional access');
+  }
 
   // Create other dependencies that aren't in the container yet
   const ping = async () => {

@@ -11,7 +11,7 @@ describe('App Integration Tests', () => {
 
   beforeEach(async () => {
     // Create integration test app using DI container for full app behavior testing
-    testApp = createIntegrationTestApp();
+    testApp = await createIntegrationTestApp();
   });
 
   describe('Error handling', () => {

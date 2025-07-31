@@ -10,8 +10,8 @@ describe('Health check endpoints', () => {
   let testApp: TestApp;
 
   beforeEach(async () => {
-    // Create integration test app using DI container
-    testApp = createIntegrationTestApp();
+    // Create integration test app using async DI container
+    testApp = await createIntegrationTestApp();
   });
 
   describe('GET /health/live (liveness probe)', () => {

@@ -91,7 +91,7 @@ export function getWorkerDatabaseName(workerId: string): { raw: string; quoted: 
  * Internal function to initialize a test database for a specific worker.
  * Creates a unique database per worker and applies real application migrations.
  */
-async function initializeWorkerDb(): Promise<{
+async function _initializeWorkerDb(): Promise<{
   db: PostgresJsDatabase<typeof testSchema>;
   client: postgres.Sql;
   connectionUri: string;
@@ -160,40 +160,6 @@ async function initializeWorkerDb(): Promise<{
   const db = baseDrizzle(sqlClient, { schema: testSchema });
 
   return { db, client: sqlClient, connectionUri: workerUri };
-}
-
-/**
- * Get or create a Drizzle database instance for tests.
- * Each worker gets its own isolated database with real migrations applied.
- * Thread-safe: concurrent calls within the same worker share the same database.
- */
-export async function getTestDb(): Promise<PostgresJsDatabase<typeof testSchema>> {
-  const workerId = process.env.VITEST_WORKER_ID ?? '0';
-
-  // Validate worker ID (additional validation layer)
-  validateWorkerId(workerId);
-
-  // Check if we already have a database for this worker
-  const existing = workerDatabases.get(workerId);
-  if (existing) return existing.db;
-
-  // Check if initialization is already in progress for this worker
-  let initPromise = initPromises.get(workerId);
-  if (!initPromise) {
-    // No initialization in progress, start a new one
-    initPromise = initializeWorkerDb();
-    initPromises.set(workerId, initPromise);
-  }
-
-  try {
-    // Wait for initialization to complete (either new or existing promise)
-    const workerDb = await initPromise;
-    workerDatabases.set(workerId, workerDb);
-    return workerDb.db;
-  } finally {
-    // Clean up the promise once initialization is complete
-    initPromises.delete(workerId);
-  }
 }
 
 /**

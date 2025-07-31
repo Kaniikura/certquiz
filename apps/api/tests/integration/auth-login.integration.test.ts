@@ -10,9 +10,9 @@ import { createHttpTestApp } from '../setup/test-app-factory';
 describe('POST /api/auth/login - E2E', () => {
   let app: TestApp;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create HTTP test app using DI container with in-memory providers
-    app = createHttpTestApp();
+    app = await createHttpTestApp();
   });
 
   it('should reject login when user does not exist in the system', async () => {

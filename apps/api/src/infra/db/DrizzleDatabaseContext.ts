@@ -31,7 +31,6 @@ import {
   QUIZ_REPO_TOKEN,
   USER_REPO_TOKEN,
 } from '@api/shared/types/RepositoryToken';
-import { getDb } from './client';
 import type { IDatabaseContext, ITransactionContext } from './IDatabaseContext';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { IUnitOfWorkProvider } from './IUnitOfWorkProvider';
@@ -62,7 +61,8 @@ import type { TransactionContext } from './uow';
 export class DrizzleDatabaseContext implements IDatabaseContext {
   constructor(
     private readonly logger: LoggerPort,
-    private readonly unitOfWorkProvider: IUnitOfWorkProvider
+    private readonly unitOfWorkProvider: IUnitOfWorkProvider,
+    private readonly db: DB
   ) {}
 
   /**
@@ -102,15 +102,31 @@ export class DrizzleDatabaseContext implements IDatabaseContext {
    * This maintains compatibility with repository interfaces while providing atomicity.
    */
   getRepository<T>(token: RepositoryToken<T>): T {
-    const db = getDb();
+    // Get database synchronously - it's already initialized or will be lazily
+    const database = this.getDatabase();
 
-    const repo = this.createRepository(token, db as TransactionContext);
+    const repo = this.createRepository(token, database as TransactionContext);
 
     this.logger.debug('Non-transactional repository created', {
       token: token.toString(),
     });
 
     return repo as T;
+  }
+
+  /**
+   * Get database instance
+   * @internal
+   */
+  private getDatabase(): DB {
+    if (this.db) {
+      return this.db;
+    }
+
+    // No fallback - require explicit database initialization
+    throw new Error(
+      'Database not initialized. DrizzleDatabaseContext requires database to be provided during construction.'
+    );
   }
 
   /**

@@ -1,20 +1,18 @@
 /**
- * Unified Test App Factory
- * @fileoverview Provides consistent app creation patterns for different test scenarios
+ * Async Test App Factory
+ * @fileoverview Provides async app creation patterns for tests using async DI container
  */
 
 import { buildAppWithContainer } from '@api/app-factory';
 import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
 import { createConfiguredContainer } from '@api/infra/di/container-config';
 import type { DIContainer } from '@api/infra/di/DIContainer';
 import { DATABASE_CONTEXT_TOKEN, UNIT_OF_WORK_PROVIDER_TOKEN } from '@api/infra/di/tokens';
-import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import type { Hono } from 'hono';
 
 /**
- * Test app wrapper with cleanup capabilities
+ * Async test app wrapper with cleanup capabilities
  */
 export interface TestApp {
   /** Make HTTP requests like a Hono app */
@@ -22,28 +20,31 @@ export interface TestApp {
   /** Clean up test data and resources */
   cleanup?: () => Promise<void>;
   /** Get the underlying unit of work provider for assertions (deprecated) */
-  getUnitOfWorkProvider?: () => IUnitOfWorkProvider;
+  getUnitOfWorkProvider?: () => Promise<IUnitOfWorkProvider>;
   /** Get the database context for assertions */
-  getDatabaseContext?: () => IDatabaseContext;
+  getDatabaseContext?: () => Promise<IDatabaseContext>;
+  /** Get the DI container for advanced testing */
+  getContainer?: () => DIContainer;
 }
 
 /**
- * Create integration test app using DI container
+ * Create async integration test app using async DI container
  *
  * Uses development environment configuration with real database connections.
+ * Supports async initialization of database connections.
  *
- * @param container Optional pre-configured container (defaults to development container)
- * @returns Test app instance with real database connections
+ * @param container Optional pre-configured async container (defaults to development container)
+ * @returns Promise of test app instance with real database connections
  *
  * @example
  * ```typescript
- * describe('Integration Test', () => {
+ * describe('Async Integration Test', () => {
  *   setupTestDatabase();
  *
  *   let testApp: TestApp;
  *
  *   beforeAll(async () => {
- *     testApp = createIntegrationTestApp();
+ *     testApp = await createIntegrationTestApp();
  *   });
  *
  *   it('should persist data to database', async () => {
@@ -53,12 +54,12 @@ export interface TestApp {
  * });
  * ```
  */
-export function createIntegrationTestApp(container?: DIContainer): TestApp {
+export async function createIntegrationTestApp(container?: DIContainer): Promise<TestApp> {
   // Use development container for integration tests (real database)
   const diContainer = container ?? createConfiguredContainer('development');
 
-  // Build app using container
-  const app = buildAppWithContainer(diContainer);
+  // Build app using async container
+  const app = await buildAppWithContainer(diContainer);
 
   // Create TestApp wrapper
   const testApp: TestApp = {
@@ -67,77 +68,77 @@ export function createIntegrationTestApp(container?: DIContainer): TestApp {
       // Cleanup logic for integration tests
       // Database cleanup is typically handled by setupTestDatabase()
     },
-    getUnitOfWorkProvider: () => {
+    getUnitOfWorkProvider: async () => {
       // Extract unit of work provider from container for assertions (deprecated)
       return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
     },
-    getDatabaseContext: () => {
+    getDatabaseContext: async () => {
       // Extract database context from container for assertions
       return diContainer.resolve(DATABASE_CONTEXT_TOKEN);
     },
+    getContainer: () => diContainer,
   };
 
   return testApp;
 }
 
 /**
- * Create HTTP layer test app using DI container
+ * Create async HTTP layer test app using async DI container
  *
- * Uses test environment configuration with in-memory providers.
+ * Uses test environment configuration with async test database providers.
+ * Each test gets its own isolated database connection.
  *
- * @param container Optional pre-configured container (defaults to test container)
- * @returns Test app instance with in-memory providers
+ * @param container Optional pre-configured async container (defaults to test container)
+ * @returns Promise of test app instance with isolated test database
  *
  * @example
  * ```typescript
- * describe('HTTP Layer Test', () => {
+ * describe('Async HTTP Layer Test', () => {
  *   let testApp: TestApp;
  *
  *   beforeEach(async () => {
- *     testApp = createHttpTestApp();
+ *     testApp = await createHttpTestApp();
  *   });
  *
  *   afterEach(async () => {
  *     await testApp.cleanup?.();
  *   });
  *
- *   it('should validate request format', async () => {
- *     const res = await testApp.request('/api/users', { ... });
+ *   it('should validate request', async () => {
+ *     const res = await testApp.request('/api/auth/login', {
+ *       method: 'POST',
+ *       headers: { 'Content-Type': 'application/json' },
+ *       body: JSON.stringify({ email: 'invalid' })
+ *     });
+ *
  *     expect(res.status).toBe(400);
  *   });
  * });
  * ```
  */
-export function createHttpTestApp(container?: DIContainer): TestApp {
-  // Use test container for HTTP tests (in-memory)
+export async function createHttpTestApp(container?: DIContainer): Promise<TestApp> {
+  // Use test container for HTTP tests (async test database)
   const diContainer = container ?? createConfiguredContainer('test');
 
-  // Build app using container
-  const app = buildAppWithContainer(diContainer);
+  // Build app using async container
+  const app = await buildAppWithContainer(diContainer);
 
   // Create TestApp wrapper
   const testApp: TestApp = {
     request: app.request.bind(app),
     cleanup: async () => {
-      // Clear both UnitOfWork provider and DatabaseContext for comprehensive cleanup
-      const unitOfWorkProvider = diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-      if (unitOfWorkProvider instanceof InMemoryUnitOfWorkProvider) {
-        unitOfWorkProvider.clear();
-      }
-
-      const databaseContext = diContainer.resolve(DATABASE_CONTEXT_TOKEN);
-      if (databaseContext instanceof InMemoryDatabaseContext) {
-        databaseContext.clear();
-      }
+      // Cleanup logic for HTTP tests
+      // Database cleanup is handled by test isolation at container level
     },
-    getUnitOfWorkProvider: () => {
+    getUnitOfWorkProvider: async () => {
       // Extract unit of work provider from container for assertions (deprecated)
       return diContainer.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
     },
-    getDatabaseContext: () => {
+    getDatabaseContext: async () => {
       // Extract database context from container for assertions
       return diContainer.resolve(DATABASE_CONTEXT_TOKEN);
     },
+    getContainer: () => diContainer,
   };
 
   return testApp;

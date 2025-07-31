@@ -44,7 +44,7 @@ describe('Authentication Protected Routes Integration', () => {
 
   beforeEach(async () => {
     // Create integration test app using DI container
-    testApp = createIntegrationTestApp();
+    testApp = await createIntegrationTestApp();
   });
 
   // Helper to create test tokens
