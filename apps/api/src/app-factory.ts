@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import pkg from '../package.json';
 import { createAdminRoutes } from './features/admin/routes-factory';
+import type { IAuthUserRepository } from './features/auth/domain/repositories/IAuthUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
 import type { IPremiumAccessService } from './features/question/domain';
@@ -14,9 +15,9 @@ import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
+import { sql } from './infra/db';
 import type { IDatabaseContext } from './infra/db/IDatabaseContext';
 import type { DIContainer } from './infra/di/DIContainer';
-
 import {
   AUTH_PROVIDER_TOKEN,
   CLOCK_TOKEN,
@@ -38,6 +39,7 @@ import {
 } from './middleware';
 import type { Clock } from './shared/clock';
 import type { IdGenerator } from './shared/id-generator';
+import { AUTH_USER_REPO_TOKEN } from './shared/types/RepositoryToken';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -163,12 +165,52 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
 
   // Create other dependencies that aren't in the container yet
   const ping = async () => {
-    // Use the database from the DatabaseContext to ensure connectivity.
-    // Starting a transaction is a lightweight way to check the connection.
-    await databaseContext.withinTransaction(async () => {
-      // This is a no-op transaction that just ensures the connection is established.
-      // Any repository operation would also work, but this is a simple example.
-    });
+    // Perform a simple SELECT 1 query to verify database connectivity
+    // This is the standard lightweight health check for PostgreSQL
+    const timeoutMs = 2000; // 2 second timeout for health checks
+
+    try {
+      await Promise.race([
+        databaseContext.withinTransaction(async (ctx) => {
+          // The transaction context wraps the actual database connection
+          // We need to access the underlying database to execute raw SQL
+          const transactionCtx = ctx as {
+            db?: {
+              execute: (query: ReturnType<typeof sql>) => Promise<Array<{ health_check: number }>>;
+            };
+          };
+
+          if (!transactionCtx.db || !transactionCtx.db.execute) {
+            // Fallback: just verify we can get a repository
+            const userRepo = ctx.getRepository<IAuthUserRepository>(AUTH_USER_REPO_TOKEN);
+            if (!userRepo) {
+              throw new Error('Failed to get repository from database context');
+            }
+            return; // Basic connectivity verified
+          }
+
+          // Execute SELECT 1 query - the most lightweight connectivity check
+          const result = await transactionCtx.db.execute(sql`SELECT 1 as health_check`);
+
+          // Verify we got the expected result
+          if (!result || result.length === 0 || result[0].health_check !== 1) {
+            throw new Error('Unexpected health check query result');
+          }
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Health check query timeout')), timeoutMs)
+        ),
+      ]);
+    } catch (error) {
+      // Re-throw with more context
+      if (error instanceof Error) {
+        if (error.message === 'Health check query timeout') {
+          throw new Error('Database health check timed out after 2 seconds');
+        }
+        throw new Error(`Database health check failed: ${error.message}`);
+      }
+      throw error;
+    }
   };
 
   // Build dependencies object
