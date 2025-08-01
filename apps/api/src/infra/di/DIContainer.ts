@@ -115,6 +115,13 @@ export class DIContainer {
     const config = this.environmentConfigs.get(env);
 
     if (config) {
+      // Clear cached singleton instances before clearing registrations
+      // This prevents inconsistencies when switching environments
+      this.registrations.forEach((registration) => {
+        registration.instance = undefined;
+        registration.instancePromise = undefined;
+      });
+
       // Clear current registrations
       this.registrations.clear();
 
