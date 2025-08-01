@@ -86,6 +86,9 @@ export default defineConfig(({ mode }) => {
         'tests/e2e/**/*.test.ts',
       ],
 
+      // Global setup - runs once before all tests (generates shared RSA keys)
+      globalSetup: './tests/setup/global-integration.setup.ts',
+
       // Setup files for integration tests
       setupFiles: [
         './tests/setup/vitest.shared.setup.ts',
