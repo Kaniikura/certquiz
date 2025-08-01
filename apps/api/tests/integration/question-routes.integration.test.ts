@@ -75,7 +75,8 @@ describe('Question Routes HTTP Integration', () => {
 
   // Helper to create test JWT tokens using utility builder
   async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
-    return createJwtBuilder(claims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(claims);
+    return jwtBuilder.sign(privateKey);
   }
 
   // Helper to create admin JWT tokens
@@ -88,7 +89,8 @@ describe('Question Routes HTTP Integration', () => {
       },
       ...claims,
     };
-    return createJwtBuilder(adminClaims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(adminClaims);
+    return jwtBuilder.sign(privateKey);
   }
 
   // Test question data interface
@@ -182,9 +184,10 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should reject requests with expired JWT', async () => {
-        const expiredToken = await createExpiredJwtBuilder({
+        const expiredJwtBuilder = await createExpiredJwtBuilder({
           realm_access: { roles: ['admin'] },
-        }).sign(privateKey);
+        });
+        const expiredToken = await expiredJwtBuilder.sign(privateKey);
 
         const questionData = createTestQuestionData();
 
@@ -919,7 +922,8 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should handle expired JWT gracefully', async () => {
-        const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
+        const expiredJwtBuilder = await createExpiredJwtBuilder();
+        const expiredToken = await expiredJwtBuilder.sign(privateKey);
         const res = await testApp.request(`/api/questions/${testQuestionId}`, {
           headers: {
             Authorization: `Bearer ${expiredToken}`,

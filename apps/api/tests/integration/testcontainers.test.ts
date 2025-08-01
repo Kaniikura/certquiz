@@ -97,10 +97,12 @@ describe('Testcontainers Infrastructure', () => {
 
   it('should get connection URL', async () => {
     const url = await PostgresSingleton.getConnectionUrl();
-    expect(url).toMatch(/^postgres(?:ql)?:\/\/postgres:password@localhost:\d+\/certquiz_test$/);
+    expect(url).toMatch(
+      /^postgres(?:ql)?:\/\/postgres:password@(?:localhost|[\d.]+):\d+\/certquiz_test$/
+    );
 
     // Verify our test database URL is different (has random name)
-    expect(dbUrl).toMatch(/^postgres(?:ql)?:\/\/postgres:password@localhost:\d+\/t_/);
+    expect(dbUrl).toMatch(/^postgres(?:ql)?:\/\/postgres:password@(?:localhost|[\d.]+):\d+\/t_/);
   });
 
   describe('Transaction Isolation', () => {

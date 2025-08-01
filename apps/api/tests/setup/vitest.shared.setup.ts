@@ -8,8 +8,12 @@
 // Ensure NODE_ENV is set to 'test' for all tests
 process.env.NODE_ENV = 'test';
 
-// Currently no other shared setup is needed, but this file provides a foundation
-// for future shared configuration like:
-// - Global polyfills
-// - Shared test utilities
-// - Common mocks that apply to all test types
+// Global crypto polyfill for test environment
+// This ensures crypto.randomUUID() is available in Node.js test environments
+import { webcrypto } from 'node:crypto';
+
+// Polyfill global crypto if not available
+if (typeof globalThis.crypto === 'undefined') {
+  // @ts-expect-error - Node's webcrypto implements the Web Crypto API
+  globalThis.crypto = webcrypto;
+}

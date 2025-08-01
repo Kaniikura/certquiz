@@ -57,6 +57,11 @@ export default defineConfig(({ mode }) => {
 
       // Default timeout for non-project tests and fallback
       testTimeout: process.env.CI ? 60_000 : 30_000,
+
+      // Force vitest to inline jose module to handle ES Module imports
+      deps: {
+        inline: ['jose'],
+      },
     },
   };
 });

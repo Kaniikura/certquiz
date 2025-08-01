@@ -51,7 +51,8 @@ describe('User Routes HTTP Integration', () => {
 
   // Helper to create test JWT tokens using utility builder
   async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
-    return createJwtBuilder(claims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(claims);
+    return jwtBuilder.sign(privateKey);
   }
 
   describe('GET /health', () => {
@@ -540,7 +541,8 @@ describe('User Routes HTTP Integration', () => {
 
     it('should reject requests with expired JWT', async () => {
       // Create an expired token using utility builder
-      const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
+      const expiredJwtBuilder = await createExpiredJwtBuilder();
+      const expiredToken = await expiredJwtBuilder.sign(privateKey);
 
       const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
