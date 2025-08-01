@@ -6,13 +6,11 @@
 // The async database provider is used as the default for all environments requiring asynchronous initialization.
 
 import type { Environment } from '@api/config/env';
-import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
-import type { QuestionAccessDeniedError } from '@api/features/question/shared/errors';
 import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
-import { Result } from '@api/shared/result';
+import { FakePremiumAccessService } from '@api/testing/domain/fakes';
 import { FakeAuthProvider } from '../auth/AuthProvider.fake';
 import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';
@@ -33,37 +31,6 @@ import {
   QUESTION_DETAILS_SERVICE_TOKEN,
   QUESTION_SERVICE_TOKEN,
 } from './tokens';
-
-/**
- * Fake implementation of IPremiumAccessService for testing
- * Always allows access to premium content
- */
-class FakePremiumAccessService implements IPremiumAccessService {
-  shouldIncludePremiumContent(
-    _isAuthenticated: boolean,
-    _requestedPremiumAccess: boolean
-  ): boolean {
-    // In tests, always include premium content
-    return true;
-  }
-
-  validatePremiumAccess(
-    _isAuthenticated: boolean,
-    _isPremiumContent: boolean
-  ): Result<void, Error> {
-    // In tests, always allow access
-    return Result.ok(undefined);
-  }
-
-  validateQuestionPremiumAccess(
-    _isAuthenticated: boolean,
-    _isPremiumContent: boolean,
-    _questionId: string
-  ): Result<void, QuestionAccessDeniedError> {
-    // In tests, always allow access
-    return Result.ok(undefined);
-  }
-}
 
 /**
  * Configure container for test environment

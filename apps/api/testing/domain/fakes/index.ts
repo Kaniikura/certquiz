@@ -3,6 +3,7 @@
  * @fileoverview Centralized exports for all in-memory test implementations
  */
 
+export { FakePremiumAccessService } from './FakePremiumAccessService';
 export { InMemoryAuthUserRepository } from './InMemoryAuthUserRepository';
 export { InMemoryDatabaseContext } from './InMemoryDatabaseContext';
 export { InMemoryQuestionRepository } from './InMemoryQuestionRepository';
