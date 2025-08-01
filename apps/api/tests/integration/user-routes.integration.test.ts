@@ -4,10 +4,11 @@
  */
 
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
+import { setupTestDatabase } from '@api/testing/domain';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getSharedTestKeys } from '../setup/shared-test-keys';
 import type { TestApp } from '../setup/test-app-factory';
-import { createHttpTestApp } from '../setup/test-app-factory';
+import { createIntegrationTestApp } from '../setup/test-app-factory';
 
 // Global variables for test keys (loaded from shared setup)
 let testPrivateKey: CryptoKey;
@@ -30,6 +31,9 @@ vi.mock('jose', async () => {
 });
 
 describe('User Routes HTTP Integration', () => {
+  // Setup isolated test database
+  setupTestDatabase();
+
   let privateKey: CryptoKey;
   let testApp: TestApp;
 
@@ -41,7 +45,7 @@ describe('User Routes HTTP Integration', () => {
     privateKey = testPrivateKey;
 
     // Create HTTP test app using DI container with in-memory providers
-    testApp = await createHttpTestApp();
+    testApp = await createIntegrationTestApp();
   });
 
   beforeEach(async () => {
