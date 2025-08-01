@@ -6,7 +6,6 @@
 import { Hono } from 'hono';
 import pkg from '../package.json';
 import { createAdminRoutes } from './features/admin/routes-factory';
-import type { IAuthUserRepository } from './features/auth/domain/repositories/IAuthUserRepository';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
 import type { IPremiumAccessService } from './features/question/domain';
@@ -22,6 +21,7 @@ import {
   AUTH_PROVIDER_TOKEN,
   CLOCK_TOKEN,
   DATABASE_CONTEXT_TOKEN,
+  DATABASE_PROVIDER_TOKEN,
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
@@ -39,7 +39,6 @@ import {
 } from './middleware';
 import type { Clock } from './shared/clock';
 import type { IdGenerator } from './shared/id-generator';
-import { AUTH_USER_REPO_TOKEN } from './shared/types/RepositoryToken';
 import { createHealthRoute } from './system/health/route';
 
 /**
@@ -170,33 +169,24 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
     const timeoutMs = 2000; // 2 second timeout for health checks
 
     try {
+      // Get the database provider directly from the container
+      const databaseProvider = await container.resolve(DATABASE_PROVIDER_TOKEN);
+
+      // Get a database connection from the provider
+      const db = await databaseProvider.getDatabase();
+
+      // Execute SELECT 1 query with timeout
       await Promise.race([
-        databaseContext.withinTransaction(async (ctx) => {
-          // The transaction context wraps the actual database connection
-          // We need to access the underlying database to execute raw SQL
-          const transactionCtx = ctx as {
-            db?: {
-              execute: (query: ReturnType<typeof sql>) => Promise<Array<{ health_check: number }>>;
-            };
-          };
-
-          if (!transactionCtx.db || !transactionCtx.db.execute) {
-            // Fallback: just verify we can get a repository
-            const userRepo = ctx.getRepository<IAuthUserRepository>(AUTH_USER_REPO_TOKEN);
-            if (!userRepo) {
-              throw new Error('Failed to get repository from database context');
+        // Execute the health check query directly
+        db
+          .execute(sql`SELECT 1 as health_check`)
+          .then((result) => {
+            // Verify we got the expected result
+            if (!result || result.length === 0 || result[0].health_check !== 1) {
+              throw new Error('Unexpected health check query result');
             }
-            return; // Basic connectivity verified
-          }
-
-          // Execute SELECT 1 query - the most lightweight connectivity check
-          const result = await transactionCtx.db.execute(sql`SELECT 1 as health_check`);
-
-          // Verify we got the expected result
-          if (!result || result.length === 0 || result[0].health_check !== 1) {
-            throw new Error('Unexpected health check query result');
-          }
-        }),
+          }),
+        // Timeout promise
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Health check query timeout')), timeoutMs)
         ),
