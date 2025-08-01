@@ -31,6 +31,12 @@ import { InMemoryUserRepository } from './InMemoryUserRepository';
  */
 export class InMemoryUnitOfWork implements IUnitOfWork {
   private readonly repositoryCache = new Map<symbol, unknown>();
+  private readonly repositoryFactories = new Map<symbol, () => unknown>([
+    [AUTH_USER_REPO_TOKEN, () => new InMemoryAuthUserRepository()],
+    [USER_REPO_TOKEN, () => new InMemoryUserRepository()],
+    [QUIZ_REPO_TOKEN, () => new InMemoryQuizRepository()],
+    [QUESTION_REPO_TOKEN, () => new InMemoryQuestionRepository()],
+  ]);
   private isTransactionActive = false;
   private isCommitted = false;
   private isRolledBack = false;
@@ -101,21 +107,15 @@ export class InMemoryUnitOfWork implements IUnitOfWork {
 
   /**
    * Create an in-memory repository instance based on the provided token
+   * Uses a Map-based factory pattern for better maintainability and extensibility
    * @internal
    */
   private createRepository(token: symbol): unknown {
-    switch (token) {
-      case AUTH_USER_REPO_TOKEN:
-        return new InMemoryAuthUserRepository();
-      case USER_REPO_TOKEN:
-        return new InMemoryUserRepository();
-      case QUIZ_REPO_TOKEN:
-        return new InMemoryQuizRepository();
-      case QUESTION_REPO_TOKEN:
-        return new InMemoryQuestionRepository();
-      default:
-        throw new Error(`Unknown repository token: ${token.toString()}`);
+    const factory = this.repositoryFactories.get(token);
+    if (!factory) {
+      throw new Error(`Unknown repository token: ${token.toString()}`);
     }
+    return factory();
   }
 
   // Test helper methods
