@@ -61,6 +61,8 @@ export async function createIntegrationTestApp(container?: DIContainer): Promise
   // Build app using async container
   const app = await buildAppWithContainer(diContainer);
 
+  // Note: Database context initialization is handled by the container configuration
+
   // Create TestApp wrapper
   const testApp: TestApp = {
     request: app.request.bind(app),
@@ -122,6 +124,8 @@ export async function createHttpTestApp(container?: DIContainer): Promise<TestAp
 
   // Build app using async container
   const app = await buildAppWithContainer(diContainer);
+
+  // Note: Database context initialization is handled by the container configuration
 
   // Create TestApp wrapper
   const testApp: TestApp = {

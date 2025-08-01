@@ -72,6 +72,7 @@ export class TestDatabaseProvider implements IDatabaseProvider {
 
   async shutdown(): Promise<void> {
     this.logger.info({ workerCount: this.workerDatabases.size }, 'Shutting down test databases');
+    const errors: Array<{ workerId: string; error: unknown }> = [];
 
     // Shutdown all worker databases in parallel
     await Promise.all(
@@ -86,11 +87,19 @@ export class TestDatabaseProvider implements IDatabaseProvider {
           this.logger.debug({ workerId }, 'Test database cleaned up');
         } catch (error) {
           this.logger.error({ workerId, error }, 'Error cleaning up test database');
+          errors.push({ workerId, error });
         }
       })
     );
 
     this.workerDatabases.clear();
+
+    if (errors.length > 0) {
+      throw new AggregateError(
+        errors.map((e) => e.error as Error),
+        `Failed to cleanup ${errors.length} test database(s)`
+      );
+    }
   }
 
   private async getContainerUrl(): Promise<string> {

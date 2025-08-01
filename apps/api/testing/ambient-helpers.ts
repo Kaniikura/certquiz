@@ -1,8 +1,13 @@
 /**
  * Test helpers for Ambient Unit of Work pattern
  *
- * @deprecated Use DatabaseContext pattern instead. These helpers will be updated to support IDatabaseContext.
- * For new tests, consider using createDatabaseContextMiddleware with InMemoryDatabaseContext.
+ * @deprecated The following functions are deprecated and will be removed in a future release:
+ * - `createTestDatabaseContext`: Use `createDatabaseContextMiddleware` with `InMemoryDatabaseContext` instead.
+ * - `getTestDatabaseContext`: Use the `DatabaseContext` API directly to access repositories.
+ *
+ * Migration path:
+ * - Replace calls to `createTestDatabaseContext` with `createDatabaseContextMiddleware` and configure it with `InMemoryDatabaseContext`.
+ * - Replace calls to `getTestDatabaseContext` with direct usage of the `DatabaseContext` API.
  */
 
 import type { IAuthUserRepository } from '@api/features/auth/domain';

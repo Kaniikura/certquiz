@@ -25,7 +25,9 @@ type GetQuestionVariables = {
 } & LoggerVariables &
   DatabaseContextVariables;
 
-export function getQuestionRoute(premiumAccessService: IPremiumAccessService) {
+export function getQuestionRoute(premiumAccessService: IPremiumAccessService): Hono<{
+  Variables: GetQuestionVariables;
+}> {
   return new Hono<{
     Variables: GetQuestionVariables;
   }>().get('/:questionId', (c) => {

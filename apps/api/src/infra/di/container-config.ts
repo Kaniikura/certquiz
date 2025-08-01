@@ -3,8 +3,9 @@
  * @fileoverview Configures service registrations using async container for environments requiring async initialization
  */
 
-// Feature flag removed - async database provider is now the default
+// The async database provider is used as the default for all environments requiring asynchronous initialization.
 
+import type { Environment } from '@api/config/env';
 import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import type { QuestionAccessDeniedError } from '@api/features/question/shared/errors';
@@ -19,7 +20,7 @@ import { AsyncDatabaseContext } from '../db/AsyncDatabaseContext';
 import { ProductionDatabaseProvider } from '../db/ProductionDatabaseProvider';
 import { TestDatabaseProvider } from '../db/TestDatabaseProvider';
 import { getRootLogger } from '../logger/root-logger';
-import { DIContainer, type Environment } from './DIContainer';
+import { DIContainer } from './DIContainer';
 import {
   AUTH_PROVIDER_TOKEN,
   CLOCK_TOKEN,
@@ -102,7 +103,13 @@ function configureTestContainer(container: DIContainer): void {
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
         const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        return new AsyncDatabaseContext(logger, databaseProvider);
+        // Create context with auto-initialization disabled for manual control
+        const context = new AsyncDatabaseContext(logger, databaseProvider, {
+          autoInitialize: false,
+        });
+        // Initialize it explicitly for tests
+        await context.initialize();
+        return context;
       },
       { singleton: false } // New instance per test for isolation
     );

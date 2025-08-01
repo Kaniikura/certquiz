@@ -3,9 +3,10 @@
  * @fileoverview Async DI container supporting both sync and async service factories
  */
 
+import type { Environment } from '@api/config/env';
+
 type AsyncServiceFactory<T = unknown> = () => T | Promise<T>;
 type ServiceToken<T = unknown> = symbol & { __brand: T };
-export type Environment = 'test' | 'development' | 'production';
 
 interface ServiceRegistration {
   factory: AsyncServiceFactory;

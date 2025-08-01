@@ -22,7 +22,9 @@ import { getProfileHandler } from './handler';
  * Create get profile route
  * Clock is passed for consistency but not used in this route
  */
-export function getProfileRoute(_clock: Clock) {
+export function getProfileRoute(
+  _clock: Clock
+): Hono<{ Variables: LoggerVariables & DatabaseContextVariables }> {
   return new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>().get(
     '/profile/:userId',
     (c) => {

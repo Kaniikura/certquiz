@@ -13,7 +13,7 @@ import { getRootLogger } from './infra/logger/root-logger';
 const startupLogger = getRootLogger();
 
 // Initialize async app
-async function startServer() {
+async function startServer(): Promise<void> {
   try {
     // Create and configure async container for production
     const container = createConfiguredContainer('production');

@@ -21,6 +21,26 @@ import type { DB } from './types';
 import type { TransactionContext } from './uow';
 
 /**
+ * Factory function for creating repository instances
+ * Eliminates code duplication by centralizing repository creation logic
+ * Returns unknown to match the established pattern for repository caching
+ */
+function createRepository(token: symbol, db: TransactionContext, logger: Logger): unknown {
+  switch (token) {
+    case AUTH_USER_REPO_TOKEN:
+      return new DrizzleAuthUserRepository(db, logger);
+    case USER_REPO_TOKEN:
+      return new DrizzleUserRepository(db, logger);
+    case QUIZ_REPO_TOKEN:
+      return new DrizzleQuizRepository(db, logger);
+    case QUESTION_REPO_TOKEN:
+      return new DrizzleQuestionRepository(db, logger);
+    default:
+      throw new Error(`Unknown repository token: ${token.toString()}`);
+  }
+}
+
+/**
  * Transaction context implementation for async database operations
  */
 class AsyncTransactionContext implements ITransactionContext {
@@ -38,29 +58,10 @@ class AsyncTransactionContext implements ITransactionContext {
       return this.repositoryCache.get(tokenSymbol) as T;
     }
 
-    const repository = this.createRepository(token, this.db as TransactionContext);
+    const repository = createRepository(token, this.db as TransactionContext, this.logger);
     this.repositoryCache.set(tokenSymbol, repository);
 
     return repository as T;
-  }
-
-  /**
-   * Create a repository instance based on the provided token
-   * @internal
-   */
-  private createRepository(token: symbol, db: TransactionContext): unknown {
-    switch (token) {
-      case AUTH_USER_REPO_TOKEN:
-        return new DrizzleAuthUserRepository(db, this.logger);
-      case USER_REPO_TOKEN:
-        return new DrizzleUserRepository(db, this.logger);
-      case QUIZ_REPO_TOKEN:
-        return new DrizzleQuizRepository(db, this.logger);
-      case QUESTION_REPO_TOKEN:
-        return new DrizzleQuestionRepository(db, this.logger);
-      default:
-        throw new Error(`Unknown repository token: ${token.toString()}`);
-    }
   }
 }
 
@@ -68,29 +69,66 @@ class AsyncTransactionContext implements ITransactionContext {
 // in async database contexts. Use withinTransaction() for all database operations.
 
 /**
+ * Options for AsyncDatabaseContext initialization
+ */
+export interface AsyncDatabaseContextOptions {
+  /**
+   * Whether to automatically initialize the database connection on construction.
+   * Defaults to true for production safety.
+   * Set to false for testing scenarios where manual control is needed.
+   */
+  autoInitialize?: boolean;
+}
+
+/**
  * Async Database Context implementation
  *
- * Uses IDatabaseProvider for async database access instead of the singleton pattern.
+ * Uses IDatabaseProvider for async database access with automatic initialization by default.
  * Provides proper transaction management and repository caching.
  *
- * IMPORTANT: This implementation requires pre-initialization of the database connection
- * before non-transactional repository access. For test environments, this is handled
- * by the middleware initialization process.
+ * Features:
+ * - Auto-initialization by default (safe for production)
+ * - Optional manual initialization for testing
+ * - Thread-safe initialization with promise deduplication
+ * - Clear error messages for debugging
  */
 export class AsyncDatabaseContext implements IDatabaseContext {
   private repositoryCache = new Map<symbol, unknown>();
   private db: DB | null = null;
+  private initPromise: Promise<void> | null = null;
 
   constructor(
     private readonly logger: Logger,
-    private readonly databaseProvider: IDatabaseProvider
-  ) {}
+    private readonly databaseProvider: IDatabaseProvider,
+    private readonly options: AsyncDatabaseContextOptions = {}
+  ) {
+    // Auto-initialize by default (unless explicitly disabled)
+    if (this.options.autoInitialize !== false) {
+      this.initPromise = this.initialize().catch((error) => {
+        this.logger.error('Failed to auto-initialize AsyncDatabaseContext', { error });
+        throw error;
+      });
+    }
+  }
 
   /**
    * Initialize the database connection.
-   * Must be called before non-transactional repository access.
+   * Safe to call multiple times - subsequent calls return the same promise.
+   *
+   * @returns Promise that resolves when initialization is complete
    */
   async initialize(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = this._doInitialize();
+    }
+    return this.initPromise;
+  }
+
+  /**
+   * Perform the actual initialization
+   * @internal
+   */
+  private async _doInitialize(): Promise<void> {
     if (!this.db) {
       this.db = await this.databaseProvider.getDatabase();
       this.logger.debug('AsyncDatabaseContext initialized with database connection');
@@ -98,8 +136,11 @@ export class AsyncDatabaseContext implements IDatabaseContext {
   }
 
   async withinTransaction<T>(operation: (ctx: ITransactionContext) => Promise<T>): Promise<T> {
-    // Ensure database is initialized for transactions
-    if (!this.db) {
+    // Wait for any pending initialization
+    if (this.initPromise) {
+      await this.initPromise;
+    } else if (!this.db) {
+      // If no init promise and no db, initialize now
       await this.initialize();
     }
 
@@ -117,7 +158,10 @@ export class AsyncDatabaseContext implements IDatabaseContext {
   getRepository<T>(token: RepositoryToken<T>): T {
     if (!this.db) {
       throw new Error(
-        'AsyncDatabaseContext not initialized. Call initialize() before accessing repositories.'
+        'AsyncDatabaseContext not initialized. This is likely a bug - ' +
+          'context should auto-initialize unless explicitly disabled for testing. ' +
+          'If this is a test, ensure you call initialize() before getRepository(). ' +
+          'If this is production code, check that autoInitialize is not disabled.'
       );
     }
 
@@ -127,28 +171,9 @@ export class AsyncDatabaseContext implements IDatabaseContext {
       return this.repositoryCache.get(tokenSymbol) as T;
     }
 
-    const repository = this.createRepository(token, this.db as TransactionContext);
+    const repository = createRepository(token, this.db as TransactionContext, this.logger);
     this.repositoryCache.set(tokenSymbol, repository);
 
     return repository as T;
-  }
-
-  /**
-   * Create a repository instance based on the provided token
-   * @internal
-   */
-  private createRepository(token: symbol, db: TransactionContext): unknown {
-    switch (token) {
-      case AUTH_USER_REPO_TOKEN:
-        return new DrizzleAuthUserRepository(db, this.logger);
-      case USER_REPO_TOKEN:
-        return new DrizzleUserRepository(db, this.logger);
-      case QUIZ_REPO_TOKEN:
-        return new DrizzleQuizRepository(db, this.logger);
-      case QUESTION_REPO_TOKEN:
-        return new DrizzleQuestionRepository(db, this.logger);
-      default:
-        throw new Error(`Unknown repository token: ${token.toString()}`);
-    }
   }
 }

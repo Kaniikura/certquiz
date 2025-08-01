@@ -158,18 +158,17 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
       container.resolve(ID_GENERATOR_TOKEN),
     ]);
 
-  // Initialize AsyncDatabaseContext if it has an initialize method
-  // This ensures the database connection is ready for non-transactional repository access
-  if ('initialize' in databaseContext && typeof databaseContext.initialize === 'function') {
-    await databaseContext.initialize();
-    logger.debug('Initialized AsyncDatabaseContext for non-transactional access');
-  }
+  // Note: AsyncDatabaseContext now auto-initializes by default in production/development
+  // For test environment, initialization is disabled and handled manually when needed
 
   // Create other dependencies that aren't in the container yet
   const ping = async () => {
-    // Use the database from the DatabaseContext - any repository access is enough
-    // This is a basic connectivity check
-    return;
+    // Use the database from the DatabaseContext to ensure connectivity.
+    // Starting a transaction is a lightweight way to check the connection.
+    await databaseContext.withinTransaction(async () => {
+      // This is a no-op transaction that just ensures the connection is established.
+      // Any repository operation would also work, but this is a simple example.
+    });
   };
 
   // Build dependencies object
