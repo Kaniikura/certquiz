@@ -127,7 +127,7 @@ export class QuizCompletionService implements IQuizCompletionService {
           {
             correctAnswers: scoreSummary.correctAnswers,
             totalQuestions: scoreSummary.totalQuestions,
-            category: session.config.category ?? session.config.examType,
+            category: session.config.getCategory(),
             studyTimeMinutes,
           },
           this.clock
