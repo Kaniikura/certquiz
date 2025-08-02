@@ -16,6 +16,7 @@ import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';
 import { AsyncDatabaseContext } from '../db/AsyncDatabaseContext';
 import { ProductionDatabaseProvider } from '../db/ProductionDatabaseProvider';
+import { validateDatabaseUrl } from '../db/shared';
 import { TestDatabaseProvider } from '../db/TestDatabaseProvider';
 import { getRootLogger } from '../logger/root-logger';
 import { DIContainer } from './DIContainer';
@@ -114,10 +115,7 @@ function configureDevelopmentContainer(container: DIContainer): void {
       DATABASE_PROVIDER_TOKEN,
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseUrl = process.env.DATABASE_URL;
-        if (!databaseUrl) {
-          throw new Error('DATABASE_URL environment variable is required');
-        }
+        const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
         const config = {
           databaseUrl,
           enableLogging: true,
@@ -191,10 +189,7 @@ function configureProductionContainer(container: DIContainer): void {
       DATABASE_PROVIDER_TOKEN,
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseUrl = process.env.DATABASE_URL;
-        if (!databaseUrl) {
-          throw new Error('DATABASE_URL environment variable is required');
-        }
+        const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
         const config = {
           databaseUrl,
           enableLogging: false,
