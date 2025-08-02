@@ -2,7 +2,7 @@ import { AuthUser } from '@api/features/auth';
 import { UserId } from '@api/features/auth/domain';
 import { executeInDatabaseContext } from '@api/infra/unit-of-work';
 import { AUTH_USER_REPO_TOKEN, QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { TestApp } from '../../setup/test-app-factory';
 import { createIntegrationTestApp } from '../../setup/test-app-factory';

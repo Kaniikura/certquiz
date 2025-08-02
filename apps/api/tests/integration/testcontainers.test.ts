@@ -1,14 +1,29 @@
-import postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   createTestDatabase,
   createTestDb,
   seedAdminUser,
   seedUsers,
   type TestDb,
-} from '../../testing/infra/db';
-import { testUsers } from '../../testing/infra/db/schema';
+} from '@test/helpers/database';
+import { testUsers } from '@test/helpers/db-schema';
+import postgres from 'postgres';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresSingleton } from '../containers/postgres';
+
+/**
+ * Ensure test tables exist in the database
+ */
+async function ensureTestTables(client: postgres.Sql): Promise<void> {
+  await client`
+    CREATE TABLE IF NOT EXISTS test_users (
+      id text PRIMARY KEY,
+      email text NOT NULL UNIQUE,
+      name text,
+      is_active boolean DEFAULT true,
+      created_at timestamp DEFAULT now()
+    )
+  `;
+}
 
 // Helper functions for clean resource management
 async function usingMainDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
@@ -16,6 +31,7 @@ async function usingMainDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
   const client = postgres(url, { max: 5 });
   const db = createTestDb(client);
   try {
+    await ensureTestTables(client);
     return await fn(db);
   } finally {
     await client.end();
@@ -28,6 +44,7 @@ async function usingIsoDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
   const client = postgres(url, { max: 5 });
   const db = createTestDb(client);
   try {
+    await ensureTestTables(client);
     return await fn(db);
   } finally {
     await client.end();
@@ -52,6 +69,9 @@ describe('Testcontainers Infrastructure', () => {
     client = postgres(dbUrl, { max: 10 });
     db = createTestDb(client);
     expect(db).toBeDefined();
+
+    // Create test-specific tables that aren't part of production migrations
+    await ensureTestTables(client);
 
     // Verify expected tables exist (fail fast on schema drift)
     const result = await client`

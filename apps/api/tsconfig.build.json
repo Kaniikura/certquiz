@@ -10,8 +10,7 @@
     "src/**/*.test.ts",
     "src/**/*.fake.ts",
     "src/**/*.stub.ts",
-    "tests/**/*",
-    "testing/**/*"
+    "tests/**/*"
   ],
   "include": ["src/**/*", "db/**/*.ts", "scripts/**/*", "*.ts"]
 }

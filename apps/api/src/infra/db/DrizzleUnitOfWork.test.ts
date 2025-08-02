@@ -1,6 +1,6 @@
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { createNoopLogger } from '@api/test-support/test-logger';
 import { describe, expect, it, vi } from 'vitest';
+import { createNoopLogger } from '@/test-support';
 import { DrizzleUnitOfWork } from './DrizzleUnitOfWork';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';

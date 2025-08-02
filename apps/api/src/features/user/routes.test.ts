@@ -3,8 +3,8 @@
  * @fileoverview Basic tests for user routes structure
  */
 
-import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { describe, expect, it } from 'vitest';
+import { InMemoryDatabaseContext } from '@/test-support/fakes';
 
 describe('User Routes Structure', () => {
   it('should export createUserRoutes factory function', async () => {

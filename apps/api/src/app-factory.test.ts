@@ -3,9 +3,9 @@
  * @fileoverview Tests for app factory with DI container integration
  */
 
-import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { nanoid } from 'nanoid';
 import { describe, expect, it } from 'vitest';
+import { InMemoryDatabaseContext } from '@/test-support/fakes';
 import type { AppDependencies } from './app-factory';
 import { buildApp, buildAppWithContainer } from './app-factory';
 import type { IPremiumAccessService } from './features/question/domain';

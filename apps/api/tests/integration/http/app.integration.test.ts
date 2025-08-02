@@ -1,4 +1,4 @@
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { TestApp } from '../../setup/test-app-factory';
 import { createIntegrationTestApp } from '../../setup/test-app-factory';

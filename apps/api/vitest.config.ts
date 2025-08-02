@@ -2,7 +2,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { mapTestEnvironmentVariables } from './testing/infra/vitest';
+import { mapTestEnvironmentVariables } from './tests/helpers/env';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -41,7 +41,6 @@ export default defineConfig(({ mode }) => {
       include: [
         'src/**/*.test.ts', // Unit tests co-located with source
         'tests/**/*.test.ts', // Integration and E2E tests
-        'testing/**/*.test.ts', // Testing utilities verification tests
       ],
 
       // Setup files for database cleanup (from our working solution)
