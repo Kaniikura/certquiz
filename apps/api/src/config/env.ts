@@ -44,11 +44,6 @@ const envSchema = z.object({
 });
 
 /**
- * Infer the type of the environment from the schema
- */
-export type Env = z.infer<typeof envSchema>;
-
-/**
  * Parse and validate environment variables
  * This will throw an error if required variables are missing or invalid
  */

@@ -12,7 +12,7 @@ import type { DB } from './types';
 /**
  * Configuration for production database provider
  */
-export interface ProductionDatabaseConfig {
+interface ProductionDatabaseConfig {
   databaseUrl: string;
   enableLogging: boolean;
   environment: string;

@@ -14,7 +14,7 @@ export function mapAuthUserRowToUser(row: AuthUserRow): Result<AuthUser, Error> 
 /**
  * Interface representing a joined row from authUser and userProgress tables
  */
-export interface JoinedUserRow {
+interface JoinedUserRow {
   // Auth user fields
   userId: string;
   email: string;

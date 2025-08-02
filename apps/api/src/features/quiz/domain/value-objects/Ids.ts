@@ -3,10 +3,12 @@
  * @fileoverview Type-safe ID system for Quiz domain
  */
 
+// Import UserId from auth domain to avoid duplication
+export { UserId } from '@api/features/auth/domain/value-objects/UserId';
+
 // Branded types with factory functions for proper type safety
 export type QuestionId = string & { readonly __brand: 'QuestionId' };
 export type OptionId = string & { readonly __brand: 'OptionId' };
-export type UserId = string & { readonly __brand: 'UserId' };
 export type QuizSessionId = string & { readonly __brand: 'QuizSessionId' };
 export type AnswerId = string & { readonly __brand: 'AnswerId' };
 
@@ -28,13 +30,6 @@ export const OptionId = {
   generate: (): OptionId => generateId() as OptionId,
   equals: (a: OptionId, b: OptionId): boolean => a === b,
   toString: (id: OptionId): string => id,
-};
-
-export const UserId = {
-  of: (value: string): UserId => value as UserId,
-  generate: (): UserId => generateId() as UserId,
-  equals: (a: UserId, b: UserId): boolean => a === b,
-  toString: (id: UserId): string => id,
 };
 
 export const QuizSessionId = {

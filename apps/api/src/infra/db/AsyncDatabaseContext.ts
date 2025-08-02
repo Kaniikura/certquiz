@@ -73,7 +73,7 @@ class AsyncTransactionContext implements ITransactionContext {
 /**
  * Options for AsyncDatabaseContext initialization
  */
-export interface AsyncDatabaseContextOptions {
+interface AsyncDatabaseContextOptions {
   /**
    * Whether to automatically initialize the database connection on construction.
    * Defaults to true for production safety.

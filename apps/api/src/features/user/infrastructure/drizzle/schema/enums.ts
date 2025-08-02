@@ -10,8 +10,3 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', subscriptionPlan
 
 const subscriptionStatusValues = ['active', 'cancelled', 'expired'] as const;
 export const subscriptionStatusEnum = pgEnum('subscription_status', subscriptionStatusValues);
-
-// Strongly-typed unions for type safety
-export type UserRoleValue = (typeof userRoleValues)[number];
-export type SubscriptionPlanValue = (typeof subscriptionPlanValues)[number];
-export type SubscriptionStatusValue = (typeof subscriptionStatusValues)[number];
