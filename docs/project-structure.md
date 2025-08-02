@@ -35,7 +35,8 @@ certquiz/
 │       ├── src/
 │       │   ├── features/       # Feature slices (vertical slices)
 │       │   │   ├── quiz/
-│       │   │   │   ├── [use-cases]/    # start-quiz, submit-answer, get-results
+│       │   │   │   ├── [use-cases]/    # start-quiz, submit-answer, complete-quiz, get-results
+│       │   │   │   ├── application/    # Application services (e.g., QuizCompletionService)
 │       │   │   │   ├── domain/
 │       │   │   │   │   ├── entities/
 │       │   │   │   │   ├── value-objects/
@@ -45,7 +46,7 @@ certquiz/
 │       │   │   │   │   └── drizzle/      # Repository implementations & mappers
 │       │   │   │   └── shared/
 │       │   │   ├── user/
-│       │   │   │   ├── [use-cases]/    # register, update-progress, get-profile
+│       │   │   │   ├── [use-cases]/    # register, get-profile
 │       │   │   │   ├── domain/
 │       │   │   │   │   ├── entities/
 │       │   │   │   │   ├── value-objects/
@@ -65,7 +66,8 @@ certquiz/
 │       │   │   ├── health/
 │       │   │   └── migration/
 │       │   ├── infra/          # Cross-cutting infrastructure
-│       │   │   ├── db/
+│       │   │   ├── db/         # Unified AsyncDatabaseContext with UoW
+│       │   │   ├── di/         # Dependency injection container
 │       │   │   ├── events/
 │       │   │   ├── logger/
 │       │   │   ├── auth/
@@ -112,8 +114,9 @@ certquiz/
 > - **Mapper pattern**: Pure data transformation functions in infrastructure/drizzle/
 > - **Use case folders**: Each contains handler, DTO, validation, route
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
-> - **Transaction scope**: All handlers wrapped in `withTransaction`
-> - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
+> - **Unified architecture**: DIContainer + AsyncDatabaseContext across all environments
+> - **Application services**: Cross-aggregate operations (e.g., QuizCompletionService) with integrated Unit of Work
+> - **Dependency injection**: DIContainer pattern for all environments (Production/Test/Dev)
 > - **Explicit exports**: All `export * from ...` replaced with explicit named exports for clear API boundaries
 > - **Test infrastructure**: Database/container utilities in `tests/helpers/`, domain utilities in `src/test-support/`
 > - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
@@ -125,7 +128,8 @@ certquiz/
 - Thin layer that delegates to application handlers
 
 ### 2. Application Layer
-- **[use-cases]/handler.ts**: Orchestrate use cases with transaction boundaries
+- **[use-cases]/handler.ts**: Orchestrate use cases
+- **application/services**: Cross-aggregate operations with integrated Unit of Work (e.g., QuizCompletionService)
 - Coordinate between domain and infrastructure layers
 
 ### 3. Domain Layer
@@ -149,10 +153,10 @@ certquiz/
 - **Thin abstraction**: Only methods needed by use cases
 - **No generic repositories**: Each repository is domain-specific
 
-### 2. Unit of Work via Transaction Wrapper
-- **infra/unit-of-work.ts**: Application layer facade using Drizzle transactions
-- All multi-repository operations wrapped in single transaction
-- Ensures data consistency across aggregates
+### 2. Unit of Work Pattern Integrated
+- **AsyncDatabaseContext**: Unified database context with integrated Unit of Work
+- Application services use `executeWithUnitOfWork` for atomic cross-aggregate operations
+- Ensures data consistency across aggregates in a single transaction
 
 ### 3. Vertical Slice Organization
 - **features/[context]/[use-case]/**: Self-contained use case folders
@@ -184,7 +188,7 @@ Start simple, add complexity as needed:
 - **Interface Definition**: Domain interfaces in `domain/repositories/`
 - **Implementation**: Drizzle-based implementations in `infrastructure/drizzle/`
 - **Mapper Extraction**: Pure functions for data transformation in same directory
-- **Transaction Management**: All operations wrapped with `withTransaction`
+- **Transaction Management**: Handled automatically by AsyncDatabaseContext and Unit of Work
 
 ## Migration Strategy
 
@@ -235,7 +239,7 @@ Start simple, add complexity as needed:
 1. **All features rebuilt with VSA + Repository pattern**
 2. **90% test coverage in domain layer**
 3. **No cross-slice imports (enforced by ESLint)**
-4. **All handlers wrapped in transactions**
+4. **Unified architecture with DIContainer + AsyncDatabaseContext**
 5. **Zero downtime migration from legacy**
 6. **Performance equal or better than legacy**
 
