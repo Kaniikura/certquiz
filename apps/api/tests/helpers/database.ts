@@ -7,7 +7,6 @@
 export { getPostgres, PostgresSingleton } from '../containers/postgres';
 // Re-export connection utilities
 export {
-  cleanupWorkerDatabases,
   createTestDb,
   getWorkerDatabaseName,
   quoteIdentifier,

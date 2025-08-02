@@ -1,7 +1,27 @@
 import { randomUUID } from 'node:crypto';
+import type { Sql } from 'postgres';
 import postgres from 'postgres';
 import type { StartedPostgreSqlContainer } from '../containers/postgres';
 import { drizzleMigrate } from './db-migrations';
+
+/**
+ * Track postgres clients for proper cleanup
+ */
+const trackedClients = new Set<Sql>();
+
+/**
+ * Track a postgres client for cleanup
+ */
+export function trackClient(client: Sql): void {
+  trackedClients.add(client);
+}
+
+/**
+ * Remove a client from tracking (when manually closed)
+ */
+export function untrackClient(client: Sql): void {
+  trackedClients.delete(client);
+}
 
 /**
  * Options for creating a test database
@@ -129,6 +149,8 @@ function _buildDatabaseUrl(rootUrl: string, dbName: string): string {
  * Close all tracked database clients
  */
 export async function closeAllTrackedClients(): Promise<void> {
-  // Implementation would track and close all clients
-  console.log('Closing all tracked clients...');
+  const clients = Array.from(trackedClients);
+  trackedClients.clear();
+
+  await Promise.allSettled(clients.map((client) => client.end()));
 }

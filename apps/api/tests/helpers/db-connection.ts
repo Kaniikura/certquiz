@@ -64,12 +64,3 @@ export async function withTestDb<T>(_fn: (db: TestDb) => Promise<T>): Promise<T>
   // This would be implemented with actual database connection logic
   throw new Error('Not implemented - use createTestDb directly');
 }
-
-/**
- * Cleanup worker databases
- */
-export async function cleanupWorkerDatabases(): Promise<void> {
-  // Implementation would clean up test databases
-  // For now, this is a no-op
-  console.log('Cleaning up worker databases...');
-}

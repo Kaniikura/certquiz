@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
+import { trackClient, untrackClient } from './db-core';
 
 // Mutex to prevent concurrent migrations with proper atomic updates
 let migrationMutex: Promise<void> = Promise.resolve();
@@ -193,6 +194,7 @@ export async function drizzleMigrate(databaseUrl: string): Promise<void> {
  */
 async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
   const client = postgres(databaseUrl, { max: 1 });
+  trackClient(client);
 
   try {
     // Create test_migration table for migration testing
@@ -227,6 +229,7 @@ async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
       throw new Error(`Failed to create test tables: ${errorMessage}`);
     }
   } finally {
+    untrackClient(client);
     await client.end();
   }
 }
@@ -239,6 +242,7 @@ async function createTestTablesDirectly(databaseUrl: string): Promise<void> {
  */
 async function resetMigrationState(connectionUrl: string): Promise<void> {
   const client = postgres(connectionUrl, { max: 1 });
+  trackClient(client);
 
   try {
     // Drop only the drizzle schema to reset migration state
@@ -249,6 +253,7 @@ async function resetMigrationState(connectionUrl: string): Promise<void> {
   } catch {
     // Silently ignore - schema might not exist
   } finally {
+    untrackClient(client);
     await client.end();
   }
 }
@@ -269,6 +274,7 @@ export async function verifyMigrationTables(
   allTablesExist: boolean;
 }> {
   const client = postgres(connectionUrl, { max: 1 });
+  trackClient(client);
 
   try {
     // Check for migrations table
@@ -301,6 +307,7 @@ export async function verifyMigrationTables(
       allTablesExist: Object.values(expectedTableResults).every((exists) => exists),
     };
   } finally {
+    untrackClient(client);
     await client.end();
   }
 }
