@@ -4,6 +4,7 @@
 
 import type { TestDb } from './db-connection';
 import type { NewTestUser, TestUser } from './db-schema';
+import { testUsers } from './db-schema';
 
 /**
  * Create a fake user for testing.
@@ -37,7 +38,6 @@ export async function seedUsers<DB extends TestDb>(
 ): Promise<TestUser[]> {
   const users = Array.from({ length: count }, () => _createFakeUser(overrides));
 
-  const { testUsers } = await import('./db-schema');
   const inserted = await db.insert(testUsers).values(users).returning();
 
   return inserted;
@@ -63,6 +63,5 @@ export async function seedAdminUser<DB extends TestDb>(
  * Clear all users from the test database
  */
 export async function clearUsers<DB extends TestDb>(db: DB): Promise<void> {
-  const { testUsers } = await import('./db-schema');
   await db.delete(testUsers);
 }
