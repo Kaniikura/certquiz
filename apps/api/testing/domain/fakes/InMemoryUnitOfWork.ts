@@ -6,11 +6,18 @@
  * business logic in isolation from database infrastructure.
  */
 
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
+import type { IAuthUserRepository } from '@api/features/auth/domain';
 import type { IQuestionRepository } from '@api/features/question/domain';
 import type { IQuizRepository } from '@api/features/quiz/domain';
 import type { IUserRepository } from '@api/features/user/domain';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
+import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
+import {
+  AUTH_USER_REPO_TOKEN,
+  QUESTION_REPO_TOKEN,
+  QUIZ_REPO_TOKEN,
+  USER_REPO_TOKEN,
+} from '@api/shared/types/RepositoryToken';
 import { InMemoryAuthUserRepository } from './InMemoryAuthUserRepository';
 import { InMemoryQuestionRepository } from './InMemoryQuestionRepository';
 import { InMemoryQuizRepository } from './InMemoryQuizRepository';
@@ -23,10 +30,13 @@ import { InMemoryUserRepository } from './InMemoryUserRepository';
  * All operations are performed in-memory.
  */
 export class InMemoryUnitOfWork implements IUnitOfWork {
-  private authUserRepository: InMemoryAuthUserRepository;
-  private userRepository: InMemoryUserRepository;
-  private quizRepository: InMemoryQuizRepository;
-  private questionRepository: InMemoryQuestionRepository;
+  private readonly repositoryCache = new Map<symbol, unknown>();
+  private readonly repositoryFactories = new Map<symbol, () => unknown>([
+    [AUTH_USER_REPO_TOKEN, () => new InMemoryAuthUserRepository()],
+    [USER_REPO_TOKEN, () => new InMemoryUserRepository()],
+    [QUIZ_REPO_TOKEN, () => new InMemoryQuizRepository()],
+    [QUESTION_REPO_TOKEN, () => new InMemoryQuestionRepository()],
+  ]);
   private isTransactionActive = false;
   private isCommitted = false;
   private isRolledBack = false;
@@ -37,14 +47,19 @@ export class InMemoryUnitOfWork implements IUnitOfWork {
     quizRepository?: IQuizRepository,
     questionRepository?: IQuestionRepository
   ) {
-    this.authUserRepository =
-      (authUserRepository as InMemoryAuthUserRepository) || new InMemoryAuthUserRepository();
-    this.userRepository =
-      (userRepository as InMemoryUserRepository) || new InMemoryUserRepository();
-    this.quizRepository =
-      (quizRepository as InMemoryQuizRepository) || new InMemoryQuizRepository();
-    this.questionRepository =
-      (questionRepository as InMemoryQuestionRepository) || new InMemoryQuestionRepository();
+    // Initialize repositories in the cache
+    if (authUserRepository) {
+      this.repositoryCache.set(AUTH_USER_REPO_TOKEN, authUserRepository);
+    }
+    if (userRepository) {
+      this.repositoryCache.set(USER_REPO_TOKEN, userRepository);
+    }
+    if (quizRepository) {
+      this.repositoryCache.set(QUIZ_REPO_TOKEN, quizRepository);
+    }
+    if (questionRepository) {
+      this.repositoryCache.set(QUESTION_REPO_TOKEN, questionRepository);
+    }
   }
 
   async begin(): Promise<void> {
@@ -78,20 +93,29 @@ export class InMemoryUnitOfWork implements IUnitOfWork {
     this.isTransactionActive = false;
   }
 
-  getAuthUserRepository(): IAuthUserRepository {
-    return this.authUserRepository;
+  /**
+   * Get a repository instance by its token (type-safe)
+   * Uses caching to ensure the same instance is returned for multiple calls
+   */
+  getRepository<T>(token: RepositoryToken<T>): T {
+    if (!this.repositoryCache.has(token)) {
+      const repo = this.createRepository(token);
+      this.repositoryCache.set(token, repo);
+    }
+    return this.repositoryCache.get(token) as T;
   }
 
-  getUserRepository(): IUserRepository {
-    return this.userRepository;
-  }
-
-  getQuizRepository(): IQuizRepository {
-    return this.quizRepository;
-  }
-
-  getQuestionRepository(): IQuestionRepository {
-    return this.questionRepository;
+  /**
+   * Create an in-memory repository instance based on the provided token
+   * Uses a Map-based factory pattern for better maintainability and extensibility
+   * @internal
+   */
+  private createRepository(token: symbol): unknown {
+    const factory = this.repositoryFactories.get(token);
+    if (!factory) {
+      throw new Error(`Unknown repository token: ${token.toString()}`);
+    }
+    return factory();
   }
 
   // Test helper methods

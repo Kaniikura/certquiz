@@ -15,3 +15,8 @@ export class SystemClock implements Clock {
     return new Date();
   }
 }
+
+/**
+ * Singleton instance of system clock
+ */
+export const systemClock = new SystemClock();

@@ -3,10 +3,10 @@
  * @fileoverview Creates question routes with proper dependency injection
  */
 
-import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator';
 import { Hono } from 'hono';
@@ -18,7 +18,7 @@ import { listQuestionsRoute } from './list-questions/route';
 // Define context variables for question routes
 type QuestionVariables = {
   user?: AuthUser; // Optional as public endpoints exist for non-premium questions
-} & TransactionVariables;
+} & DatabaseContextVariables;
 
 /**
  * Create question routes with dependency injection
@@ -28,7 +28,7 @@ export function createQuestionRoutes(
   premiumAccessService: IPremiumAccessService,
   clock: Clock,
   idGenerator: IdGenerator,
-  _unitOfWorkProvider: IUnitOfWorkProvider
+  _databaseContext: IDatabaseContext
 ): Hono<{
   Variables: QuestionVariables;
 }> {

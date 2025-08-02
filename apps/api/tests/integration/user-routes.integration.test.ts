@@ -3,18 +3,12 @@
  * @fileoverview Tests actual HTTP request/response behavior for user endpoints
  */
 
-// Import createUserRoutes from the routes-factory
-import { createUserRoutes } from '@api/features/user/routes-factory';
-
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
-import { getRootLogger } from '@api/infra/logger/root-logger';
-import { createLoggerMiddleware } from '@api/middleware/logger';
-import { createTransactionMiddleware } from '@api/middleware/transaction';
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
-import { Hono } from 'hono';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TestApp } from '../setup/test-app-factory';
+import { createIntegrationTestApp } from '../setup/test-app-factory';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey;
@@ -41,7 +35,7 @@ describe('User Routes HTTP Integration', () => {
   setupTestDatabase();
 
   let privateKey: CryptoKey;
-  let testApp: Hono;
+  let testApp: TestApp;
 
   beforeAll(async () => {
     // Generate test key pair for JWT signing
@@ -50,37 +44,24 @@ describe('User Routes HTTP Integration', () => {
     testPublicKey = keyPair.publicKey;
     privateKey = testPrivateKey;
 
-    // Create test app with necessary middleware
-    testApp = new Hono();
-
-    // Add logger middleware
-    const logger = getRootLogger();
-    testApp.use('*', createLoggerMiddleware(logger));
-
-    // Create unit of work provider for testing
-    const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
-
-    // Add transaction middleware for ambient UoW pattern
-    testApp.use('*', createTransactionMiddleware(unitOfWorkProvider));
-
-    // Create and mount user routes
-    const userRoutes = createUserRoutes(unitOfWorkProvider);
-    testApp.route('/', userRoutes);
+    // Create HTTP test app using DI container with in-memory providers
+    testApp = await createIntegrationTestApp();
   });
 
   beforeEach(async () => {
-    // Clean up database state between tests if needed
-    // This is handled by setupTestDatabase() which creates isolated databases
+    // Clean up in-memory data between tests
+    await testApp.cleanup?.();
   });
 
   // Helper to create test JWT tokens using utility builder
   async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
-    return createJwtBuilder(claims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(claims);
+    return jwtBuilder.sign(privateKey);
   }
 
   describe('GET /health', () => {
     it('should return healthy status', async () => {
-      const res = await testApp.request('/health');
+      const res = await testApp.request('/api/users/health');
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -94,7 +75,7 @@ describe('User Routes HTTP Integration', () => {
 
   describe('POST /register', () => {
     it('should register a new user with valid data', async () => {
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,7 +108,7 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should return 400 for invalid email', async () => {
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -150,7 +131,7 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should return 400 for missing required fields', async () => {
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -175,7 +156,7 @@ describe('User Routes HTTP Integration', () => {
       const uniqueEmail = `duplicate-${Date.now()}@example.com`;
 
       // First registration
-      const firstRes = await testApp.request('/register', {
+      const firstRes = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,7 +171,7 @@ describe('User Routes HTTP Integration', () => {
       expect(firstRes.status).toBe(201);
 
       // Second registration with same email
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -217,7 +198,7 @@ describe('User Routes HTTP Integration', () => {
       const uniqueUsername = `duplicateuser-${Date.now()}`;
 
       // First registration
-      const firstRes = await testApp.request('/register', {
+      const firstRes = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,7 +213,7 @@ describe('User Routes HTTP Integration', () => {
       expect(firstRes.status).toBe(201);
 
       // Second registration with same username
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,7 +236,7 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should handle malformed JSON gracefully', async () => {
-      const res = await testApp.request('/register', {
+      const res = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: 'invalid json',
@@ -271,7 +252,7 @@ describe('User Routes HTTP Integration', () => {
     beforeEach(async () => {
       // Create a test user for progress updates with unique data
       const timestamp = Date.now();
-      const registerRes = await testApp.request('/register', {
+      const registerRes = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -295,7 +276,7 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should require authentication', async () => {
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,7 +295,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should update progress with valid data and authentication', async () => {
       const token = await createTestToken();
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -357,7 +338,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should return 404 for non-existent user', async () => {
       const token = await createTestToken();
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -384,7 +365,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should return 400 for invalid data', async () => {
       const token = await createTestToken();
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -416,7 +397,7 @@ describe('User Routes HTTP Integration', () => {
     beforeEach(async () => {
       // Create a test user with some progress using unique data
       const timestamp = Date.now();
-      const registerRes = await testApp.request('/register', {
+      const registerRes = await testApp.request('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -440,7 +421,7 @@ describe('User Routes HTTP Integration', () => {
 
       // Add some progress to the user
       const token = await createTestToken();
-      await testApp.request('/progress', {
+      await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -457,7 +438,7 @@ describe('User Routes HTTP Integration', () => {
     });
 
     it('should require authentication', async () => {
-      const res = await testApp.request(`/profile/${testUserId}`);
+      const res = await testApp.request(`/api/users/profile/${testUserId}`);
 
       expect(res.status).toBe(401);
       const data = await res.json();
@@ -466,7 +447,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should return user profile with authentication', async () => {
       const token = await createTestToken();
-      const res = await testApp.request(`/profile/${testUserId}`, {
+      const res = await testApp.request(`/api/users/profile/${testUserId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -507,7 +488,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should return 404 for non-existent user', async () => {
       const token = await createTestToken();
-      const res = await testApp.request('/profile/550e8400-e29b-41d4-a716-446655440000', {
+      const res = await testApp.request('/api/users/profile/550e8400-e29b-41d4-a716-446655440000', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -525,7 +506,7 @@ describe('User Routes HTTP Integration', () => {
 
     it('should return 400 for invalid user ID format', async () => {
       const token = await createTestToken();
-      const res = await testApp.request('/profile/invalid-uuid', {
+      const res = await testApp.request('/api/users/profile/invalid-uuid', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -544,7 +525,7 @@ describe('User Routes HTTP Integration', () => {
 
   describe('Protected routes authorization', () => {
     it('should reject requests with invalid JWT', async () => {
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -564,9 +545,10 @@ describe('User Routes HTTP Integration', () => {
 
     it('should reject requests with expired JWT', async () => {
       // Create an expired token using utility builder
-      const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
+      const expiredJwtBuilder = await createExpiredJwtBuilder();
+      const expiredToken = await expiredJwtBuilder.sign(privateKey);
 
-      const res = await testApp.request('/progress', {
+      const res = await testApp.request('/api/users/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

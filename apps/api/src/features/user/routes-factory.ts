@@ -3,9 +3,9 @@
  * @fileoverview Creates user routes with injected dependencies
  */
 
-import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { auth } from '@api/middleware/auth';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import { SystemClock } from '@api/shared/clock';
 import { Hono } from 'hono';
 import { getProfileRoute } from './get-profile/route';
@@ -16,10 +16,10 @@ import { updateProgressRoute } from './update-progress/route';
  * Create user routes with dependency injection
  * This factory allows us to inject different implementations for different environments
  */
-export function createUserRoutes(_unitOfWorkProvider: IUnitOfWorkProvider): Hono<{
-  Variables: TransactionVariables;
+export function createUserRoutes(_databaseContext: IDatabaseContext): Hono<{
+  Variables: DatabaseContextVariables;
 }> {
-  const userRoutes = new Hono<{ Variables: TransactionVariables }>();
+  const userRoutes = new Hono<{ Variables: DatabaseContextVariables }>();
 
   // Create clock instance (singleton for all requests)
   const clock = new SystemClock();
@@ -37,8 +37,8 @@ export function createUserRoutes(_unitOfWorkProvider: IUnitOfWorkProvider): Hono
   });
 
   // Create separate groups for public and protected routes
-  const publicRoutes = new Hono<{ Variables: TransactionVariables }>();
-  const protectedRoutes = new Hono<{ Variables: TransactionVariables }>();
+  const publicRoutes = new Hono<{ Variables: DatabaseContextVariables }>();
+  const protectedRoutes = new Hono<{ Variables: DatabaseContextVariables }>();
 
   // Apply authentication middleware to protected routes only
   protectedRoutes.use('*', auth({ required: true }));

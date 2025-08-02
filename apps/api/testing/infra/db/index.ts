@@ -9,5 +9,4 @@ export { createTestDatabase } from './core';
 export { drizzleMigrate, verifyMigrationTables } from './migrations';
 export { testSchema } from './schema';
 export { seedAdminUser, seedUsers } from './seeds';
-export { withRollback } from './tx';
 export type { TestDb } from './types';

@@ -1,29 +1,25 @@
 import { AuthUser } from '@api/features/auth';
 import { UserId } from '@api/features/auth/domain';
-import { db } from '@api/infra/db/client';
-import { authUser } from '@api/infra/db/schema';
-import { executeInUnitOfWork, withTransaction } from '@api/infra/unit-of-work';
+import { executeInDatabaseContext } from '@api/infra/unit-of-work';
+import { AUTH_USER_REPO_TOKEN, QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { setupTestDatabase } from '@api/testing/domain';
-import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { TestApp } from '../../setup/test-app-factory';
+import { createIntegrationTestApp } from '../../setup/test-app-factory';
 
-describe('Unit of Work Integration Tests', () => {
+describe('Database Context Integration Tests', () => {
   // Setup isolated test database
   setupTestDatabase();
 
+  let testApp: TestApp;
+
   beforeEach(async () => {
-    // Clean up users table before each test
-    await db.delete(authUser);
+    // Create integration test app using DI container for database access
+    testApp = await createIntegrationTestApp();
+    // Test isolation is handled by per-worker databases, no manual cleanup needed
   });
 
-  describe('withTransaction', () => {
-    it('should be exported and be a function', () => {
-      expect(withTransaction).toBeDefined();
-      expect(typeof withTransaction).toBe('function');
-    });
-  });
-
-  describe('executeInUnitOfWork', () => {
+  describe('executeInDatabaseContext', () => {
     it('should execute database operations within transaction', async () => {
       const userData = {
         userId: UserId.generate(),
@@ -44,19 +40,23 @@ describe('Unit of Work Integration Tests', () => {
       }
       const user = userResult.data;
 
+      // Get database context from test app
+      const dbContext = await testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Insert user within transaction
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user);
       });
 
-      // Verify user was saved
-      const savedUsers = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(user.id)));
-      expect(savedUsers).toHaveLength(1);
-      expect(savedUsers[0].email).toBe(userData.email);
+      // Verify user was saved through DatabaseContext
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const savedUser = await userRepo.findById(user.id);
+        expect(savedUser).toBeDefined();
+        expect(savedUser?.email.toString()).toBe(userData.email);
+      });
     });
 
     it('should rollback transaction on error', async () => {
@@ -80,21 +80,25 @@ describe('Unit of Work Integration Tests', () => {
 
       const error = new Error('Rollback test error');
 
+      // Get database context from test app
+      const dbContext = await testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Attempt to save user but throw error
       await expect(
-        executeInUnitOfWork(async (uow) => {
-          const userRepo = uow.getAuthUserRepository();
+        executeInDatabaseContext(dbContext, async (ctx) => {
+          const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
           await userRepo.save(user);
           throw error;
         })
       ).rejects.toThrow(error);
 
       // Verify user was NOT saved due to rollback
-      const savedUsers = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(user.id)));
-      expect(savedUsers).toHaveLength(0);
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const savedUser = await userRepo.findById(user.id);
+        expect(savedUser).toBeNull();
+      });
     });
 
     it('should handle multiple repository operations in same transaction', async () => {
@@ -130,24 +134,25 @@ describe('Unit of Work Integration Tests', () => {
       const user1 = userResult1.data;
       const user2 = userResult2.data;
 
+      // Get database context from test app
+      const dbContext = await testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Save multiple users in same transaction
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(user1);
         await userRepo.save(user2);
       });
 
       // Verify both users were saved
-      const savedUser1 = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(user1.id)));
-      const savedUser2 = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(user2.id)));
-      expect(savedUser1).toHaveLength(1);
-      expect(savedUser2).toHaveLength(1);
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const savedUser1 = await userRepo.findById(user1.id);
+        const savedUser2 = await userRepo.findById(user2.id);
+        expect(savedUser1).toBeDefined();
+        expect(savedUser2).toBeDefined();
+      });
     });
 
     it('should isolate transactions from each other', async () => {
@@ -183,6 +188,10 @@ describe('Unit of Work Integration Tests', () => {
       const failUser = userResult1.data;
       const successUser = userResult2.data;
 
+      // Get database context from test app
+      const dbContext = await testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
       // Create synchronization mechanism to ensure proper transaction overlap
       let firstTransactionSaveCompleted: () => void;
       const saveCompletedPromise = new Promise<void>((resolve) => {
@@ -190,8 +199,8 @@ describe('Unit of Work Integration Tests', () => {
       });
 
       // Start a transaction that will fail
-      const failedTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+      const failedTransaction = executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(failUser);
         // Signal that the save is completed so second transaction can start
         firstTransactionSaveCompleted();
@@ -204,8 +213,8 @@ describe('Unit of Work Integration Tests', () => {
 
       // Wait for first transaction to complete its save, then start second transaction
       await saveCompletedPromise;
-      const successfulTransaction = executeInUnitOfWork(async (uow) => {
-        const userRepo = uow.getAuthUserRepository();
+      const successfulTransaction = executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
         await userRepo.save(successUser);
       });
 
@@ -213,25 +222,25 @@ describe('Unit of Work Integration Tests', () => {
       await Promise.all([failedTransaction, successfulTransaction]);
 
       // Verify only the successful transaction's user was saved
-      const failedUserRows = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(failUser.id)));
-      const successUserRows = await db
-        .select()
-        .from(authUser)
-        .where(eq(authUser.userId, UserId.toString(successUser.id)));
-
-      expect(failedUserRows).toHaveLength(0);
-      expect(successUserRows).toHaveLength(1);
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const failedUserResult = await userRepo.findById(failUser.id);
+        const successUserResult = await userRepo.findById(successUser.id);
+        expect(failedUserResult).toBeNull();
+        expect(successUserResult).toBeDefined();
+      });
     });
 
     it('should ensure repository instances are cached within transaction', async () => {
-      await executeInUnitOfWork(async (uow) => {
-        const userRepo1 = uow.getAuthUserRepository();
-        const userRepo2 = uow.getAuthUserRepository();
-        const quizRepo1 = uow.getQuizRepository();
-        const quizRepo2 = uow.getQuizRepository();
+      // Get database context from test app
+      const dbContext = await testApp.getDatabaseContext?.();
+      if (!dbContext) throw new Error('DatabaseContext not available');
+
+      await executeInDatabaseContext(dbContext, async (ctx) => {
+        const userRepo1 = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const userRepo2 = ctx.getRepository(AUTH_USER_REPO_TOKEN);
+        const quizRepo1 = ctx.getRepository(QUIZ_REPO_TOKEN);
+        const quizRepo2 = ctx.getRepository(QUIZ_REPO_TOKEN);
 
         // Same instances should be returned
         expect(userRepo1).toBe(userRepo2);

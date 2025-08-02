@@ -24,7 +24,6 @@ export {
   type TestDb,
   testSchema,
   verifyMigrationTables,
-  withRollback,
   withTestDb,
 } from './db';
 // Error utilities - pure utilities with no side effects

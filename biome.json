@@ -132,7 +132,8 @@
       "!**/*.min.js",
       "!**/*.generated.*",
       "!**/migrations/*.sql",
-      "!.claude/**"
+      "!.claude/**",
+      "!~/**"
     ]
   },
   "overrides": [

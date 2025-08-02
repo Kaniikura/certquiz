@@ -3,11 +3,12 @@
  * @fileoverview HTTP endpoint for user registration using route utilities
  */
 
-import { getUserRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { createAmbientRoute } from '@api/shared/route';
+import { USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { mapUserError } from '../shared/error-mapper';
@@ -18,14 +19,14 @@ import { registerHandler } from './handler';
  * Create register route with injected dependencies
  */
 export function registerRoute(clock: Clock) {
-  return new Hono<{ Variables: LoggerVariables & TransactionVariables }>().post(
+  return new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>().post(
     '/register',
     (c) => {
       const route = createAmbientRoute<
         unknown,
         RegisterResponse,
         { userRepo: IUserRepository; clock: Clock },
-        LoggerVariables & TransactionVariables
+        LoggerVariables & DatabaseContextVariables
       >(
         {
           operation: 'register',
@@ -57,7 +58,7 @@ export function registerRoute(clock: Clock) {
 
       // Inject dependencies
       return route(c, {
-        userRepo: getUserRepository(c),
+        userRepo: getRepositoryFromContext(c, USER_REPO_TOKEN),
         clock: clock,
       });
     }

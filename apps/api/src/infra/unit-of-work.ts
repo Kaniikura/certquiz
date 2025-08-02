@@ -1,24 +1,18 @@
 /**
- * Unit of Work pattern facade
+ * Database transaction facade
  *
- * This provides a stable import surface for the Unit of Work pattern,
- * hiding the database-specific implementation details. Handlers and
- * application code should import from this facade rather than directly
- * from the db module.
+ * This module provides transaction management utilities for database operations.
+ * It exports the modern DatabaseContext pattern utilities and maintains backward
+ * compatibility with the legacy transaction pattern.
  *
- * The Unit of Work pattern provides:
- * - Transaction boundary management
- * - Repository instance management per transaction
- * - Consistent interface for future migration to full Clean Architecture
- *
- * @example Using the new Unit of Work pattern:
+ * @example Using the DatabaseContext pattern (recommended):
  * ```typescript
- * import { withUnitOfWork, unitOfWorkFactory, type IUnitOfWork } from '@/infra/unit-of-work';
+ * import { executeInDatabaseContext } from '@api/infra/unit-of-work';
  *
- * export async function handler(cmd: StartQuizCommand) {
- *   return withUnitOfWork(db, unitOfWorkFactory, async (uow: IUnitOfWork) => {
- *     const userRepo = uow.getUserRepository();
- *     const quizRepo = uow.getQuizRepository();
+ * export async function handler(dbContext: IDatabaseContext, cmd: StartQuizCommand) {
+ *   return executeInDatabaseContext(dbContext, async (ctx) => {
+ *     const userRepo = ctx.getRepository(USER_REPO_TOKEN);
+ *     const quizRepo = ctx.getRepository(QUIZ_REPO_TOKEN);
  *
  *     const user = await userRepo.findById(cmd.userId);
  *     const quiz = await quizRepo.findById(cmd.quizId);
@@ -29,38 +23,39 @@
  *   });
  * }
  * ```
- *
- * @example Legacy transaction pattern (for backward compatibility):
- * ```typescript
- * import { withTransaction } from '@/infra/unit-of-work';
- *
- * export async function handler(cmd: StartQuizCommand) {
- *   return withTransaction(async (trx) => {
- *     const repo = new DrizzleQuizRepository(trx);
- *     // business logic here
- *   });
- * }
- * ```
  */
-
-import { db } from './db/client';
-import type { IUnitOfWork } from './db/IUnitOfWork';
-import { UnitOfWorkFactory, withUnitOfWork } from './db/UnitOfWorkFactory';
-import { createDomainLogger } from './logger';
 
 // Re-export the factory and helper for external use
 export type { TransactionContext } from './db/uow';
 
-// Create a singleton factory instance for the application
-const logger = createDomainLogger('unit-of-work');
-const unitOfWorkFactory = new UnitOfWorkFactory(logger);
+// Export DatabaseContext equivalent for new code
+import type { IDatabaseContext, ITransactionContext } from './db/IDatabaseContext';
 
-// Export the legacy transaction pattern for backward compatibility
-export { withTransaction } from './db/uow';
-
-// Export a convenience function that uses the singleton factory
-export async function executeInUnitOfWork<T>(
-  callback: (uow: IUnitOfWork) => Promise<T>
+/**
+ * Execute an operation within a database transaction context
+ *
+ * This is the preferred method for new code, providing a unified interface
+ * for database operations that internally uses the UnitOfWork pattern.
+ *
+ * @param dbContext DatabaseContext instance
+ * @param callback Function to execute within transaction
+ * @returns The result of the operation
+ *
+ * @example
+ * ```typescript
+ * import { executeInDatabaseContext } from '@api/infra/unit-of-work';
+ *
+ * const result = await executeInDatabaseContext(dbContext, async (ctx) => {
+ *   const userRepo = ctx.getRepository(USER_REPO_TOKEN);
+ *   const user = await userRepo.findById(userId);
+ *   // Business logic here
+ *   return user;
+ * });
+ * ```
+ */
+export async function executeInDatabaseContext<T>(
+  dbContext: IDatabaseContext,
+  callback: (ctx: ITransactionContext) => Promise<T>
 ): Promise<T> {
-  return withUnitOfWork(db, unitOfWorkFactory, callback);
+  return dbContext.withinTransaction(callback);
 }

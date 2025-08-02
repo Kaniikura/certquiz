@@ -12,12 +12,9 @@
  */
 
 // Re-export ambient pattern helpers
-export {
-  createTestContext,
-  createTestDependencies,
-  getTestUnitOfWork,
-  type RepositorySet,
-  type TestDependencies,
+export type {
+  RepositorySet,
+  TestDependencies,
 } from './ambient-helpers';
 // Re-export domain utilities
 export * from './domain';

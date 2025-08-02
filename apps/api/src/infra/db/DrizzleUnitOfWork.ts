@@ -16,28 +16,20 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { IUserRepository as IAuthUserRepository } from '@api/features/auth/domain';
 import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/drizzle/DrizzleAuthUserRepository';
-import type { IQuestionRepository } from '@api/features/question/domain';
 import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';
-import type { IQuizRepository } from '@api/features/quiz/domain';
 import { DrizzleQuizRepository } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuizRepository';
-import type { IUserRepository } from '@api/features/user/domain';
 import { DrizzleUserRepository } from '@api/features/user/infrastructure/drizzle/DrizzleUserRepository';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
+import {
+  AUTH_USER_REPO_TOKEN,
+  QUESTION_REPO_TOKEN,
+  QUIZ_REPO_TOKEN,
+  USER_REPO_TOKEN,
+} from '@api/shared/types/RepositoryToken';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { TransactionContext } from './uow';
-
-/**
- * Repository cache keys for type-safe repository management
- * Using constants prevents typos and enables compile-time checking
- */
-const REPOSITORY_CACHE_KEYS = {
-  AUTH_USER: 'authUser',
-  USER: 'user',
-  QUIZ: 'quiz',
-  QUESTION: 'question',
-} as const;
 
 /**
  * Drizzle ORM specific Unit of Work implementation
@@ -52,7 +44,7 @@ const REPOSITORY_CACHE_KEYS = {
  * ```
  */
 export class DrizzleUnitOfWork implements IUnitOfWork {
-  private readonly repositoryCache = new Map<string, unknown>();
+  private readonly repositoryCache = new Map<symbol, unknown>();
   private readonly transactionId: string;
 
   constructor(
@@ -98,71 +90,38 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
   }
 
   /**
-   * Get Auth User repository instance
+   * Get a repository instance by its token (type-safe)
    * Uses caching to ensure the same instance is returned for multiple calls
    */
-  getAuthUserRepository(): IAuthUserRepository {
-    const key = REPOSITORY_CACHE_KEYS.AUTH_USER;
-    if (!this.repositoryCache.has(key)) {
-      const repo = new DrizzleAuthUserRepository(this.tx, this.logger);
-      this.repositoryCache.set(key, repo);
-      this.logger.debug('Auth user repository created', {
+  getRepository<T>(token: RepositoryToken<T>): T {
+    if (!this.repositoryCache.has(token)) {
+      const repo = this.createRepository(token);
+      this.repositoryCache.set(token, repo);
+      this.logger.debug('Repository created via token', {
         transactionId: this.transactionId,
-        repository: key,
+        token: token.toString(),
       });
     }
-    return this.repositoryCache.get(key) as IAuthUserRepository;
+    return this.repositoryCache.get(token) as T;
   }
 
   /**
-   * Get User repository instance
-   * Uses caching to ensure the same instance is returned for multiple calls
+   * Create a repository instance based on the provided token
+   * @internal
    */
-  getUserRepository(): IUserRepository {
-    const key = REPOSITORY_CACHE_KEYS.USER;
-    if (!this.repositoryCache.has(key)) {
-      const repo = new DrizzleUserRepository(this.tx, this.logger);
-      this.repositoryCache.set(key, repo);
-      this.logger.debug('User repository created', {
-        transactionId: this.transactionId,
-        repository: key,
-      });
+  private createRepository(token: symbol): unknown {
+    switch (token) {
+      case AUTH_USER_REPO_TOKEN:
+        return new DrizzleAuthUserRepository(this.tx, this.logger);
+      case USER_REPO_TOKEN:
+        return new DrizzleUserRepository(this.tx, this.logger);
+      case QUIZ_REPO_TOKEN:
+        return new DrizzleQuizRepository(this.tx, this.logger);
+      case QUESTION_REPO_TOKEN:
+        return new DrizzleQuestionRepository(this.tx, this.logger);
+      default:
+        throw new Error(`Unknown repository token: ${token.toString()}`);
     }
-    return this.repositoryCache.get(key) as IUserRepository;
-  }
-
-  /**
-   * Get Quiz repository instance
-   * Uses caching to ensure the same instance is returned for multiple calls
-   */
-  getQuizRepository(): IQuizRepository {
-    const key = REPOSITORY_CACHE_KEYS.QUIZ;
-    if (!this.repositoryCache.has(key)) {
-      const repo = new DrizzleQuizRepository(this.tx, this.logger);
-      this.repositoryCache.set(key, repo);
-      this.logger.debug('Quiz repository created', {
-        transactionId: this.transactionId,
-        repository: key,
-      });
-    }
-    return this.repositoryCache.get(key) as IQuizRepository;
-  }
-
-  /**
-   * Get Question repository instance
-   * Uses caching to ensure the same instance is returned for multiple calls
-   */
-  getQuestionRepository(): IQuestionRepository {
-    const key = REPOSITORY_CACHE_KEYS.QUESTION;
-    if (!this.repositoryCache.has(key)) {
-      const repo = new DrizzleQuestionRepository(this.tx, this.logger);
-      this.repositoryCache.set(key, repo);
-      this.logger.debug('Question repository created', {
-        transactionId: this.transactionId,
-        repository: key,
-      });
-    }
-    return this.repositoryCache.get(key) as IQuestionRepository;
   }
 
   /**

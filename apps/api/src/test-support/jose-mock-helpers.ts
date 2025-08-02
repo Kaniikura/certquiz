@@ -42,12 +42,12 @@ export const DEFAULT_JWT_CLAIMS = {
  *   .sign(privateKey);
  * ```
  */
-export function createJwtBuilder(
+export async function createJwtBuilder(
   claims: Record<string, unknown> = {},
   config: Partial<typeof DEFAULT_JWT_CONFIG> = {}
-): SignJWT {
-  // Dynamic import to avoid issues with vitest mocking
-  const { SignJWT } = require('jose') as typeof import('jose');
+): Promise<SignJWT> {
+  // Dynamic import to handle ES Module in CommonJS context
+  const { SignJWT } = await import('jose');
 
   const jwtConfig = { ...DEFAULT_JWT_CONFIG, ...config };
   const jwtClaims = { ...DEFAULT_JWT_CLAIMS, ...claims };
@@ -73,12 +73,12 @@ export function createJwtBuilder(
  *   .sign(privateKey);
  * ```
  */
-export function createExpiredJwtBuilder(
+export async function createExpiredJwtBuilder(
   claims: Record<string, unknown> = {},
   config: Partial<typeof DEFAULT_JWT_CONFIG> = {}
-): SignJWT {
-  // Dynamic import to avoid issues with vitest mocking
-  const { SignJWT } = require('jose') as typeof import('jose');
+): Promise<SignJWT> {
+  // Dynamic import to handle ES Module in CommonJS context
+  const { SignJWT } = await import('jose');
 
   const jwtConfig = { ...DEFAULT_JWT_CONFIG, ...config };
   const jwtClaims = { ...DEFAULT_JWT_CLAIMS, ...claims };

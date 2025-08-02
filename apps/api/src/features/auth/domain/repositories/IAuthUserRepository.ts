@@ -3,10 +3,10 @@ import type { Email } from '../value-objects/Email';
 import type { UserId } from '../value-objects/UserId';
 
 /**
- * User repository interface - domain layer
+ * Auth user repository interface - domain layer
  * Follows repository pattern with domain focus
  */
-export interface IUserRepository {
+export interface IAuthUserRepository {
   /**
    * Find user by ID
    */

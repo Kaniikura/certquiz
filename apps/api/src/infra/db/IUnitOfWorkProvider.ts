@@ -1,6 +1,28 @@
 /**
  * Unit of Work Provider Interface
  *
+ * @deprecated Use IDatabaseContext instead. This interface will be removed in a future version.
+ * IDatabaseContext provides a more intuitive API while internally using UnitOfWork components.
+ *
+ * Migration guide:
+ * ```typescript
+ * // Old pattern:
+ * const result = await provider.execute(async (uow) => {
+ *   const userRepo = uow.getRepository(USER_REPO_TOKEN);
+ *   const user = await userRepo.findById(userId);
+ *   await userRepo.save(user);
+ *   return user;
+ * });
+ *
+ * // New pattern:
+ * const result = await dbContext.withinTransaction(async (ctx) => {
+ *   const userRepo = ctx.getRepository(USER_REPO_TOKEN);
+ *   const user = await userRepo.findById(userId);
+ *   await userRepo.save(user);
+ *   return user;
+ * });
+ * ```
+ *
  * Provides an abstraction for executing operations within a Unit of Work context.
  * This allows for dependency injection of different implementations (e.g., real database
  * transactions vs in-memory test implementations) without environment-based switching.

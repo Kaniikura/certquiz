@@ -3,12 +3,13 @@
  * @fileoverview HTTP endpoint for creating new quiz sessions using route utilities
  */
 
-import { getQuizRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { createAmbientRoute } from '@api/shared/route';
+import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
@@ -28,7 +29,7 @@ export function startQuizRoute(clock: Clock) {
   const questionService = deps.startQuizQuestionService;
 
   return new Hono<{
-    Variables: { user: AuthUser } & LoggerVariables & TransactionVariables;
+    Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
   }>().post('/start', zValidator('json', startQuizSchema), (c) => {
     const route = createAmbientRoute<
       StartQuizRequest,
@@ -38,7 +39,7 @@ export function startQuizRoute(clock: Clock) {
         questionService: StubQuestionService;
         clock: Clock;
       },
-      { user: AuthUser } & LoggerVariables & TransactionVariables
+      { user: AuthUser } & LoggerVariables & DatabaseContextVariables
     >(
       {
         operation: 'start',
@@ -87,7 +88,7 @@ export function startQuizRoute(clock: Clock) {
 
     // Inject dependencies
     return route(c, {
-      quizRepo: getQuizRepository(c),
+      quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
       clock: clock,
     });

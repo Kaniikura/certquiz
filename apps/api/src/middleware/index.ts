@@ -15,5 +15,5 @@ export { errorHandler } from './on-error';
 export type { RequestIdVariables } from './request-id';
 export { requestIdMiddleware } from './request-id';
 export { securityMiddleware } from './security';
-export type { TransactionVariables } from './transaction';
-export { createTransactionMiddleware } from './transaction';
+export type { DatabaseContextVariables } from './transaction';
+export { createDatabaseContextMiddleware } from './transaction';

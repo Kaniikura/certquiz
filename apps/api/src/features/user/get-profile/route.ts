@@ -3,13 +3,14 @@
  * @fileoverview HTTP endpoint for retrieving user profile and progress using route utilities
  */
 
-import { getUserRepository } from '@api/infra/repositories/providers';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
+import { USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
@@ -21,15 +22,17 @@ import { getProfileHandler } from './handler';
  * Create get profile route
  * Clock is passed for consistency but not used in this route
  */
-export function getProfileRoute(_clock: Clock) {
-  return new Hono<{ Variables: LoggerVariables & TransactionVariables }>().get(
+export function getProfileRoute(
+  _clock: Clock
+): Hono<{ Variables: LoggerVariables & DatabaseContextVariables }> {
+  return new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>().get(
     '/profile/:userId',
     (c) => {
       const route = createAmbientRoute<
         unknown,
         GetProfileResponse,
         { userRepo: IUserRepository },
-        LoggerVariables & TransactionVariables
+        LoggerVariables & DatabaseContextVariables
       >(
         {
           operation: 'get',
@@ -64,7 +67,7 @@ export function getProfileRoute(_clock: Clock) {
 
       // Inject dependencies
       return route(c, {
-        userRepo: getUserRepository(c),
+        userRepo: getRepositoryFromContext(c, USER_REPO_TOKEN),
       });
     }
   );

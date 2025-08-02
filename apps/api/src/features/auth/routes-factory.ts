@@ -4,14 +4,14 @@
  */
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
-import type { IUnitOfWorkProvider } from '@api/infra/db/IUnitOfWorkProvider';
-import { getRootLogger } from '@api/infra/logger';
-import { getAuthUserRepository } from '@api/infra/repositories/providers';
+import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
+import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
-import type { TransactionVariables } from '@api/middleware/transaction';
+import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import { createAmbientRoute } from '@api/shared/route';
+import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
-import type { IUserRepository } from './domain/repositories/IUserRepository';
+import type { IAuthUserRepository } from './domain/repositories/IAuthUserRepository';
 import { loginHandler } from './login/handler';
 import { mapAuthError } from './shared/error-mapper';
 
@@ -21,12 +21,11 @@ import { mapAuthError } from './shared/error-mapper';
  */
 export function createAuthRoutes(
   authProvider: IAuthProvider,
-  _unitOfWorkProvider: IUnitOfWorkProvider
+  _databaseContext: IDatabaseContext
 ): Hono<{
-  Variables: LoggerVariables & TransactionVariables;
+  Variables: LoggerVariables & DatabaseContextVariables;
 }> {
-  const authRoutes = new Hono<{ Variables: LoggerVariables & TransactionVariables }>();
-  const _logger = getRootLogger().child({ module: 'auth.routes' });
+  const authRoutes = new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>();
 
   // All auth routes are public (login, register, etc.)
   // Protected user profile routes would go in a separate user feature
@@ -38,8 +37,8 @@ export function createAuthRoutes(
     const route = createAmbientRoute<
       unknown,
       { token: string; user: { id: string; email: string; role: string } },
-      { authUserRepo: IUserRepository; authProvider: IAuthProvider },
-      LoggerVariables & TransactionVariables
+      { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider },
+      LoggerVariables & DatabaseContextVariables
     >(
       {
         operation: 'login',
@@ -49,7 +48,7 @@ export function createAuthRoutes(
       },
       async (
         body,
-        deps: { authUserRepo: IUserRepository; authProvider: IAuthProvider },
+        deps: { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider },
         _context
       ) => {
         return loginHandler(body, deps.authUserRepo, deps.authProvider);
@@ -58,7 +57,7 @@ export function createAuthRoutes(
 
     // Inject dependencies
     return route(c, {
-      authUserRepo: getAuthUserRepository(c),
+      authUserRepo: getRepositoryFromContext(c, AUTH_USER_REPO_TOKEN),
       authProvider: authProvider,
     });
   });

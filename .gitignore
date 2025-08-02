@@ -64,3 +64,6 @@ tmp/
 temp/
 *.tmp
 *.temp
+# Serena MCP configuration (track project.yml only)
+.serena/*
+!.serena/project.yml

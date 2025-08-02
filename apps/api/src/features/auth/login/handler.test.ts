@@ -12,13 +12,13 @@ import {
   UserNotActiveError,
   UserNotFoundError,
 } from '../domain/errors/AuthErrors';
-import type { IUserRepository } from '../domain/repositories/IUserRepository';
+import type { IAuthUserRepository } from '../domain/repositories/IAuthUserRepository';
 import { UserRole } from '../domain/value-objects/UserRole';
 import { loginHandler } from './handler';
 import { type LoginRequest, loginSchema } from './validation';
 
 // Mock user repository
-const createMockUserRepository = (): IUserRepository => ({
+const createMockUserRepository = (): IAuthUserRepository => ({
   findByEmail: vi.fn(),
   findById: vi.fn(),
   findByIdentityProviderId: vi.fn(),
@@ -29,7 +29,7 @@ const createMockUserRepository = (): IUserRepository => ({
 });
 
 describe('loginHandler', () => {
-  let mockUserRepo: IUserRepository;
+  let mockUserRepo: IAuthUserRepository;
   let fakeAuthProvider: FakeAuthProvider;
 
   beforeEach(() => {

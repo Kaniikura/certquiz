@@ -3,7 +3,7 @@ import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
 import { User } from '../../domain/entities/User';
-import type { IUserRepository } from '../../domain/repositories/IUserRepository';
+import type { IAuthUserRepository } from '../../domain/repositories/IAuthUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
 import type { UserId } from '../../domain/value-objects/UserId';
 import { authUser } from './schema';
@@ -12,7 +12,7 @@ import { authUser } from './schema';
  * Drizzle implementation of User repository
  * Uses Queryable interface to work with both DB client and transactions
  */
-export class DrizzleAuthUserRepository extends BaseRepository implements IUserRepository {
+export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUserRepository {
   constructor(
     private readonly conn: TransactionContext,
     logger: LoggerPort

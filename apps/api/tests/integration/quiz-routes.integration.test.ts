@@ -3,15 +3,11 @@
  * @fileoverview Tests for quiz submit-answer and get-results routes with session ID validation
  */
 
-import type { AppDependencies } from '@api/app-factory';
-import { buildApp } from '@api/app-factory';
-import { PremiumAccessService } from '@api/features/question/domain';
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
-import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { setupTestDatabase } from '@api/testing/domain';
 import { generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeAuthProvider, fakeLogger } from '../helpers/app';
+import type { TestApp } from '../setup/test-app-factory';
+import { createIntegrationTestApp } from '../setup/test-app-factory';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey;
@@ -39,8 +35,7 @@ const audience = 'certquiz-api';
 describe('Quiz Routes Integration Tests', () => {
   // Setup isolated test database
   setupTestDatabase();
-  let testApp: ReturnType<typeof buildApp>;
-  let deps: AppDependencies;
+  let testApp: TestApp;
 
   beforeAll(async () => {
     // Generate test key pair for JWT testing
@@ -50,26 +45,8 @@ describe('Quiz Routes Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    const logger = fakeLogger();
-    const clock = { now: () => new Date() };
-    const unitOfWorkProvider = new InMemoryUnitOfWorkProvider();
-    const authProvider = fakeAuthProvider();
-    const idGenerator = new CryptoIdGenerator();
-    const premiumAccessService = new PremiumAccessService();
-
-    deps = {
-      logger,
-      clock: () => clock.now(),
-      idGenerator,
-      authProvider,
-      premiumAccessService,
-      unitOfWorkProvider,
-      ping: async () => {
-        // No-op ping function for testing
-      },
-    };
-
-    testApp = buildApp(deps);
+    // Create integration test app using DI container with real database connections for each test
+    testApp = await createIntegrationTestApp();
   });
 
   async function createUserToken(

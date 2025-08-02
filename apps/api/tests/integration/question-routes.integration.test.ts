@@ -3,20 +3,15 @@
  * @fileoverview Tests actual HTTP request/response behavior for question endpoints
  */
 
-import type { AppDependencies } from '@api/app-factory';
-import { buildApp } from '@api/app-factory';
 import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
-import { PremiumAccessService } from '@api/features/question/domain';
 import { getDb } from '@api/infra/db/client';
-import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import { authUser } from '@api/infra/db/schema';
-import { SystemClock } from '@api/shared/clock';
-import { CryptoIdGenerator } from '@api/shared/id-generator';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
 import { setupTestDatabase } from '@api/testing/domain';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeAuthProvider, fakeLogger } from '../helpers/app';
+import type { TestApp } from '../setup/test-app-factory';
+import { createIntegrationTestApp } from '../setup/test-app-factory';
 
 // Global variables for test keys (will be initialized in beforeAll)
 let testPrivateKey: CryptoKey | null = null;
@@ -43,7 +38,7 @@ describe('Question Routes HTTP Integration', () => {
   setupTestDatabase();
 
   let privateKey: CryptoKey;
-  let testApp: ReturnType<typeof buildApp>;
+  let testApp: TestApp;
   let testQuestions: TestQuestion[] = [];
 
   beforeAll(async () => {
@@ -69,30 +64,8 @@ describe('Question Routes HTTP Integration', () => {
       })
       .onConflictDoNothing(); // Ignore if user already exists
 
-    // Create shared Unit of Work provider with persistent repositories
-    const uowProvider = new InMemoryUnitOfWorkProvider();
-
-    // Create dependencies for buildApp
-    const premiumAccessService = new PremiumAccessService();
-    const clock = new SystemClock();
-    const idGenerator = new CryptoIdGenerator();
-    const logger = fakeLogger();
-    const authProvider = fakeAuthProvider();
-
-    // Create test app with all dependencies
-    const deps: AppDependencies = {
-      logger,
-      clock: () => clock.now(),
-      idGenerator,
-      ping: async () => {
-        // No-op for tests
-      },
-      premiumAccessService,
-      authProvider,
-      unitOfWorkProvider: uowProvider,
-    };
-
-    testApp = buildApp(deps);
+    // Create integration test app using DI container with real database connections
+    testApp = await createIntegrationTestApp();
   });
 
   beforeEach(async () => {
@@ -102,7 +75,8 @@ describe('Question Routes HTTP Integration', () => {
 
   // Helper to create test JWT tokens using utility builder
   async function createTestToken(claims: Record<string, unknown> = {}): Promise<string> {
-    return createJwtBuilder(claims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(claims);
+    return jwtBuilder.sign(privateKey);
   }
 
   // Helper to create admin JWT tokens
@@ -115,7 +89,8 @@ describe('Question Routes HTTP Integration', () => {
       },
       ...claims,
     };
-    return createJwtBuilder(adminClaims).sign(privateKey);
+    const jwtBuilder = await createJwtBuilder(adminClaims);
+    return jwtBuilder.sign(privateKey);
   }
 
   // Test question data interface
@@ -209,9 +184,10 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should reject requests with expired JWT', async () => {
-        const expiredToken = await createExpiredJwtBuilder({
+        const expiredJwtBuilder = await createExpiredJwtBuilder({
           realm_access: { roles: ['admin'] },
-        }).sign(privateKey);
+        });
+        const expiredToken = await expiredJwtBuilder.sign(privateKey);
 
         const questionData = createTestQuestionData();
 
@@ -946,7 +922,8 @@ describe('Question Routes HTTP Integration', () => {
       });
 
       it('should handle expired JWT gracefully', async () => {
-        const expiredToken = await createExpiredJwtBuilder().sign(privateKey);
+        const expiredJwtBuilder = await createExpiredJwtBuilder();
+        const expiredToken = await expiredJwtBuilder.sign(privateKey);
         const res = await testApp.request(`/api/questions/${testQuestionId}`, {
           headers: {
             Authorization: `Bearer ${expiredToken}`,

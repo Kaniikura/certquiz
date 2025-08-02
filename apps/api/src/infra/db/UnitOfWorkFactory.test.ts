@@ -1,3 +1,4 @@
+import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { createNoopLogger } from '@api/test-support/test-logger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DrizzleUnitOfWork } from './DrizzleUnitOfWork';
@@ -24,8 +25,7 @@ describe('UnitOfWorkFactory', () => {
       expect(uow).toHaveProperty('begin');
       expect(uow).toHaveProperty('commit');
       expect(uow).toHaveProperty('rollback');
-      expect(uow).toHaveProperty('getUserRepository');
-      expect(uow).toHaveProperty('getQuizRepository');
+      expect(uow).toHaveProperty('getRepository');
     });
 
     it('should pass transaction context and logger to DrizzleUnitOfWork', () => {
@@ -36,7 +36,7 @@ describe('UnitOfWorkFactory', () => {
         error: vi.fn(),
       };
       const factory = new UnitOfWorkFactory(mockLogger);
-      const _uow = factory.create(mockTx);
+      void factory.create(mockTx);
 
       // Verify logger was used during creation
       expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -86,8 +86,7 @@ describe('withUnitOfWork', () => {
       factory,
       async (uow: IUnitOfWork) => {
         expect(uow).toBeInstanceOf(DrizzleUnitOfWork);
-        expect(uow.getUserRepository).toBeDefined();
-        expect(uow.getQuizRepository).toBeDefined();
+        expect(uow.getRepository).toBeDefined();
         return expectedResult;
       }
     );
@@ -145,8 +144,8 @@ describe('withUnitOfWork', () => {
       factory,
       async (uow: IUnitOfWork) => {
         // Simulate async repository operations
-        const userRepo = uow.getUserRepository();
-        const quizRepo = uow.getQuizRepository();
+        const userRepo = uow.getRepository(USER_REPO_TOKEN);
+        const quizRepo = uow.getRepository(QUIZ_REPO_TOKEN);
 
         // Simulate some async work
         await new Promise((resolve) => setTimeout(resolve, 10));
