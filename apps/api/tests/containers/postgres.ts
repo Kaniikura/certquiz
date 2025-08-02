@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { drizzleMigrate } from '@api/testing/infra/db/migrations';
+import { drizzleMigrate } from '@test/helpers/database';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 
 // Module-level variables for singleton pattern

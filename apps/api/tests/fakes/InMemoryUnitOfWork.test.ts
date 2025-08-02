@@ -7,8 +7,8 @@ import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProv
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { SystemClock } from '@api/shared/clock';
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { InMemoryUnitOfWork, InMemoryUserRepository } from '@api/testing/domain/fakes';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { InMemoryUnitOfWork, InMemoryUserRepository } from '@/test-support/fakes';
 
 // Test helper function to create test users with less boilerplate
 function createTestUser(

@@ -7,7 +7,7 @@ import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question
 import { getDb } from '@api/infra/db/client';
 import { authUser } from '@api/infra/db/schema';
 import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TestApp } from '../setup/test-app-factory';

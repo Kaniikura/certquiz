@@ -21,9 +21,9 @@ vi.mock('jose', async () => {
 
 import { auth } from '@api/middleware/auth';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
-import { resetJwtVerifierCache } from '@api/test-support/jwt-helpers';
 import { Hono } from 'hono';
 import { generateKeyPair, SignJWT } from 'jose';
+import { resetJwtVerifierCache } from '@/test-support/mocks';
 
 describe('Authentication Integration Tests', () => {
   let testApp: Hono<{ Variables: { user?: AuthUser } }>;

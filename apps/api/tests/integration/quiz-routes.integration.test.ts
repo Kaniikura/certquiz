@@ -3,7 +3,7 @@
  * @fileoverview Tests for quiz submit-answer and get-results routes with session ID validation
  */
 
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TestApp } from '../setup/test-app-factory';

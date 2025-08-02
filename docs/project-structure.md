@@ -74,15 +74,18 @@ certquiz/
 │       │   │   ├── errors.ts
 │       │   │   ├── result.ts
 │       │   │   └── repository/
-│       │   ├── test-support/
+│       │   ├── test-support/   # Domain-specific test utilities
+│       │   │   ├── builders/   # Test data builders
+│       │   │   ├── fakes/      # In-memory implementations
+│       │   │   ├── mocks/      # Mock helpers (JWT, etc.)
+│       │   │   ├── types/      # Test utility types
+│       │   │   └── utils/      # Test utilities (clock, IDs, etc.)
 │       │   └── middleware/
-│       ├── testing/            # Test infrastructure
-│       │   ├── infra/
-│       │   └── domain/
-│       ├── tests/
-│       │   ├── integration/
-│       │   ├── e2e/
-│       │   └── fixtures/
+│       ├── tests/              # Integration & E2E test infrastructure
+│       │   ├── helpers/        # Database, container, process utilities
+│       │   ├── integration/    # Cross-feature integration tests
+│       │   ├── e2e/           # End-to-end tests
+│       │   └── containers/     # Test container management
 │       └── package.json
 │
 ├── packages/
@@ -111,9 +114,9 @@ certquiz/
 > - **Domain isolation**: Pure TypeScript, no framework dependencies
 > - **Transaction scope**: All handlers wrapped in `withTransaction`
 > - **Dependency injection**: App factory pattern with `buildApp(deps)` for clean testing
-> - **Unified test infrastructure**: Consolidated test utilities in `testing/` package with DDD layer separation
+> - **Explicit exports**: All `export * from ...` replaced with explicit named exports for clear API boundaries
+> - **Test infrastructure**: Database/container utilities in `tests/helpers/`, domain utilities in `src/test-support/`
 > - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
-- **Domain test utilities**: Feature-specific helpers remain in `test-support/` for co-location
 
 ## Architecture Layers
 
@@ -168,7 +171,7 @@ Start simple, add complexity as needed:
 - **Repository tests**: In-memory SQLite for speed
 - **Handler tests**: Mock repositories, test orchestration
 - **Contract tests**: Real database, full integration
-- **Test infrastructure**: Database utilities in `testing/infra/db/`, domain helpers in `test-support/`
+- **Test infrastructure**: Infrastructure utilities in `tests/helpers/`, domain utilities in `src/test-support/`
 
 ## Development Workflow
 
@@ -202,9 +205,9 @@ Start simple, add complexity as needed:
 
 ### Test Organization
 - **Co-location**: Tests next to source files with `.test.ts` suffix
-- **Domain Tests**: Use `@api/test-support` for domain-specific utilities
-- **Infrastructure Tests**: Use `@api/testing/infra` for database and containers
-- **Integration Tests**: Use `@api/testing/domain` for cross-layer helpers
+- **Domain Tests**: Use `@api/test-support` for builders, fakes, mocks, and domain utilities
+- **Infrastructure Tests**: Use `@test/helpers` for database, containers, and process utilities
+- **Integration Tests**: Use `@test/helpers` for cross-feature test coordination
 
 ## Performance Guidelines
 
@@ -224,8 +227,8 @@ Start simple, add complexity as needed:
 - **Domain Events**: Future pattern for cross-boundary communication
 
 ### Test Utilities
-- **Infrastructure Layer**: `@api/testing/infra` for database, containers, process utilities
-- **Domain Layer**: `@api/test-support` for domain-specific helpers and factories
+- **Infrastructure Layer**: `@test/helpers` for database, containers, process utilities
+- **Domain Layer**: `@api/test-support` organized into builders, fakes, mocks, types, and utils
 
 ## Success Criteria
 

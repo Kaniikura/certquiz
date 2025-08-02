@@ -3,7 +3,7 @@
  * @fileoverview Tests the actual database connectivity verification of health endpoints
  */
 
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TestApp } from '../setup/test-app-factory';
 import { createIntegrationTestApp } from '../setup/test-app-factory';

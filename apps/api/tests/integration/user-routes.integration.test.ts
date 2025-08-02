@@ -4,7 +4,7 @@
  */
 
 import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
-import { setupTestDatabase } from '@api/testing/domain';
+import { setupTestDatabase } from '@test/helpers';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TestApp } from '../setup/test-app-factory';

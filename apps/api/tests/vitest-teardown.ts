@@ -4,7 +4,7 @@
  */
 
 import { shutdownDatabase } from '@api/infra/db/client';
-import { cleanupWorkerDatabases } from '@api/testing/infra/db';
+import { cleanupWorkerDatabases } from '@test/helpers/database';
 import { afterAll } from 'vitest';
 
 // Global teardown to ensure database connections are closed

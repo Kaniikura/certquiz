@@ -9,4 +9,4 @@ export {
   InMemoryQuizRepository,
   InMemoryUnitOfWork,
   InMemoryUserRepository,
-} from '@api/testing/domain/fakes';
+} from '@/test-support/fakes';

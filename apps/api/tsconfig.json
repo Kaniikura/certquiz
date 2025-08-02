@@ -7,12 +7,5 @@
   },
   "exclude": ["node_modules", "dist", "src/**/*.test.{ts,tsx,spec.ts}"],
   "extends": "../../tsconfig.base.json",
-  "include": [
-    "src/**/*",
-    "tests/**/*.ts",
-    "testing/**/*.ts",
-    "scripts/**/*",
-    "*.ts",
-    "package.json"
-  ]
+  "include": ["src/**/*", "tests/**/*.ts", "scripts/**/*", "*.ts", "package.json"]
 }

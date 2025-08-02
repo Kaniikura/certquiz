@@ -11,7 +11,7 @@ import {
   InMemoryQuizRepository,
   InMemoryUnitOfWork,
   InMemoryUserRepository,
-} from '@api/testing/domain/fakes';
+} from '@/test-support/fakes';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { IUnitOfWorkProvider } from './IUnitOfWorkProvider';
 

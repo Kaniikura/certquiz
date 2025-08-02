@@ -3,12 +3,12 @@
  * @fileoverview Tests for auth routes creation with dependency injection
  */
 
+import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { getRootLogger } from '@api/infra/logger/root-logger';
 import { createDatabaseContextMiddleware, createLoggerMiddleware } from '@api/middleware';
-import { StubAuthProvider } from '@api/testing/domain';
-import { InMemoryDatabaseContext } from '@api/testing/domain/fakes';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
+import { InMemoryDatabaseContext } from '@/test-support/fakes';
 import { createAuthRoutes } from './routes-factory';
 
 describe('Auth Routes Factory', () => {

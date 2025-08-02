@@ -138,16 +138,6 @@
   },
   "overrides": [
     {
-      "includes": ["apps/api/testing/**/*.ts"],
-      "linter": {
-        "rules": {
-          "performance": {
-            "noReExportAll": "off"
-          }
-        }
-      }
-    },
-    {
       "includes": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
       "linter": {
         "rules": {
@@ -186,7 +176,7 @@
         "apps/api/scripts/**/*.js",
         "apps/api/tests/containers/index.ts",
         "apps/api/tests/integration/migrations.test.ts",
-        "apps/api/testing/infra/db/migrations.ts"
+        "apps/api/tests/helpers/db-*.ts"
       ],
       "linter": {
         "rules": {

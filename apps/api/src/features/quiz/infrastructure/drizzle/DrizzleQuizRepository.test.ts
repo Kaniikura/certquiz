@@ -4,9 +4,9 @@
  */
 
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
-import { TestClock } from '@api/test-support/TestClock';
 import postgres from 'postgres';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TestClock } from '@/test-support';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type { ExamType } from '../../domain/value-objects/ExamTypes';
 import {

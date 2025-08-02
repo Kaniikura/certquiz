@@ -4,9 +4,8 @@
  */
 
 import { TestClock, testIds, unwrapOrFail } from '@api/test-support';
-import { aQuestionReference } from '@api/test-support/builders/QuestionReferenceBuilder';
-import { aQuizSession } from '@api/test-support/builders/QuizSessionBuilder';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { aQuestionReference, aQuizSession } from '@/test-support/builders';
 import {
   DuplicateQuestionError,
   IncompleteQuizError,

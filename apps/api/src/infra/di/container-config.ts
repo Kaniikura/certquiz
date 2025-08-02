@@ -10,7 +10,7 @@ import { PremiumAccessService } from '@api/features/question/domain/services/Pre
 import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
-import { FakePremiumAccessService } from '@api/testing/domain/fakes';
+import { FakePremiumAccessService } from '@/test-support/fakes';
 import { FakeAuthProvider } from '../auth/AuthProvider.fake';
 import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';

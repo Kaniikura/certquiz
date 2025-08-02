@@ -1,5 +1,5 @@
 import type { Logger } from '@api/infra/logger';
-import { createTestDatabase } from '@api/testing/infra/db';
+import { createTestDatabase } from '@test/helpers/database';
 import postgres from 'postgres';
 import { PostgresSingleton } from '../../../tests/containers/postgres';
 import type { ConnectionStats, DatabaseOptions, IDatabaseProvider } from './IDatabaseProvider';

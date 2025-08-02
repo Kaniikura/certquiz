@@ -1,6 +1,6 @@
 import { ValidationError } from '@api/shared/errors';
-import { TestClock } from '@api/test-support/TestClock';
 import { describe, expect, it } from 'vitest';
+import { TestClock } from '@/test-support';
 import { Email, UserRole } from '../value-objects';
 import { User } from './User';
 

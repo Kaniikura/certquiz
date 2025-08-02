@@ -4,8 +4,8 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import { TestClock } from '@api/test-support/TestClock';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { TestClock } from '@/test-support';
 import { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
 import { type Email, type UserId, UserRole } from '../domain/value-objects';

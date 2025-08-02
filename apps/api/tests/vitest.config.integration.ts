@@ -29,7 +29,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { mapTestEnvironmentVariables } from '../testing/infra/vitest';
+import { mapTestEnvironmentVariables } from './helpers/env';
 
 // Get root directory path
 const __dirname = dirname(fileURLToPath(import.meta.url));
