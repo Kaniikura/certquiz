@@ -9,7 +9,7 @@ import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { Hono } from 'hono';
-import { UserId } from '../../auth/domain/value-objects/UserId';
+import { UserId } from '../../user/domain/value-objects';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import { QuizSessionId } from '../domain/value-objects/Ids';
 import { mapCompleteQuizError } from '../shared/error-mapper';
@@ -20,7 +20,12 @@ import { completeQuizHandler } from './handler';
  * Create complete quiz route
  * POST /:sessionId/complete - Complete a quiz and update user progress
  */
-export function completeQuizRoute(clock: Clock, quizCompletionService: IQuizCompletionService) {
+export function completeQuizRoute(
+  clock: Clock,
+  quizCompletionService: IQuizCompletionService
+): Hono<{
+  Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
+}> {
   return new Hono<{
     Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
   }>().post('/:sessionId/complete', (c) => {

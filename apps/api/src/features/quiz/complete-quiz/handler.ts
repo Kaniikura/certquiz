@@ -5,7 +5,7 @@
 
 import type { Clock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
-import type { UserId } from '../../auth/domain/value-objects/UserId';
+import type { UserId } from '../../user/domain/value-objects';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { QuizSessionId } from '../domain/value-objects/Ids';
 import type { CompleteQuizResponse } from './dto';
@@ -18,7 +18,7 @@ export async function completeQuizHandler(
   sessionId: QuizSessionId,
   userId: UserId,
   quizCompletionService: IQuizCompletionService,
-  clock: Clock
+  _clock: Clock
 ): Promise<Result<CompleteQuizResponse>> {
   try {
     // Use the QuizCompletionService for atomic operation
@@ -36,7 +36,7 @@ export async function completeQuizHandler(
       sessionId: completionResult.data.sessionId,
       finalScore: completionResult.data.finalScore,
       progressUpdate: completionResult.data.progressUpdate,
-      completedAt: clock.now(),
+      completedAt: completionResult.data.completedAt,
     };
 
     return Result.ok(response);
