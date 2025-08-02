@@ -20,8 +20,7 @@ vi.mock('jose', async () => {
 });
 
 import { Hono } from 'hono';
-import { SignJWT } from 'jose';
-import { getSharedTestKeys } from '../../tests/setup/shared-test-keys';
+import { generateKeyPair, SignJWT } from 'jose';
 import { resetJwtVerifierCache } from '../test-support/jwt-helpers';
 import { auth } from './auth';
 import type { AuthUser } from './auth/auth-user';
@@ -35,10 +34,10 @@ describe('Authentication Integration Tests', () => {
   const audience = 'certquiz';
 
   beforeAll(async () => {
-    // Load shared test keys
-    const keys = await getSharedTestKeys();
-    testPrivateKey = keys.privateKey;
-    testPublicKey = keys.publicKey;
+    // Generate test keys
+    const keyPair = await generateKeyPair('RS256');
+    testPrivateKey = keyPair.privateKey;
+    testPublicKey = keyPair.publicKey;
     privateKey = testPrivateKey;
   });
 

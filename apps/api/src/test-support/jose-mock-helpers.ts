@@ -9,23 +9,6 @@
 import type { SignJWT } from 'jose';
 
 /**
- * Cached SignJWT module to avoid repeated dynamic imports
- */
-let cachedSignJWT: typeof SignJWT | null = null;
-
-/**
- * Get SignJWT class with lazy initialization and caching
- * @returns Promise resolving to cached SignJWT class
- */
-async function getSignJWT(): Promise<typeof SignJWT> {
-  if (cachedSignJWT === null) {
-    const { SignJWT } = await import('jose');
-    cachedSignJWT = SignJWT;
-  }
-  return cachedSignJWT;
-}
-
-/**
  * Default JWT configuration for testing
  */
 const DEFAULT_JWT_CONFIG = {
@@ -63,8 +46,8 @@ export async function createJwtBuilder(
   claims: Record<string, unknown> = {},
   config: Partial<typeof DEFAULT_JWT_CONFIG> = {}
 ): Promise<SignJWT> {
-  // Retrieve cached SignJWT module
-  const SignJWT = await getSignJWT();
+  // Dynamic import to handle ES Module in CommonJS context
+  const { SignJWT } = await import('jose');
 
   const jwtConfig = { ...DEFAULT_JWT_CONFIG, ...config };
   const jwtClaims = { ...DEFAULT_JWT_CLAIMS, ...claims };
@@ -94,8 +77,8 @@ export async function createExpiredJwtBuilder(
   claims: Record<string, unknown> = {},
   config: Partial<typeof DEFAULT_JWT_CONFIG> = {}
 ): Promise<SignJWT> {
-  // Retrieve cached SignJWT module
-  const SignJWT = await getSignJWT();
+  // Dynamic import to handle ES Module in CommonJS context
+  const { SignJWT } = await import('jose');
 
   const jwtConfig = { ...DEFAULT_JWT_CONFIG, ...config };
   const jwtClaims = { ...DEFAULT_JWT_CLAIMS, ...claims };

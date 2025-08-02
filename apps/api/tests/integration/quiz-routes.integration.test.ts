@@ -4,9 +4,8 @@
  */
 
 import { setupTestDatabase } from '@api/testing/domain';
-import { SignJWT } from 'jose';
+import { generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getSharedTestKeys } from '../setup/shared-test-keys';
 import type { TestApp } from '../setup/test-app-factory';
 import { createIntegrationTestApp } from '../setup/test-app-factory';
 
@@ -39,10 +38,10 @@ describe('Quiz Routes Integration Tests', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
-    // Load shared test keys for JWT testing
-    const keys = await getSharedTestKeys();
-    testPrivateKey = keys.privateKey;
-    testPublicKey = keys.publicKey;
+    // Generate test key pair for JWT testing
+    const keyPair = await generateKeyPair('RS256');
+    testPrivateKey = keyPair.privateKey;
+    testPublicKey = keyPair.publicKey;
   });
 
   beforeEach(async () => {
