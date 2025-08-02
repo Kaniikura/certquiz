@@ -12,7 +12,6 @@ export {
   quoteIdentifier,
   type TestDb,
   validateWorkerId,
-  withTestDb,
 } from './db-connection';
 // Re-export core database creation
 export { closeAllTrackedClients, createTestDatabase } from './db-core';

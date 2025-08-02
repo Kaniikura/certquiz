@@ -3,7 +3,6 @@
  */
 
 export {
-  cleanupWorkerDatabases,
   clearUsers,
   closeAllTrackedClients,
   createTestDatabase,
@@ -24,5 +23,4 @@ export {
   teardown,
   validateWorkerId,
   verifyMigrationTables,
-  withTestDb,
 } from './helpers';

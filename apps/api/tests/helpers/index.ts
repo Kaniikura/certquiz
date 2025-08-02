@@ -5,7 +5,6 @@
 export { fakeAuthProvider, fakeLogger } from './app';
 export { getPostgres, PostgresSingleton, setup, teardown } from './containers';
 export {
-  cleanupWorkerDatabases,
   clearUsers,
   closeAllTrackedClients,
   createTestDatabase,
@@ -18,7 +17,6 @@ export {
   type TestDb,
   validateWorkerId,
   verifyMigrationTables,
-  withTestDb,
 } from './database';
 export { mapTestEnvironmentVariables } from './env';
 export { setupTestDatabase } from './setup-database';

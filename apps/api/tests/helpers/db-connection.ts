@@ -56,11 +56,3 @@ export function getWorkerDatabaseName(workerId: string): { raw: string; quoted: 
   const raw = `test_${workerId}`;
   return { raw, quoted: quoteIdentifier(raw) };
 }
-
-/**
- * Execute function with test database
- */
-export async function withTestDb<T>(_fn: (db: TestDb) => Promise<T>): Promise<T> {
-  // This would be implemented with actual database connection logic
-  throw new Error('Not implemented - use createTestDb directly');
-}
