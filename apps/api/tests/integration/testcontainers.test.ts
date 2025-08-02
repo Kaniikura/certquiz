@@ -10,22 +10,28 @@ import postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresSingleton } from '../containers/postgres';
 
+/**
+ * Ensure test tables exist in the database
+ */
+async function ensureTestTables(client: postgres.Sql): Promise<void> {
+  await client`
+    CREATE TABLE IF NOT EXISTS test_users (
+      id text PRIMARY KEY,
+      email text NOT NULL UNIQUE,
+      name text,
+      is_active boolean DEFAULT true,
+      created_at timestamp DEFAULT now()
+    )
+  `;
+}
+
 // Helper functions for clean resource management
 async function usingMainDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
   const url = await PostgresSingleton.getConnectionUrl();
   const client = postgres(url, { max: 5 });
   const db = createTestDb(client);
   try {
-    // Ensure test tables exist
-    await client`
-      CREATE TABLE IF NOT EXISTS test_users (
-        id text PRIMARY KEY,
-        email text NOT NULL UNIQUE,
-        name text,
-        is_active boolean DEFAULT true,
-        created_at timestamp DEFAULT now()
-      )
-    `;
+    await ensureTestTables(client);
     return await fn(db);
   } finally {
     await client.end();
@@ -38,16 +44,7 @@ async function usingIsoDb<T>(fn: (db: TestDb) => Promise<T>): Promise<T> {
   const client = postgres(url, { max: 5 });
   const db = createTestDb(client);
   try {
-    // Ensure test tables exist
-    await client`
-      CREATE TABLE IF NOT EXISTS test_users (
-        id text PRIMARY KEY,
-        email text NOT NULL UNIQUE,
-        name text,
-        is_active boolean DEFAULT true,
-        created_at timestamp DEFAULT now()
-      )
-    `;
+    await ensureTestTables(client);
     return await fn(db);
   } finally {
     await client.end();
@@ -74,15 +71,7 @@ describe('Testcontainers Infrastructure', () => {
     expect(db).toBeDefined();
 
     // Create test-specific tables that aren't part of production migrations
-    await client`
-      CREATE TABLE IF NOT EXISTS test_users (
-        id text PRIMARY KEY,
-        email text NOT NULL UNIQUE,
-        name text,
-        is_active boolean DEFAULT true,
-        created_at timestamp DEFAULT now()
-      )
-    `;
+    await ensureTestTables(client);
 
     // Verify expected tables exist (fail fast on schema drift)
     const result = await client`
