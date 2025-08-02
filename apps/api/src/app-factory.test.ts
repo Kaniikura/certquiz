@@ -99,6 +99,7 @@ describe('App Factory', () => {
             Result.ok({
               sessionId: _sessionId,
               finalScore: 85,
+              completedAt: new Date(),
               progressUpdate: {
                 previousLevel: 1,
                 newLevel: 2,

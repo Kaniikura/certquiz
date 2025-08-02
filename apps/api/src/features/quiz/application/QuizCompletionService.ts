@@ -24,6 +24,7 @@ import { QuizNotCompletedError, SessionNotFoundError } from '../shared/errors';
 export interface QuizCompletionResult {
   sessionId: QuizSessionId;
   finalScore: number;
+  completedAt: Date;
   progressUpdate: {
     previousLevel: number;
     newLevel: number;
@@ -126,7 +127,7 @@ export class QuizCompletionService implements IQuizCompletionService {
           {
             correctAnswers: scoreSummary.correctAnswers,
             totalQuestions: scoreSummary.totalQuestions,
-            category: session.config.category ?? '',
+            category: session.config.category ?? session.config.examType,
             studyTimeMinutes,
           },
           this.clock
@@ -140,6 +141,7 @@ export class QuizCompletionService implements IQuizCompletionService {
         const completionResult: QuizCompletionResult = {
           sessionId: session.id,
           finalScore: scoreSummary.percentage,
+          completedAt: session.completedAt || this.clock.now(),
           progressUpdate: {
             previousLevel,
             newLevel: updatedUser.progress.level.value,
