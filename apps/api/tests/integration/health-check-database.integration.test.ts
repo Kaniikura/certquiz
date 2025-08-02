@@ -91,22 +91,20 @@ describe('Database Health Check Integration', () => {
   });
 
   describe('Error scenarios', () => {
-    it('should handle database query errors gracefully', async () => {
-      // This test verifies that our error handling works correctly
-      // The actual implementation catches errors and returns proper 503 status
+    it('should verify endpoint availability and HTTP response handling', async () => {
+      // This integration test verifies that the health check endpoints are properly
+      // wired up and return valid HTTP responses. Actual database error handling
+      // is thoroughly tested at the unit level in handler.test.ts where the db.ping
+      // function can be properly mocked to simulate errors.
 
-      // Create a mock that simulates a database error
-      const _mockDbContext = {
-        withinTransaction: vi.fn().mockRejectedValue(new Error('Connection refused')),
-      };
-
-      // Note: In a real scenario, we'd need to inject this mock
-      // For now, we're testing that the endpoint handles errors properly
       const res = await testApp.request('/health/ready');
 
-      // Should still return a response (not crash)
+      // Verify the endpoint is available and returns a valid HTTP response
       expect(res.status).toBeGreaterThanOrEqual(200);
       expect(res.status).toBeLessThan(600);
+
+      // In the integration environment with a healthy database, expect 200
+      expect(res.status).toBe(200);
     });
   });
 });
