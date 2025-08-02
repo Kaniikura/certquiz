@@ -4,6 +4,7 @@
  */
 
 import type { IPremiumAccessService } from '@api/features/question/domain';
+import type { IQuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
 import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import type { IQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import type { Clock } from '@api/shared/clock';
@@ -35,6 +36,10 @@ export const QUESTION_SERVICE_TOKEN = createServiceToken<IQuestionService>('QUES
 export const QUESTION_DETAILS_SERVICE_TOKEN = createServiceToken<IQuestionDetailsService>(
   'QUESTION_DETAILS_SERVICE'
 );
+
+// Quiz Application Services
+export const QUIZ_COMPLETION_SERVICE_TOKEN =
+  createServiceToken<IQuizCompletionService>('QUIZ_COMPLETION_SERVICE');
 
 // Infrastructure Services
 export const LOGGER_TOKEN = createServiceToken<Logger>('LOGGER');

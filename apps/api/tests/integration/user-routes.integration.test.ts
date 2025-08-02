@@ -246,156 +246,11 @@ describe('User Routes HTTP Integration', () => {
     });
   });
 
-  describe('PUT /progress', () => {
-    let testUserId: string;
-
-    beforeEach(async () => {
-      // Create a test user for progress updates with unique data
-      const timestamp = Date.now();
-      const registerRes = await testApp.request('/api/users/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: `progresstest-${timestamp}@example.com`,
-          username: `progressuser-${timestamp}`,
-          identityProviderId: `provider-progress-${timestamp}`,
-          role: 'user',
-        }),
-      });
-
-      // Check registration response
-      if (registerRes.status !== 201) {
-        const errorData = await registerRes.json();
-        throw new Error(
-          `Failed to create test user: ${registerRes.status} ${JSON.stringify(errorData)}`
-        );
-      }
-
-      const registerData = await registerRes.json();
-      testUserId = registerData.data.user.id;
-    });
-
-    it('should require authentication', async () => {
-      const res = await testApp.request('/api/users/progress', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: testUserId,
-          correctAnswers: 5,
-          totalQuestions: 10,
-          category: 'CCNA',
-          studyTimeMinutes: 30,
-        }),
-      });
-
-      expect(res.status).toBe(401);
-      const data = await res.json();
-      expect(data.error).toBeDefined();
-    });
-
-    it('should update progress with valid data and authentication', async () => {
-      const token = await createTestToken();
-      const res = await testApp.request('/api/users/progress', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: testUserId,
-          correctAnswers: 8,
-          totalQuestions: 10,
-          category: 'CCNA',
-          studyTimeMinutes: 45,
-        }),
-      });
-
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data).toMatchObject({
-        success: true,
-        data: {
-          progress: {
-            level: expect.any(Number),
-            experience: expect.any(Number),
-            totalQuestions: 10,
-            correctAnswers: 8,
-            accuracy: 80,
-            studyTimeMinutes: 45,
-            currentStreak: 1,
-            lastStudyDate: expect.any(String),
-            categoryStats: {
-              CCNA: {
-                correct: 8,
-                total: 10,
-                accuracy: 80,
-              },
-            },
-          },
-        },
-      });
-    });
-
-    it('should return 404 for non-existent user', async () => {
-      const token = await createTestToken();
-      const res = await testApp.request('/api/users/progress', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: '550e8400-e29b-41d4-a716-446655440000', // Non-existent UUID
-          correctAnswers: 5,
-          totalQuestions: 10,
-          category: 'CCNA',
-          studyTimeMinutes: 30,
-        }),
-      });
-
-      expect(res.status).toBe(404);
-      const data = await res.json();
-      expect(data).toMatchObject({
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-        },
-      });
-    });
-
-    it('should return 400 for invalid data', async () => {
-      const token = await createTestToken();
-      const res = await testApp.request('/api/users/progress', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: testUserId,
-          correctAnswers: -5, // Invalid: negative number
-          totalQuestions: 10,
-          category: 'CCNA',
-          studyTimeMinutes: 30,
-        }),
-      });
-
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data).toMatchObject({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-        },
-      });
-    });
-  });
-
   describe('GET /profile/:userId', () => {
     let testUserId: string;
 
     beforeEach(async () => {
-      // Create a test user with some progress using unique data
+      // Create a test user using unique data
       const timestamp = Date.now();
       const registerRes = await testApp.request('/api/users/register', {
         method: 'POST',
@@ -419,22 +274,8 @@ describe('User Routes HTTP Integration', () => {
       const registerData = await registerRes.json();
       testUserId = registerData.data.user.id;
 
-      // Add some progress to the user
-      const token = await createTestToken();
-      await testApp.request('/api/users/progress', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: testUserId,
-          correctAnswers: 15,
-          totalQuestions: 20,
-          category: 'CCNP',
-          studyTimeMinutes: 60,
-        }),
-      });
+      // Note: Progress is now updated through quiz completion, not directly
+      // User will have initial/default progress values
     });
 
     it('should require authentication', async () => {
@@ -467,19 +308,13 @@ describe('User Routes HTTP Integration', () => {
             progress: {
               level: expect.any(Number),
               experience: expect.any(Number),
-              totalQuestions: 20,
-              correctAnswers: 15,
-              accuracy: 75,
-              studyTimeMinutes: 60,
-              currentStreak: 1,
-              lastStudyDate: expect.any(String),
-              categoryStats: {
-                CCNP: {
-                  correct: 15,
-                  total: 20,
-                  accuracy: 75,
-                },
-              },
+              totalQuestions: 0, // Default value for new user
+              correctAnswers: 0, // Default value for new user
+              accuracy: 0, // Default value for new user
+              studyTimeMinutes: 0, // Default value for new user
+              currentStreak: 0, // Default value for new user
+              lastStudyDate: null, // Default value for new user
+              categoryStats: {}, // Default value for new user
             },
           },
         },

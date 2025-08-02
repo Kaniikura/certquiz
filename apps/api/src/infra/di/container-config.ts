@@ -7,6 +7,7 @@
 
 import type { Environment } from '@api/config/env';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
+import { QuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
 import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
@@ -15,6 +16,7 @@ import { FakeAuthProvider } from '../auth/AuthProvider.fake';
 import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';
 import { AsyncDatabaseContext } from '../db/AsyncDatabaseContext';
+import { DrizzleUnitOfWorkProvider } from '../db/DrizzleUnitOfWorkProvider';
 import { ProductionDatabaseProvider } from '../db/ProductionDatabaseProvider';
 import { validateDatabaseUrl } from '../db/shared';
 import { TestDatabaseProvider } from '../db/TestDatabaseProvider';
@@ -31,6 +33,8 @@ import {
   PREMIUM_ACCESS_SERVICE_TOKEN,
   QUESTION_DETAILS_SERVICE_TOKEN,
   QUESTION_SERVICE_TOKEN,
+  QUIZ_COMPLETION_SERVICE_TOKEN,
+  UNIT_OF_WORK_PROVIDER_TOKEN,
 } from './tokens';
 
 /**
@@ -71,18 +75,34 @@ function configureTestContainer(container: DIContainer): void {
       { singleton: false } // New instance per test for isolation
     );
 
+    // Unit of Work Provider - for cross-aggregate operations in tests
+    c.register(
+      UNIT_OF_WORK_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        return new DrizzleUnitOfWorkProvider(logger);
+      },
+      { singleton: false } // New instance per test for isolation
+    );
+
     c.register(
       DATABASE_CONTEXT_TOKEN,
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
         const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
         // Create context with auto-initialization disabled for manual control.
         // autoInitialize is set to false in tests to allow explicit, manual initialization of the database context.
         // This ensures that each test can control when and how initialization occurs, improving test isolation and reliability.
         // In production or other environments, autoInitialize should be enabled to allow the context to set up automatically.
-        const context = new AsyncDatabaseContext(logger, databaseProvider, {
-          autoInitialize: false,
-        });
+        const context = new AsyncDatabaseContext(
+          logger,
+          databaseProvider,
+          {
+            autoInitialize: false,
+          },
+          unitOfWorkProvider
+        );
         // Initialize it explicitly for tests
         await context.initialize();
         return context;
@@ -103,6 +123,18 @@ function configureTestContainer(container: DIContainer): void {
     c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
       singleton: true,
     });
+
+    // Quiz Application Services - Test implementations
+    c.register(
+      QUIZ_COMPLETION_SERVICE_TOKEN,
+      async () => {
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
+        const clock = await c.resolve(CLOCK_TOKEN);
+        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
+      },
+      { singleton: true } // Singleton instance for improved test performance
+    );
   });
 }
 
@@ -144,12 +176,23 @@ function configureDevelopmentContainer(container: DIContainer): void {
       { singleton: true }
     );
 
+    // Unit of Work Provider - for cross-aggregate operations
+    c.register(
+      UNIT_OF_WORK_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        return new DrizzleUnitOfWorkProvider(logger);
+      },
+      { singleton: true }
+    );
+
     c.register(
       DATABASE_CONTEXT_TOKEN,
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
         const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        return new AsyncDatabaseContext(logger, databaseProvider);
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+        return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
       },
       { singleton: true }
     );
@@ -177,6 +220,18 @@ function configureDevelopmentContainer(container: DIContainer): void {
     c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
       singleton: true,
     });
+
+    // Quiz Application Services - Development implementations
+    c.register(
+      QUIZ_COMPLETION_SERVICE_TOKEN,
+      async () => {
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
+        const clock = await c.resolve(CLOCK_TOKEN);
+        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
+      },
+      { singleton: true }
+    );
   });
 }
 
@@ -221,12 +276,23 @@ function configureProductionContainer(container: DIContainer): void {
       { singleton: true }
     );
 
+    // Unit of Work Provider - for cross-aggregate operations
+    c.register(
+      UNIT_OF_WORK_PROVIDER_TOKEN,
+      async () => {
+        const logger = await c.resolve(LOGGER_TOKEN);
+        return new DrizzleUnitOfWorkProvider(logger);
+      },
+      { singleton: true }
+    );
+
     c.register(
       DATABASE_CONTEXT_TOKEN,
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
         const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        return new AsyncDatabaseContext(logger, databaseProvider);
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+        return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
       },
       { singleton: true }
     );
@@ -244,6 +310,18 @@ function configureProductionContainer(container: DIContainer): void {
     c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
       singleton: true,
     });
+
+    // Quiz Application Services - Production implementations
+    c.register(
+      QUIZ_COMPLETION_SERVICE_TOKEN,
+      async () => {
+        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
+        const clock = await c.resolve(CLOCK_TOKEN);
+        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
+      },
+      { singleton: true }
+    );
   });
 }
 

@@ -7,6 +7,7 @@ import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { OptionId, QuestionId, type QuizSessionId, type UserId } from '../domain/value-objects/Ids';
@@ -153,18 +154,89 @@ async function persistSessionChanges(
 }
 
 /**
+ * Handle auto-completion logic with progress updates
+ */
+async function handleAutoCompletion(
+  session: QuizSession,
+  userId: UserId,
+  quizCompletionService: IQuizCompletionService
+): Promise<AutoCompletionResult> {
+  // Check if quiz was auto-completed
+  const wasAutoCompleted = checkAutoCompletion(session);
+
+  if (!wasAutoCompleted) {
+    return {};
+  }
+
+  // Call completion service for atomic progress update
+  const completionResult = await quizCompletionService.completeQuizWithProgressUpdate(
+    session.id,
+    userId
+  );
+
+  if (completionResult.success) {
+    // Build progress update on success
+    const progressUpdate: SubmitAnswerResponse['progressUpdate'] = {
+      finalScore: completionResult.data.finalScore,
+      previousLevel: completionResult.data.progressUpdate.previousLevel,
+      newLevel: completionResult.data.progressUpdate.newLevel,
+      experienceGained: completionResult.data.progressUpdate.experienceGained,
+    };
+    return { progressUpdate };
+  } else {
+    // Capture error details for logging at route level
+    const completionError = {
+      message: completionResult.error.message,
+      code: completionResult.error.name,
+    };
+    // Continue without progress update - quiz state is already set to Completed
+    // The error will be included in the response metadata for logging
+    return { completionError };
+  }
+}
+
+/**
+ * Result of auto-completion handling
+ */
+interface AutoCompletionResult {
+  progressUpdate?: SubmitAnswerResponse['progressUpdate'];
+  completionError?: { message: string; code?: string };
+}
+
+/**
+ * Internal response type that includes metadata for logging
+ */
+interface SubmitAnswerInternalResponse extends SubmitAnswerResponse {
+  _metadata?: {
+    completionError?: {
+      message: string;
+      code?: string;
+    };
+  };
+}
+
+/**
  * Build response with session state and progress
  */
-function buildSubmitAnswerResponse(
+async function buildSubmitAnswerResponse(
   session: QuizSession,
   questionId: QuestionId,
   selectedOptionIds: OptionId[],
+  userId: UserId,
+  quizCompletionService: IQuizCompletionService,
   clock: Clock
-): Result<SubmitAnswerResponse> {
-  // 8. Determine if auto-completed
+): Promise<Result<SubmitAnswerInternalResponse>> {
+  // 8. Handle auto-completion with progress updates
+  const { progressUpdate, completionError } = await handleAutoCompletion(
+    session,
+    userId,
+    quizCompletionService
+  );
+
+  // 9. Determine if quiz was auto-completed for response
   const wasAutoCompleted = checkAutoCompletion(session);
 
-  // 9. Calculate current question index (position of this question in the ordered list)
+  // 10. Calculate current question index (position of this question in the ordered list)
   const questionIds = session.getQuestionIds();
   const currentQuestionIndex = questionIds.findIndex((qId) => QuestionId.equals(qId, questionId));
 
@@ -175,8 +247,8 @@ function buildSubmitAnswerResponse(
     );
   }
 
-  // 10. Build response
-  const response: SubmitAnswerResponse = {
+  // 11. Build response with optional progress update
+  const response: SubmitAnswerInternalResponse = {
     sessionId: session.id,
     questionId: questionId,
     selectedOptionIds: selectedOptionIds,
@@ -186,7 +258,13 @@ function buildSubmitAnswerResponse(
     currentQuestionIndex: currentQuestionIndex,
     totalQuestions: session.config.questionCount,
     questionsAnswered: session.getAnsweredQuestionCount(),
+    progressUpdate,
   };
+
+  // Include metadata if there was a completion error
+  if (completionError) {
+    response._metadata = { completionError };
+  }
 
   return Result.ok(response);
 }
@@ -194,6 +272,7 @@ function buildSubmitAnswerResponse(
 /**
  * Submit answer use case handler
  * Submits an answer to a quiz question with domain validation and business rules
+ * Includes atomic user progress updates when quiz is auto-completed
  */
 export async function submitAnswerHandler(
   input: unknown,
@@ -201,8 +280,9 @@ export async function submitAnswerHandler(
   userId: UserId,
   quizRepository: IQuizRepository,
   questionService: IQuestionService,
+  quizCompletionService: IQuizCompletionService,
   clock: Clock
-): Promise<Result<SubmitAnswerResponse>> {
+): Promise<Result<SubmitAnswerInternalResponse>> {
   try {
     // Steps 1-2: Validate and convert request
     const requestResult = validateAndConvertRequest(input);
@@ -236,8 +316,15 @@ export async function submitAnswerHandler(
       return Result.fail(persistResult.error);
     }
 
-    // Steps 8-10: Build response
-    const responseResult = buildSubmitAnswerResponse(session, questionId, selectedOptionIds, clock);
+    // Steps 8-11: Build response with optional progress update
+    const responseResult = await buildSubmitAnswerResponse(
+      session,
+      questionId,
+      selectedOptionIds,
+      userId,
+      quizCompletionService,
+      clock
+    );
     if (!responseResult.success) {
       return Result.fail(responseResult.error);
     }

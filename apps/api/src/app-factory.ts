@@ -10,6 +10,7 @@ import { createAdminRoutes } from './features/admin/routes-factory';
 import { createAuthRoutes } from './features/auth/routes-factory';
 import type { IPremiumAccessService } from './features/question/domain';
 import { createQuestionRoutes } from './features/question/routes-factory';
+import type { IQuizCompletionService } from './features/quiz/application/QuizCompletionService';
 import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
@@ -25,6 +26,7 @@ import {
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
+  QUIZ_COMPLETION_SERVICE_TOKEN,
 } from './infra/di/tokens';
 import type { Logger } from './infra/logger';
 import {
@@ -56,6 +58,9 @@ export interface AppDependencies {
   // Domain services
   premiumAccessService: IPremiumAccessService;
   authProvider: IAuthProvider;
+
+  // Application services
+  quizCompletionService: IQuizCompletionService;
 
   // Database context management
   databaseContext: IDatabaseContext;
@@ -99,7 +104,10 @@ export function buildApp(deps: AppDependencies): Hono<{
   );
 
   // Quiz routes (public + protected sections)
-  app.route('/api/quiz', createQuizRoutes(deps.clock, deps.databaseContext));
+  app.route(
+    '/api/quiz',
+    createQuizRoutes(deps.clock, deps.databaseContext, deps.quizCompletionService)
+  );
 
   // User routes (public + protected sections)
   app.route('/api/users', createUserRoutes(deps.databaseContext));
@@ -149,15 +157,23 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
   }>
 > {
   // Resolve dependencies from async container
-  const [logger, clock, authProvider, databaseContext, premiumAccessService, idGenerator] =
-    await Promise.all([
-      container.resolve(LOGGER_TOKEN),
-      container.resolve(CLOCK_TOKEN),
-      container.resolve(AUTH_PROVIDER_TOKEN),
-      container.resolve(DATABASE_CONTEXT_TOKEN),
-      container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN),
-      container.resolve(ID_GENERATOR_TOKEN),
-    ]);
+  const [
+    logger,
+    clock,
+    authProvider,
+    databaseContext,
+    premiumAccessService,
+    idGenerator,
+    quizCompletionService,
+  ] = await Promise.all([
+    container.resolve(LOGGER_TOKEN),
+    container.resolve(CLOCK_TOKEN),
+    container.resolve(AUTH_PROVIDER_TOKEN),
+    container.resolve(DATABASE_CONTEXT_TOKEN),
+    container.resolve(PREMIUM_ACCESS_SERVICE_TOKEN),
+    container.resolve(ID_GENERATOR_TOKEN),
+    container.resolve(QUIZ_COMPLETION_SERVICE_TOKEN),
+  ]);
 
   // Note: AsyncDatabaseContext now auto-initializes by default in production/development
   // For test environment, initialization is disabled and handled manually when needed
@@ -211,6 +227,7 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
     ping,
     premiumAccessService,
     authProvider,
+    quizCompletionService,
     databaseContext,
   };
 

@@ -156,3 +156,15 @@ const getResultsErrorMappings: ErrorMapping[] = [
 ];
 
 export const mapGetResultsError = createErrorMapper(getResultsErrorMappings);
+
+/**
+ * Complete quiz specific errors
+ */
+const completeQuizErrorMappings: ErrorMapping[] = [
+  { errorName: 'SessionNotFoundError', status: 404, code: 'SESSION_NOT_FOUND' },
+  { errorName: 'AuthorizationError', status: 403, code: 'UNAUTHORIZED' },
+  { errorName: 'UserNotFoundError', status: 404, code: 'USER_NOT_FOUND' },
+  { errorName: 'QuizNotCompletedError', status: 409, code: 'QUIZ_NOT_COMPLETED' },
+];
+
+export const mapCompleteQuizError = createErrorMapper(completeQuizErrorMappings);

@@ -29,6 +29,9 @@ describe('submitAnswerHandler', () => {
   let mockQuestionService: {
     getQuestionReference: ReturnType<typeof vi.fn>;
   };
+  let mockQuizCompletionService: {
+    completeQuizWithProgressUpdate: ReturnType<typeof vi.fn>;
+  };
   let clock: TestClock;
   let userId: UserId;
   let sessionId: QuizSessionId;
@@ -47,6 +50,10 @@ describe('submitAnswerHandler', () => {
 
     mockQuestionService = {
       getQuestionReference: vi.fn(),
+    };
+
+    mockQuizCompletionService = {
+      completeQuizWithProgressUpdate: vi.fn(),
     };
 
     // Setup test data
@@ -93,6 +100,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -139,6 +147,20 @@ describe('submitAnswerHandler', () => {
       const questionRef = new QuestionReference(singleQuestionId, optionIds);
       mockQuestionService.getQuestionReference.mockResolvedValue(questionRef);
 
+      // Mock quiz completion service for auto-completion
+      mockQuizCompletionService.completeQuizWithProgressUpdate.mockResolvedValue({
+        success: true,
+        data: {
+          sessionId: sessionResult.data.id,
+          finalScore: 100,
+          progressUpdate: {
+            previousLevel: 1,
+            newLevel: 1,
+            experienceGained: 50,
+          },
+        },
+      });
+
       const request: SubmitAnswerRequest = {
         questionId: singleQuestionId.toString(),
         selectedOptionIds: [optionIds[0].toString()],
@@ -147,10 +169,11 @@ describe('submitAnswerHandler', () => {
       // Act
       const result = await submitAnswerHandler(
         request,
-        sessionId,
+        sessionResult.data.id,
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -180,6 +203,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -204,6 +228,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -228,6 +253,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -256,6 +282,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -282,6 +309,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -307,6 +335,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -340,6 +369,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -368,6 +398,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -398,6 +429,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -424,6 +456,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -503,6 +536,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -529,6 +563,7 @@ describe('submitAnswerHandler', () => {
         userId,
         mockQuizRepository,
         mockQuestionService,
+        mockQuizCompletionService,
         clock
       );
 
@@ -538,6 +573,220 @@ describe('submitAnswerHandler', () => {
         expect(result2.data.currentQuestionIndex).toBe(0); // q1 is at index 0
         expect(result2.data.questionsAnswered).toBe(2);
       }
+    });
+  });
+
+  describe('auto-completion with progress updates', () => {
+    it('should return progress update when quiz is auto-completed', async () => {
+      // Arrange
+      const autoCompleteConfig = QuizConfig.create({
+        examType: 'CCNA',
+        questionCount: 2,
+        timeLimit: 600,
+        autoCompleteWhenAllAnswered: true,
+      });
+      if (!autoCompleteConfig.success) throw new Error('Config failed');
+
+      const autoCompleteSession = QuizSession.startNew(
+        userId,
+        autoCompleteConfig.data,
+        [questionIds[0], questionIds[1]],
+        clock
+      );
+      if (!autoCompleteSession.success) throw new Error('Session failed');
+      const session = autoCompleteSession.data;
+
+      // Submit first answer
+      const firstAnswerResult = session.submitAnswer(
+        questionIds[0],
+        [optionIds[0]],
+        new QuestionReference(questionIds[0], optionIds),
+        clock
+      );
+      if (!firstAnswerResult.success) throw new Error('First answer failed');
+
+      // Mock the quiz completion service to return progress update
+      mockQuizCompletionService.completeQuizWithProgressUpdate.mockResolvedValue({
+        success: true,
+        data: {
+          sessionId: session.id,
+          finalScore: 85,
+          progressUpdate: {
+            previousLevel: 1,
+            newLevel: 2,
+            experienceGained: 150,
+          },
+        },
+      });
+
+      mockQuizRepository.findById.mockResolvedValue(session);
+      mockQuizRepository.save.mockResolvedValue(undefined);
+
+      // Mock question reference for second question
+      const questionRef = new QuestionReference(questionIds[1], optionIds);
+      mockQuestionService.getQuestionReference.mockResolvedValue(questionRef);
+
+      // Submit final answer
+      const request: SubmitAnswerRequest = {
+        questionId: questionIds[1].toString(),
+        selectedOptionIds: [optionIds[1].toString()],
+      };
+
+      // Act
+      const result = await submitAnswerHandler(
+        request,
+        session.id,
+        userId,
+        mockQuizRepository,
+        mockQuestionService,
+        mockQuizCompletionService,
+        clock
+      );
+
+      // Assert
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const response = result.data as SubmitAnswerResponse;
+        expect(response.autoCompleted).toBe(true);
+        expect(response.state).toBe(QuizState.Completed);
+        expect(response.progressUpdate).toBeDefined();
+        expect(response.progressUpdate).toEqual({
+          finalScore: 85,
+          previousLevel: 1,
+          newLevel: 2,
+          experienceGained: 150,
+        });
+      }
+
+      // Verify completion service was called
+      expect(mockQuizCompletionService.completeQuizWithProgressUpdate).toHaveBeenCalledWith(
+        session.id,
+        userId
+      );
+    });
+
+    it('should handle quiz completion service failures gracefully', async () => {
+      // Arrange
+      const autoCompleteConfig = QuizConfig.create({
+        examType: 'CCNA',
+        questionCount: 2,
+        timeLimit: 600,
+        autoCompleteWhenAllAnswered: true,
+      });
+      if (!autoCompleteConfig.success) throw new Error('Config failed');
+
+      const autoCompleteSession = QuizSession.startNew(
+        userId,
+        autoCompleteConfig.data,
+        [questionIds[0], questionIds[1]],
+        clock
+      );
+      if (!autoCompleteSession.success) throw new Error('Session failed');
+      const session = autoCompleteSession.data;
+
+      // Submit first answer
+      const firstAnswerResult = session.submitAnswer(
+        questionIds[0],
+        [optionIds[0]],
+        new QuestionReference(questionIds[0], optionIds),
+        clock
+      );
+      if (!firstAnswerResult.success) throw new Error('First answer failed');
+
+      // Mock the quiz completion service to fail
+      mockQuizCompletionService.completeQuizWithProgressUpdate.mockResolvedValue({
+        success: false,
+        error: new Error('Progress update failed'),
+      });
+
+      mockQuizRepository.findById.mockResolvedValue(session);
+      mockQuizRepository.save.mockResolvedValue(undefined);
+
+      // Mock question reference for second question
+      const questionRef = new QuestionReference(questionIds[1], optionIds);
+      mockQuestionService.getQuestionReference.mockResolvedValue(questionRef);
+
+      // Submit final answer
+      const request: SubmitAnswerRequest = {
+        questionId: questionIds[1].toString(),
+        selectedOptionIds: [optionIds[1].toString()],
+      };
+
+      // Act
+      const result = await submitAnswerHandler(
+        request,
+        session.id,
+        userId,
+        mockQuizRepository,
+        mockQuestionService,
+        mockQuizCompletionService,
+        clock
+      );
+
+      // Assert - submission should still succeed even if progress update fails
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const response = result.data as SubmitAnswerResponse;
+        expect(response.autoCompleted).toBe(true);
+        expect(response.state).toBe(QuizState.Completed);
+        expect(response.progressUpdate).toBeUndefined(); // No progress update due to failure
+      }
+
+      // Verify completion service was called
+      expect(mockQuizCompletionService.completeQuizWithProgressUpdate).toHaveBeenCalledWith(
+        session.id,
+        userId
+      );
+    });
+
+    it('should not call completion service when quiz is not auto-completed', async () => {
+      // Arrange - quiz without auto-completion
+      const noAutoCompleteConfig = QuizConfig.create({
+        examType: 'CCNA',
+        questionCount: 3,
+        timeLimit: 1800,
+        autoCompleteWhenAllAnswered: false, // Auto-completion disabled
+      });
+      if (!noAutoCompleteConfig.success) throw new Error('Config failed');
+
+      const noAutoCompleteSession = QuizSession.startNew(
+        userId,
+        noAutoCompleteConfig.data,
+        questionIds,
+        clock
+      );
+      if (!noAutoCompleteSession.success) throw new Error('Session failed');
+      const session = noAutoCompleteSession.data;
+
+      mockQuizRepository.findById.mockResolvedValue(session);
+      mockQuizRepository.save.mockResolvedValue(undefined);
+
+      const request: SubmitAnswerRequest = {
+        questionId: questionIds[0].toString(),
+        selectedOptionIds: [optionIds[0].toString()],
+      };
+
+      // Act
+      const result = await submitAnswerHandler(
+        request,
+        session.id,
+        userId,
+        mockQuizRepository,
+        mockQuestionService,
+        mockQuizCompletionService,
+        clock
+      );
+
+      // Assert
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const response = result.data as SubmitAnswerResponse;
+        expect(response.autoCompleted).toBe(false);
+        expect(response.progressUpdate).toBeUndefined();
+      }
+
+      // Verify completion service was NOT called
+      expect(mockQuizCompletionService.completeQuizWithProgressUpdate).not.toHaveBeenCalled();
     });
   });
 });

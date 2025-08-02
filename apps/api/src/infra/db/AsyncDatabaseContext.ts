@@ -17,6 +17,8 @@ import {
 } from '@api/shared/types/RepositoryToken';
 import type { IDatabaseContext, ITransactionContext } from './IDatabaseContext';
 import type { IDatabaseProvider } from './IDatabaseProvider';
+import type { IUnitOfWork } from './IUnitOfWork';
+import type { IUnitOfWorkProvider } from './IUnitOfWorkProvider';
 import type { DB } from './types';
 import type { TransactionContext } from './uow';
 
@@ -100,7 +102,8 @@ export class AsyncDatabaseContext implements IDatabaseContext {
   constructor(
     private readonly logger: Logger,
     private readonly databaseProvider: IDatabaseProvider,
-    private readonly options: AsyncDatabaseContextOptions = {}
+    private readonly options: AsyncDatabaseContextOptions = {},
+    private readonly unitOfWorkProvider?: IUnitOfWorkProvider
   ) {
     // Auto-initialize by default (unless explicitly disabled)
     if (this.options.autoInitialize !== false) {
@@ -152,6 +155,41 @@ export class AsyncDatabaseContext implements IDatabaseContext {
     return db.transaction(async (tx) => {
       const context = new AsyncTransactionContext(tx, this.logger);
       return operation(context);
+    });
+  }
+
+  /**
+   * Execute operations within a Unit of Work transaction
+   *
+   * This method integrates with the Unit of Work pattern to enable atomic operations
+   * across multiple aggregates. It's particularly useful for cross-aggregate business
+   * operations like quiz completion with user progress updates.
+   *
+   * @param operation - Function that receives a Unit of Work and performs business operations
+   * @returns Promise<T> - Result of the operation
+   * @throws Error if Unit of Work provider is not configured
+   */
+  async executeWithUnitOfWork<T>(operation: (unitOfWork: IUnitOfWork) => Promise<T>): Promise<T> {
+    if (!this.unitOfWorkProvider) {
+      throw new Error(
+        'Unit of Work provider not configured for this context. ' +
+          'Pass an IUnitOfWorkProvider to the constructor to enable Unit of Work operations.'
+      );
+    }
+
+    return this.unitOfWorkProvider.execute(async (unitOfWork) => {
+      try {
+        this.logger.debug('Unit of Work transaction started');
+
+        const result = await operation(unitOfWork);
+
+        this.logger.debug('Unit of Work transaction completed successfully');
+
+        return result;
+      } catch (error) {
+        this.logger.error('Unit of Work transaction failed, rolling back', { error });
+        throw error;
+      }
     });
   }
 

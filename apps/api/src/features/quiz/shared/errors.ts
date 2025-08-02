@@ -22,6 +22,7 @@ export enum QuizErrorCode {
 
   // Completion errors
   INCOMPLETE_QUIZ = 'INCOMPLETE_QUIZ',
+  QUIZ_NOT_COMPLETED = 'QUIZ_NOT_COMPLETED',
 
   // Configuration errors
   INVALID_QUESTION_COUNT = 'INVALID_QUESTION_COUNT',
@@ -73,6 +74,16 @@ export class IncompleteQuizError extends QuizDomainError {
     super(
       `Cannot complete quiz with ${unansweredCount} unanswered questions`,
       QuizErrorCode.INCOMPLETE_QUIZ
+    );
+  }
+}
+
+export class QuizNotCompletedError extends QuizDomainError {
+  constructor(sessionId: string, currentState: string) {
+    super(
+      `Quiz session ${sessionId} must be in COMPLETED state but is currently ${currentState}. ` +
+        'Please ensure all questions are answered and the quiz is finished before requesting completion.',
+      QuizErrorCode.QUIZ_NOT_COMPLETED
     );
   }
 }
@@ -143,6 +154,16 @@ export class InvalidQuestionReferenceError extends QuizDomainError {
 export class QuestionNotInQuizError extends QuizDomainError {
   constructor(message?: string) {
     super(message || 'Question is not part of this quiz', QuizErrorCode.QUESTION_NOT_IN_QUIZ);
+  }
+}
+
+/**
+ * Error thrown when a quiz session is not found
+ */
+export class SessionNotFoundError extends Error {
+  constructor(sessionId: string) {
+    super(`Quiz session not found: ${sessionId}`);
+    this.name = 'SessionNotFoundError';
   }
 }
 

@@ -8,6 +8,8 @@ import { auth } from '@api/middleware/auth';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { Hono } from 'hono';
+import type { IQuizCompletionService } from './application/QuizCompletionService';
+import { completeQuizRoute } from './complete-quiz/route';
 import { getResultsRoute } from './get-results/route';
 import { startQuizRoute } from './start-quiz/route';
 import { submitAnswerRoute } from './submit-answer/route';
@@ -17,7 +19,8 @@ import { submitAnswerRoute } from './submit-answer/route';
  */
 export function createQuizRoutes(
   clock: Clock,
-  _databaseContext: IDatabaseContext
+  _databaseContext: IDatabaseContext,
+  quizCompletionService: IQuizCompletionService
 ): Hono<{
   Variables: DatabaseContextVariables;
 }> {
@@ -63,8 +66,9 @@ export function createQuizRoutes(
 
   // Quiz management routes
   const startQuiz = startQuizRoute(clock);
-  const submitAnswer = submitAnswerRoute(clock);
+  const submitAnswer = submitAnswerRoute(clock, quizCompletionService);
   const getResults = getResultsRoute(clock);
+  const completeQuiz = completeQuizRoute(clock, quizCompletionService);
 
   // Mount routes with proper path structure (protected routes)
   // POST /start - Start a new quiz session (protected)
@@ -72,6 +76,9 @@ export function createQuizRoutes(
 
   // POST /:sessionId/submit-answer - Submit an answer to a question
   app.route('/', submitAnswer);
+
+  // POST /:sessionId/complete - Complete a quiz and update user progress
+  app.route('/', completeQuiz);
 
   // GET /:sessionId/results - Get quiz results
   app.route('/', getResults);

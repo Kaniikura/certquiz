@@ -103,4 +103,12 @@ export class QuizConfig {
       dto.fallbackLimitSeconds
     );
   }
+
+  /**
+   * Get the category for progress tracking
+   * Returns the specific category if set, otherwise 'GENERAL' for comprehensive exam content
+   */
+  getCategory(): string {
+    return this.category ?? 'GENERAL';
+  }
 }

@@ -278,6 +278,44 @@ describe('QuizConfig', () => {
     });
   });
 
+  describe('getCategory', () => {
+    it('should return specific category when category is set', () => {
+      // Arrange
+      const configResult = QuizConfig.create({
+        examType: EXAM_CCNA,
+        category: CAT_OSPF,
+        questionCount: 10,
+      });
+      expect(configResult.success).toBe(true);
+      if (!configResult.success) return;
+      const config = configResult.data;
+
+      // Act
+      const category = config.getCategory();
+
+      // Assert
+      expect(category).toBe('OSPF');
+    });
+
+    it('should return GENERAL when category is null', () => {
+      // Arrange
+      const configResult = QuizConfig.create({
+        examType: EXAM_CCNA,
+        questionCount: 10,
+      });
+      expect(configResult.success).toBe(true);
+      if (!configResult.success) return;
+      const config = configResult.data;
+
+      // Act
+      const category = config.getCategory();
+
+      // Assert
+      expect(category).toBe('GENERAL');
+      expect(config.category).toBe(null); // Verify original category is still null
+    });
+  });
+
   describe('immutability', () => {
     it('should have readonly properties', () => {
       // Arrange

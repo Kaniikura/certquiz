@@ -8,19 +8,10 @@ import { Result } from '@api/shared/result';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { QuizSessionId, UserId } from '../domain/value-objects/Ids';
 import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
+import { SessionNotFoundError } from '../shared/errors';
 import type { GetResultsResponse } from './dto';
 import { buildAnswerResults, calculateScoreSummary } from './scoring-utils';
 import { getResultsSchema } from './validation';
-
-/**
- * Business logic error for session not found
- */
-class SessionNotFoundError extends Error {
-  constructor(sessionId: QuizSessionId) {
-    super(`Quiz session not found: ${sessionId.toString()}`);
-    this.name = 'SessionNotFoundError';
-  }
-}
 
 /**
  * Get results use case handler
@@ -98,7 +89,7 @@ async function loadAndValidateSession(
   try {
     const session = await quizRepository.findById(sessionId);
     if (!session) {
-      return Result.fail(new SessionNotFoundError(sessionId));
+      return Result.fail(new SessionNotFoundError(sessionId.toString()));
     }
 
     // Verify session ownership (security check)

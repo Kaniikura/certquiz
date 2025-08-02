@@ -9,12 +9,14 @@ import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
 import { createAmbientRoute } from '@api/shared/route';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
+import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
 import { QuizDependencyProvider } from '../shared/dependencies';
@@ -27,7 +29,7 @@ import { submitAnswerSchema } from './validation';
 /**
  * Create submit answer route
  */
-export function submitAnswerRoute(clock: Clock) {
+export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizCompletionService) {
   const deps = new QuizDependencyProvider();
   const questionService = deps.submitAnswerQuestionService;
 
@@ -40,6 +42,7 @@ export function submitAnswerRoute(clock: Clock) {
       {
         quizRepo: IQuizRepository;
         questionService: StubQuestionService;
+        quizCompletionService: IQuizCompletionService;
         clock: Clock;
       },
       { user: AuthUser } & LoggerVariables & DatabaseContextVariables
@@ -61,9 +64,23 @@ export function submitAnswerRoute(clock: Clock) {
           };
         },
         extractSuccessLogData: (result, c) => {
-          const response = result as SubmitAnswerResponse;
+          const response = result as SubmitAnswerResponse & {
+            _metadata?: { completionError?: { message: string; code?: string } };
+          };
           const user = c?.get('user') as AuthUser;
           const sessionId = c?.req.param('sessionId');
+          const logger = c?.get('logger') as LoggerPort;
+
+          // Log completion errors if they occurred
+          if (response._metadata?.completionError && logger) {
+            logger.warn('Quiz completion service failed during auto-completion', {
+              userId: user?.sub,
+              sessionId,
+              error: response._metadata.completionError.message,
+              errorCode: response._metadata.completionError.code,
+              operation: 'quiz_auto_completion',
+            });
+          }
 
           return {
             userId: user?.sub,
@@ -72,6 +89,7 @@ export function submitAnswerRoute(clock: Clock) {
             state: response.state,
             autoCompleted: response.autoCompleted,
             questionsAnswered: response.questionsAnswered,
+            completionErrorOccurred: !!response._metadata?.completionError,
           };
         },
         errorMapper: mapSubmitAnswerError,
@@ -81,6 +99,7 @@ export function submitAnswerRoute(clock: Clock) {
         routeDeps: {
           quizRepo: IQuizRepository;
           questionService: StubQuestionService;
+          quizCompletionService: IQuizCompletionService;
           clock: Clock;
         },
         context
@@ -103,6 +122,7 @@ export function submitAnswerRoute(clock: Clock) {
           userIdVO,
           routeDeps.quizRepo,
           routeDeps.questionService,
+          routeDeps.quizCompletionService,
           routeDeps.clock
         );
       }
@@ -112,6 +132,7 @@ export function submitAnswerRoute(clock: Clock) {
     return route(c, {
       quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
+      quizCompletionService: quizCompletionService,
       clock: clock,
     });
   });
