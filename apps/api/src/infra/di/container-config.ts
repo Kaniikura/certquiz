@@ -133,7 +133,7 @@ function configureTestContainer(container: DIContainer): void {
         const clock = await c.resolve(CLOCK_TOKEN);
         return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
       },
-      { singleton: false } // New instance per test for isolation
+      { singleton: true } // Singleton instance for improved test performance
     );
   });
 }
