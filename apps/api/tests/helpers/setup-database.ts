@@ -18,7 +18,9 @@ import { createTestDatabase } from './database';
  *
  * @returns Object with getDatabaseUrl function to retrieve the test database URL
  */
-export function setupTestDatabase() {
+export function setupTestDatabase(): {
+  getDatabaseUrl: () => string;
+} {
   let dbUrl: string;
   let cleanup: () => Promise<void>;
 
