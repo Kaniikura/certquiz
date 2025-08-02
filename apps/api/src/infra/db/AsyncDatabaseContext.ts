@@ -187,9 +187,7 @@ export class AsyncDatabaseContext implements IDatabaseContext {
 
         return result;
       } catch (error) {
-        this.logger.error('Unit of Work transaction failed, rolling back', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        this.logger.error('Unit of Work transaction failed, rolling back', { error });
         throw error;
       }
     });

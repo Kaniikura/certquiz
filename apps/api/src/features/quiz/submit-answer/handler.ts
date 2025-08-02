@@ -154,6 +154,18 @@ async function persistSessionChanges(
 }
 
 /**
+ * Internal response type that includes metadata for logging
+ */
+interface SubmitAnswerInternalResponse extends SubmitAnswerResponse {
+  _metadata?: {
+    completionError?: {
+      message: string;
+      code?: string;
+    };
+  };
+}
+
+/**
  * Build response with session state and progress
  */
 async function buildSubmitAnswerResponse(
@@ -163,12 +175,14 @@ async function buildSubmitAnswerResponse(
   userId: UserId,
   quizCompletionService: IQuizCompletionService,
   clock: Clock
-): Promise<Result<SubmitAnswerResponse>> {
+): Promise<Result<SubmitAnswerInternalResponse>> {
   // 8. Determine if auto-completed
   const wasAutoCompleted = checkAutoCompletion(session);
 
   // 9. If auto-completed, call completion service for atomic progress update
   let progressUpdate: SubmitAnswerResponse['progressUpdate'];
+  let completionError: { message: string; code?: string } | undefined;
+
   if (wasAutoCompleted) {
     const completionResult = await quizCompletionService.completeQuizWithProgressUpdate(
       session.id,
@@ -181,9 +195,15 @@ async function buildSubmitAnswerResponse(
         newLevel: completionResult.data.progressUpdate.newLevel,
         experienceGained: completionResult.data.progressUpdate.experienceGained,
       };
+    } else {
+      // Capture error details for logging at route level
+      completionError = {
+        message: completionResult.error.message,
+        code: completionResult.error.name,
+      };
+      // Continue without progress update - quiz state is already set to Completed
+      // The error will be included in the response metadata for logging
     }
-    // If completion service fails, we continue without progress update
-    // The quiz state is already correctly set to Completed by the domain logic
   }
 
   // 10. Calculate current question index (position of this question in the ordered list)
@@ -198,7 +218,7 @@ async function buildSubmitAnswerResponse(
   }
 
   // 11. Build response with optional progress update
-  const response: SubmitAnswerResponse = {
+  const response: SubmitAnswerInternalResponse = {
     sessionId: session.id,
     questionId: questionId,
     selectedOptionIds: selectedOptionIds,
@@ -210,6 +230,11 @@ async function buildSubmitAnswerResponse(
     questionsAnswered: session.getAnsweredQuestionCount(),
     progressUpdate,
   };
+
+  // Include metadata if there was a completion error
+  if (completionError) {
+    response._metadata = { completionError };
+  }
 
   return Result.ok(response);
 }
@@ -227,7 +252,7 @@ export async function submitAnswerHandler(
   questionService: IQuestionService,
   quizCompletionService: IQuizCompletionService,
   clock: Clock
-): Promise<Result<SubmitAnswerResponse>> {
+): Promise<Result<SubmitAnswerInternalResponse>> {
   try {
     // Steps 1-2: Validate and convert request
     const requestResult = validateAndConvertRequest(input);

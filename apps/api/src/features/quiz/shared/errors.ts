@@ -22,6 +22,7 @@ export enum QuizErrorCode {
 
   // Completion errors
   INCOMPLETE_QUIZ = 'INCOMPLETE_QUIZ',
+  QUIZ_NOT_COMPLETED = 'QUIZ_NOT_COMPLETED',
 
   // Configuration errors
   INVALID_QUESTION_COUNT = 'INVALID_QUESTION_COUNT',
@@ -73,6 +74,16 @@ export class IncompleteQuizError extends QuizDomainError {
     super(
       `Cannot complete quiz with ${unansweredCount} unanswered questions`,
       QuizErrorCode.INCOMPLETE_QUIZ
+    );
+  }
+}
+
+export class QuizNotCompletedError extends QuizDomainError {
+  constructor(sessionId: string, currentState: string) {
+    super(
+      `Quiz session ${sessionId} must be in COMPLETED state but is currently ${currentState}. ` +
+        'Please ensure all questions are answered and the quiz is finished before requesting completion.',
+      QuizErrorCode.QUIZ_NOT_COMPLETED
     );
   }
 }

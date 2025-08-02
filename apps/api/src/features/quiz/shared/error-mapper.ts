@@ -165,7 +165,6 @@ const completeQuizErrorMappings: ErrorMapping[] = [
   { errorName: 'AuthorizationError', status: 403, code: 'UNAUTHORIZED' },
   { errorName: 'UserNotFoundError', status: 404, code: 'USER_NOT_FOUND' },
   { errorName: 'QuizNotCompletedError', status: 409, code: 'QUIZ_NOT_COMPLETED' },
-  { errorName: 'UnauthorizedAccessError', status: 403, code: 'UNAUTHORIZED' },
 ];
 
 export const mapCompleteQuizError = createErrorMapper(completeQuizErrorMappings);

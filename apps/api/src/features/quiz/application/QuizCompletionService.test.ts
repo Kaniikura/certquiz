@@ -299,7 +299,10 @@ describe('QuizCompletionService', () => {
       expect(result.success).toBe(false);
       if (result.success) throw new Error('Expected failure');
 
-      expect(result.error.message).toBe('Quiz session is not in completed state');
+      expect(result.error.message).toContain(
+        'must be in COMPLETED state but is currently IN_PROGRESS'
+      );
+      expect(result.error.message).toContain('Please ensure all questions are answered');
 
       // Verify no further operations were attempted
       expect(mockUserRepo.findById).not.toHaveBeenCalled();

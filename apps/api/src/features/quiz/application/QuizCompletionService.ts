@@ -16,7 +16,7 @@ import type { QuizSessionId } from '../domain/value-objects/Ids';
 import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { QuizState } from '../domain/value-objects/QuizState';
 import { buildAnswerResults, calculateScoreSummary } from '../get-results/scoring-utils';
-import { SessionNotFoundError } from '../shared/errors';
+import { QuizNotCompletedError, SessionNotFoundError } from '../shared/errors';
 
 /**
  * Result of quiz completion operation
@@ -95,7 +95,7 @@ export class QuizCompletionService implements IQuizCompletionService {
 
         // 4. Verify session is in completed state
         if (session.state !== QuizState.Completed) {
-          return Result.fail(new Error('Quiz session is not in completed state'));
+          return Result.fail(new QuizNotCompletedError(sessionId.toString(), session.state));
         }
 
         // 5. Load user and validate
