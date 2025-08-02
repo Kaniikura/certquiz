@@ -88,7 +88,7 @@ describe('DIContainer', () => {
     it('should throw error when resolving unregistered service', async () => {
       // Act & Assert
       await expect(container.resolve(LOGGER_TOKEN)).rejects.toThrow(
-        'Service not registered: Symbol(LOGGER)'
+        'Service not registered: Symbol(LOGGER). Make sure to register the service and configure the container for the correct environment (none set).'
       );
     });
 

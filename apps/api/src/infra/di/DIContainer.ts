@@ -63,7 +63,7 @@ export class DIContainer {
 
     if (!registration) {
       throw new Error(
-        `Service not registered: ${token.toString()}. Did you forget to register it or configure the environment?`
+        `Service not registered: ${token.toString()}. Make sure to register the service and configure the container for the correct environment (${this.currentEnvironment || 'none set'}).`
       );
     }
 
