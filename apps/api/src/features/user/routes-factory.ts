@@ -10,7 +10,6 @@ import { SystemClock } from '@api/shared/clock';
 import { Hono } from 'hono';
 import { getProfileRoute } from './get-profile/route';
 import { registerRoute } from './register/route';
-import { updateProgressRoute } from './update-progress/route';
 
 /**
  * Create user routes with dependency injection
@@ -47,7 +46,6 @@ export function createUserRoutes(_databaseContext: IDatabaseContext): Hono<{
   publicRoutes.route('/', registerRoute(clock));
 
   // Mount protected routes (authentication required)
-  protectedRoutes.route('/', updateProgressRoute(clock));
   protectedRoutes.route('/', getProfileRoute(clock));
 
   // Mount both groups to userRoutes

@@ -38,4 +38,15 @@ export interface SubmitAnswerResponse {
   totalQuestions: number;
   /** Number of questions answered so far */
   questionsAnswered: number;
+  /** Progress update information (only present when auto-completed) */
+  progressUpdate?: {
+    /** Final score percentage (0-100) */
+    finalScore: number;
+    /** User's level before quiz completion */
+    previousLevel: number;
+    /** User's level after quiz completion */
+    newLevel: number;
+    /** Experience points gained from this quiz */
+    experienceGained: number;
+  };
 }

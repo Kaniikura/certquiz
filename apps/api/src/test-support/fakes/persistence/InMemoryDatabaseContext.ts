@@ -3,7 +3,7 @@
  *
  * Test implementation of IDatabaseContext that uses in-memory repositories
  * for isolated testing without database dependencies. Provides the same
- * unified interface as DrizzleDatabaseContext but with in-memory storage.
+ * unified interface as AsyncDatabaseContext but with in-memory storage.
  *
  * Key benefits for testing:
  * - No database setup required
@@ -127,7 +127,7 @@ class InMemoryTransactionContext implements ITransactionContext {
 /**
  * In-Memory Database Context implementation for testing
  *
- * Provides the same unified database access interface as DrizzleDatabaseContext
+ * Provides the same unified database access interface as AsyncDatabaseContext
  * but uses in-memory repositories for fast, isolated testing. Data persists
  * across operations within the same context instance to support integration
  * testing scenarios.

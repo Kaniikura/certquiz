@@ -15,6 +15,7 @@ import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
+import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
 import { QuizDependencyProvider } from '../shared/dependencies';
@@ -27,7 +28,7 @@ import { submitAnswerSchema } from './validation';
 /**
  * Create submit answer route
  */
-export function submitAnswerRoute(clock: Clock) {
+export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizCompletionService) {
   const deps = new QuizDependencyProvider();
   const questionService = deps.submitAnswerQuestionService;
 
@@ -40,6 +41,7 @@ export function submitAnswerRoute(clock: Clock) {
       {
         quizRepo: IQuizRepository;
         questionService: StubQuestionService;
+        quizCompletionService: IQuizCompletionService;
         clock: Clock;
       },
       { user: AuthUser } & LoggerVariables & DatabaseContextVariables
@@ -81,6 +83,7 @@ export function submitAnswerRoute(clock: Clock) {
         routeDeps: {
           quizRepo: IQuizRepository;
           questionService: StubQuestionService;
+          quizCompletionService: IQuizCompletionService;
           clock: Clock;
         },
         context
@@ -103,6 +106,7 @@ export function submitAnswerRoute(clock: Clock) {
           userIdVO,
           routeDeps.quizRepo,
           routeDeps.questionService,
+          routeDeps.quizCompletionService,
           routeDeps.clock
         );
       }
@@ -112,6 +116,7 @@ export function submitAnswerRoute(clock: Clock) {
     return route(c, {
       quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
+      quizCompletionService: quizCompletionService,
       clock: clock,
     });
   });

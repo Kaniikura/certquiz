@@ -7,6 +7,7 @@ import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { OptionId, QuestionId, type QuizSessionId, type UserId } from '../domain/value-objects/Ids';
@@ -155,16 +156,37 @@ async function persistSessionChanges(
 /**
  * Build response with session state and progress
  */
-function buildSubmitAnswerResponse(
+async function buildSubmitAnswerResponse(
   session: QuizSession,
   questionId: QuestionId,
   selectedOptionIds: OptionId[],
+  userId: UserId,
+  quizCompletionService: IQuizCompletionService,
   clock: Clock
-): Result<SubmitAnswerResponse> {
+): Promise<Result<SubmitAnswerResponse>> {
   // 8. Determine if auto-completed
   const wasAutoCompleted = checkAutoCompletion(session);
 
-  // 9. Calculate current question index (position of this question in the ordered list)
+  // 9. If auto-completed, call completion service for atomic progress update
+  let progressUpdate: SubmitAnswerResponse['progressUpdate'];
+  if (wasAutoCompleted) {
+    const completionResult = await quizCompletionService.completeQuizWithProgressUpdate(
+      session.id,
+      userId
+    );
+    if (completionResult.success) {
+      progressUpdate = {
+        finalScore: completionResult.data.finalScore,
+        previousLevel: completionResult.data.progressUpdate.previousLevel,
+        newLevel: completionResult.data.progressUpdate.newLevel,
+        experienceGained: completionResult.data.progressUpdate.experienceGained,
+      };
+    }
+    // If completion service fails, we continue without progress update
+    // The quiz state is already correctly set to Completed by the domain logic
+  }
+
+  // 10. Calculate current question index (position of this question in the ordered list)
   const questionIds = session.getQuestionIds();
   const currentQuestionIndex = questionIds.findIndex((qId) => QuestionId.equals(qId, questionId));
 
@@ -175,7 +197,7 @@ function buildSubmitAnswerResponse(
     );
   }
 
-  // 10. Build response
+  // 11. Build response with optional progress update
   const response: SubmitAnswerResponse = {
     sessionId: session.id,
     questionId: questionId,
@@ -186,6 +208,7 @@ function buildSubmitAnswerResponse(
     currentQuestionIndex: currentQuestionIndex,
     totalQuestions: session.config.questionCount,
     questionsAnswered: session.getAnsweredQuestionCount(),
+    progressUpdate,
   };
 
   return Result.ok(response);
@@ -194,6 +217,7 @@ function buildSubmitAnswerResponse(
 /**
  * Submit answer use case handler
  * Submits an answer to a quiz question with domain validation and business rules
+ * Includes atomic user progress updates when quiz is auto-completed
  */
 export async function submitAnswerHandler(
   input: unknown,
@@ -201,6 +225,7 @@ export async function submitAnswerHandler(
   userId: UserId,
   quizRepository: IQuizRepository,
   questionService: IQuestionService,
+  quizCompletionService: IQuizCompletionService,
   clock: Clock
 ): Promise<Result<SubmitAnswerResponse>> {
   try {
@@ -236,8 +261,15 @@ export async function submitAnswerHandler(
       return Result.fail(persistResult.error);
     }
 
-    // Steps 8-10: Build response
-    const responseResult = buildSubmitAnswerResponse(session, questionId, selectedOptionIds, clock);
+    // Steps 8-11: Build response with optional progress update
+    const responseResult = await buildSubmitAnswerResponse(
+      session,
+      questionId,
+      selectedOptionIds,
+      userId,
+      quizCompletionService,
+      clock
+    );
     if (!responseResult.success) {
       return Result.fail(responseResult.error);
     }

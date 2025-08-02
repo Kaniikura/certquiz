@@ -146,6 +146,16 @@ export class QuestionNotInQuizError extends QuizDomainError {
   }
 }
 
+/**
+ * Error thrown when a quiz session is not found
+ */
+export class SessionNotFoundError extends Error {
+  constructor(sessionId: string) {
+    super(`Quiz session not found: ${sessionId}`);
+    this.name = 'SessionNotFoundError';
+  }
+}
+
 // Infrastructure errors
 export class OptimisticLockError extends Error {
   constructor(message: string) {

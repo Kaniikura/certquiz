@@ -9,6 +9,7 @@ import { InMemoryDatabaseContext } from '@/test-support/fakes';
 import type { AppDependencies } from './app-factory';
 import { buildApp, buildAppWithContainer } from './app-factory';
 import type { IPremiumAccessService } from './features/question/domain';
+import type { IQuizCompletionService } from './features/quiz/application/QuizCompletionService';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from './infra/auth/AuthProvider';
 import { createConfiguredContainer } from './infra/di/container-config';
 import { LOGGER_TOKEN } from './infra/di/tokens';
@@ -93,6 +94,18 @@ describe('App Factory', () => {
               refreshToken: 'new-mock-refresh',
             } satisfies AuthToken),
         } satisfies IAuthProvider,
+        quizCompletionService: {
+          completeQuizWithProgressUpdate: async (_sessionId, _userId) =>
+            Result.ok({
+              sessionId: _sessionId,
+              finalScore: 85,
+              progressUpdate: {
+                previousLevel: 1,
+                newLevel: 2,
+                experienceGained: 100,
+              },
+            }),
+        } satisfies IQuizCompletionService,
         databaseContext: new InMemoryDatabaseContext(),
       };
 
