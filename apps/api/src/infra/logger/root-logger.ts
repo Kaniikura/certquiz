@@ -26,22 +26,10 @@ export function getRootLogger(): Logger {
   if (rootLogger) return rootLogger;
 
   const isTest = process.env.NODE_ENV === 'test';
-  const isDev = process.env.NODE_ENV === 'development';
 
   rootLogger = pino({
     level: isTest ? 'silent' : (process.env.LOG_LEVEL ?? 'info'),
     base: undefined, // Don't add pid/hostname; we set our own context
-    transport:
-      isDev && !isTest
-        ? {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              ignore: 'pid,hostname',
-              translateTime: 'HH:MM:ss.l',
-            },
-          }
-        : undefined,
     // Automatically attach correlationId from AsyncLocalStorage
     formatters: {
       log: (obj) => {

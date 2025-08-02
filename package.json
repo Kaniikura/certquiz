@@ -1,15 +1,20 @@
 {
   "name": "cert-quiz",
-  "private": true,
-  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.1",
+    "@types/bun": "latest",
+    "@types/uuid": "^10.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "chalk": "^5.4.1",
+    "concurrently": "^8.2.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.4"
+  },
   "engines": {
     "node": ">=18.0.0",
     "bun": ">=1.1.0"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "private": true,
   "scripts": {
     "dev": "concurrently \"bun run dev:api\" \"bun run dev:web\"",
     "dev:api": "bun run --filter @certquiz/api dev",
@@ -59,19 +64,9 @@
     "codemod:barrel-remove": "bun run ./scripts/codemods/remove-barrel-files.ts",
     "codemod:validate-imports": "bun run ./scripts/codemods/validate-imports.ts"
   },
-  "devDependencies": {
-    "@biomejs/biome": "^2.1.1",
-    "@types/bun": "latest",
-    "@types/uuid": "^10.0.0",
-    "@vitest/coverage-v8": "^3.2.4",
-    "chalk": "^5.4.1",
-    "concurrently": "^8.2.0",
-    "dotenv": "^17.0.0",
-    "typescript": "^5.3.0",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "es-toolkit": "^1.39.5"
-  }
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

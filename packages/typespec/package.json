@@ -9,9 +9,6 @@
     "format": "tsp format **/*.tsp"
   },
   "devDependencies": {
-    "@typespec/compiler": "latest",
-    "@typespec/openapi3": "latest",
-    "@typespec/http": "latest",
-    "@typespec/rest": "latest"
+    "@typespec/compiler": "latest"
   }
 }
