@@ -1,7 +1,7 @@
 import { setupTestDatabase } from '@api/testing/domain';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { TestApp } from '../../../tests/setup/test-app-factory';
-import { createIntegrationTestApp } from '../../../tests/setup/test-app-factory';
+import type { TestApp } from '../../../setup/test-app-factory';
+import { createIntegrationTestApp } from '../../../setup/test-app-factory';
 
 describe('Health check endpoints', () => {
   // Setup isolated test database
