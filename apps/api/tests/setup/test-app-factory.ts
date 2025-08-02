@@ -19,7 +19,9 @@ export interface TestApp {
   request: Hono['request'];
   /** Clean up test data and resources */
   cleanup?: () => Promise<void>;
-  /** Get the underlying unit of work provider for assertions (deprecated) */
+  /**
+   * @deprecated Get the underlying unit of work provider for assertions
+   */
   getUnitOfWorkProvider?: () => Promise<IUnitOfWorkProvider>;
   /** Get the database context for assertions */
   getDatabaseContext?: () => Promise<IDatabaseContext>;

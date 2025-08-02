@@ -34,6 +34,11 @@ import {
 } from './tokens';
 
 /**
+ * Default maximum connections for database pool
+ */
+const DEFAULT_DB_POOL_MAX = 20;
+
+/**
  * Configure container for test environment
  * Uses in-memory implementations and stubs for fast testing
  * @internal
@@ -71,7 +76,10 @@ function configureTestContainer(container: DIContainer): void {
       async () => {
         const logger = await c.resolve(LOGGER_TOKEN);
         const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        // Create context with auto-initialization disabled for manual control
+        // Create context with auto-initialization disabled for manual control.
+        // autoInitialize is set to false in tests to allow explicit, manual initialization of the database context.
+        // This ensures that each test can control when and how initialization occurs, improving test isolation and reliability.
+        // In production or other environments, autoInitialize should be enabled to allow the context to set up automatically.
         const context = new AsyncDatabaseContext(logger, databaseProvider, {
           autoInitialize: false,
         });
@@ -195,7 +203,7 @@ function configureProductionContainer(container: DIContainer): void {
           enableLogging: false,
           environment: 'production',
           defaultPoolConfig: {
-            max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+            max: parseInt(process.env.DB_POOL_MAX || DEFAULT_DB_POOL_MAX.toString(), 10),
           },
         };
         return new ProductionDatabaseProvider(logger, config);
