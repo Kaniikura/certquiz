@@ -175,25 +175,13 @@
         "apps/api/scripts/**/*.js",
         "apps/api/tests/containers/index.ts",
         "apps/api/tests/integration/migrations.test.ts",
-        "apps/api/tests/helpers/db-*.ts"
+        "apps/api/tests/helpers/db-*.ts",
+        "scripts/codemods/**/*.ts"
       ],
       "linter": {
         "rules": {
           "suspicious": {
             "noConsole": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["scripts/codemods/**/*.ts"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noConsole": "off"
-          },
-          "complexity": {
-            "noExcessiveCognitiveComplexity": "off"
           }
         }
       }

@@ -128,17 +128,21 @@ async function hasImporters(barrelPath: string): Promise<boolean> {
 }
 
 /**
- * Main function
+ * Checks if a file should be excluded from barrel removal
  */
-async function main() {
-  console.log(chalk.bold('🗑️  Barrel Export File Removal\n'));
+function shouldExcludeFile(indexFile: string): boolean {
+  return (
+    indexFile === 'apps/api/src/index.ts' || // Main entry point
+    indexFile === 'apps/web/src/app.html' || // Wrong pattern
+    indexFile.includes('node_modules') ||
+    indexFile.includes('.svelte-kit')
+  );
+}
 
-  const dryRun = process.argv.includes('--dry-run');
-  if (dryRun) {
-    console.log(chalk.yellow('🔍 Running in dry-run mode - no files will be deleted\n'));
-  }
-
-  // Find all index.ts files
+/**
+ * Finds and analyzes barrel files
+ */
+async function findBarrelFiles(): Promise<BarrelFileInfo[]> {
   console.log('📊 Finding barrel export files...');
   const indexFiles = await glob('**/index.ts', {
     cwd: process.cwd(),
@@ -147,17 +151,10 @@ async function main() {
 
   const barrelFiles: BarrelFileInfo[] = [];
 
-  // Analyze each index.ts file
   for (const indexFile of indexFiles) {
     const fullPath = resolve(process.cwd(), indexFile);
 
-    // Special cases - never remove these
-    if (
-      indexFile === 'apps/api/src/index.ts' || // Main entry point
-      indexFile === 'apps/web/src/app.html' || // Wrong pattern
-      indexFile.includes('node_modules') ||
-      indexFile.includes('.svelte-kit')
-    ) {
+    if (shouldExcludeFile(indexFile)) {
       continue;
     }
 
@@ -172,8 +169,16 @@ async function main() {
   }
 
   console.log(`\n📦 Found ${barrelFiles.length} barrel export files\n`);
+  return barrelFiles;
+}
 
-  // Check which files can be safely removed
+/**
+ * Categorizes barrel files by safety
+ */
+async function categorizeBarrelFiles(barrelFiles: BarrelFileInfo[]): Promise<{
+  safeToRemove: BarrelFileInfo[];
+  stillHasImporters: BarrelFileInfo[];
+}> {
   const safeToRemove: BarrelFileInfo[] = [];
   const stillHasImporters: BarrelFileInfo[] = [];
 
@@ -187,7 +192,13 @@ async function main() {
     }
   }
 
-  // Print results
+  return { safeToRemove, stillHasImporters };
+}
+
+/**
+ * Prints categorization results
+ */
+function printResults(safeToRemove: BarrelFileInfo[], stillHasImporters: BarrelFileInfo[]): void {
   if (safeToRemove.length > 0) {
     console.log(chalk.green('\n✅ Safe to remove:'));
     for (const barrel of safeToRemove) {
@@ -201,24 +212,48 @@ async function main() {
       console.log(`   ${relative(process.cwd(), barrel.path)} (${barrel.exportCount} exports)`);
     }
   }
+}
 
-  // Remove files if not dry-run
-  if (!dryRun && safeToRemove.length > 0) {
-    console.log(chalk.yellow('\n🗑️  Removing barrel files...'));
-    let removedCount = 0;
+/**
+ * Removes barrel files
+ */
+function removeBarrelFiles(safeToRemove: BarrelFileInfo[]): number {
+  console.log(chalk.yellow('\n🗑️  Removing barrel files...'));
+  let removedCount = 0;
 
-    for (const barrel of safeToRemove) {
-      try {
-        rmSync(barrel.path);
-        console.log(chalk.green(`   ✓ Removed ${relative(process.cwd(), barrel.path)}`));
-        removedCount++;
-      } catch (error) {
-        console.log(
-          chalk.red(`   ✗ Failed to remove ${relative(process.cwd(), barrel.path)}: ${error}`)
-        );
-      }
+  for (const barrel of safeToRemove) {
+    try {
+      rmSync(barrel.path);
+      console.log(chalk.green(`   ✓ Removed ${relative(process.cwd(), barrel.path)}`));
+      removedCount++;
+    } catch (error) {
+      console.log(
+        chalk.red(`   ✗ Failed to remove ${relative(process.cwd(), barrel.path)}: ${error}`)
+      );
     }
+  }
 
+  return removedCount;
+}
+
+/**
+ * Main function
+ */
+async function main() {
+  console.log(chalk.bold('🗑️  Barrel Export File Removal\n'));
+
+  const dryRun = process.argv.includes('--dry-run');
+  if (dryRun) {
+    console.log(chalk.yellow('🔍 Running in dry-run mode - no files will be deleted\n'));
+  }
+
+  const barrelFiles = await findBarrelFiles();
+  const { safeToRemove, stillHasImporters } = await categorizeBarrelFiles(barrelFiles);
+
+  printResults(safeToRemove, stillHasImporters);
+
+  if (!dryRun && safeToRemove.length > 0) {
+    const removedCount = removeBarrelFiles(safeToRemove);
     console.log(chalk.bold(`\n✨ Removed ${removedCount} barrel export files!`));
   } else if (dryRun) {
     console.log(

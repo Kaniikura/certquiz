@@ -19,6 +19,29 @@ interface ImportIssue {
 }
 
 /**
+ * Tries to resolve a path with various extensions or as an index.ts
+ */
+function tryResolveWithExtensions(basePath: string): string | null {
+  const extensions = ['.ts', '.tsx', '.js', '.jsx'];
+
+  // Try various extensions
+  for (const ext of extensions) {
+    const pathWithExt = basePath + ext;
+    if (existsSync(pathWithExt)) {
+      return pathWithExt;
+    }
+  }
+
+  // Try as directory with index.ts
+  const indexPath = join(basePath, 'index.ts');
+  if (existsSync(indexPath)) {
+    return indexPath;
+  }
+
+  return null;
+}
+
+/**
  * Resolves a module path from an import statement
  */
 function resolveImportPath(fromFile: string, importPath: string): string | null {
@@ -26,44 +49,14 @@ function resolveImportPath(fromFile: string, importPath: string): string | null 
   if (importPath.startsWith('@api/')) {
     const apiPath = importPath.replace('@api/', 'apps/api/src/');
     const fullPath = resolve(process.cwd(), apiPath);
-
-    // Try various extensions
-    const extensions = ['.ts', '.tsx', '.js', '.jsx'];
-    for (const ext of extensions) {
-      if (existsSync(fullPath + ext)) {
-        return fullPath + ext;
-      }
-    }
-
-    // Try as directory with index.ts
-    const indexPath = join(fullPath, 'index.ts');
-    if (existsSync(indexPath)) {
-      return indexPath;
-    }
-
-    return null;
+    return tryResolveWithExtensions(fullPath);
   }
 
   // Handle relative imports
   if (importPath.startsWith('.')) {
     const fromDir = dirname(fromFile);
     const resolvedPath = resolve(fromDir, importPath);
-
-    // Try various extensions
-    const extensions = ['.ts', '.tsx', '.js', '.jsx'];
-    for (const ext of extensions) {
-      if (existsSync(resolvedPath + ext)) {
-        return resolvedPath + ext;
-      }
-    }
-
-    // Try as directory with index.ts
-    const indexPath = join(resolvedPath, 'index.ts');
-    if (existsSync(indexPath)) {
-      return indexPath;
-    }
-
-    return null;
+    return tryResolveWithExtensions(resolvedPath);
   }
 
   // For node_modules imports, we assume they're valid

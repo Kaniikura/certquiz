@@ -74,6 +74,38 @@ function analyzeBarrelFile(indexPath: string): Map<string, string> {
 }
 
 /**
+ * Processes named export declarations
+ */
+function processNamedExports(node: ts.Node, exports: string[]): void {
+  if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
+    node.exportClause.elements.forEach((element) => {
+      exports.push(element.name.text);
+    });
+  }
+}
+
+/**
+ * Processes exported declarations (const/function/class)
+ */
+function processExportedDeclarations(node: ts.Node, exports: string[]): void {
+  if (!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+    return;
+  }
+
+  if (ts.isVariableStatement(node)) {
+    node.declarationList.declarations.forEach((decl) => {
+      if (ts.isIdentifier(decl.name)) {
+        exports.push(decl.name.text);
+      }
+    });
+  } else if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) {
+    if (node.name) {
+      exports.push(node.name.text);
+    }
+  }
+}
+
+/**
  * Gets all named exports from a TypeScript file
  */
 function getExportsFromFile(filePath: string): string[] {
@@ -82,28 +114,8 @@ function getExportsFromFile(filePath: string): string[] {
   const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
 
   function visit(node: ts.Node) {
-    // Named exports
-    if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
-      node.exportClause.elements.forEach((element) => {
-        exports.push(element.name.text);
-      });
-    }
-
-    // Export const/function/class
-    if (node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
-      if (ts.isVariableStatement(node)) {
-        node.declarationList.declarations.forEach((decl) => {
-          if (ts.isIdentifier(decl.name)) {
-            exports.push(decl.name.text);
-          }
-        });
-      } else if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) {
-        if (node.name) {
-          exports.push(node.name.text);
-        }
-      }
-    }
-
+    processNamedExports(node, exports);
+    processExportedDeclarations(node, exports);
     ts.forEachChild(node, visit);
   }
 
