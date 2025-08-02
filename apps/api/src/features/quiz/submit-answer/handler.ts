@@ -154,6 +154,56 @@ async function persistSessionChanges(
 }
 
 /**
+ * Handle auto-completion logic with progress updates
+ */
+async function handleAutoCompletion(
+  session: QuizSession,
+  userId: UserId,
+  quizCompletionService: IQuizCompletionService
+): Promise<AutoCompletionResult> {
+  // Check if quiz was auto-completed
+  const wasAutoCompleted = checkAutoCompletion(session);
+
+  if (!wasAutoCompleted) {
+    return {};
+  }
+
+  // Call completion service for atomic progress update
+  const completionResult = await quizCompletionService.completeQuizWithProgressUpdate(
+    session.id,
+    userId
+  );
+
+  if (completionResult.success) {
+    // Build progress update on success
+    const progressUpdate: SubmitAnswerResponse['progressUpdate'] = {
+      finalScore: completionResult.data.finalScore,
+      previousLevel: completionResult.data.progressUpdate.previousLevel,
+      newLevel: completionResult.data.progressUpdate.newLevel,
+      experienceGained: completionResult.data.progressUpdate.experienceGained,
+    };
+    return { progressUpdate };
+  } else {
+    // Capture error details for logging at route level
+    const completionError = {
+      message: completionResult.error.message,
+      code: completionResult.error.name,
+    };
+    // Continue without progress update - quiz state is already set to Completed
+    // The error will be included in the response metadata for logging
+    return { completionError };
+  }
+}
+
+/**
+ * Result of auto-completion handling
+ */
+interface AutoCompletionResult {
+  progressUpdate?: SubmitAnswerResponse['progressUpdate'];
+  completionError?: { message: string; code?: string };
+}
+
+/**
  * Internal response type that includes metadata for logging
  */
 interface SubmitAnswerInternalResponse extends SubmitAnswerResponse {
@@ -176,35 +226,15 @@ async function buildSubmitAnswerResponse(
   quizCompletionService: IQuizCompletionService,
   clock: Clock
 ): Promise<Result<SubmitAnswerInternalResponse>> {
-  // 8. Determine if auto-completed
+  // 8. Handle auto-completion with progress updates
+  const { progressUpdate, completionError } = await handleAutoCompletion(
+    session,
+    userId,
+    quizCompletionService
+  );
+
+  // 9. Determine if quiz was auto-completed for response
   const wasAutoCompleted = checkAutoCompletion(session);
-
-  // 9. If auto-completed, call completion service for atomic progress update
-  let progressUpdate: SubmitAnswerResponse['progressUpdate'];
-  let completionError: { message: string; code?: string } | undefined;
-
-  if (wasAutoCompleted) {
-    const completionResult = await quizCompletionService.completeQuizWithProgressUpdate(
-      session.id,
-      userId
-    );
-    if (completionResult.success) {
-      progressUpdate = {
-        finalScore: completionResult.data.finalScore,
-        previousLevel: completionResult.data.progressUpdate.previousLevel,
-        newLevel: completionResult.data.progressUpdate.newLevel,
-        experienceGained: completionResult.data.progressUpdate.experienceGained,
-      };
-    } else {
-      // Capture error details for logging at route level
-      completionError = {
-        message: completionResult.error.message,
-        code: completionResult.error.name,
-      };
-      // Continue without progress update - quiz state is already set to Completed
-      // The error will be included in the response metadata for logging
-    }
-  }
 
   // 10. Calculate current question index (position of this question in the ordered list)
   const questionIds = session.getQuestionIds();
