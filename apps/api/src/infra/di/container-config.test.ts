@@ -1,9 +1,4 @@
-/**
- * Async container configuration tests
- * @fileoverview Tests for environment-specific async DI container configurations
- */
-
-import type { IPremiumAccessService } from '@api/features/question/domain';
+import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import { describe, expect, it } from 'vitest';
 import { configureAllEnvironments, createConfiguredContainer } from './container-config';
 import { DIContainer } from './DIContainer';

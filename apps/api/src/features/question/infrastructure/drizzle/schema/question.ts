@@ -1,6 +1,4 @@
-// Question bounded context schema - Versioned catalog
-
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import { sql } from 'drizzle-orm';
 import {
   boolean,

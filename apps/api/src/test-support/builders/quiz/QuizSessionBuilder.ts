@@ -1,11 +1,8 @@
-/**
- * Test builder for QuizSession aggregate
- * @fileoverview Builder pattern for creating test instances
- */
-
-import type { QuestionId, UserId } from '@api/features/quiz/domain';
-import { QuizConfig, QuizSession } from '@api/features/quiz/domain';
-import { TestClock, testIds } from '@api/test-support';
+import { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
+import type { QuestionId, UserId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuizConfig } from '@api/features/quiz/domain/value-objects/QuizConfig';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 
 interface QuizSessionBuilderProps {
   userId?: UserId;

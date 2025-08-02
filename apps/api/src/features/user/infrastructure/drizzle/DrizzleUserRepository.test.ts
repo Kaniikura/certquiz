@@ -4,8 +4,8 @@
  */
 
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TestClock } from '@/test-support';
 import { User } from '../../domain/entities/User';
 import { Email, UserId, UserRole } from '../../domain/value-objects';
 import * as postgresErrors from '../../shared/postgres-errors';

@@ -8,7 +8,7 @@ import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
-import { createAmbientRoute } from '@api/shared/route';
+import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IAuthUserRepository } from './domain/repositories/IAuthUserRepository';

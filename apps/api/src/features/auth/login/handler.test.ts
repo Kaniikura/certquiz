@@ -5,8 +5,8 @@
 
 import { FakeAuthProvider } from '@api/infra/auth/AuthProvider.fake';
 import { ValidationError } from '@api/shared/errors';
+import { unwrapOrFail } from '@api/test-support/helpers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { unwrapOrFail } from '@/test-support';
 import { User } from '../domain/entities/User';
 import {
   InvalidCredentialsError,

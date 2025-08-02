@@ -4,7 +4,7 @@
  */
 
 import type { Clock } from '@api/shared/clock';
-import { getErrorMessage } from '@api/shared/error';
+import { getErrorMessage } from '@api/shared/error/error-utils';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { QuizSession } from '../domain/aggregates/QuizSession';

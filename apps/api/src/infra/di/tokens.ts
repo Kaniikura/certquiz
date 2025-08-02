@@ -1,20 +1,15 @@
-/**
- * Service tokens for dependency injection
- * @fileoverview Defines all service tokens used throughout the application for type-safe DI
- */
-
-import type { IPremiumAccessService } from '@api/features/question/domain';
+import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import type { IQuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
 import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import type { IQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import type { Clock } from '@api/shared/clock';
-import type { IdGenerator } from '@api/shared/id-generator';
+import type { IdGenerator } from '@api/shared/id-generator/IdGenerator';
 import type { IAuthProvider } from '../auth/AuthProvider';
 import type { IDatabaseContext } from '../db/IDatabaseContext';
 import type { IDatabaseProvider } from '../db/IDatabaseProvider';
 import type { IUnitOfWorkProvider } from '../db/IUnitOfWorkProvider';
 import type { DB } from '../db/types';
-import type { Logger } from '../logger';
+import type { Logger } from '../logger/root-logger';
 import { createServiceToken } from './DIContainer';
 
 // Database Services

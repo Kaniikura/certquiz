@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory';
-import { getRootLogger, type Logger, runWithCorrelationId } from '../infra/logger';
+import { getRootLogger, type Logger, runWithCorrelationId } from '../infra/logger/root-logger';
 import type { RequestIdVariables } from './request-id';
 
 // Type for logger variables in context

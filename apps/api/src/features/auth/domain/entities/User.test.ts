@@ -4,7 +4,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import { unwrapOrFail } from '@api/test-support';
+import { unwrapOrFail } from '@api/test-support/helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { UserId } from '../value-objects/UserId';
 import { UserRole } from '../value-objects/UserRole';

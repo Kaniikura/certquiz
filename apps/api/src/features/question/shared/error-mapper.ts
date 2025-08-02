@@ -1,9 +1,4 @@
-/**
- * Shared error mapping utilities for question routes
- * @fileoverview Provides consistent error response mapping across all question endpoints
- */
-
-import { createErrorMapper } from '@api/shared/route';
+import { createErrorMapper } from '@api/shared/route/route-helpers';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**

@@ -1,4 +1,4 @@
-import type { Logger } from '@api/infra/logger';
+import type { Logger } from '@api/infra/logger/root-logger';
 import { createTestDatabase } from '@test/helpers/database';
 import postgres from 'postgres';
 import { PostgresSingleton } from '../../../tests/containers/postgres';

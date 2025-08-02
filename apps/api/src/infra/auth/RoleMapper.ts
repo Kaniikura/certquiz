@@ -1,5 +1,5 @@
-import { UserRole } from '@api/features/auth/domain';
-import { getRootLogger } from '@api/infra/logger';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { getRootLogger } from '@api/infra/logger/root-logger';
 
 /**
  * Maps external identity provider roles to domain UserRole values.

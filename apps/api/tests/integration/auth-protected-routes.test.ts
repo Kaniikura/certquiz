@@ -1,5 +1,5 @@
-import { setupTestDatabase } from '@test/helpers';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupTestDatabase } from '../helpers/setup-database';
 import type { TestApp } from '../setup/test-app-factory';
 import { createIntegrationTestApp } from '../setup/test-app-factory';
 

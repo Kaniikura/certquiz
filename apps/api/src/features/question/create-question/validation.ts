@@ -4,7 +4,8 @@
  */
 
 import { z } from 'zod';
-import { QUESTION_DIFFICULTY_VALUES, QuestionStatus } from '../domain';
+import { QuestionStatus } from '../domain/entities/Question';
+import { QUESTION_DIFFICULTY_VALUES } from '../domain/value-objects/QuestionDifficulty';
 
 /**
  * Available question types for creation

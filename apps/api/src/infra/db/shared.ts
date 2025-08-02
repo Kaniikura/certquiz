@@ -1,12 +1,4 @@
-/**
- * Shared database utilities
- * @fileoverview Common, stateless database utilities used by both production and test clients
- *
- * This module contains pure functions that can be safely reused across different database
- * configurations without side effects or environment-specific concerns.
- */
-
-import { sanitizeErrorForLogging } from '@api/shared/error';
+import { sanitizeErrorForLogging } from '@api/shared/error/error-utils';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { getRootLogger } from '../logger/root-logger';

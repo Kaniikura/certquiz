@@ -1,11 +1,9 @@
-/**
- * QuizSession aggregate unit tests
- * @fileoverview Pure unit tests for QuizSession business logic
- */
-
-import { TestClock, testIds, unwrapOrFail } from '@api/test-support';
+import { aQuestionReference } from '@api/test-support/builders/quiz/QuestionReferenceBuilder';
+import { aQuizSession } from '@api/test-support/builders/quiz/QuizSessionBuilder';
+import { unwrapOrFail } from '@api/test-support/helpers';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { aQuestionReference, aQuizSession } from '@/test-support/builders';
 import {
   DuplicateQuestionError,
   IncompleteQuizError,

@@ -1,4 +1,4 @@
-import { QuestionId } from '@api/features/quiz/domain';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { Result } from '@api/shared/result';
 import { Question, QuestionStatus, type QuestionType } from '../../domain/entities/Question';
 import type { QuestionSummary } from '../../domain/repositories/IQuestionRepository';

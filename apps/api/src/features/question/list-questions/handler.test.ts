@@ -1,10 +1,5 @@
-/**
- * List questions handler tests
- * @fileoverview Tests for list questions business logic including data quality logging
- */
-
-import { QuestionId } from '@api/features/quiz/domain';
-import type { LoggerPort } from '@api/shared/logger';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   IQuestionRepository,

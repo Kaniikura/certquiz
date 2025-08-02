@@ -1,9 +1,4 @@
-/**
- * Tests for QuestionReference value object
- * @fileoverview Tests for question reference with option validation
- */
-
-import { testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { OptionId, QuestionId } from './Ids';
 import { QuestionReference } from './QuestionReference';

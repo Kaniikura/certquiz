@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import {
   createDrizzleInstance,
@@ -142,5 +143,6 @@ if (typeof process !== 'undefined') {
   });
 }
 
-// Re-export types for external use
+// Re-export types and utilities for external use
 export type { DB } from './types';
+export { sql };

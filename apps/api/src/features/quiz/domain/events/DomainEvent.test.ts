@@ -1,9 +1,5 @@
-/**
- * Tests for Domain Event system
- * @fileoverview Tests for event sourcing, versioning, and reconstruction
- */
-
-import { type Mutable, testIds } from '@api/test-support';
+import type { Mutable } from '@api/test-support/types/Mutable';
+import { testIds } from '@api/test-support/utils/id-generators';
 import { describe, expect, it } from 'vitest';
 import type { QuizSessionId, UserId } from '../value-objects/Ids';
 import {

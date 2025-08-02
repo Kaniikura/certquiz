@@ -1,10 +1,4 @@
-/**
- * Quiz Domain Error Mapper
- *
- * Centralized error mapping for quiz-related routes to eliminate duplication
- */
-
-import { createErrorMapper } from '@api/shared/route';
+import { createErrorMapper } from '@api/shared/route/route-helpers';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**

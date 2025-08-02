@@ -1,24 +1,20 @@
-/**
- * In-Memory Auth User Repository for Testing
- * @fileoverview In-memory auth user repository that doesn't require database
- */
-
-import type { AuthUser } from '@api/features/auth';
-import type { Email, IAuthUserRepository } from '@api/features/auth/domain';
-import { UserId } from '@api/features/auth/domain';
+import type { User } from '@api/features/auth/domain/entities/User';
+import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
+import type { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 
 /**
  * In-memory auth user repository for testing
  * Provides full IUserRepository interface without database dependency
  */
 export class InMemoryAuthUserRepository implements IAuthUserRepository {
-  private users = new Map<string, AuthUser>();
+  private users = new Map<string, User>();
 
-  async findByEmail(email: Email): Promise<AuthUser | null> {
+  async findByEmail(email: Email): Promise<User | null> {
     return this.users.get(email.toString()) || null;
   }
 
-  async findById(id: UserId): Promise<AuthUser | null> {
+  async findById(id: UserId): Promise<User | null> {
     const idString = UserId.toString(id);
     for (const user of this.users.values()) {
       if (UserId.toString(user.id) === idString) {
@@ -28,7 +24,7 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async findByIdentityProviderId(identityProviderId: string): Promise<AuthUser | null> {
+  async findByIdentityProviderId(identityProviderId: string): Promise<User | null> {
     for (const user of this.users.values()) {
       if (user.identityProviderId === identityProviderId) {
         return user;
@@ -37,7 +33,7 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async findByUsername(username: string): Promise<AuthUser | null> {
+  async findByUsername(username: string): Promise<User | null> {
     for (const user of this.users.values()) {
       if (user.username === username) {
         return user;
@@ -46,7 +42,7 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     return null;
   }
 
-  async save(user: AuthUser): Promise<void> {
+  async save(user: User): Promise<void> {
     this.users.set(user.email.toString(), user);
   }
 
@@ -77,7 +73,7 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
   /**
    * Add a user directly for testing
    */
-  async addUser(user: AuthUser): Promise<void> {
+  async addUser(user: User): Promise<void> {
     await this.save(user);
   }
 
@@ -91,7 +87,7 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
   /**
    * Get all users for testing
    */
-  getAllUsers(): AuthUser[] {
+  getAllUsers(): User[] {
     return Array.from(this.users.values());
   }
 

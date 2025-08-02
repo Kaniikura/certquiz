@@ -1,6 +1,4 @@
-// Question bookmarks schema
-
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import { index, pgTable, primaryKey, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { question } from './question';
 

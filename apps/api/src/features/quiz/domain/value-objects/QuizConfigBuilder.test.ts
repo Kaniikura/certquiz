@@ -1,9 +1,4 @@
-/**
- * Test file for QuizConfigBuilder
- * @fileoverview Tests for the builder pattern with type safety
- */
-
-import { unwrapOrFail } from '@api/test-support';
+import { unwrapOrFail } from '@api/test-support/helpers';
 import { describe, expect, it } from 'vitest';
 import { aQuizConfig, QuizConfigBuilder } from './QuizConfigBuilder';
 

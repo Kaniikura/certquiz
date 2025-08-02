@@ -4,7 +4,8 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import { TestClock, testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { QuestionId, UserId } from '../domain/value-objects/Ids';

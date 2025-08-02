@@ -8,7 +8,7 @@ import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
-import { createAmbientRoute } from '@api/shared/route';
+import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';

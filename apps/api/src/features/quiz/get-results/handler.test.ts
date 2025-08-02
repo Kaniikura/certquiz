@@ -1,9 +1,5 @@
-/**
- * Get results handler tests
- * @fileoverview TDD tests for get results business logic
- */
-
-import { TestClock, testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { OptionId, QuestionId, QuizSessionId, UserId } from '../domain/value-objects/Ids';

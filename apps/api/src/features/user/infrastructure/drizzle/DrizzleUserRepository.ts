@@ -1,4 +1,4 @@
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';

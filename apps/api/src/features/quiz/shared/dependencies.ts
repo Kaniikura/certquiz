@@ -1,9 +1,4 @@
-/**
- * Dependency container for quiz feature
- * @fileoverview Centralized service instantiation and dependency injection
- */
-
-import { createDomainLogger } from '@api/infra/logger';
+import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
 import type { Clock } from '@api/shared/clock';
 import { SystemClock } from '@api/shared/clock';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';

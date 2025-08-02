@@ -4,7 +4,7 @@
  */
 
 import type { TransactionContext } from '@api/infra/unit-of-work';
-import type { LoggerPort } from '@api/shared/logger';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, lt } from 'drizzle-orm';
 import postgres from 'postgres';

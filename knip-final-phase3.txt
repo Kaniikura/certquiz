@@ -1,0 +1,106 @@
+Unused files (14)
+apps/api/src/test-support/builders/quiz/QuestionReferenceBuilder.ts         
+apps/api/src/test-support/builders/quiz/QuizSessionBuilder.ts               
+apps/api/src/test-support/fakes/persistence/InMemoryDatabaseContext.ts      
+apps/api/src/test-support/fakes/persistence/InMemoryUnitOfWork.ts           
+apps/api/src/test-support/fakes/repositories/InMemoryAuthUserRepository.ts  
+apps/api/src/test-support/fakes/repositories/InMemoryQuestionRepository.ts  
+apps/api/src/test-support/fakes/repositories/InMemoryQuizRepository.ts      
+apps/api/src/test-support/fakes/repositories/InMemoryUserRepository.ts      
+apps/api/src/test-support/fakes/services/FakePremiumAccessService.ts        
+apps/api/src/test-support/types/index.ts                                    
+apps/api/src/test-support/utils/index.ts                                    
+apps/api/src/test-support/utils/test-logger.ts                              
+packages/shared/src/constants/index.ts                                      
+packages/shared/src/utils/index.ts                                          
+Unused dependencies (6)
+@certquiz/shared   apps/api/package.json:32:6
+@certquiz/shared   apps/web/package.json:29:6
+bits-ui            apps/web/package.json:30:6
+clsx               apps/web/package.json:31:6
+tailwind-merge     apps/web/package.json:32:6
+tailwind-variants  apps/web/package.json:33:6
+Unused devDependencies (6)
+@testcontainers/postgresql  apps/api/package.json:42:6
+testcontainers              apps/api/package.json:47:6
+@sveltejs/adapter-node      apps/web/package.json:15:6
+tailwindcss                 apps/web/package.json:23:6
+autoprefixer                apps/web/package.json:24:6
+postcss                     apps/web/package.json:25:6
+Unlisted dependencies (16)
+nanoid             apps/api/src/app-factory.test.ts                                    
+@api/infra/logger  apps/api/src/middleware/logger.test.ts                              
+@test/helpers      apps/api/tests/integration/auth-protected-routes.test.ts            
+@test/helpers      apps/api/tests/integration/health-check-database.integration.test.ts
+@test/helpers      apps/api/tests/integration/http/app.integration.test.ts             
+@test/helpers      apps/api/tests/integration/question-routes.integration.test.ts      
+@test/helpers      apps/api/tests/integration/quiz-routes.integration.test.ts          
+@test/helpers      apps/api/tests/integration/system/health/health.integration.test.ts 
+@test/helpers      apps/api/tests/integration/uow/database-context.integration.test.ts 
+@test/helpers      apps/api/tests/integration/user-routes.integration.test.ts          
+vite               apps/api/tests/vitest.config.integration.ts                         
+vite               apps/api/vitest.config.ts                                           
+glob               scripts/codemods/dry-run-barrel-imports.ts                          
+glob               scripts/codemods/remove-barrel-files.ts                             
+glob               scripts/codemods/remove-barrel-imports.ts                           
+glob               scripts/codemods/validate-imports.ts                                
+Unlisted binaries (3)
+docker-compose  package.json
+tsp             package.json
+knip            package.json
+Unresolved imports (16)
+@/test-support/fakes     apps/api/src/app-factory.test.ts:8:9                                               
+@/test-support           apps/api/src/features/auth/login/handler.test.ts:9:9                               
+@/test-support/fakes     apps/api/src/features/auth/routes-factory.test.ts:11:9                             
+@/test-support/builders  apps/api/src/features/quiz/domain/aggregates/QuizSession.test.ts:5:9               
+@/test-support           apps/api/src/features/quiz/infrastructure/drizzle/DrizzleQuizRepository.test.ts:9:9
+@/test-support           apps/api/src/features/user/domain/entities/User.test.ts:3:9                        
+@/test-support           apps/api/src/features/user/domain/entities/UserProgress.test.ts:2:9                
+@/test-support           apps/api/src/features/user/get-profile/handler.test.ts:8:9                         
+@/test-support           apps/api/src/features/user/infrastructure/drizzle/DrizzleUserRepository.test.ts:8:9
+@/test-support           apps/api/src/features/user/register/handler.test.ts:8:9                            
+@/test-support/fakes     apps/api/src/features/user/routes.test.ts:7:9                                      
+@/test-support           apps/api/src/infra/db/DrizzleUnitOfWork.test.ts:3:9                                
+@/test-support/fakes     apps/api/src/infra/db/InMemoryUnitOfWorkProvider.ts:8:9                            
+@/test-support           apps/api/src/infra/db/UnitOfWorkFactory.test.ts:3:9                                
+@/test-support/fakes     apps/api/src/infra/di/container-config.ts:14:9                                     
+@/test-support/fakes     apps/api/tests/fakes/InMemoryUnitOfWork.test.ts:9:9                                
+Unused exports (23)
+env                                    apps/api/src/config/env.ts:55:14                                                 
+isDevelopment                function  apps/api/src/config/env.ts:72:17                                                 
+isTest                       function  apps/api/src/config/env.ts:79:17                                                 
+AggregateRoot                          apps/api/src/features/auth/domain/index.ts:7:9                                   
+AuthError                              apps/api/src/features/auth/domain/index.ts:10:9                                  
+AuthErrorCode                          apps/api/src/features/auth/domain/index.ts:11:13                                 
+InvalidCredentialsError                apps/api/src/features/auth/domain/index.ts:12:17                                 
+UserNotActiveError                     apps/api/src/features/auth/domain/index.ts:13:27                                 
+UserNotFoundError                      apps/api/src/features/auth/domain/index.ts:14:22                                 
+isQuestionDifficulty         function  apps/api/src/features/question/domain/value-objects/QuestionDifficulty.ts:26:17  
+getQuestionDifficultyValues  function  apps/api/src/features/question/domain/value-objects/QuestionDifficulty.ts:35:17  
+mapQuestionTypeFromDb        function  apps/api/src/features/question/infrastructure/drizzle/QuestionRowMapper.ts:30:17 
+isTrueFalseQuestion          function  apps/api/src/features/question/infrastructure/drizzle/QuestionRowMapper.ts:52:17 
+mapQuestionStatusFromDb      function  apps/api/src/features/question/infrastructure/drizzle/QuestionRowMapper.ts:114:17
+deterministicEventId         function  apps/api/src/features/quiz/infrastructure/drizzle/QuizEventMapper.ts:99:17       
+MAPPERS                                apps/api/src/features/quiz/infrastructure/drizzle/QuizEventMapper.ts:117:14      
+quizDomainErrorMappings                apps/api/src/features/quiz/shared/error-mapper.ts:18:14                          
+ping                         function  apps/api/src/infra/db/client.ts:110:23                                           
+withTransaction                        apps/api/src/infra/db/uow.ts:46:14                                               
+NoopLogger                   class     apps/api/src/shared/logger/LoggerPort.ts:63:14                                   
+createExpiredJwtBuilder                apps/api/src/test-support/mocks/index.ts:1:9                                     
+createJwtBuilder                       apps/api/src/test-support/mocks/index.ts:1:34                                    
+DEFAULT_JWT_CLAIMS                     apps/api/src/test-support/mocks/index.ts:1:52                                    
+Unused exported types (13)
+Env                          type       apps/api/src/config/env.ts:49:13                                           
+IAuthUserRepository          type       apps/api/src/features/auth/domain/index.ts:18:14                           
+QuestionType                 type       apps/api/src/features/question/infrastructure/drizzle/schema/enums.ts:37:13
+QuestionStatus               type       apps/api/src/features/question/infrastructure/drizzle/schema/enums.ts:38:13
+QuestionDifficulty           type       apps/api/src/features/question/infrastructure/drizzle/schema/enums.ts:40:14
+QuizCompletionResult         interface  apps/api/src/features/quiz/application/QuizCompletionService.ts:24:18      
+NextAction                   interface  apps/api/src/features/quiz/complete-quiz/dto.ts:34:18                      
+UserRoleValue                type       apps/api/src/features/user/infrastructure/drizzle/schema/enums.ts:15:13    
+SubscriptionPlanValue        type       apps/api/src/features/user/infrastructure/drizzle/schema/enums.ts:16:13    
+SubscriptionStatusValue      type       apps/api/src/features/user/infrastructure/drizzle/schema/enums.ts:17:13    
+JoinedUserRow                interface  apps/api/src/features/user/infrastructure/drizzle/UserRowMapper.ts:17:18   
+AsyncDatabaseContextOptions  interface  apps/api/src/infra/db/AsyncDatabaseContext.ts:75:18                        
+ProductionDatabaseConfig     interface  apps/api/src/infra/db/ProductionDatabaseProvider.ts:15:18                  
+Configuration hints (1)

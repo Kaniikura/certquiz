@@ -1,35 +1,4 @@
-/**
- * Question Repository Interface
- * @fileoverview Persistence abstraction for Question catalog (public browsing)
- *
- * TODO: Implement full question catalog functionality
- * Epic: Public Quiz Catalog Implementation
- * Story: https://github.com/Kaniikura/certquiz/issues/43
- *
- * Required Implementation:
- * - Efficient pagination with cursor-based or offset-based pagination
- * - Redis caching layer for 200ms P95 response time requirement
- * - Filtering by examType, category, difficulty, and isPremium
- * - Full-text search capability on question content
- * - Proper error handling and logging
- * - Comprehensive integration tests covering performance requirements
- *
- * Database Tables:
- * - question (questionId, isPremium, status, createdAt, updatedAt)
- * - questionVersion (questionText, examTypes, categories, difficulty, options)
- *
- * Performance Requirements:
- * - < 200ms P95 response time (per README.md)
- * - Support for 10,000+ questions with efficient querying
- * - Redis cache invalidation strategy for real-time updates
- *
- * Security Considerations:
- * - Premium content filtering based on user role
- * - Rate limiting for public endpoints
- * - Input sanitization for search queries
- */
-
-import type { QuestionId } from '@api/features/quiz/domain';
+import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { Question } from '../entities/Question';
 import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 

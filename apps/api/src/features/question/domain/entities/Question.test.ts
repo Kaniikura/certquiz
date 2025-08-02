@@ -1,9 +1,4 @@
-/**
- * Question entity tests
- * @fileoverview Tests for the Question entity domain model
- */
-
-import type { QuestionId } from '@api/features/quiz/domain';
+import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { describe, expect, it } from 'vitest';
 import { QuestionOption } from '../value-objects/QuestionOption';
 import { QuestionOptions } from '../value-objects/QuestionOptions';

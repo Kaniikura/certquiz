@@ -1,12 +1,7 @@
-/**
- * Repository Token Type Definition
- * @fileoverview Type-safe token system for repository dependency injection
- */
-
-import type { IAuthUserRepository } from '@api/features/auth/domain';
-import type { IQuestionRepository } from '@api/features/question/domain';
-import type { IQuizRepository } from '@api/features/quiz/domain';
-import type { IUserRepository } from '@api/features/user/domain';
+import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
+import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
+import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 
 /**
  * Type-safe repository token

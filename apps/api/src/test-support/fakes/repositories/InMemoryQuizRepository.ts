@@ -1,15 +1,7 @@
-/**
- * In-Memory Quiz Repository for testing
- * @fileoverview In-memory implementation of IQuizRepository for unit tests
- */
-
-import type {
-  IQuizRepository,
-  QuizSession,
-  QuizSessionId,
-  UserId as QuizUserId,
-} from '@api/features/quiz/domain';
-import { QuizState } from '@api/features/quiz/domain';
+import type { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
+import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { QuizSessionId, UserId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
 
 /**
  * In-memory implementation of IQuizRepository
@@ -51,7 +43,7 @@ export class InMemoryQuizRepository implements IQuizRepository {
     return expiredSessions.slice(0, limit);
   }
 
-  async findActiveByUser(userId: QuizUserId): Promise<QuizSession | null> {
+  async findActiveByUser(userId: UserId): Promise<QuizSession | null> {
     return this.userActiveSessionIndex.get(userId.toString()) || null;
   }
 

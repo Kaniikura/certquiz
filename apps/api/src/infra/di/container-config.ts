@@ -11,7 +11,7 @@ import { QuizCompletionService } from '@api/features/quiz/application/QuizComple
 import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
-import { FakePremiumAccessService } from '@/test-support/fakes';
+import { FakePremiumAccessService } from '@api/test-support/fakes/services/FakePremiumAccessService';
 import { FakeAuthProvider } from '../auth/AuthProvider.fake';
 import { StubAuthProvider } from '../auth/AuthProvider.stub';
 import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';

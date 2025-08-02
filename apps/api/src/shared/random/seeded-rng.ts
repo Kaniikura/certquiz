@@ -1,9 +1,4 @@
-/**
- * Seeded Random Number Generator Utilities
- * @fileoverview Provides deterministic pseudo-random number generation for testing and reproducible randomness
- */
-
-import { generateSecureSeed } from '@api/shared/crypto';
+import { generateSecureSeed } from '@api/shared/crypto/crypto-availability';
 
 /**
  * Seeded Random Number Generator interface

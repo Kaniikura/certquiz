@@ -1,9 +1,4 @@
-/**
- * Pino logger adapter
- * @fileoverview Adapts Pino logger to the LoggerPort interface
- */
-
-import type { LoggerPort } from '@api/shared/logger';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { getRootLogger, type Logger } from './root-logger';
 
 /**

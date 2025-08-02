@@ -1,12 +1,10 @@
-/**
- * User routes HTTP integration tests
- * @fileoverview Tests actual HTTP request/response behavior for user endpoints
- */
-
-import { createExpiredJwtBuilder, createJwtBuilder } from '@api/test-support';
-import { setupTestDatabase } from '@test/helpers';
+import {
+  createExpiredJwtBuilder,
+  createJwtBuilder,
+} from '@api/test-support/mocks/jose-mock-helpers';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupTestDatabase } from '../helpers/setup-database';
 import type { TestApp } from '../setup/test-app-factory';
 import { createIntegrationTestApp } from '../setup/test-app-factory';
 

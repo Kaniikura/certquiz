@@ -5,13 +5,11 @@
  * for isolated testing without database dependencies.
  */
 
-import {
-  InMemoryAuthUserRepository,
-  InMemoryQuestionRepository,
-  InMemoryQuizRepository,
-  InMemoryUnitOfWork,
-  InMemoryUserRepository,
-} from '@/test-support/fakes';
+import { InMemoryUnitOfWork } from '@api/test-support/fakes/persistence/InMemoryUnitOfWork';
+import { InMemoryAuthUserRepository } from '@api/test-support/fakes/repositories/InMemoryAuthUserRepository';
+import { InMemoryQuestionRepository } from '@api/test-support/fakes/repositories/InMemoryQuestionRepository';
+import { InMemoryQuizRepository } from '@api/test-support/fakes/repositories/InMemoryQuizRepository';
+import { InMemoryUserRepository } from '@api/test-support/fakes/repositories/InMemoryUserRepository';
 import type { IUnitOfWork } from './IUnitOfWork';
 import type { IUnitOfWorkProvider } from './IUnitOfWorkProvider';
 

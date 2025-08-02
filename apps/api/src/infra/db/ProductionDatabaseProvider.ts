@@ -1,4 +1,4 @@
-import type { Logger } from '@api/infra/logger';
+import type { Logger } from '@api/infra/logger/root-logger';
 import postgres from 'postgres';
 import type { ConnectionStats, DatabaseOptions, IDatabaseProvider } from './IDatabaseProvider';
 import {

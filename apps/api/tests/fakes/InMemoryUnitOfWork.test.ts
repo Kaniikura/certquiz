@@ -1,14 +1,13 @@
-/**
- * Tests for InMemoryUnitOfWork implementation
- */
-
-import { Email, User, UserRole } from '@api/features/user/domain';
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import { User } from '@api/features/user/domain/entities/User';
 import { InMemoryUnitOfWorkProvider } from '@api/infra/db/InMemoryUnitOfWorkProvider';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { SystemClock } from '@api/shared/clock';
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
+import { InMemoryUnitOfWork } from '@api/test-support/fakes/persistence/InMemoryUnitOfWork';
+import { InMemoryUserRepository } from '@api/test-support/fakes/repositories/InMemoryUserRepository';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { InMemoryUnitOfWork, InMemoryUserRepository } from '@/test-support/fakes';
 
 // Test helper function to create test users with less boilerplate
 function createTestUser(

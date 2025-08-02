@@ -1,4 +1,4 @@
-import { AggregateRoot } from '@api/features/auth/domain';
+import { AggregateRoot } from '@api/features/auth/domain/base/AggregateRoot';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';

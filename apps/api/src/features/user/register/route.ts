@@ -7,7 +7,7 @@ import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
-import { createAmbientRoute } from '@api/shared/route';
+import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';

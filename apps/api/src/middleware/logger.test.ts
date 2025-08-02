@@ -1,9 +1,4 @@
-/**
- * Logger middleware tests
- * @fileoverview Tests for the HTTP logger middleware with AsyncLocalStorage
- */
-
-import { getRootLogger, type Logger } from '@api/infra/logger';
+import { getRootLogger, type Logger } from '@api/infra/logger/root-logger';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLoggerMiddleware, type LoggerVariables } from './logger';
@@ -227,7 +222,7 @@ describe('Logger Middleware', () => {
       const correlationIds: (string | undefined)[] = [];
 
       app.get('/test', async (c) => {
-        const { getCorrelationId } = await import('@api/infra/logger');
+        const { getCorrelationId } = await import('@api/infra/logger/root-logger');
 
         // Capture at different points
         correlationIds.push(getCorrelationId());

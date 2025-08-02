@@ -1,9 +1,4 @@
-/**
- * Crypto-based ID Generator Implementation
- * @fileoverview Production implementation using Web Crypto API
- */
-
-import { ensureCryptoRandomUUID } from '@api/shared/crypto';
+import { ensureCryptoRandomUUID } from '@api/shared/crypto/crypto-availability';
 import type { IdGenerator } from './IdGenerator';
 
 /**

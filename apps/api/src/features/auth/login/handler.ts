@@ -4,7 +4,7 @@
  */
 
 import type { IAuthProvider } from '@api/infra/auth/AuthProvider';
-import { validateAndHandle } from '@api/shared/handler';
+import { validateAndHandle } from '@api/shared/handler/handler-utils';
 import { Result } from '@api/shared/result';
 import {
   InvalidCredentialsError,

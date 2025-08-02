@@ -5,7 +5,8 @@
 
 import { AuthorizationError } from '@api/shared/errors';
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { TestClock, testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IUnitOfWork } from '../../../infra/db/IUnitOfWork';
 import type { IUnitOfWorkProvider } from '../../../infra/db/IUnitOfWorkProvider';

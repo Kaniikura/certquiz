@@ -24,7 +24,7 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import { generateCryptoSeed, shuffleWithSeed } from '@api/shared/random';
+import { generateCryptoSeed, shuffleWithSeed } from '@api/shared/random/seeded-rng';
 import { Result } from '@api/shared/result';
 import { QuestionOption, type QuestionOptionJSON } from './QuestionOption';
 
