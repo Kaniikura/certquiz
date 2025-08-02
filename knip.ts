@@ -8,6 +8,19 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const config: KnipConfig = {
+  // Stricter rules for unused code detection
+  rules: {
+    exports: 'error', // Fail on any unused exports
+    types: 'error', // Fail on unused types
+    duplicates: 'error', // Fail on duplicate exports
+    dependencies: 'error', // Fail on unused dependencies
+    devDependencies: 'error', // Fail on unused devDependencies
+    files: 'error', // Fail on unused files
+    classMembers: 'error', // Fail on unused class members
+    enumMembers: 'error', // Fail on unused enum members
+  },
+  // Treat configuration hints as errors to ensure best practices
+  treatConfigHintsAsErrors: true,
   workspaces: {
     '.': {
       entry: [],
