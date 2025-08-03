@@ -5,8 +5,10 @@
  * and ensure consistent validation, error handling, and response patterns.
  */
 
+import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { Context } from 'hono';
 import type { ZodError, ZodSchema } from 'zod';
 
 /**
@@ -70,4 +72,55 @@ function formatZodError(error: ZodError): string {
     return path ? `${path}: ${issue.message}` : issue.message;
   });
   return issues.join(', ');
+}
+
+/**
+ * Safely validates and retrieves authenticated user from Hono context
+ *
+ * This function provides runtime validation for user context to prevent
+ * security issues and runtime errors from unsafe type assertions.
+ * Use this instead of direct type assertion: `context.get('user') as AuthUser`
+ *
+ * @param context - Hono context that may contain authenticated user
+ * @returns Validated AuthUser object
+ * @throws ValidationError if user context is invalid or missing required properties
+ *
+ * @example
+ * ```typescript
+ * // Instead of unsafe type assertion:
+ * // const user = context.get('user') as AuthUser;
+ *
+ * // Use safe validation:
+ * const user = validateUserContext(context);
+ * ```
+ */
+export function validateUserContext(context: Context): AuthUser {
+  const user = context.get('user');
+
+  // Check if user exists
+  if (!user) {
+    throw new ValidationError('User context is missing - authentication required');
+  }
+
+  // Check if user is an object
+  if (typeof user !== 'object') {
+    throw new ValidationError('User context is invalid - expected object');
+  }
+
+  // Validate required AuthUser properties
+  if (!('sub' in user) || typeof user.sub !== 'string') {
+    throw new ValidationError('User context is invalid - missing or invalid sub property');
+  }
+
+  if (!('roles' in user) || !Array.isArray(user.roles)) {
+    throw new ValidationError('User context is invalid - missing or invalid roles property');
+  }
+
+  // Validate roles array contains only strings
+  if (!user.roles.every((role) => typeof role === 'string')) {
+    throw new ValidationError('User context is invalid - roles must be an array of strings');
+  }
+
+  // User has passed all validation checks, safe to cast
+  return user as AuthUser;
 }

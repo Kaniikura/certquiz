@@ -4,8 +4,8 @@
  */
 
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import type { IdGenerator } from '@api/shared/id-generator/IdGenerator';
 import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
@@ -59,7 +59,7 @@ export function createQuestionRoute(deps: {
       errorMapper: mapQuestionError,
     },
     handler: async (body, routeDeps, context) => {
-      const user = context.get('user') as AuthUser;
+      const user = validateUserContext(context);
 
       return createQuestionHandler(
         body,

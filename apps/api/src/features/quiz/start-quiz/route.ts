@@ -5,8 +5,8 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { zValidator } from '@hono/zod-validator';
@@ -63,7 +63,7 @@ export function startQuizRoute(clock: Clock) {
     },
     handler: async (body, deps, context) => {
       const request = body as StartQuizRequest;
-      const user = context.get('user') as AuthUser;
+      const user = validateUserContext(context);
       const userId = UserId.of(user.sub);
 
       return startQuizHandler(request, userId, deps.quizRepo, deps.questionService, deps.clock);
