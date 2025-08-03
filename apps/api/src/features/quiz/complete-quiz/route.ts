@@ -4,8 +4,8 @@
  */
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import { QuizSessionId } from '../domain/value-objects/Ids';
@@ -40,7 +40,7 @@ export function completeQuizRoute(
     },
     handler: async (_body, deps, context) => {
       const sessionId = QuizSessionId.of(context.req.param('sessionId'));
-      const user = context.get('user') as AuthUser;
+      const user = validateUserContext(context);
       const userId = UserId.of(user.sub);
 
       return completeQuizHandler(sessionId, userId, deps.quizCompletionService, deps.clock);

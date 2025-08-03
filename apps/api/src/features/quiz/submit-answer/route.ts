@@ -5,9 +5,9 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
 import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
@@ -51,7 +51,7 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
       logging: {
         extractLogContext: (body, c) => {
           const request = body as SubmitAnswerRequest;
-          const user = c?.get('user') as AuthUser;
+          const user = c ? validateUserContext(c) : null;
           const sessionId = c?.req.param('sessionId');
 
           return {
@@ -65,7 +65,7 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
           const response = result as SubmitAnswerResponse & {
             _metadata?: { completionError?: { message: string; code?: string } };
           };
-          const user = c?.get('user') as AuthUser;
+          const user = c ? validateUserContext(c) : null;
           const sessionId = c?.req.param('sessionId');
           const logger = c?.get('logger') as LoggerPort;
 
@@ -95,7 +95,7 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
     },
     handler: async (body, deps, context) => {
       const request = body as SubmitAnswerRequest;
-      const user = context.get('user') as AuthUser;
+      const user = validateUserContext(context);
       const sessionId = context.req.param('sessionId');
 
       // Validate session ID

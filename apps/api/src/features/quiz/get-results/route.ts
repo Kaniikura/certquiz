@@ -5,9 +5,9 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import { Result } from '@api/shared/result';
 import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
@@ -62,7 +62,7 @@ export function getResultsRoute(_clock: Clock) {
       errorMapper: mapGetResultsError,
     },
     handler: async (_body, deps, context) => {
-      const user = context.get('user') as AuthUser;
+      const user = validateUserContext(context);
       const sessionId = context.req.param('sessionId');
 
       // Validate session ID
