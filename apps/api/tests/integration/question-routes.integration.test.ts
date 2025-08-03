@@ -1,4 +1,4 @@
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
 import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
 import { getDb } from '@api/infra/db/client';
