@@ -1,6 +1,6 @@
+import type { AuthUser } from '@api/shared/types/auth-user';
 import type { Context } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
-import type { AuthUser } from '../auth/auth-user';
 import { getCompositeKey, getIpKey, getKeyGenerator, getUserKey } from './key-generators';
 
 describe('Key Generators', () => {

@@ -1,5 +1,5 @@
+import type { AuthUser } from '@api/shared/types/auth-user';
 import type { Context } from 'hono';
-import type { AuthUser } from '../auth/auth-user';
 
 /**
  * Type for key generator functions

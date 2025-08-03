@@ -20,7 +20,7 @@ vi.mock('jose', async () => {
 });
 
 import { auth } from '@api/middleware/auth';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import { resetJwtVerifierCache } from '@api/test-support/mocks/jwt-helpers';
 import { Hono } from 'hono';
 import { generateKeyPair, SignJWT } from 'jose';

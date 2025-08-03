@@ -5,9 +5,9 @@
  * and ensure consistent validation, error handling, and response patterns.
  */
 
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import type { Context } from 'hono';
 import type { ZodError, ZodSchema } from 'zod';
 

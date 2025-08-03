@@ -5,9 +5,9 @@
  * to reduce duplication and ensure uniform log structure.
  */
 
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import { createErrorLogObject } from '@api/shared/error/error-utils';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import type { AuthUser } from '@api/shared/types/auth-user';
 
 /**
  * Common route operation types for logging
