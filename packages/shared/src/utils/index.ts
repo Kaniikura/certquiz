@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 // Result type for error handling
 export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
@@ -51,12 +53,10 @@ export function shuffle<T>(array: T[]): T[] {
   return shuffled;
 }
 
-// Generate random ID (for testing/mocking)
+/**
+ * Generate a cryptographically secure UUID v4
+ * Uses Node.js/Bun native crypto.randomUUID() for production-grade security
+ */
 export function generateId(): string {
-  // Environment-agnostic random ID generator
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return randomUUID();
 }
