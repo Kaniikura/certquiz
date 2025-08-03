@@ -147,6 +147,65 @@ interface RouteDefinition<TReq, TRes, TDeps> {
 }
 
 /**
+ * Build route configuration based on operation type and options
+ * Extracted from IIFE for improved readability and testability
+ */
+function buildRouteConfig<TReq, TRes, TDeps>(
+  configOptions: RouteDefinition<TReq, TRes, TDeps>['configOptions']
+): AmbientRouteConfig {
+  const { operation, resource, requiresAuth, successStatusCode, logging, errorMapper } =
+    configOptions;
+
+  // Use existing helpers based on operation type
+  if (operation === 'get') {
+    return createStandardGetRoute(resource, {
+      requiresAuth,
+      extractLogContext: logging?.extractLogContext,
+      extractSuccessLogData: logging?.extractSuccessLogData,
+      errorMapper,
+    });
+  } else if (
+    operation === 'create' ||
+    operation === 'submit' ||
+    operation === 'start' ||
+    operation === 'complete' ||
+    operation === 'login' ||
+    operation === 'register'
+  ) {
+    return createStandardPostRoute(operation, resource, {
+      requiresAuth,
+      successStatusCode,
+      logging,
+      errorMapper,
+    });
+  } else if (operation === 'list') {
+    return createStandardListRoute(resource, {
+      requiresAuth,
+      logging,
+      errorMapper,
+    });
+  }
+
+  // Fallback to manual builder
+  const builder = new RouteConfigBuilder()
+    .resource(resource)
+    .requiresAuth(requiresAuth ?? true)
+    .errorMapping(errorMapper);
+
+  if (operation) {
+    builder.operation(operation);
+  }
+  if (successStatusCode) {
+    builder.successStatus(successStatusCode);
+  }
+  if (logging) {
+    builder.logging(logging);
+  }
+
+  return builder.build();
+}
+
+/**
  * Create a standardized route with minimal boilerplate
  * Encapsulates common patterns for route creation
  *
@@ -174,58 +233,7 @@ export function createStandardRoute<TReq = unknown, TRes = unknown, TDeps = unkn
   }>();
 
   // Build route configuration
-  const config = (() => {
-    const { operation, resource, requiresAuth, successStatusCode, logging, errorMapper } =
-      definition.configOptions;
-
-    // Use existing helpers based on operation type
-    if (operation === 'get') {
-      return createStandardGetRoute(resource, {
-        requiresAuth,
-        extractLogContext: logging?.extractLogContext,
-        extractSuccessLogData: logging?.extractSuccessLogData,
-        errorMapper,
-      });
-    } else if (
-      operation === 'create' ||
-      operation === 'submit' ||
-      operation === 'start' ||
-      operation === 'complete' ||
-      operation === 'login' ||
-      operation === 'register'
-    ) {
-      return createStandardPostRoute(operation, resource, {
-        requiresAuth,
-        successStatusCode,
-        logging,
-        errorMapper,
-      });
-    } else if (operation === 'list') {
-      return createStandardListRoute(resource, {
-        requiresAuth,
-        logging,
-        errorMapper,
-      });
-    }
-
-    // Fallback to manual builder
-    const builder = new RouteConfigBuilder()
-      .resource(resource)
-      .requiresAuth(requiresAuth ?? true)
-      .errorMapping(errorMapper);
-
-    if (operation) {
-      builder.operation(operation);
-    }
-    if (successStatusCode) {
-      builder.successStatus(successStatusCode);
-    }
-    if (logging) {
-      builder.logging(logging);
-    }
-
-    return builder.build();
-  })();
+  const config = buildRouteConfig(definition.configOptions);
 
   // Create the ambient route
   const route = createAmbientRoute<
@@ -241,39 +249,27 @@ export function createStandardRoute<TReq = unknown, TRes = unknown, TDeps = unkn
     return route(c, deps);
   };
 
-  // Apply validator if provided
-  if (definition.validator) {
-    switch (definition.method) {
+  // Helper function to register route with optional validator
+  const registerRoute = (method: string, validator?: MiddlewareHandler) => {
+    const handlers = validator ? [validator, routeHandler] : [routeHandler];
+    switch (method) {
       case 'get':
-        hono.get(definition.path, definition.validator, routeHandler);
+        hono.get(definition.path, ...handlers);
         break;
       case 'post':
-        hono.post(definition.path, definition.validator, routeHandler);
+        hono.post(definition.path, ...handlers);
         break;
       case 'put':
-        hono.put(definition.path, definition.validator, routeHandler);
+        hono.put(definition.path, ...handlers);
         break;
       case 'delete':
-        hono.delete(definition.path, definition.validator, routeHandler);
+        hono.delete(definition.path, ...handlers);
         break;
     }
-  } else {
-    // No validator
-    switch (definition.method) {
-      case 'get':
-        hono.get(definition.path, routeHandler);
-        break;
-      case 'post':
-        hono.post(definition.path, routeHandler);
-        break;
-      case 'put':
-        hono.put(definition.path, routeHandler);
-        break;
-      case 'delete':
-        hono.delete(definition.path, routeHandler);
-        break;
-    }
-  }
+  };
+
+  // Register route with optional validator
+  registerRoute(definition.method, definition.validator);
 
   return hono;
 }
