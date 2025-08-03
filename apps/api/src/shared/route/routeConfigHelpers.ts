@@ -250,7 +250,7 @@ export function createStandardRoute<TReq = unknown, TRes = unknown, TDeps = unkn
   };
 
   // Helper function to register route with optional validator
-  const registerRoute = (method: string, validator?: MiddlewareHandler) => {
+  const registerRoute = (method: string, validator?: MiddlewareHandler): void => {
     const handlers = validator ? [validator, routeHandler] : [routeHandler];
     switch (method) {
       case 'get':
