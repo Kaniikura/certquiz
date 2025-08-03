@@ -121,6 +121,22 @@ export function validateUserContext(context: Context): AuthUser {
     throw new ValidationError('User context is invalid - roles must be an array of strings');
   }
 
+  // Validate optional email property when present
+  if ('email' in user && user.email !== undefined && typeof user.email !== 'string') {
+    throw new ValidationError('User context is invalid - email must be a string when present');
+  }
+
+  // Validate optional preferred_username property when present
+  if (
+    'preferred_username' in user &&
+    user.preferred_username !== undefined &&
+    typeof user.preferred_username !== 'string'
+  ) {
+    throw new ValidationError(
+      'User context is invalid - preferred_username must be a string when present'
+    );
+  }
+
   // User has passed all validation checks, safe to cast
   return user as AuthUser;
 }
