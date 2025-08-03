@@ -3,11 +3,13 @@
  * @fileoverview Event-sourcing implementation using Drizzle ORM with optimistic locking
  */
 
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import postgres from 'postgres';
+import { QuizState } from '../../domain/value-objects/QuizState';
 import type { QuizStateValue } from './schema/enums';
 import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 
@@ -16,7 +18,12 @@ const { PostgresError } = postgres;
 
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
-import type { IQuizRepository } from '../../domain/repositories/IQuizRepository';
+import type {
+  AdminQuizParams,
+  IQuizRepository,
+  PaginatedResult,
+  QuizWithUserInfo,
+} from '../../domain/repositories/IQuizRepository';
 import type { QuizSessionId } from '../../domain/value-objects/Ids';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
@@ -216,6 +223,159 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         error: this.getErrorDetails(error),
       });
       throw error;
+    }
+  }
+
+  async findAllForAdmin(params: AdminQuizParams): Promise<PaginatedResult<QuizWithUserInfo>> {
+    try {
+      this.logger.debug('Finding quizzes for admin', { params });
+
+      const { page, pageSize, filters, orderBy = 'startedAt', orderDir = 'desc' } = params;
+      const offset = (page - 1) * pageSize;
+
+      // Build WHERE conditions
+      const conditions = [];
+
+      if (filters?.state) {
+        conditions.push(eq(quizSessionSnapshot.state, filters.state as QuizStateValue));
+      }
+
+      if (filters?.userId) {
+        conditions.push(eq(quizSessionSnapshot.ownerId, filters.userId));
+      }
+
+      if (filters?.startDate) {
+        conditions.push(gte(quizSessionSnapshot.startedAt, filters.startDate));
+      }
+
+      if (filters?.endDate) {
+        conditions.push(lte(quizSessionSnapshot.startedAt, filters.endDate));
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Count total records
+      const countResult = await this.trx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(quizSessionSnapshot)
+        .innerJoin(authUser, eq(quizSessionSnapshot.ownerId, authUser.userId))
+        .where(whereClause);
+
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      // Get paginated data with user info
+      const orderColumn =
+        orderBy === 'startedAt' ? quizSessionSnapshot.startedAt : quizSessionSnapshot.completedAt;
+      const orderFn = orderDir === 'asc' ? asc : desc;
+
+      const results = await this.trx
+        .select({
+          sessionId: quizSessionSnapshot.sessionId,
+          userId: quizSessionSnapshot.ownerId,
+          userEmail: authUser.email,
+          state: quizSessionSnapshot.state,
+          questionCount: quizSessionSnapshot.questionCount,
+          startedAt: quizSessionSnapshot.startedAt,
+          completedAt: quizSessionSnapshot.completedAt,
+          answers: quizSessionSnapshot.answers,
+        })
+        .from(quizSessionSnapshot)
+        .innerJoin(authUser, eq(quizSessionSnapshot.ownerId, authUser.userId))
+        .where(whereClause)
+        .orderBy(orderFn(orderColumn))
+        .limit(pageSize)
+        .offset(offset);
+
+      // Calculate scores and map to QuizWithUserInfo
+      const items: QuizWithUserInfo[] = results.map((row) => {
+        // TODO: Implement proper score calculation with question validation
+        // Score calculation requires comparing actual answers with correct answers
+        // from question data, which is not available in this context.
+        // Return null until proper scoring logic is implemented.
+        const score: number | null = null;
+
+        // Convert database state value to QuizState enum
+        let quizState: QuizState;
+        switch (row.state) {
+          case 'IN_PROGRESS':
+            quizState = QuizState.InProgress;
+            break;
+          case 'COMPLETED':
+            quizState = QuizState.Completed;
+            break;
+          case 'EXPIRED':
+            quizState = QuizState.Expired;
+            break;
+          default:
+            throw new Error(`Unknown quiz state: ${row.state}`);
+        }
+
+        return {
+          sessionId: row.sessionId,
+          userId: row.userId,
+          userEmail: row.userEmail,
+          state: quizState,
+          score,
+          questionCount: row.questionCount,
+          startedAt: row.startedAt,
+          completedAt: row.completedAt,
+        };
+      });
+
+      const result: PaginatedResult<QuizWithUserInfo> = {
+        items,
+        total: totalCount,
+        page,
+        pageSize,
+      };
+
+      this.logger.debug('Found quizzes for admin', {
+        totalCount,
+        currentPage: page,
+        itemCount: items.length,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to find quizzes for admin', {
+        params,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuizRepositoryError(
+        'findAllForAdmin',
+        `Failed to find quizzes: ${this.getErrorMessage(error)}`
+      );
+    }
+  }
+
+  async deleteWithCascade(sessionId: QuizSessionId): Promise<void> {
+    try {
+      this.logger.info('Deleting quiz session with cascade', { sessionId });
+
+      // Delete events first (child records)
+      const eventDeleteResult = await this.trx
+        .delete(quizSessionEvent)
+        .where(eq(quizSessionEvent.sessionId, sessionId));
+
+      // Delete snapshot (parent record)
+      const snapshotDeleteResult = await this.trx
+        .delete(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.sessionId, sessionId));
+
+      this.logger.info('Quiz session deleted successfully', {
+        sessionId,
+        eventsDeleted: (eventDeleteResult as { rowCount?: number }).rowCount || 0,
+        snapshotDeleted: (snapshotDeleteResult as { rowCount?: number }).rowCount || 0,
+      });
+    } catch (error) {
+      this.logger.error('Failed to delete quiz session', {
+        sessionId,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuizRepositoryError(
+        'deleteWithCascade',
+        `Failed to delete quiz session: ${this.getErrorMessage(error)}`
+      );
     }
   }
 }

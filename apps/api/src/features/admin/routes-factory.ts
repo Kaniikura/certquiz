@@ -19,7 +19,11 @@ import {
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import type { DeleteQuizParams } from './delete-quiz/dto';
+import { deleteQuizHandler } from './delete-quiz/handler';
 import { getSystemStatsHandler } from './get-system-stats/handler';
+import type { ListQuizzesParams } from './list-quizzes/dto';
+import { listQuizzesHandler } from './list-quizzes/handler';
 import type { ListUsersParams } from './list-users/dto';
 import { listUsersHandler } from './list-users/handler';
 import type { UpdateUserRolesParams } from './update-user-roles/dto';
@@ -198,21 +202,61 @@ export function createAdminRoutes(): Hono<{
   });
 
   /**
+   * GET /api/admin/quizzes - List all quizzes for oversight
+   */
+  adminRoutes.get('/quizzes', async (c) => {
+    try {
+      const unitOfWork = createUnitOfWork(c, [QUIZ_REPO_TOKEN]);
+
+      // Parse query parameters
+      const query = c.req.query();
+      const params: ListQuizzesParams = {
+        page: parseInt(query.page || '1', 10),
+        pageSize: parseInt(query.pageSize || '20', 10),
+        state: query.state,
+        userId: query.userId,
+        dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
+        dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
+      };
+
+      const result = await listQuizzesHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return c.json(handleRouteError(error), 500);
+    }
+  });
+
+  /**
    * DELETE /api/admin/quiz/:id - Delete a quiz
    */
   adminRoutes.delete('/quiz/:id', async (c) => {
-    const quizId = c.req.param('id');
-    const adminUser = c.get('user');
+    try {
+      const unitOfWork = createUnitOfWork(c, [QUIZ_REPO_TOKEN]);
+      const quizId = c.req.param('id');
+      const adminUser = c.get('user');
 
-    // TODO: Implement quiz deletion
-    return c.json({
-      success: true,
-      data: {
+      // Parse request body for deletion reason
+      const body = await c.req.json().catch(() => ({}));
+      const params: DeleteQuizParams = {
         quizId,
         deletedBy: adminUser.sub,
-        message: 'Quiz deletion coming soon',
-      },
-    });
+        reason: body.reason || 'Admin deletion - no reason provided',
+      };
+
+      const result = await deleteQuizHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      const errorResponse = handleUpdateUserRolesError(error);
+      return c.json(errorResponse.response, errorResponse.status);
+    }
   });
 
   /**

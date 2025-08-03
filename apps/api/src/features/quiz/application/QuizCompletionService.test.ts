@@ -55,6 +55,11 @@ describe('QuizCompletionService', () => {
       save: vi.fn(),
       findActiveByUser: vi.fn(),
       findExpiredSessions: vi.fn(),
+      countTotalSessions: vi.fn(),
+      countActiveSessions: vi.fn(),
+      getAverageScore: vi.fn(),
+      findAllForAdmin: vi.fn(),
+      deleteWithCascade: vi.fn(),
     } as unknown as IQuizRepository;
 
     mockUserRepo = {
