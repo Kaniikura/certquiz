@@ -13,10 +13,14 @@ import type { IQuestionRepository } from '../domain/repositories/IQuestionReposi
 import { mapQuestionError } from '../shared/error-mapper';
 import type { CreateQuestionResponse } from './dto';
 import { createQuestionHandler } from './handler';
+import type { CreateQuestionRequest } from './validation';
 
-export function createQuestionRoute(deps: { clock: Clock; idGenerator: IdGenerator }) {
+export function createQuestionRoute(deps: {
+  clock: Clock;
+  idGenerator: IdGenerator;
+}): ReturnType<typeof createStandardRoute> {
   return createStandardRoute<
-    unknown,
+    CreateQuestionRequest,
     CreateQuestionResponse,
     {
       questionRepo: IQuestionRepository;

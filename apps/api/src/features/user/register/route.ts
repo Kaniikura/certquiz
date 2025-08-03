@@ -15,7 +15,7 @@ import { registerHandler } from './handler';
 /**
  * Create register route with injected dependencies
  */
-export function registerRoute(clock: Clock) {
+export function registerRoute(clock: Clock): ReturnType<typeof createStandardRoute> {
   return createStandardRoute<
     unknown,
     RegisterResponse,

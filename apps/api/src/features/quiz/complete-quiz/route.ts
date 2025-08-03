@@ -17,7 +17,10 @@ import { completeQuizHandler } from './handler';
  * Create complete quiz route
  * POST /:sessionId/complete - Complete a quiz and update user progress
  */
-export function completeQuizRoute(clock: Clock, quizCompletionService: IQuizCompletionService) {
+export function completeQuizRoute(
+  clock: Clock,
+  quizCompletionService: IQuizCompletionService
+): ReturnType<typeof createStandardRoute> {
   return createStandardRoute<
     never, // No body required
     CompleteQuizResponse,
