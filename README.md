@@ -80,7 +80,9 @@ bun run db:generate       # Generate migrations from schema changes
 ```bash
 # Development
 bun run dev              # Start all services
-bun run typecheck        # TypeScript checking
+bun run check            # All quality checks (TypeScript + Biome + knip) with auto-fix
+bun run ci               # All quality checks (TypeScript + Biome + knip) without auto-fix
+bun run typecheck        # TypeScript checking only
 bun run lint            # Biome linter
 bun run format          # Biome formatter
 
@@ -98,6 +100,10 @@ bun run test:integration    # Integration tests
 # Docker
 bun run docker:up        # Start services
 bun run docker:down      # Stop services
+
+# Code Quality
+bun run knip             # Check for unused exports
+bun run knip:fix         # Auto-fix some unused exports
 ```
 
 ## 🏗️ Architecture
