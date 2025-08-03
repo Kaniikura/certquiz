@@ -5,17 +5,19 @@
  * that can be used in both frontend and backend code.
  *
  * Import directly from submodules:
- * - import { QUIZ_SIZES, ExamType } from '@certquiz/shared/constants'
+ * - import { QUIZ_SIZES, QuizSize } from '@certquiz/shared/constants'
  * - import { Result, calculateAccuracy } from '@certquiz/shared/utils'
  */
 
-export type { ExamType, QuestionType, QuizSize, UserRole } from './constants/index';
 // Export commonly used types and utilities explicitly
 // Constants
-export { CONFIG, EXAM_TYPES, QUESTION_TYPES, QUIZ_SIZES, USER_ROLES } from './constants/index';
+export type { QuizSize } from './constants/index';
+export { CONFIG, QUIZ_SIZES } from './constants/index';
+
 // Utils - types
 export type { Result } from './utils/index';
-// Utils - functions and values
+
+// Utils - functions
 export {
   calculateAccuracy,
   calculateExperience,
