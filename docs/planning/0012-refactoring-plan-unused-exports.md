@@ -1,6 +1,6 @@
 # CertQuiz Codebase Refactoring Plan: Eliminating Unused Exports
 
-## Progress Status (Updated: 2025-08-02)
+## Progress Status (Updated: 2025-08-03)
 
 ### ✅ **Phase 1: Analysis and Preparation** - COMPLETED
 - [x] **Task 1.1**: Create Migration Branch (`refactor/eliminate-unused-exports`)
@@ -8,7 +8,7 @@
 - [x] **Task 1.3**: Set Up Tooling
   - [x] Configure Biome rule to prevent future barrel exports (`noReExportAll: "error"`)
   - [x] Update `knip.ts` configuration for stricter checks
-  - [x] Create codemod scripts for automated refactoring (4 scripts created)
+  - [x] ~~Create codemod scripts for automated refactoring (4 scripts created)~~ - Later deleted in Phase 6 in favor of Biome linting
 
 ### ✅ **Phase 2: Remove Unused Files** - COMPLETED
 - [x] **Task 2.1**: Delete Identified Unused Files (6/6 files removed)
@@ -60,9 +60,9 @@
 - **Unused type exports**: 16 → 0 ✅ (100% eliminated)
 - **Validation**: All tests passing ✅, Type checking ✅, Linting ✅
 
-### 🔄 **Next Steps**
-- [ ] **Phase 6**: Update Import Paths
-- [ ] **Phase 7**: Validation and Cleanup
+### 📊 **Current Status**
+- ✅ **Phase 1-6**: All completed successfully
+- 🔄 **Phase 7**: Validation and Cleanup (Final phase remaining)
 
 ## Executive Summary
 
@@ -268,7 +268,7 @@ git checkout -b refactor/eliminate-unused-exports
 #### Task 1.3: Set Up Tooling ✅
 - [x] Configure Biome rule to prevent future barrel exports (`noReExportAll: "error"`)
 - [x] Update `knip.ts` configuration for stricter checks
-- [x] Create codemod scripts for automated refactoring (4 scripts created)
+- [x] ~~Create codemod scripts for automated refactoring (4 scripts created)~~ - Deleted in favor of Biome `noBarrelFile` rule
 
 ### Phase 2: Remove Unused Files ✅ COMPLETED
 
@@ -353,7 +353,7 @@ bun remove @types/pino execa dotenv vite-tsconfig-paths @typespec/openapi3 @type
 - ✅ Fixed all TypeScript compilation errors post-transformation
 - ✅ 99.9% test pass rate (922/923 tests passing)
 - ✅ Core application functionality fully preserved
-- ✅ Remaining test failures are test infrastructure configuration issues (not core functionality)
+- ✅ Note: Codemod scripts were later deleted in Phase 6 in favor of Biome linting approach
 
 ### Phase 4: Clean Up Test Support (Day 3) ✅ COMPLETED
 
@@ -457,26 +457,21 @@ bun remove @types/pino execa dotenv vite-tsconfig-paths @typespec/openapi3 @type
 - ✅ Maintained type safety throughout the refactoring
 - ✅ Followed TypeScript best practices by avoiding gitignored .d.ts files
 
-### Phase 6: Update Import Paths (Day 4)
-
-#### Task 6.1: Run Codemod Script
-```javascript
-// codemod-script.js
-// Automated script to update import paths
-```
-
-**Codemod Script Description**: This script will find imports of any `index.ts` barrel or previously removed module and rewrite them to direct file paths. It covers:
-- Imports from `features/*/index.ts` → Direct imports from specific files
-- Imports from `shared/index.ts` → Direct imports from shared modules
-- Imports from `test-support/index.ts` → Direct imports from test utilities
-- Imports from removed modules → Updated to new locations
-
-**Note**: If any imports are missed by the script, they will be caught by the TypeScript compiler in Phase 7 and fixed manually
-
-#### Task 6.2: Manual Review
-- [ ] Review and fix any broken imports
-- [ ] Ensure tests still pass
-- [ ] Check build output
+### ✅ **Phase 6: Update Import Paths and Linting Strategy** - COMPLETED
+- [x] **Task 6.1**: Strategic Shift - Switched from codemods to Biome linting
+  - [x] Deleted all codemod scripts (`scripts/codemods/`) after evaluation
+  - [x] Configured Biome with `noBarrelFile` rule to detect barrel exports
+  - [x] Added `packages/shared/src/index.ts` and `apps/api/src/infra/db/schema/index.ts` to Biome exceptions
+- [x] **Task 6.2**: Barrel File Resolution
+  - [x] Fixed 7 barrel files by removing them and updating imports to use direct paths
+  - [x] Removed 3 test helper barrel files that were no longer needed
+  - [x] Fixed all broken imports after barrel file removal
+  - [x] Updated imports in 20+ files to use direct paths to UserId from auth domain
+- [x] **Task 6.3**: Validation
+  - [x] All tests passing: 329 files checked with `bun run check`
+  - [x] Zero barrel file linting errors (except for allowed exceptions)
+  - [x] TypeScript compilation successful
+  - [x] Build output validated - API builds successfully
 
 ### Phase 7: Validation and Cleanup (Day 5)
 
