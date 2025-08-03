@@ -1,4 +1,4 @@
-import type { Logger } from '@api/infra/logger';
+import type { Logger } from '@api/infra/logger/root-logger';
 import postgres from 'postgres';
 import type { ConnectionStats, DatabaseOptions, IDatabaseProvider } from './IDatabaseProvider';
 import {
@@ -12,7 +12,7 @@ import type { DB } from './types';
 /**
  * Configuration for production database provider
  */
-export interface ProductionDatabaseConfig {
+interface ProductionDatabaseConfig {
   databaseUrl: string;
   enableLogging: boolean;
   environment: string;

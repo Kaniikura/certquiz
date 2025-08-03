@@ -7,8 +7,8 @@ import { down as progressDown, up as progressUp } from '@api/features/auth/seed/
 import { down as userDown, up as userUp } from '@api/features/auth/seed/users.seed';
 import type { DB } from '@api/infra/db/client';
 import * as schema from '@api/infra/db/schema';
-import { getRootLogger } from '@api/infra/logger';
-import type { LoggerPort } from '@api/shared/logger';
+import { getRootLogger } from '@api/infra/logger/root-logger';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
 import { sql } from 'drizzle-orm';
 

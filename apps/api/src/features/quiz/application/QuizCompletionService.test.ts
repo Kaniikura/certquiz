@@ -3,9 +3,11 @@
  * @fileoverview Comprehensive tests for atomic quiz completion with user progress updates
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { AuthorizationError } from '@api/shared/errors';
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { TestClock, testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IUnitOfWork } from '../../../infra/db/IUnitOfWork';
 import type { IUnitOfWorkProvider } from '../../../infra/db/IUnitOfWorkProvider';
@@ -14,7 +16,7 @@ import type { IUserRepository } from '../../user/domain/repositories/IUserReposi
 import { UserNotFoundError } from '../../user/shared/errors';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import type { QuestionId, QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import type { QuestionId, QuizSessionId } from '../domain/value-objects/Ids';
 import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';

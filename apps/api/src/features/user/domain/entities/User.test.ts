@@ -1,7 +1,8 @@
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { ValidationError } from '@api/shared/errors';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { describe, expect, it } from 'vitest';
-import { TestClock } from '@/test-support';
-import { Email, UserRole } from '../value-objects';
 import { User } from './User';
 
 describe('User', () => {

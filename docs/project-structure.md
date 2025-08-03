@@ -21,16 +21,6 @@ certquiz/
 ├── biome.json                  # Biome linter/formatter config
 │
 ├── apps/                       # Application packages
-│   ├── web/                    # SvelteKit frontend
-│   │   ├── src/
-│   │   │   ├── lib/
-│   │   │   │   ├── api/
-│   │   │   │   ├── stores/
-│   │   │   │   └── utils/
-│   │   │   └── routes/
-│   │   ├── static/
-│   │   └── package.json
-│   │
 │   └── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
 │       │   ├── features/       # Feature slices (vertical slices)
@@ -91,8 +81,7 @@ certquiz/
 │       └── package.json
 │
 ├── packages/
-│   ├── shared/
-│   └── typespec/
+│   └── shared/                  # Essential constants and utilities only
 │
 ├── docs/
 │   ├── project-structure.md
@@ -117,7 +106,7 @@ certquiz/
 > - **Unified architecture**: DIContainer + AsyncDatabaseContext across all environments
 > - **Application services**: Cross-aggregate operations (e.g., QuizCompletionService) with integrated Unit of Work
 > - **Dependency injection**: DIContainer pattern for all environments (Production/Test/Dev)
-> - **Explicit exports**: All `export * from ...` replaced with explicit named exports for clear API boundaries
+> - **No barrel exports**: Direct imports only, no `index.ts` re-export files for clear API boundaries
 > - **Test infrastructure**: Database/container utilities in `tests/helpers/`, domain utilities in `src/test-support/`
 > - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
 

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { drizzleMigrate } from '@test/helpers/database';
+import { drizzleMigrate } from '@test/helpers/db-migrations';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 
 // Module-level variables for singleton pattern
@@ -37,7 +37,7 @@ async function withMutex<T>(operation: () => Promise<T>): Promise<T> {
  * Container is reused across test runs for performance.
  * Automatically runs Drizzle migrations on first start.
  */
-export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
+async function getPostgres(): Promise<StartedPostgreSqlContainer> {
   // If instance exists, return it
   if (instance) return instance;
   // If we're already starting the container, return that promise

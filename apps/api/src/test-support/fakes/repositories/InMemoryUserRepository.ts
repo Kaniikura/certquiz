@@ -1,9 +1,7 @@
-/**
- * In-Memory User Repository for Testing
- * @fileoverview In-memory user repository that doesn't require database
- */
-
-import type { Email, IUserRepository, User, UserId } from '@api/features/user/domain';
+import type { Email } from '@api/features/auth/domain/value-objects/Email';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { User } from '@api/features/user/domain/entities/User';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import {
   EmailAlreadyTakenError,
   UsernameAlreadyTakenError,

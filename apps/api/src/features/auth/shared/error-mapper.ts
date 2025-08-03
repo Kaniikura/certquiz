@@ -1,9 +1,4 @@
-/**
- * Auth Error Mapper
- * @fileoverview Maps domain errors to HTTP status codes and response bodies
- */
-
-import { createErrorMapper } from '@api/shared/route';
+import { createErrorMapper } from '@api/shared/route/route-helpers';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**

@@ -1,11 +1,6 @@
-/**
- * Test builder for QuestionReference value object
- * @fileoverview Builder pattern for creating test instances
- */
-
-import type { OptionId, QuestionId } from '@api/features/quiz/domain';
-import { QuestionReference } from '@api/features/quiz/domain';
-import { testIds } from '@api/test-support';
+import type { OptionId, QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuestionReference } from '@api/features/quiz/domain/value-objects/QuestionReference';
+import { testIds } from '@api/test-support/utils/id-generators';
 
 class QuestionReferenceBuilder {
   private questionId: QuestionId = testIds.questionId();

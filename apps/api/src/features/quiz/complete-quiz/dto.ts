@@ -26,16 +26,3 @@ export interface CompleteQuizResponse {
   /** Timestamp when quiz was completed */
   completedAt: Date;
 }
-
-/**
- * Next action to take after quiz submission
- * Used when quiz is auto-completed
- */
-export interface NextAction {
-  /** Type of action to take */
-  type: 'complete_quiz';
-  /** URL to call for the action */
-  url: string;
-  /** HTTP method to use */
-  method: 'POST';
-}

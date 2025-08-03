@@ -3,17 +3,17 @@
  * @fileoverview HTTP endpoint for creating new quiz sessions using route utilities
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
-import { createAmbientRoute } from '@api/shared/route';
+import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import { UserId } from '../domain/value-objects/Ids';
 import { QuizDependencyProvider } from '../shared/dependencies';
 import { mapStartQuizError } from '../shared/error-mapper';
 import type { StartQuizRequest, StartQuizResponse } from './dto';

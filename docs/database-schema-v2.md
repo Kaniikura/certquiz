@@ -32,7 +32,7 @@ apps/api/src/infra/db/schema/
 ├── quiz.ts            # Quiz bounded context (event sourcing)
 ├── question.ts        # Question bounded context (versioned catalog)
 ├── system.ts          # System tables (webhooks, migrations)
-└── index.ts           # Barrel exports for Drizzle
+└── index.ts           # Drizzle schema exports (exception to no-barrel rule)
 ```
 
 ## Quiz Bounded Context (Event Sourcing)

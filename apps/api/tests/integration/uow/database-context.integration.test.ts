@@ -1,9 +1,9 @@
-import { AuthUser } from '@api/features/auth';
-import { UserId } from '@api/features/auth/domain';
+import { User } from '@api/features/auth/domain/entities/User';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { executeInDatabaseContext } from '@api/infra/unit-of-work';
 import { AUTH_USER_REPO_TOKEN, QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { setupTestDatabase } from '@test/helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { setupTestDatabase } from '../../helpers/setup-database';
 import type { TestApp } from '../../setup/test-app-factory';
 import { createIntegrationTestApp } from '../../setup/test-app-factory';
 
@@ -33,7 +33,7 @@ describe('Database Context Integration Tests', () => {
       };
 
       // Create user entity
-      const userResult = AuthUser.fromPersistence(userData);
+      const userResult = User.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -71,7 +71,7 @@ describe('Database Context Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult = AuthUser.fromPersistence(userData);
+      const userResult = User.fromPersistence(userData);
       expect(userResult.success).toBe(true);
       if (!userResult.success) {
         throw new Error('Failed to create user');
@@ -124,8 +124,8 @@ describe('Database Context Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = AuthUser.fromPersistence(userData1);
-      const userResult2 = AuthUser.fromPersistence(userData2);
+      const userResult1 = User.fromPersistence(userData1);
+      const userResult2 = User.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -178,8 +178,8 @@ describe('Database Context Integration Tests', () => {
         updatedAt: new Date(),
       };
 
-      const userResult1 = AuthUser.fromPersistence(userData1);
-      const userResult2 = AuthUser.fromPersistence(userData2);
+      const userResult1 = User.fromPersistence(userData1);
+      const userResult2 = User.fromPersistence(userData2);
       expect(userResult1.success).toBe(true);
       expect(userResult2.success).toBe(true);
       if (!userResult1.success || !userResult2.success) {
@@ -260,7 +260,7 @@ describe('Database Context Integration Tests', () => {
           updatedAt: new Date(),
         };
 
-        const userResult = AuthUser.fromPersistence(userData);
+        const userResult = User.fromPersistence(userData);
         expect(userResult.success).toBe(true);
         if (!userResult.success) {
           throw new Error('Failed to create user');

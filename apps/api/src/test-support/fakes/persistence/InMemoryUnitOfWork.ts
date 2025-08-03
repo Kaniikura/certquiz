@@ -1,15 +1,7 @@
-/**
- * In-Memory Unit of Work implementation for unit testing
- *
- * This provides a test double that implements the IUnitOfWork interface
- * without requiring actual database connections. Useful for testing
- * business logic in isolation from database infrastructure.
- */
-
-import type { IAuthUserRepository } from '@api/features/auth/domain';
-import type { IQuestionRepository } from '@api/features/question/domain';
-import type { IQuizRepository } from '@api/features/quiz/domain';
-import type { IUserRepository } from '@api/features/user/domain';
+import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
+import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
+import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
 import {

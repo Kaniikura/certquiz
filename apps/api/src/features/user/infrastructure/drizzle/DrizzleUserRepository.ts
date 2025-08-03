@@ -1,11 +1,12 @@
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import type { Email } from '@api/features/auth/domain/value-objects/Email';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, eq, ne } from 'drizzle-orm';
 import type { User } from '../../domain/entities/User';
 import type { IUserRepository } from '../../domain/repositories/IUserRepository';
-import type { Email, UserId } from '../../domain/value-objects';
 import {
   isPgUniqueViolation,
   mapPgUniqueViolationToDomainError,

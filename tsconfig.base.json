@@ -14,7 +14,6 @@
       /* cross-package – point at the *package root*  */
       "@certquiz/shared": ["packages/shared/src/index.ts"],
       "@certquiz/shared/*": ["packages/shared/src/*"],
-      "@certquiz/typespec/*": ["packages/typespec/src/*"],
 
       /* app-local aliases – point at a folder inside the app   */
       "@api/*": ["apps/api/src/*"] /* Application source code */,
@@ -32,10 +31,5 @@
   },
 
   /* project references for tsc -b */
-  "references": [
-    { "path": "apps/api" },
-    { "path": "apps/web" },
-    { "path": "packages/shared" },
-    { "path": "packages/typespec" }
-  ]
+  "references": [{ "path": "apps/api" }, { "path": "apps/web" }, { "path": "packages/shared" }]
 }

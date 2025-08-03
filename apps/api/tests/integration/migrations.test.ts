@@ -8,11 +8,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getMigrationStatus, migrateUp, resetDatabaseForTesting } from '@api/system/migration/api';
-import {
-  closeAllTrackedClients,
-  createTestDatabase,
-  verifyMigrationTables,
-} from '@test/helpers/database';
+import { closeAllTrackedClients, createTestDatabase } from '@test/helpers/db-core';
+import { verifyMigrationTables } from '@test/helpers/db-migrations';
 import { type ProcessResult, runBunScript } from '@test/helpers/process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresSingleton } from '../containers/postgres';
@@ -226,7 +223,7 @@ describe('🧪 Test Infrastructure Setup', () => {
 
     try {
       // Import drizzleMigrate for test infrastructure setup
-      const { drizzleMigrate } = await import('@test/helpers/database');
+      const { drizzleMigrate } = await import('@test/helpers/db-migrations');
 
       // Run drizzleMigrate which includes both production migrations and test tables
       await drizzleMigrate(dbUrl);

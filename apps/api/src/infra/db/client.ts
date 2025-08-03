@@ -1,8 +1,8 @@
+import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import {
   createDrizzleInstance,
   PoolConfigs,
-  performHealthCheck,
   shutdownConnection,
   validateDatabaseUrl,
 } from './shared';
@@ -103,15 +103,6 @@ export const db = new Proxy({} as DB, {
 });
 
 /**
- * Health check function
- * Throws an error if the database is unreachable
- */
-export async function ping(): Promise<void> {
-  const pool = getPool();
-  await performHealthCheck(pool);
-}
-
-/**
  * Gracefully shutdown the database connection
  */
 export async function shutdownDatabase(): Promise<void> {
@@ -142,5 +133,6 @@ if (typeof process !== 'undefined') {
   });
 }
 
-// Re-export types for external use
+// Re-export types and utilities for external use
 export type { DB } from './types';
+export { sql };

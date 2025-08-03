@@ -1,9 +1,4 @@
-/**
- * Unit tests for DrizzleQuestionRepository using mocks
- * @fileoverview Tests question repository operations with sophisticated mocked database connections
- */
-
-import { QuestionId } from '@api/features/quiz/domain';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { beforeEach, describe, expect, it } from 'vitest';

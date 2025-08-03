@@ -1,13 +1,8 @@
-/**
- * Create question handler implementation
- * @fileoverview Business logic for admin question creation with validation
- */
-
-import { QuestionId } from '@api/features/quiz/domain';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
-import { validateAndHandle } from '@api/shared/handler';
-import type { IdGenerator } from '@api/shared/id-generator';
+import { validateAndHandle } from '@api/shared/handler/handler-utils';
+import type { IdGenerator } from '@api/shared/id-generator/IdGenerator';
 import { Result } from '@api/shared/result';
 import type { ZodSchema } from 'zod';
 import { Question } from '../domain/entities/Question';

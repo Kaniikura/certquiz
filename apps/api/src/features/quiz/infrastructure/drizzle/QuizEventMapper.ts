@@ -1,3 +1,4 @@
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { Result } from '@api/shared/result';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
@@ -12,13 +13,7 @@ import {
   QuizStartedEvent,
   type QuizStartedPayload,
 } from '../../domain/events/QuizEvents';
-import type {
-  AnswerId,
-  OptionId,
-  QuestionId,
-  QuizSessionId,
-  UserId,
-} from '../../domain/value-objects/Ids';
+import type { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
 import type { QuizSessionEventRow } from './schema/quizSession';
 
 type QuizEventPayloads =
@@ -96,7 +91,7 @@ const quizExpiredSchema = z.object({
 /**
  * Generate deterministic event ID for consistent replay
  */
-export function deterministicEventId(row: QuizSessionEventRow): string {
+function deterministicEventId(row: QuizSessionEventRow): string {
   // UUIDv5(sessionId + version + eventSequence, NAMESPACE) → identical ID every replay
   return uuidv5(`${row.sessionId}:${row.version}:${row.eventSequence}`, EVENT_NAMESPACE);
 }
@@ -114,7 +109,7 @@ interface MapperEntry {
   mapper: MapperFn;
 }
 
-export const MAPPERS: Record<string, MapperEntry> = {
+const MAPPERS: Record<string, MapperEntry> = {
   'quiz.started': {
     schema: quizStartedSchema,
     mapper: (row, payload) => {

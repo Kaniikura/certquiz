@@ -1,6 +1,4 @@
-// Quiz bounded context schema - Event Sourcing
-
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import { eq, inArray, sql } from 'drizzle-orm';
 import {
   check,

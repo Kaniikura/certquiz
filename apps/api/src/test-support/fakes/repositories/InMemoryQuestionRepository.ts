@@ -1,19 +1,13 @@
-/**
- * In-Memory Question Repository for Testing
- * @fileoverview In-memory question repository that doesn't require database
- */
-
+import { type Question, QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type {
   IQuestionRepository,
   PaginatedQuestions,
-  Question,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,
-} from '@api/features/question/domain';
-import { QuestionStatus } from '@api/features/question/domain';
+} from '@api/features/question/domain/repositories/IQuestionRepository';
 import { QuestionNotFoundError } from '@api/features/question/shared/errors';
-import type { QuestionId } from '@api/features/quiz/domain';
+import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 
 /**
  * In-memory question repository for testing

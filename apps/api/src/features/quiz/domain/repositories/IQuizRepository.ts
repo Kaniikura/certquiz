@@ -3,8 +3,9 @@
  * @fileoverview Persistence abstraction for QuizSession aggregate
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { QuizSession } from '../aggregates/QuizSession';
-import type { QuizSessionId, UserId } from '../value-objects/Ids';
+import type { QuizSessionId } from '../value-objects/Ids';
 
 export interface IQuizRepository {
   /**

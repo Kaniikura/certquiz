@@ -1,10 +1,4 @@
-/**
- * Test logger utilities
- * @fileoverview Logger utilities for testing
- */
-
-import type { LoggerPort } from '@api/shared/logger';
-import { NoopLogger } from '@api/shared/logger';
+import { type LoggerPort, NoopLogger } from '@api/shared/logger/LoggerPort';
 
 /**
  * Creates a no-op logger for domain tests

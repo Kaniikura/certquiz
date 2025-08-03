@@ -19,19 +19,3 @@ export const QUESTION_DIFFICULTY_VALUES = [
  * QuestionDifficulty type representing the difficulty level of a question
  */
 export type QuestionDifficulty = (typeof QUESTION_DIFFICULTY_VALUES)[number];
-
-/**
- * Type guard to check if a value is a valid QuestionDifficulty
- */
-export function isQuestionDifficulty(value: unknown): value is QuestionDifficulty {
-  return (
-    typeof value === 'string' && QUESTION_DIFFICULTY_VALUES.includes(value as QuestionDifficulty)
-  );
-}
-
-/**
- * Get all valid question difficulty values
- */
-export function getQuestionDifficultyValues(): readonly QuestionDifficulty[] {
-  return QUESTION_DIFFICULTY_VALUES;
-}

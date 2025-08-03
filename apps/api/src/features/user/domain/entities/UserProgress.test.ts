@@ -1,5 +1,5 @@
+import { TestClock } from '@api/test-support/utils/TestClock';
 import { describe, expect, it } from 'vitest';
-import { TestClock } from '@/test-support';
 import { Accuracy } from '../value-objects/Accuracy';
 import { CategoryStats } from '../value-objects/CategoryStats';
 import { Experience } from '../value-objects/Experience';

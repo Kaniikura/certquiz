@@ -5,7 +5,7 @@
  */
 
 import { db, shutdownDatabase } from '@api/infra/db/client';
-import { getRootLogger } from '@api/infra/logger';
+import { getRootLogger } from '@api/infra/logger/root-logger';
 import { Result } from '@api/shared/result';
 import { clearSeed, resetSeed, runSeed } from './run';
 

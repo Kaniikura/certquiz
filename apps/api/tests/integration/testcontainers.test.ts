@@ -1,11 +1,7 @@
-import {
-  createTestDatabase,
-  createTestDb,
-  seedAdminUser,
-  seedUsers,
-  type TestDb,
-} from '@test/helpers/database';
+import { createTestDb, type TestDb } from '@test/helpers/db-connection';
+import { createTestDatabase } from '@test/helpers/db-core';
 import { testUsers } from '@test/helpers/db-schema';
+import { seedAdminUser, seedUsers } from '@test/helpers/db-seeds';
 import postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresSingleton } from '../containers/postgres';

@@ -4,9 +4,11 @@
  */
 
 import { ValidationError } from '@api/shared/errors';
-import type { LoggerPort } from '@api/shared/logger';
+import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
-import type { IPremiumAccessService, IQuestionRepository, QuestionDifficulty } from '../domain';
+import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
+import type { IPremiumAccessService } from '../domain/services/IPremiumAccessService';
+import type { QuestionDifficulty } from '../domain/value-objects/QuestionDifficulty';
 import type { ListQuestionsResponse, QuestionSummaryDto } from './dto';
 import { type ListQuestionsRequest, listQuestionsSchema } from './validation';
 

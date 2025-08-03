@@ -3,6 +3,7 @@
  * @fileoverview HTTP endpoint for retrieving quiz results and scoring using route utilities
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
@@ -10,12 +11,12 @@ import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
-import { createAmbientRoute } from '@api/shared/route';
+import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { isValidUUID } from '@api/shared/validation';
+import { isValidUUID } from '@api/shared/validation/constants';
 import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import { QuizSessionId } from '../domain/value-objects/Ids';
 import type { StubQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { QuizDependencyProvider } from '../shared/dependencies';
 import { mapGetResultsError } from '../shared/error-mapper';

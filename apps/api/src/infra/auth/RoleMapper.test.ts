@@ -1,4 +1,4 @@
-import { UserRole } from '@api/features/auth/domain';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { describe, expect, it } from 'vitest';
 import { RoleMapper } from './RoleMapper';
 

@@ -3,19 +3,14 @@
  * @fileoverview Tests event-sourcing and optimistic locking logic with mocked database
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
+import { TestClock } from '@api/test-support/utils/TestClock';
 import postgres from 'postgres';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TestClock } from '@/test-support';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type { ExamType } from '../../domain/value-objects/ExamTypes';
-import {
-  AnswerId,
-  OptionId,
-  QuestionId,
-  QuizSessionId,
-  UserId,
-} from '../../domain/value-objects/Ids';
+import { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
 import { QuizConfig } from '../../domain/value-objects/QuizConfig';
 import { DrizzleQuizRepository } from './DrizzleQuizRepository';
 

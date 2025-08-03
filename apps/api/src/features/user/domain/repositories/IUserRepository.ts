@@ -1,5 +1,6 @@
+import type { Email } from '@api/features/auth/domain/value-objects/Email';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { User } from '../entities/User';
-import type { Email, UserId } from '../value-objects';
 
 /**
  * User repository interface for user domain

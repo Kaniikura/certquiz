@@ -1,43 +1,31 @@
-// Re-export all named exports from constants
-export {
-  API_ENDPOINTS,
-  BADGE_REQUIREMENT_TYPES,
-  CONFIG,
-  ERROR_CODES,
-  EXAM_TYPES,
-  type ExamType,
-  QUESTION_CATEGORIES,
-  QUESTION_STATUS,
-  QUESTION_TYPES,
-  QUIZ_SIZES,
-  type QuestionStatus,
-  type QuestionType,
-  type QuizSize,
-  REPORT_TYPES,
-  USER_ROLES,
-  type UserRole,
-} from './constants';
+/**
+ * @certquiz/shared - Shared types and utilities for CertQuiz
+ *
+ * This package provides environment-agnostic types and utilities
+ * that can be used in both frontend and backend code.
+ *
+ * Import directly from submodules:
+ * - import { QUIZ_SIZES, QuizSize } from '@certquiz/shared/constants'
+ * - import { Result, calculateAccuracy } from '@certquiz/shared/utils'
+ */
 
-// Re-export all named exports from utils
+// Export commonly used types and utilities explicitly
+// Constants
+export type { QuizSize } from './constants/index';
+export { CONFIG, QUIZ_SIZES } from './constants/index';
+
+// Utils - types
+export type { Result } from './utils/index';
+
+// Utils - functions
 export {
   calculateAccuracy,
-  calculateDuration,
   calculateExperience,
   calculateLevel,
-  debounce,
-  deepClone,
   err,
-  formatDuration,
   generateId,
-  hasRole,
-  isEmpty,
   isErr,
   isOk,
-  isValidEmail,
   ok,
-  paginate,
-  type Result,
-  sanitizeHtml,
   shuffle,
-  throttle,
-} from './utils';
+} from './utils/index';

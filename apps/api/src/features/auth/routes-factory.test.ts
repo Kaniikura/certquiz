@@ -5,10 +5,11 @@
 
 import { StubAuthProvider } from '@api/infra/auth/AuthProvider.stub';
 import { getRootLogger } from '@api/infra/logger/root-logger';
-import { createDatabaseContextMiddleware, createLoggerMiddleware } from '@api/middleware';
+import { createLoggerMiddleware } from '@api/middleware/logger';
+import { createDatabaseContextMiddleware } from '@api/middleware/transaction';
+import { InMemoryDatabaseContext } from '@api/test-support/fakes/persistence/InMemoryDatabaseContext';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
-import { InMemoryDatabaseContext } from '@/test-support/fakes';
 import { createAuthRoutes } from './routes-factory';
 
 describe('Auth Routes Factory', () => {

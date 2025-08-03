@@ -1,9 +1,4 @@
-/**
- * Get profile use case DTOs
- * @fileoverview Input and output types for user/get-profile
- */
-
-import type { UserRole } from '../domain/value-objects';
+import type { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 
 /**
  * Get profile response type for successful profile retrieval

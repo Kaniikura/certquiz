@@ -1,12 +1,4 @@
-/**
- * Shared database utilities
- * @fileoverview Common, stateless database utilities used by both production and test clients
- *
- * This module contains pure functions that can be safely reused across different database
- * configurations without side effects or environment-specific concerns.
- */
-
-import { sanitizeErrorForLogging } from '@api/shared/error';
+import { sanitizeErrorForLogging } from '@api/shared/error/error-utils';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { getRootLogger } from '../logger/root-logger';
@@ -113,17 +105,6 @@ export const PoolConfigs = {
       prepare: false, // Disable prepared statements for tests
     }),
 } as const;
-
-/**
- * Database health check
- * Executes a simple query to verify database connectivity
- *
- * @param pool - postgres.js connection pool
- * @throws Error if database is unreachable
- */
-export async function performHealthCheck(pool: postgres.Sql): Promise<void> {
-  await pool`SELECT 1`; // Will throw if DB is unreachable
-}
 
 /**
  * Create Drizzle database instance

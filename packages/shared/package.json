@@ -8,14 +8,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node",
-    "dev": "bun build src/index.ts --outdir dist --watch",
+    "build": "bun build src/**/index.ts --outdir dist --target node --splitting",
+    "dev": "bun build src/**/index.ts --outdir dist --watch --splitting",
     "test": "vitest run",
     "test:watch": "vitest watch"
   },
   "exports": {
     ".": "./dist/index.js",
-    "./types": "./dist/types/index.js",
     "./constants": "./dist/constants/index.js",
     "./utils": "./dist/utils/index.js"
   },

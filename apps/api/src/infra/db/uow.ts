@@ -1,4 +1,4 @@
-import { db } from './client';
+import type { db } from './client';
 
 /**
  * Unit of Work pattern for transaction management
@@ -40,13 +40,8 @@ import { db } from './client';
  * ```
  */
 
-/**
- * @deprecated Use IDatabaseContext and executeInDatabaseContext instead. This function will be removed in a future version.
- */
-export const withTransaction: typeof db.transaction = async (fn, opts?) => db.transaction(fn, opts);
-
 // Export the transaction type for use in repositories
-export type TransactionContext = Parameters<typeof withTransaction>[0] extends (
+export type TransactionContext = Parameters<typeof db.transaction>[0] extends (
   tx: infer T
 ) => unknown
   ? T

@@ -5,7 +5,7 @@
 
 import { parseCommaSeparated, parseFlexibleBoolean } from '@api/shared/validation/query-params';
 import { z } from 'zod';
-import { QUESTION_DIFFICULTY_VALUES } from '../domain';
+import { QUESTION_DIFFICULTY_VALUES } from '../domain/value-objects/QuestionDifficulty';
 
 /**
  * Available question difficulties for filtering

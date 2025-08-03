@@ -1,9 +1,4 @@
-/**
- * Tests for Answer entity
- * @fileoverview Comprehensive tests for answer validation and immutability
- */
-
-import { testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InvalidAnswerError } from '../../shared/errors';
 import type { AnswerId, OptionId, QuestionId } from '../value-objects/Ids';

@@ -2,13 +2,14 @@
  * Register handler implementation
  * @fileoverview Business logic for user registration
  */
-
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { Email, UserId, UserRole } from '../domain/value-objects';
 import type { RegisterResponse } from './dto';
 import { registerSchema } from './validation';
 

@@ -1,15 +1,15 @@
-/**
- * Question routes HTTP integration tests
- * @fileoverview Tests actual HTTP request/response behavior for question endpoints
- */
-
-import type { QuestionOptionJSON, QuestionSummary } from '@api/features/question/domain';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
+import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
+import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
 import { getDb } from '@api/infra/db/client';
-import { authUser } from '@api/infra/db/schema';
-import { createExpiredJwtBuilder, createJwtBuilder, DEFAULT_JWT_CLAIMS } from '@api/test-support';
-import { setupTestDatabase } from '@test/helpers';
+import {
+  createExpiredJwtBuilder,
+  createJwtBuilder,
+  DEFAULT_JWT_CLAIMS,
+} from '@api/test-support/mocks/jose-mock-helpers';
 import { generateKeyPair } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupTestDatabase } from '../helpers/setup-database';
 import type { TestApp } from '../setup/test-app-factory';
 import { createIntegrationTestApp } from '../setup/test-app-factory';
 

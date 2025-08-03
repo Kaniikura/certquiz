@@ -1,9 +1,4 @@
-/**
- * Question entity
- * @fileoverview Domain entity representing a question in the certification exam system
- */
-
-import { QuestionId } from '@api/features/quiz/domain';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { QuestionSummary } from '../repositories/IQuestionRepository';

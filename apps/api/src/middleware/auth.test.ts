@@ -410,7 +410,7 @@ describe('auth() middleware', () => {
       mockVerify(validUser);
 
       // Reset the cache to force new instantiation
-      const { resetJwtVerifierCache } = await import('@/test-support/mocks');
+      const { resetJwtVerifierCache } = await import('@api/test-support/mocks/jwt-helpers');
       resetJwtVerifierCache();
 
       app.use(auth());

@@ -4,18 +4,18 @@
  */
 
 import { Hono } from 'hono';
-import pkg from '../package.json';
+import pkg from '../package.json' with { type: 'json' };
 import { createAdminRoutes } from './features/admin/routes-factory';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
-import type { IPremiumAccessService } from './features/question/domain';
+import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
 import { createQuestionRoutes } from './features/question/routes-factory';
 import type { IQuizCompletionService } from './features/quiz/application/QuizCompletionService';
 import { createQuizRoutes } from './features/quiz/routes-factory';
 import { createUserRoutes } from './features/user/routes-factory';
 // Dependencies interfaces
 import type { IAuthProvider } from './infra/auth/AuthProvider';
-import { sql } from './infra/db';
+import { sql } from './infra/db/client';
 import type { IDatabaseContext } from './infra/db/IDatabaseContext';
 import type { DIContainer } from './infra/di/DIContainer';
 import {
@@ -28,19 +28,17 @@ import {
   PREMIUM_ACCESS_SERVICE_TOKEN,
   QUIZ_COMPLETION_SERVICE_TOKEN,
 } from './infra/di/tokens';
-import type { Logger } from './infra/logger';
+import type { Logger } from './infra/logger/root-logger';
+import { createLoggerMiddleware, type LoggerVariables } from './middleware/logger';
+import { errorHandler } from './middleware/on-error';
+import { type RequestIdVariables, requestIdMiddleware } from './middleware/request-id';
+import { securityMiddleware } from './middleware/security';
 import {
   createDatabaseContextMiddleware,
-  createLoggerMiddleware,
   type DatabaseContextVariables,
-  errorHandler,
-  type LoggerVariables,
-  type RequestIdVariables,
-  requestIdMiddleware,
-  securityMiddleware,
-} from './middleware';
+} from './middleware/transaction';
 import type { Clock } from './shared/clock';
-import type { IdGenerator } from './shared/id-generator';
+import type { IdGenerator } from './shared/id-generator/IdGenerator';
 import { createHealthRoute } from './system/health/route';
 
 /**

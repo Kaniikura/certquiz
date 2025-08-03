@@ -3,12 +3,12 @@
  * @fileoverview Simple ID generation functions for tests
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import {
   AnswerId,
   OptionId,
   QuestionId,
   QuizSessionId,
-  UserId,
 } from '@api/features/quiz/domain/value-objects/Ids';
 
 /**

@@ -3,14 +3,14 @@
  * @fileoverview Business logic for creating new quiz sessions
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { Clock } from '@api/shared/clock';
-import { getErrorMessage } from '@api/shared/error';
+import { getErrorMessage } from '@api/shared/error/error-utils';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { Category, Difficulty, ExamType } from '../domain/value-objects/ExamTypes';
-import type { UserId } from '../domain/value-objects/Ids';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
 import type { StartQuizRequest, StartQuizResponse } from './dto';
 import type { IQuestionService } from './QuestionService';

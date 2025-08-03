@@ -7,7 +7,7 @@ import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/dri
 import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';
 import { DrizzleQuizRepository } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuizRepository';
 import { DrizzleUserRepository } from '@api/features/user/infrastructure/drizzle/DrizzleUserRepository';
-import type { Logger } from '@api/infra/logger';
+import type { Logger } from '@api/infra/logger/root-logger';
 import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
 import {
   AUTH_USER_REPO_TOKEN,
@@ -73,7 +73,7 @@ class AsyncTransactionContext implements ITransactionContext {
 /**
  * Options for AsyncDatabaseContext initialization
  */
-export interface AsyncDatabaseContextOptions {
+interface AsyncDatabaseContextOptions {
   /**
    * Whether to automatically initialize the database connection on construction.
    * Defaults to true for production safety.

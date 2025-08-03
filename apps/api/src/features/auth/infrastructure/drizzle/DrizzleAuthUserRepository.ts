@@ -6,7 +6,7 @@ import { User } from '../../domain/entities/User';
 import type { IAuthUserRepository } from '../../domain/repositories/IAuthUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
 import type { UserId } from '../../domain/value-objects/UserId';
-import { authUser } from './schema';
+import { authUser } from './schema/authUser';
 
 /**
  * Drizzle implementation of User repository

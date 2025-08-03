@@ -3,6 +3,7 @@
  * @fileoverview Business logic for submitting answers to quiz questions
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
@@ -10,7 +11,7 @@ import { Result } from '@api/shared/result';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { QuizSession } from '../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import { OptionId, QuestionId, type QuizSessionId, type UserId } from '../domain/value-objects/Ids';
+import { OptionId, QuestionId, type QuizSessionId } from '../domain/value-objects/Ids';
 import type { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizState } from '../domain/value-objects/QuizState';
 import type { SubmitAnswerRequest, SubmitAnswerResponse } from './dto';

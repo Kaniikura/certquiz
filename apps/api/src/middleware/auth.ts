@@ -1,6 +1,6 @@
 import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
 import { DEFAULT_ROLE_MAPPING, RoleMapper } from '@api/infra/auth/RoleMapper';
-import { getRootLogger } from '@api/infra/logger';
+import { getRootLogger } from '@api/infra/logger/root-logger';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AuthUser } from './auth/auth-user';

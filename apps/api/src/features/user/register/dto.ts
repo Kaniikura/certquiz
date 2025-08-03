@@ -1,9 +1,4 @@
-/**
- * Register use case DTOs
- * @fileoverview Input and output types for user/register
- */
-
-import type { UserRole } from '../domain/value-objects';
+import type { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 
 /**
  * Register response type for successful user creation

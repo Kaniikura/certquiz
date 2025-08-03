@@ -1,8 +1,10 @@
-import { AggregateRoot } from '@api/features/auth/domain';
+import { AggregateRoot } from '@api/features/auth/domain/base/AggregateRoot';
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
-import { Email, UserId, UserRole } from '../value-objects';
 import { UserProgress } from './UserProgress';
 
 interface CreateUserProps {

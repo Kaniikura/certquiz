@@ -3,13 +3,13 @@
  * @fileoverview Route configuration for quiz completion endpoint
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { Hono } from 'hono';
-import { UserId } from '../../user/domain/value-objects';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import { QuizSessionId } from '../domain/value-objects/Ids';
 import { mapCompleteQuizError } from '../shared/error-mapper';

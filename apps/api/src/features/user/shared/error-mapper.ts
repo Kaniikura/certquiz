@@ -1,9 +1,4 @@
-/**
- * Shared error mapping utilities for user routes
- * @fileoverview Provides consistent error response mapping across all user endpoints
- */
-
-import { createErrorMapper } from '@api/shared/route';
+import { createErrorMapper } from '@api/shared/route/route-helpers';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**

@@ -3,17 +3,17 @@
  * @fileoverview Tests for app factory with DI container integration
  */
 
+import { InMemoryDatabaseContext } from '@api/test-support/fakes/persistence/InMemoryDatabaseContext';
 import { nanoid } from 'nanoid';
 import { describe, expect, it } from 'vitest';
-import { InMemoryDatabaseContext } from '@/test-support/fakes';
 import type { AppDependencies } from './app-factory';
 import { buildApp, buildAppWithContainer } from './app-factory';
-import type { IPremiumAccessService } from './features/question/domain';
+import type { IPremiumAccessService } from './features/question/domain/services/IPremiumAccessService';
 import type { IQuizCompletionService } from './features/quiz/application/QuizCompletionService';
 import type { AuthToken, AuthUserInfo, IAuthProvider } from './infra/auth/AuthProvider';
 import { createConfiguredContainer } from './infra/di/container-config';
 import { LOGGER_TOKEN } from './infra/di/tokens';
-import type { Logger } from './infra/logger';
+import type { Logger } from './infra/logger/root-logger';
 import { Result } from './shared/result';
 
 describe('App Factory', () => {

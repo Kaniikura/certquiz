@@ -3,10 +3,11 @@
  * @fileoverview Business logic for retrieving quiz results with scoring
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { AuthorizationError, ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import type { QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import type { QuizSessionId } from '../domain/value-objects/Ids';
 import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { SessionNotFoundError } from '../shared/errors';
 import type { GetResultsResponse } from './dto';

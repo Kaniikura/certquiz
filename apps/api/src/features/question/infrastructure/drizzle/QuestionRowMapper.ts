@@ -1,4 +1,4 @@
-import { QuestionId } from '@api/features/quiz/domain';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { Result } from '@api/shared/result';
 import { Question, QuestionStatus, type QuestionType } from '../../domain/entities/Question';
 import type { QuestionSummary } from '../../domain/repositories/IQuestionRepository';
@@ -27,10 +27,7 @@ export function mapQuestionTypeToDb(type: QuestionType): 'single' | 'multiple' {
  * @param type Database question type
  * @param options Question options (optional) for inferring true/false questions
  */
-export function mapQuestionTypeFromDb(
-  type: 'single' | 'multiple',
-  options?: unknown
-): QuestionType {
+function mapQuestionTypeFromDb(type: 'single' | 'multiple', options?: unknown): QuestionType {
   // Multiple select is straightforward
   if (type === 'multiple') {
     return 'multiple_select';
@@ -49,7 +46,7 @@ export function mapQuestionTypeFromDb(
  * Determine if a question is a true/false question based on its options
  * @param options The question options from the database
  */
-export function isTrueFalseQuestion(options: unknown): boolean {
+function isTrueFalseQuestion(options: unknown): boolean {
   if (!Array.isArray(options)) {
     return false;
   }
@@ -111,7 +108,7 @@ export function mapQuestionStatusToDb(
 /**
  * Map database question status to entity question status
  */
-export function mapQuestionStatusFromDb(
+function mapQuestionStatusFromDb(
   status: 'draft' | 'active' | 'inactive' | 'archived'
 ): QuestionStatus {
   return status as QuestionStatus;

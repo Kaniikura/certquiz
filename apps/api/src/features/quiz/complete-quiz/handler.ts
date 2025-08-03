@@ -2,10 +2,9 @@
  * Complete quiz handler implementation
  * @fileoverview Business logic for completing quizzes with atomic user progress updates
  */
-
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { Clock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
-import type { UserId } from '../../user/domain/value-objects';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { QuizSessionId } from '../domain/value-objects/Ids';
 import type { CompleteQuizResponse } from './dto';

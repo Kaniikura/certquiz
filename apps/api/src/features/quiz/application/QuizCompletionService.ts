@@ -2,14 +2,13 @@
  * Quiz Completion Application Service
  * @fileoverview Handles atomic quiz completion with user progress updates using Unit of Work pattern
  */
-
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { Clock } from '@api/shared/clock';
 import { AuthorizationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import { QUIZ_REPO_TOKEN, USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import type { IUnitOfWorkProvider } from '../../../infra/db/IUnitOfWorkProvider';
 import type { IUserRepository } from '../../user/domain/repositories/IUserRepository';
-import type { UserId } from '../../user/domain/value-objects';
 import { UserNotFoundError } from '../../user/shared/errors';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { QuizSessionId } from '../domain/value-objects/Ids';
@@ -21,7 +20,7 @@ import { QuizNotCompletedError, SessionNotFoundError } from '../shared/errors';
 /**
  * Result of quiz completion operation
  */
-export interface QuizCompletionResult {
+interface QuizCompletionResult {
   sessionId: QuizSessionId;
   finalScore: number;
   completedAt: Date;

@@ -1,9 +1,4 @@
-/**
- * Tests for QuestionOrder value object
- * @fileoverview Comprehensive tests for question ordering with O(1) lookup
- */
-
-import { testIds } from '@api/test-support';
+import { testIds } from '@api/test-support/utils/id-generators';
 import { describe, expect, it } from 'vitest';
 import type { QuestionId } from './Ids';
 import { QuestionOrder } from './QuestionOrder';
