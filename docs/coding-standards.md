@@ -12,7 +12,8 @@
 6. **Domain-Driven Design** - Rich models with business logic
 7. **Repository Pattern** - Interfaces in domain, implementations alongside
 8. **Transaction Boundaries** - All handlers use `IUnitOfWork` from middleware (NOT `withTransaction`)
-9. **Co-located Tests** - `.test.ts` files next to source
+9. **No Barrel Exports** - Direct imports only, no `index.ts` re-exports
+10. **Co-located Tests** - `.test.ts` files next to source
 
 ## Project Structure
 
@@ -130,18 +131,44 @@ type Result<T, E = Error> =
 // 1. External
 import { Hono } from 'hono';
 
-// 2. Infrastructure
-// NOTE: Route handlers should NOT import withTransaction directly!
-// Use IUnitOfWork from middleware context instead
+// 2. Infrastructure (direct imports only)
+import { createDrizzleInstance } from '@api/infra/db/shared';
 
-// 3. Domain
-import { QuizSession } from '../domain/aggregates/QuizSession';
+// 3. Domain (direct imports only)
+import { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
+import { Email } from '@api/features/auth/domain/value-objects/Email';
 
 // 4. Local
 import { startQuizSchema } from './validation';
 ```
 
+**Import Rules**:
+- ✅ Direct imports: `import { Email } from '@api/features/auth/domain/value-objects/Email'`
+- ❌ Barrel imports: `import { Email } from '@api/features/auth'`
+
 ## Anti-Patterns to Avoid
+
+### ❌ Barrel Exports (index.ts files)
+**NEVER** create `index.ts` files that re-export from other modules:
+
+```typescript
+// ❌ BAD - Barrel export (index.ts)
+export { Email } from './Email';
+export { UserId } from './UserId';
+
+// ❌ BAD - Using barrel imports
+import { Email, UserId } from '@api/features/auth';
+
+// ✅ GOOD - Direct imports
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+```
+
+**Why this matters**:
+- Barrel exports prevent tree-shaking and increase bundle size
+- Make dependencies unclear and harder to trace
+- Slow down TypeScript compilation and IDE performance
+- Create circular dependency risks
 
 ### ❌ Direct Transaction Usage in Routes
 **NEVER** use `withTransaction` directly in route handlers:

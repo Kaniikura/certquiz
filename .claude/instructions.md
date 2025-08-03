@@ -52,24 +52,25 @@ The main project overview is in `/CLAUDE.md`. This document provides detailed im
 ### 4. Code Organization
 
 #### Path Aliases
-- `@certquiz/shared` → Shared package (types, constants, utils)
-- `@certquiz/typespec` → API specification types
+- `@certquiz/shared` → Essential constants and utilities only (QUIZ_SIZES, CONFIG)
 - `@api/*` → API source (`apps/api/src/*`)
 - `@api/test-support` → Domain test utilities (feature-specific)
 - `@api/testing/infra` → Infrastructure test utilities
 - `@api/testing/domain` → Domain layer test utilities
 - `@api/testing` → Unified test utilities (both layers)
-- `@web/*` → Web source (`apps/web/src/*`)
 
 #### Import Order
 1. External packages
-2. Cross-package imports (`@certquiz/*`)
-3. App-specific imports (`@api/*`, `@web/*`)
+2. Cross-package imports (`@certquiz/*`) - minimal, direct paths only
+3. App-specific imports (`@api/*`) - direct paths only, no barrel imports
 4. Relative imports
 5. Type imports
 
-**Use path aliases for**: cross-package imports, cross-feature boundaries  
-**Use relative imports for**: same feature slice, co-located files
+**Import Rules**:
+- ✅ Direct imports: `import { Email } from '@api/features/auth/domain/value-objects/Email'`
+- ❌ Barrel imports: `import { Email } from '@api/features/auth'`
+- **Use path aliases for**: cross-package imports, cross-feature boundaries
+- **Use relative imports for**: same feature slice, co-located files
 
 ## Folder/Module Layout (VSA Structure)
 
@@ -124,10 +125,9 @@ testing/              # Unified test infrastructure (DDD layers)
 │   ├── process/      # Process execution utilities
 │   ├── runtime/      # Runtime environment utilities
 │   └── vitest/       # Test configuration
-├── domain/           # Domain layer test utilities
-│   ├── fakes/        # Repository fakes, test doubles
-│   └── integration-helpers.ts  # Domain integration helpers
-└── index.ts          # Barrel exports for both layers
+└── domain/           # Domain layer test utilities
+    ├── fakes/        # Repository fakes, test doubles
+    └── integration-helpers.ts  # Domain integration helpers
 ```
 
 ### Key Rules for VSA:
@@ -824,14 +824,15 @@ bun run test --coverage # Coverage report
 // External
 import { z } from 'zod';
 
-// Cross-package
-import { Result } from '@certquiz/shared';
+// Cross-package (minimal, direct paths only)
+import { QUIZ_SIZES } from '@certquiz/shared/constants';
 
-// Infrastructure
-import { withTransaction } from '@api/infra/unit-of-work';
+// Infrastructure (direct paths only)
+import { createDrizzleInstance } from '@api/infra/db/shared';
 
-// Domain (relative within feature)
-import { QuizSession } from '../domain/aggregates/QuizSession';
+// Domain (direct paths only)
+import { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
+import { Email } from '@api/features/auth/domain/value-objects/Email';
 
 // Co-located (same folder)
 import { startQuizSchema } from './validation';
