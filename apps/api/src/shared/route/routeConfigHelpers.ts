@@ -17,10 +17,11 @@ import { createAmbientRoute } from './route-builder';
 
 /**
  * Create a standard GET route configuration
+ * @security Defaults to requiresAuth: true for security. Explicitly set requiresAuth: false for public endpoints.
  *
  * @example
  * const config = createStandardGetRoute('users', {
- *   requiresAuth: true,
+ *   requiresAuth: false, // Explicit for public endpoints
  *   extractLogContext: (body, c) => ({ userId: c.req.param('id') }),
  *   errorMapper: mapUserError
  * });
@@ -37,7 +38,7 @@ function createStandardGetRoute(
   return new RouteConfigBuilder()
     .operation('get')
     .resource(resource)
-    .requiresAuth(options.requiresAuth ?? false)
+    .requiresAuth(options.requiresAuth ?? true)
     .logging({
       extractLogContext: options.extractLogContext,
       extractSuccessLogData: options.extractSuccessLogData,
@@ -88,10 +89,11 @@ function createStandardPostRoute(
 
 /**
  * Create a standard LIST route configuration
+ * @security Defaults to requiresAuth: true for security. Explicitly set requiresAuth: false for public endpoints.
  *
  * @example
  * const config = createStandardListRoute('questions', {
- *   requiresAuth: false,
+ *   requiresAuth: false, // Explicit for public endpoints
  *   logging: {
  *     extractSuccessLogData: (result) => ({ count: result.items.length })
  *   },
@@ -109,7 +111,7 @@ function createStandardListRoute(
   return new RouteConfigBuilder()
     .operation('list')
     .resource(resource)
-    .requiresAuth(options.requiresAuth ?? false)
+    .requiresAuth(options.requiresAuth ?? true)
     .logging(options.logging || {})
     .errorMapping(options.errorMapper)
     .build();
@@ -188,7 +190,9 @@ export function createStandardRoute<TReq = unknown, TRes = unknown, TDeps = unkn
       operation === 'create' ||
       operation === 'submit' ||
       operation === 'start' ||
-      operation === 'complete'
+      operation === 'complete' ||
+      operation === 'login' ||
+      operation === 'register'
     ) {
       return createStandardPostRoute(operation, resource, {
         requiresAuth,
