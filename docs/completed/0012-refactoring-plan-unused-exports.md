@@ -599,7 +599,7 @@ bunx knip ✅  # Reports 29 unused exports (mostly false positives)
 - [x] **Integrated knip into unified quality checks**:
   - Updated `bun run check`: TypeScript + Biome + knip (with auto-fix)
   - Updated `bun run ci`: TypeScript + Biome + knip (check-only)
-  - Renamed `check:ci` → `ci` for cleaner command names
+  - Configured `ci` command for CI/automated environments
 - [x] **Simplified CI pipeline**:
   - Replaced separate TypeScript/Biome/knip steps with single `bun run ci` command
   - Consolidated quality checks into one step for faster feedback

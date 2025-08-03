@@ -29,7 +29,8 @@ const config: KnipConfig = {
     },
     'apps/api': {
       entry: [
-        // 'src/index.ts' is automatically included as the entry point
+        // Note: By knip's default behavior, 'src/index.ts' is automatically included as the entry point if no entry is specified.
+        // Here, the entry array is explicitly defined, so only the listed files are included.
         'src/app-factory.ts',
         'src/**/*.test.ts',
         'src/system/seed/*.ts',

@@ -8,8 +8,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/constants/index.ts src/utils/index.ts --outdir dist --target node --splitting",
-    "dev": "bun build src/index.ts src/constants/index.ts src/utils/index.ts --outdir dist --watch --splitting",
+    "build": "bun build src/**/index.ts --outdir dist --target node --splitting",
+    "dev": "bun build src/**/index.ts --outdir dist --watch --splitting",
     "test": "vitest run",
     "test:watch": "vitest watch"
   },

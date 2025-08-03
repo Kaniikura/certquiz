@@ -170,6 +170,22 @@ import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 - Slow down TypeScript compilation and IDE performance
 - Create circular dependency risks
 
+#### Limited Exceptions (biome.json noBarrelFile exemptions)
+
+Two specific files are exempt from the noBarrelFile rule for essential functionality:
+
+1. **`packages/shared/src/index.ts`** - Essential shared package exports
+   - Required for cross-package imports from `@certquiz/shared`
+   - Contains only core constants and utilities (QUIZ_SIZES, CONFIG)
+   - Minimal surface area to prevent barrel export abuse
+
+2. **`apps/api/src/infra/db/schema/index.ts`** - Required for Drizzle schema exports
+   - Drizzle ORM requires centralized schema exports for migrations
+   - Database tooling expects schema aggregation pattern
+   - Critical for `drizzle-kit` migration generation and introspection
+
+These exceptions are carefully controlled and regularly reviewed to prevent expansion.
+
 ### ❌ Direct Transaction Usage in Routes
 **NEVER** use `withTransaction` directly in route handlers:
 
