@@ -45,6 +45,23 @@ async function safeParseJson(c: Context): Promise<unknown> {
 }
 
 /**
+ * Validates that requiresAuth is explicitly set and returns the value
+ * @param requiresAuth - The requiresAuth config value to validate
+ * @returns The validated boolean value
+ * @throws Error if requiresAuth is not explicitly set
+ */
+function validateRequiresAuthConfig(requiresAuth: boolean | undefined): boolean {
+  if (typeof requiresAuth !== 'boolean') {
+    throw new Error(
+      'Route config must explicitly set requiresAuth (true or false). ' +
+        'This prevents accidental public access. For public routes, set requiresAuth: false. ' +
+        'For protected routes, set requiresAuth: true.'
+    );
+  }
+  return requiresAuth;
+}
+
+/**
  * Helper function to handle authentication check
  */
 function checkAuthentication<TVariables extends AuthenticatedVariables>(
@@ -85,8 +102,8 @@ export interface AmbientRouteConfig {
   operation: RouteOperation;
   /** Resource name for logging */
   resource: string;
-  /** Whether this route requires authentication */
-  requiresAuth?: boolean;
+  /** Whether this route requires authentication (must be explicitly set for security) */
+  requiresAuth: boolean;
   /** HTTP status code for successful responses (defaults to 200) */
   successStatusCode?: ContentfulStatusCode;
   /** Extract log context from request body */
@@ -101,9 +118,11 @@ export interface AmbientRouteConfig {
  * Creates a route handler that expects repositories to be injected.
  * Transaction management is handled by middleware.
  *
- * @param config - Route configuration
+ * @param config - Route configuration (requiresAuth must be explicitly set for security)
  * @param handler - Route handler that receives body, dependencies, and context
  * @returns Hono route handler
+ *
+ * @security requiresAuth must be explicitly set to true or false to prevent accidental public access
  */
 export function createAmbientRoute<
   TBody = unknown,
@@ -123,10 +142,11 @@ export function createAmbientRoute<
     const routeLogger = createRouteLogger(logger, config.operation, config.resource);
 
     try {
-      // Check authentication
+      // Validate authentication configuration and check authentication
+      const requiresAuth = validateRequiresAuthConfig(config.requiresAuth);
       const authError = checkAuthentication(
         c as Context<{ Variables: TVariables & AuthenticatedVariables }>,
-        config.requiresAuth ?? true
+        requiresAuth
       );
       if (authError) {
         return c.json(authError, 401);
