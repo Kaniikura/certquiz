@@ -50,10 +50,11 @@ function createStandardGetRoute(
 /**
  * Create a standard POST route configuration
  * Supports various operations like create, submit, start, complete, login, register
+ * @security Defaults to requiresAuth: true for security. Explicitly set requiresAuth: false for public endpoints.
  *
  * @example
  * const config = createStandardPostRoute('submit', 'answer', {
- *   requiresAuth: true,
+ *   requiresAuth: true, // Explicit for authenticated endpoints
  *   logging: {
  *     extractLogContext: (body, c) => ({ sessionId: c.req.param('sessionId') })
  *   },
