@@ -834,31 +834,81 @@ app.onError(({ code, error }) => {
 
 ## Rate Limiting
 
-```typescript
-// Rate limit middleware
-const rateLimiter = new RateLimiter({
-  points: 100, // requests
-  duration: 60, // per minute
-  keyPrefix: 'api'
-});
+The API implements rate limiting using a token bucket algorithm to prevent abuse and ensure fair usage.
 
-app.use(async ({ request, set }) => {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown';
-  
-  try {
-    await rateLimiter.consume(ip);
-  } catch {
-    set.status = 429;
-    return {
-      success: false,
-      error: {
-        code: 'RATE_LIMIT',
-        message: 'Too many requests'
-      }
-    };
-  }
-});
+### Configuration
+
+Rate limiting is configured via environment variables:
+
+- `RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: true in production)
+- `RATE_LIMIT_WINDOW_MS`: Time window in milliseconds (default: 60000 = 1 minute)
+- `RATE_LIMIT_MAX_REQUESTS`: Maximum requests per window (default: 100)
+- `RATE_LIMIT_KEY_TYPE`: Key generation strategy - 'ip' or 'user' (default: 'ip')
+
+### Implementation
+
+```typescript
+import { rateLimiter } from '@api/middleware/rate-limit';
+import { InMemoryStore } from '@api/middleware/rate-limit/stores/in-memory';
+
+// Rate limiting applied to all /api/* routes
+app.use('/api/*', rateLimiter({
+  store: new InMemoryStore({
+    windowMs: 60000,
+    limit: 100,
+  }),
+  windowMs: 60000,
+  limit: 100,
+  keyGenerator: 'ip', // or 'user' for authenticated rate limiting
+}));
 ```
+
+### Response Headers
+
+All API responses include rate limit headers following the draft-7 standard:
+
+- `RateLimit-Limit`: Maximum number of requests allowed in the window
+- `RateLimit-Remaining`: Number of requests remaining in the current window
+- `RateLimit-Reset`: Unix timestamp (seconds) when the rate limit window resets
+
+### Rate Limit Exceeded Response
+
+When rate limit is exceeded, the API returns HTTP 429:
+
+```json
+{
+  "error": {
+    "message": "Too many requests",
+    "code": "RATE_LIMIT"
+  }
+}
+```
+
+Additionally, a `Retry-After` header is included indicating when the client can retry (in seconds).
+
+### Key Generation Strategies
+
+1. **IP-based** (`keyGenerator: 'ip'`):
+   - Extracts client IP from headers in order: X-Forwarded-For, CF-Connecting-IP, X-Real-IP
+   - Suitable for public endpoints and anonymous users
+   - Default strategy
+
+2. **User-based** (`keyGenerator: 'user'`):
+   - Uses authenticated user ID from JWT token
+   - Falls back to 'anonymous' for unauthenticated requests
+   - Suitable for authenticated endpoints
+
+3. **Custom** (provide function):
+   ```typescript
+   keyGenerator: (c) => `custom:${c.req.header('x-api-key') || 'default'}`
+   ```
+
+### Failure Handling
+
+The rate limiter implements a fail-open strategy for high availability:
+- If the store encounters an error, requests are allowed to proceed
+- Errors are logged but don't block legitimate traffic
+- This prevents the rate limiter from becoming a single point of failure
 
 ## CORS Configuration
 

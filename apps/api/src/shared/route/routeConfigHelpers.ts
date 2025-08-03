@@ -3,10 +3,10 @@
  * @fileoverview Provides utility functions for creating common route configurations using RouteConfigBuilder
  */
 
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Result } from '@api/shared/result';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';

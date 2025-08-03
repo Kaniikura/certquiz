@@ -1,8 +1,8 @@
 import { JwtVerifier } from '@api/infra/auth/JwtVerifier';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { auth } from './auth';
-import type { AuthUser } from './auth/auth-user';
 
 // Mock JwtVerifier at module level
 vi.mock('@api/infra/auth/JwtVerifier');

@@ -4,8 +4,8 @@
  */
 
 import { auth } from '@api/middleware/auth';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import { Hono } from 'hono';
 
 /**

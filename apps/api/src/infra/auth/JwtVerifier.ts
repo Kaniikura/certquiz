@@ -1,5 +1,5 @@
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { IRoleMapper } from './RoleMapper';
 

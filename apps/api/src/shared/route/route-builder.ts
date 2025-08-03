@@ -6,11 +6,11 @@
  * only the repositories they need.
  */
 
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { createRouteLogger, type RouteOperation } from '@api/shared/logging/route-logger';
 import type { Result } from '@api/shared/result';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 

@@ -5,10 +5,10 @@
 
 import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { auth } from '@api/middleware/auth';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator/IdGenerator';
+import type { AuthUser } from '@api/shared/types/auth-user';
 import { Hono } from 'hono';
 import { createQuestionRoute } from './create-question/route';
 import type { IPremiumAccessService } from './domain/services/IPremiumAccessService';
