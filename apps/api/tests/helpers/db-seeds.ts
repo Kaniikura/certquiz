@@ -58,10 +58,3 @@ export async function seedAdminUser<DB extends TestDb>(
 
   return admin;
 }
-
-/**
- * Clear all users from the test database
- */
-export async function clearUsers<DB extends TestDb>(db: DB): Promise<void> {
-  await db.delete(testUsers);
-}

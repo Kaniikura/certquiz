@@ -19,40 +19,8 @@ type Relations = ExtractTablesWithRelations<Schema>;
 export type TestDb = PostgresJsDatabase<Schema> | PostgresJsTransaction<Schema, Relations>;
 
 /**
- * Specific transaction type for operations that require transaction context.
- */
-export type TestTransaction = PostgresJsTransaction<Schema, Relations>;
-
-/**
  * Create a test database wrapper
  */
 export function createTestDb(client: Sql): PostgresJsDatabase<Schema> {
   return drizzle(client, { schema: testSchema });
-}
-
-/**
- * Validate worker ID format
- */
-export function validateWorkerId(workerId: string): void {
-  if (!workerId || !/^[a-zA-Z0-9_]+$/.test(workerId)) {
-    throw new Error(
-      `Invalid worker ID: ${workerId}. Must contain only alphanumeric characters and underscores.`
-    );
-  }
-}
-
-/**
- * Quote identifier for SQL
- */
-export function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replace(/"/g, '""')}"`;
-}
-
-/**
- * Get worker database name
- */
-export function getWorkerDatabaseName(workerId: string): { raw: string; quoted: string } {
-  validateWorkerId(workerId);
-  const raw = `test_${workerId}`;
-  return { raw, quoted: quoteIdentifier(raw) };
 }

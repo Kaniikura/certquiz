@@ -37,7 +37,7 @@ async function withMutex<T>(operation: () => Promise<T>): Promise<T> {
  * Container is reused across test runs for performance.
  * Automatically runs Drizzle migrations on first start.
  */
-export async function getPostgres(): Promise<StartedPostgreSqlContainer> {
+async function getPostgres(): Promise<StartedPostgreSqlContainer> {
   // If instance exists, return it
   if (instance) return instance;
   // If we're already starting the container, return that promise
