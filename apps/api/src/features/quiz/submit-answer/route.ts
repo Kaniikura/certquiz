@@ -5,18 +5,15 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { LoggerVariables } from '@api/middleware/logger';
-import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
-import { createAmbientRoute } from '@api/shared/route/route-builder';
+import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation/constants';
 import { zValidator } from '@hono/zod-validator';
-import { Hono } from 'hono';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId } from '../domain/value-objects/Ids';
@@ -34,27 +31,27 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
   const deps = new QuizDependencyProvider();
   const questionService = deps.submitAnswerQuestionService;
 
-  return new Hono<{
-    Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
-  }>().post('/:sessionId/submit-answer', zValidator('json', submitAnswerSchema), (c) => {
-    const route = createAmbientRoute<
-      SubmitAnswerRequest,
-      SubmitAnswerResponse,
-      {
-        quizRepo: IQuizRepository;
-        questionService: StubQuestionService;
-        quizCompletionService: IQuizCompletionService;
-        clock: Clock;
-      },
-      { user: AuthUser } & LoggerVariables & DatabaseContextVariables
-    >(
-      {
-        operation: 'submit',
-        resource: 'answer',
-        requiresAuth: true,
+  return createStandardRoute<
+    SubmitAnswerRequest,
+    SubmitAnswerResponse,
+    {
+      quizRepo: IQuizRepository;
+      questionService: StubQuestionService;
+      quizCompletionService: IQuizCompletionService;
+      clock: Clock;
+    }
+  >({
+    method: 'post',
+    path: '/:sessionId/submit-answer',
+    validator: zValidator('json', submitAnswerSchema),
+    configOptions: {
+      operation: 'submit',
+      resource: 'answer',
+      requiresAuth: true,
+      logging: {
         extractLogContext: (body, c) => {
           const request = body as SubmitAnswerRequest;
-          const user = c?.get('user') as AuthUser;
+          const user = c ? validateUserContext(c) : null;
           const sessionId = c?.req.param('sessionId');
 
           return {
@@ -68,7 +65,7 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
           const response = result as SubmitAnswerResponse & {
             _metadata?: { completionError?: { message: string; code?: string } };
           };
-          const user = c?.get('user') as AuthUser;
+          const user = c ? validateUserContext(c) : null;
           const sessionId = c?.req.param('sessionId');
           const logger = c?.get('logger') as LoggerPort;
 
@@ -93,48 +90,37 @@ export function submitAnswerRoute(clock: Clock, quizCompletionService: IQuizComp
             completionErrorOccurred: !!response._metadata?.completionError,
           };
         },
-        errorMapper: mapSubmitAnswerError,
       },
-      async (
-        body,
-        routeDeps: {
-          quizRepo: IQuizRepository;
-          questionService: StubQuestionService;
-          quizCompletionService: IQuizCompletionService;
-          clock: Clock;
-        },
-        context
-      ) => {
-        const request = body as SubmitAnswerRequest;
-        const user = context.get('user') as AuthUser;
-        const sessionId = context.req.param('sessionId');
+      errorMapper: mapSubmitAnswerError,
+    },
+    handler: async (body, deps, context) => {
+      const request = body as SubmitAnswerRequest;
+      const user = validateUserContext(context);
+      const sessionId = context.req.param('sessionId');
 
-        // Validate session ID
-        if (!sessionId || !isValidUUID(sessionId)) {
-          return Result.fail(new ValidationError('Invalid session ID format. Expected UUID.'));
-        }
-
-        const userIdVO = UserId.of(user.sub);
-        const sessionIdVO = QuizSessionId.of(sessionId);
-
-        return submitAnswerHandler(
-          request,
-          sessionIdVO,
-          userIdVO,
-          routeDeps.quizRepo,
-          routeDeps.questionService,
-          routeDeps.quizCompletionService,
-          routeDeps.clock
-        );
+      // Validate session ID
+      if (!sessionId || !isValidUUID(sessionId)) {
+        return Result.fail(new ValidationError('Invalid session ID format. Expected UUID.'));
       }
-    );
 
-    // Inject dependencies
-    return route(c, {
+      const userIdVO = UserId.of(user.sub);
+      const sessionIdVO = QuizSessionId.of(sessionId);
+
+      return submitAnswerHandler(
+        request,
+        sessionIdVO,
+        userIdVO,
+        deps.quizRepo,
+        deps.questionService,
+        deps.quizCompletionService,
+        deps.clock
+      );
+    },
+    getDependencies: (c) => ({
       quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
       quizCompletionService: quizCompletionService,
       clock: clock,
-    });
+    }),
   });
 }

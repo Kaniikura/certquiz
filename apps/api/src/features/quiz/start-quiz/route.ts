@@ -5,14 +5,11 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { LoggerVariables } from '@api/middleware/logger';
-import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
-import { createAmbientRoute } from '@api/shared/route/route-builder';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
+import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { zValidator } from '@hono/zod-validator';
-import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizDependencyProvider } from '../shared/dependencies';
 import { mapStartQuizError } from '../shared/error-mapper';
@@ -28,24 +25,24 @@ export function startQuizRoute(clock: Clock) {
   const deps = new QuizDependencyProvider();
   const questionService = deps.startQuizQuestionService;
 
-  return new Hono<{
-    Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
-  }>().post('/start', zValidator('json', startQuizSchema), (c) => {
-    const route = createAmbientRoute<
-      StartQuizRequest,
-      StartQuizResponse,
-      {
-        quizRepo: IQuizRepository;
-        questionService: StubQuestionService;
-        clock: Clock;
-      },
-      { user: AuthUser } & LoggerVariables & DatabaseContextVariables
-    >(
-      {
-        operation: 'start',
-        resource: 'quiz',
-        requiresAuth: true,
-        successStatusCode: 201,
+  return createStandardRoute<
+    StartQuizRequest,
+    StartQuizResponse,
+    {
+      quizRepo: IQuizRepository;
+      questionService: StubQuestionService;
+      clock: Clock;
+    }
+  >({
+    method: 'post',
+    path: '/start',
+    validator: zValidator('json', startQuizSchema),
+    configOptions: {
+      operation: 'start',
+      resource: 'quiz',
+      requiresAuth: true,
+      successStatusCode: 201,
+      logging: {
         extractLogContext: (body) => {
           const request = body as StartQuizRequest;
           return {
@@ -61,36 +58,20 @@ export function startQuizRoute(clock: Clock) {
             expiresAt: response.expiresAt,
           };
         },
-        errorMapper: mapStartQuizError,
       },
-      async (
-        body,
-        routeDeps: {
-          quizRepo: IQuizRepository;
-          questionService: StubQuestionService;
-          clock: Clock;
-        },
-        context
-      ) => {
-        const request = body as StartQuizRequest;
-        const user = context.get('user') as AuthUser;
-        const userId = UserId.of(user.sub);
+      errorMapper: mapStartQuizError,
+    },
+    handler: async (body, deps, context) => {
+      const request = body as StartQuizRequest;
+      const user = validateUserContext(context);
+      const userId = UserId.of(user.sub);
 
-        return startQuizHandler(
-          request,
-          userId,
-          routeDeps.quizRepo,
-          routeDeps.questionService,
-          routeDeps.clock
-        );
-      }
-    );
-
-    // Inject dependencies
-    return route(c, {
+      return startQuizHandler(request, userId, deps.quizRepo, deps.questionService, deps.clock);
+    },
+    getDependencies: (c) => ({
       quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionService: questionService,
       clock: clock,
-    });
+    }),
   });
 }

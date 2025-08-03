@@ -36,7 +36,7 @@ All foundational setup tasks completed, including:
 - Established solid foundation for Phase 1 development
 - Optimized developer experience with modern tooling
 
-> 📁 **Detailed task breakdown**: [docs/completed/01-core-setup-tasks.md](./completed/01-core-setup-tasks.md)
+> 📁 **Detailed task breakdown**: [docs/completed/0001-core-setup-tasks.md](./completed/0001-core-setup-tasks.md)
 
 ## 2. Shared Utilities & Configuration ✅
 **Status**: COMPLETED  
@@ -57,7 +57,7 @@ All shared infrastructure components completed, including:
 - Implemented production-ready caching with graceful degradation
 - Created type-safe configuration management with runtime validation
 
-> 📁 **Detailed task breakdown**: [docs/completed/02-shared-utilities-configuration.md](./completed/02-shared-utilities-configuration.md)
+> 📁 **Detailed task breakdown**: [docs/completed/0002-shared-utilities-configuration.md](./completed/0002-shared-utilities-configuration.md)
 
 ## 2.1 Remove Cache Infrastructure ✅
 **Status**: COMPLETED
@@ -119,7 +119,7 @@ Complete database foundation with VSA architecture implementation:
 - 40+ tests covering all components with 90%+ coverage
 - Security hardening with path traversal and SQL injection protection
 
-> 📁 **Detailed task breakdown**: [docs/completed/03-database-foundation.md](./completed/03-database-foundation.md)
+> 📁 **Detailed task breakdown**: [docs/completed/0003-database-foundation.md](./completed/0003-database-foundation.md)
 
 ## 4. Quality Gates ✅
 
@@ -170,7 +170,7 @@ Complete implementation of all core features using Vertical Slice Architecture (
 - Event sourcing for quiz domain with full business rule enforcement
 - Type-safe error handling with Result<T,E> pattern throughout
 
-> 📁 **Detailed task breakdown**: [docs/completed/05-feature-implementation.md](./completed/05-feature-implementation.md)
+> 📁 **Detailed task breakdown**: [docs/completed/0004-feature-implementation.md](./completed/0004-feature-implementation.md)
 
 ## 6. API Layer Implementation & Technical Debt ✅
 **Status**: PARTIALLY COMPLETED
@@ -201,282 +201,27 @@ Complete implementation of all core features using Vertical Slice Architecture (
 The following technical debt items need immediate attention to enable proper testing without database dependencies.
 
 ## 7. Migrate from withTransaction to IUnitOfWork Pattern ✅
+**Status**: COMPLETED  
+**Total Time**: ~13.5 days (across 6 phases)  
+**Completion Date**: August 4, 2025  
 
-### 7.1 Core Migration ✅
-**Time**: 4 days (actual: ~3.5 days)
-**Priority**: HIGH
-**Status**: COMPLETED
-**Completion Date**: July 23, 2025
-```typescript
-// Migration completed successfully:
-// - All routes now use IUnitOfWork pattern from middleware
-// - Tests run without database dependencies
-// - Legacy TxRunner code removed
-
-// Tasks:
-- Step 0: Implement TxRunner shim for immediate test fixes (0.5 day) ✅
-  ✅ Create TxRunner interface with run method
-  ✅ Implement DrizzleTxRunner using withTransaction
-  ✅ Implement NoopTxRunner for tests
-  ✅ Update routes to use TxRunner instead of direct withTransaction
-  ✅ Verify all tests pass without database
-
-- Step 1: Introduce UnitOfWorkProvider middleware (1 day) ✅
-  ✅ Create middleware that provides IUnitOfWork to context
-  ✅ Implement factory for real/fake UoW based on environment
-  ✅ Test middleware with both implementations
-
-- Step 2: Slice-by-slice migration (2-3 days) ✅
-  ✅ Migrate user routes from repositories to IUnitOfWork
-  ✅ Migrate question routes from repositories to IUnitOfWork
-  ✅ Migrate quiz routes from repositories to IUnitOfWork
-  ✅ Migrate auth routes from repositories to IUnitOfWork
-  ✅ Remove legacy repository-setting middleware from each slice
-  ✅ Fix domain entity separation (auth vs user domains)
-  ✅ Create FakeAuthUserRepository for testing
-  ✅ Update IUnitOfWork with getAuthUserRepository() method
-
-- Step 3: Remove legacy code (0.5 day) ✅
-  ✅ Delete TxRunner shim (106 lines removed)
-  ✅ Remove withTransaction imports from routes
-  ✅ Clean up unused legacy code
-  ✅ Update coding standards to warn against withTransaction in routes
-  ✅ Add warnings to infra/db/index.ts
-
-✅ Test: All routes use IUnitOfWork, no direct transaction usage
-✅ Test: HTTP layer tests run without database
-✅ Test: Integration tests still work with real database
-✅ Test: All linting and type checks pass
-```
-
-### 7.2 Complete Migration to Full IUnitOfWork ✅
-**Time**: 2 days (actual: Pre-completed during 7.1)
-**Priority**: HIGH
-**Status**: COMPLETED
-**Completion Date**: July 23, 2025
-**Depends on**: 7.1
-```typescript
-// Full IUnitOfWork pattern successfully implemented:
-// - All 4 repositories (auth, user, quiz, question) accessible via UnitOfWork
-// - Complete transaction lifecycle support
-// - Production-ready with comprehensive testing
-
-// Tasks:
-✅ Add IQuestionRepository to IUnitOfWork interface
-  ✅ Interface includes getQuestionRepository(): IQuestionRepository (line 91-92)
-  ✅ Properly imported and typed with domain repository interface
-
-✅ Implement question repository accessor
-  ✅ DrizzleUnitOfWork: Full implementation with repository caching (lines 144-155)
-  ✅ FakeUnitOfWork: Test double implementation for unit testing (lines 89-91)
-  ✅ Repository lifecycle management and logging
-
-✅ Update all question-related code to use UoW
-  ✅ Question routes factory: Uses unitOfWork.getQuestionRepository() (line 78)
-  ✅ All route handlers access repositories through UnitOfWork context
-  ✅ No direct repository injection in question domain
-
-✅ Add missing repository methods
-  ✅ All repository interfaces complete and implemented
-  ✅ No TypeScript compilation errors or missing method signatures
-  ✅ Repository pattern consistent across all domains
-
-✅ Implement transaction lifecycle methods (begin/commit/rollback)
-  ✅ DrizzleUnitOfWork: No-op implementations with proper logging (Phase 1 approach)
-  ✅ FakeUnitOfWork: Full transaction simulation with state tracking
-  ✅ Interface compatibility for future explicit transaction control
-
-✅ Test: Full UoW pattern implemented across all features
-  ✅ 35+ integration tests passing
-  ✅ All route factories using UnitOfWork from middleware context
-  ✅ Repository caching and transaction isolation working correctly
-  ✅ Both real and fake implementations tested
-```
-
-**Key Achievements:**
-- Complete abstraction of all data access through IUnitOfWork interface
-- Repository caching optimization in production implementation
-- Full transaction lifecycle support for future enhancement
-- Test isolation through fake implementations
-- Zero direct withTransaction usage in application code
-
-### 7.3 Async DI Container Migration (Task 5.6) ✅
-**Time**: 3 days (actual: 2 days)
-**Priority**: HIGH
-**Status**: COMPLETED - July 31, 2025
-
-**Objective**: Implement async dependency injection for proper database initialization
-
-**Tasks Completed**:
-✅ Phase 1: Database Provider Implementation
-  ✅ Created IDatabaseProvider interface
-  ✅ Implemented ProductionDatabaseProvider and TestDatabaseProvider
-  ✅ Added per-worker database isolation for tests
-
-✅ Phase 2: AsyncDIContainer Implementation
-  ✅ Full async/await support for service factories
-  ✅ Singleton management with concurrent initialization protection
-  ✅ Environment-specific configuration support
-  ✅ Compatible with both sync and async factories
-
-✅ Phase 3: Integration and Testing
-  ✅ Created async app factory (buildAppWithAsyncContainer)
-  ✅ Async production entry point (index.async.ts)
-  ✅ Async test factories for integration and HTTP tests
-  ✅ Validation tests confirming proper test isolation
-
-✅ Cleanup: Dead Code Removal
-  ✅ Removed /testing/infra/db/client.ts (unused getTestDb)
-  ✅ Removed getTestDb from connection.ts
-  ✅ Removed self-referential test files
-  ✅ Fixed all TypeScript and linting errors
-  ✅ ~400 lines of dead code removed
-
-**Key Benefits**:
-- Proper async initialization for database connections
-- True test isolation with per-worker databases
-- Backward compatibility via feature flag (USE_NEW_DB_PROVIDER)
-- Maintained full type safety
-
-✅ Test: All tests pass with USE_NEW_DB_PROVIDER=true
-✅ Test: Async container isolation verified
-✅ Test: Production server starts with async entry point
-✅ Documentation: Migration guide and completion docs updated
-
-### 7.4 Database Architecture Refactoring ✅
-**Time**: 5 days (actual: completed in PR #62)
-**Priority**: HIGH
-**Status**: COMPLETED
-**Completion Date**: PR #62
-**Depends on**: 7.3 (Async DI Container Migration)
-
-**Objective**: Implement comprehensive database architecture refactoring to unify Production/Test environments and add missing cross-aggregate transaction support
-
-**Reference**: [docs/planning/0010-database-architecture-refactoring-plan.md](./planning/0010-database-architecture-refactoring-plan.md)
-
-```typescript
-// Phase 1: Architecture Unification (Production/Test Integration) - 1.5 days
-- Production environment migration to DIContainer
-  - Update apps/api/src/index.ts to use createConfiguredContainer('production')
-  - Extend container-config.ts with production configuration
-  - Add Unit of Work integration to production config
-
-// Phase 2: Unit of Work Integration Architecture - 1.5 days  
-- Enhance AsyncDatabaseContext with Unit of Work support
-  - Add executeWithUnitOfWork method to AsyncDatabaseContext
-  - Integrate UnitOfWorkProvider as optional dependency
-  - Maintain backward compatibility with existing withinTransaction
-
-// Phase 3: Application Service Layer Implementation - 1 day
-- Implement QuizCompletionService for cross-aggregate operations
-  - Create apps/api/src/features/quiz/application/QuizCompletionService.ts
-  - Add QUIZ_COMPLETION_SERVICE_TOKEN to service tokens
-  - Implement completeQuizWithProgressUpdate method
-  - Add atomic quiz session + user progress updates
-
-// Phase 4: Handler Integration & Route Updates - 1 day
-- Create new quiz completion endpoint
-  - Implement apps/api/src/features/quiz/complete-quiz/handler.ts
-  - Create apps/api/src/features/quiz/complete-quiz/route.ts
-  - Add POST /quiz/:sessionId/complete endpoint
-  - Update submit-answer handler to provide completion URL
-
-- Simplify existing handlers
-  - Remove user progress update from submit-answer handler
-  - Update response to include nextAction for completion
-  - Maintain auto-completion functionality
-
-// Phase 5: File Cleanup & Architecture Simplification - 0.5 days
-- Remove duplicate database context implementations
-  - Delete apps/api/src/infra/db/DrizzleDatabaseContext.ts
-  - Delete apps/api/src/infra/db/DrizzleDatabaseContext.test.ts
-  - Remove apps/api/src/shared/transaction/handler-utils.ts
-
-- Consolidate user progress functionality
-  - Remove apps/api/src/features/user/update-progress/* (integrated into QuizCompletionService)
-  - Update imports and references
-
-// Phase 6: Testing & Validation - 0.5 days
-- Comprehensive testing of new architecture
-  - Unit tests for QuizCompletionService
-  - Integration tests for complete quiz flow
-  - Verify atomic transactions work correctly
-  - Test both auto-completion and manual completion flows
-
-- End-to-end validation
-  - Production environment starts with new architecture
-  - All existing tests pass
-  - New cross-aggregate functionality works
-  - Performance regression testing
-```
-
-**Critical Business Impact**:
-This task addresses a **critical missing feature** where quiz completion does not update user progress (level, experience, statistics). The current implementation violates data consistency and results in poor user experience.
-
-**Key Benefits**:
-- ✅ **Architecture Consistency**: Unified Production/Test environments using DIContainer
-- ✅ **Complexity Reduction**: Single AsyncDatabaseContext implementation  
-- ✅ **Critical Feature**: Quiz completion properly updates user progress atomically
-- ✅ **Data Integrity**: Cross-aggregate transactions ensure consistency
-- ✅ **Maintainability**: Simplified codebase with clear separation of concerns
-
-**Risk Mitigation**:
-- Phased implementation approach minimizes disruption
-- Comprehensive testing at each phase
-- Backward compatibility maintained during transition
-- Rollback plan via git branches
-
-### 7.5 Barrel Export Elimination ✅
-**Time**: 2 days (actual: 2 days)
-**Priority**: HIGH  
-**Status**: COMPLETED
-**Completion Date**: August 3, 2025
-**Depends on**: 7.4 (Database Architecture Refactoring)
-
-**Objective**: Eliminate barrel exports (index.ts re-export files) and implement direct import pattern across the codebase
-
-**Reference**: [docs/completed/0012-refactoring-plan-unused-exports.md](./completed/0012-refactoring-plan-unused-exports.md)
-
-**Tasks Completed**:
-✅ **Phase 1: Assessment and Planning**
-  ✅ Identified 12 barrel export files across API and shared packages
-  ✅ Analyzed import dependencies and usage patterns
-  ✅ Created comprehensive elimination plan with 7 phases
-
-✅ **Phase 2: Shared Package Cleanup** 
-  ✅ Eliminated typespec package following YAGNI principle
-  ✅ Removed web app directory and dependencies
-  ✅ Updated shared package to focus on core utilities only
-
-✅ **Phase 3: Core Infrastructure Cleanup**
-  ✅ Configured knip tool for unused export detection
-  ✅ Integrated knip into quality check pipeline (`bun run check` and `bun run ci`)
-  ✅ Updated CI workflow with proper Bun caching using composite actions
-
-✅ **Phase 4-6: Systematic Barrel Export Removal**
-  ✅ Removed 12 barrel export files (index.ts) across all packages
-  ✅ Updated 50+ import statements to use direct imports
-  ✅ Maintained type safety and resolved all compilation errors
-
-✅ **Phase 7: Documentation and Standards**
-  ✅ Updated coding standards to prohibit barrel exports
-  ✅ Added direct import examples and anti-patterns
-  ✅ Created type management policy document
-  ✅ Updated project structure documentation
+### Summary
+Complete migration from direct transaction usage to unified Unit of Work pattern across the entire application:
+- ✅ **Core Migration**: IUnitOfWork pattern established with middleware integration
+- ✅ **Test Independence**: All tests run without database dependencies
+- ✅ **Architecture Unification**: Async DI container with unified Production/Test environments
+- ✅ **Database Refactoring**: Cross-aggregate transactions and QuizCompletionService
+- ✅ **Code Quality**: Barrel export elimination and code deduplication
+- ✅ **Pattern Establishment**: RouteConfigBuilder and direct import patterns
 
 **Key Achievements**:
-- **Reduced Bundle Size**: Eliminated dead code and unused exports
-- **Improved Type Performance**: Direct imports reduce TypeScript compilation overhead
-- **Enhanced Maintainability**: Clear dependency relationships without hidden exports
-- **Established Standards**: No Barrel Exports rule added to coding standards
-- **Tool Integration**: knip integrated for continuous unused export detection
+- Complete abstraction of all data access through IUnitOfWork interface
+- Zero direct withTransaction usage in application code  
+- Test isolation through fake implementations with per-worker databases
+- 95% reduction in code duplication across infrastructure patterns
+- Production-ready architecture with comprehensive testing (1,245 tests passing)
 
-**Quality Metrics**:
-- ✅ All TypeScript compilation passes
-- ✅ All 1000+ tests passing
-- ✅ Zero linting errors with Biome
-- ✅ Zero unused exports detected by knip
-- ✅ CI workflow optimized with composite actions
+> 📁 **Detailed migration breakdown**: [docs/completed/0014-unitofwork-migration.md](./completed/0014-unitofwork-migration.md)
 
 ## 8. API Layer Enhancement 🟢
 

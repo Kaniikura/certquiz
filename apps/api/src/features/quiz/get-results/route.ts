@@ -5,16 +5,13 @@
 
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { LoggerVariables } from '@api/middleware/logger';
-import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { Clock } from '@api/shared/clock';
 import { ValidationError } from '@api/shared/errors';
+import { validateUserContext } from '@api/shared/handler/handler-utils';
 import { Result } from '@api/shared/result';
-import { createAmbientRoute } from '@api/shared/route/route-builder';
+import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation/constants';
-import { Hono } from 'hono';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import { QuizSessionId } from '../domain/value-objects/Ids';
 import type { StubQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
@@ -31,22 +28,21 @@ export function getResultsRoute(_clock: Clock) {
   const deps = new QuizDependencyProvider();
   const questionDetailsService = deps.questionDetailsService;
 
-  return new Hono<{
-    Variables: { user: AuthUser } & LoggerVariables & DatabaseContextVariables;
-  }>().get('/:sessionId/results', (c) => {
-    const route = createAmbientRoute<
-      unknown,
-      GetResultsResponse,
-      {
-        quizRepo: IQuizRepository;
-        questionDetailsService: StubQuestionDetailsService;
-      },
-      { user: AuthUser } & LoggerVariables & DatabaseContextVariables
-    >(
-      {
-        operation: 'get',
-        resource: 'results',
-        requiresAuth: true,
+  return createStandardRoute<
+    unknown,
+    GetResultsResponse,
+    {
+      quizRepo: IQuizRepository;
+      questionDetailsService: StubQuestionDetailsService;
+    }
+  >({
+    method: 'get',
+    path: '/:sessionId/results',
+    configOptions: {
+      operation: 'get',
+      resource: 'results',
+      requiresAuth: true,
+      logging: {
         extractLogContext: (_body, c) => {
           const sessionId = c?.req.param('sessionId');
           return { sessionId };
@@ -62,41 +58,32 @@ export function getResultsRoute(_clock: Clock) {
             canViewResults: response.canViewResults,
           };
         },
-        errorMapper: mapGetResultsError,
       },
-      async (
-        _body,
-        routeDeps: {
-          quizRepo: IQuizRepository;
-          questionDetailsService: StubQuestionDetailsService;
-        },
-        context
-      ) => {
-        const user = context.get('user') as AuthUser;
-        const sessionId = context.req.param('sessionId');
+      errorMapper: mapGetResultsError,
+    },
+    handler: async (_body, deps, context) => {
+      const user = validateUserContext(context);
+      const sessionId = context.req.param('sessionId');
 
-        // Validate session ID
-        if (!sessionId || !isValidUUID(sessionId)) {
-          return Result.fail(new ValidationError('Invalid session ID format. Expected UUID.'));
-        }
-
-        const userIdVO = UserId.of(user.sub);
-        const sessionIdVO = QuizSessionId.of(sessionId);
-
-        return getResultsHandler(
-          {},
-          sessionIdVO,
-          userIdVO,
-          routeDeps.quizRepo,
-          routeDeps.questionDetailsService
-        );
+      // Validate session ID
+      if (!sessionId || !isValidUUID(sessionId)) {
+        return Result.fail(new ValidationError('Invalid session ID format. Expected UUID.'));
       }
-    );
 
-    // Inject dependencies
-    return route(c, {
+      const userIdVO = UserId.of(user.sub);
+      const sessionIdVO = QuizSessionId.of(sessionId);
+
+      return getResultsHandler(
+        {},
+        sessionIdVO,
+        userIdVO,
+        deps.quizRepo,
+        deps.questionDetailsService
+      );
+    },
+    getDependencies: (c) => ({
       quizRepo: getRepositoryFromContext(c, QUIZ_REPO_TOKEN),
       questionDetailsService: questionDetailsService,
-    });
+    }),
   });
 }

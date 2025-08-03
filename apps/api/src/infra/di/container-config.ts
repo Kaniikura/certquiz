@@ -6,36 +6,8 @@
 // The async database provider is used as the default for all environments requiring asynchronous initialization.
 
 import type { Environment } from '@api/config/env';
-import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
-import { QuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
-import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
-import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
-import { systemClock } from '@api/shared/clock';
-import { FakePremiumAccessService } from '@api/test-support/fakes/services/FakePremiumAccessService';
-import { FakeAuthProvider } from '../auth/AuthProvider.fake';
-import { StubAuthProvider } from '../auth/AuthProvider.stub';
-import { createAuthProvider as createProductionAuthProvider } from '../auth/AuthProviderFactory.prod';
-import { AsyncDatabaseContext } from '../db/AsyncDatabaseContext';
-import { DrizzleUnitOfWorkProvider } from '../db/DrizzleUnitOfWorkProvider';
-import { ProductionDatabaseProvider } from '../db/ProductionDatabaseProvider';
-import { validateDatabaseUrl } from '../db/shared';
-import { TestDatabaseProvider } from '../db/TestDatabaseProvider';
-import { getRootLogger } from '../logger/root-logger';
 import { DIContainer } from './DIContainer';
-import {
-  AUTH_PROVIDER_TOKEN,
-  CLOCK_TOKEN,
-  DATABASE_CLIENT_TOKEN,
-  DATABASE_CONTEXT_TOKEN,
-  DATABASE_PROVIDER_TOKEN,
-  ID_GENERATOR_TOKEN,
-  LOGGER_TOKEN,
-  PREMIUM_ACCESS_SERVICE_TOKEN,
-  QUESTION_DETAILS_SERVICE_TOKEN,
-  QUESTION_SERVICE_TOKEN,
-  QUIZ_COMPLETION_SERVICE_TOKEN,
-  UNIT_OF_WORK_PROVIDER_TOKEN,
-} from './tokens';
+import { registerCommonInfrastructure } from './registerCommonInfrastructure';
 
 /**
  * Default maximum connections for database pool
@@ -49,92 +21,13 @@ const DEFAULT_DB_POOL_MAX = 20;
  */
 function configureTestContainer(container: DIContainer): void {
   container.registerEnvironmentConfig('test', (c) => {
-    // Infrastructure
-    c.register(LOGGER_TOKEN, () => getRootLogger());
-    c.register(CLOCK_TOKEN, () => systemClock);
-    c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
-
-    // Database configuration with async provider
-    c.register(
-      DATABASE_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        return new TestDatabaseProvider(logger);
-      },
-      { singleton: true }
-    );
-
-    // Register database client from provider
-    c.register(
-      DATABASE_CLIENT_TOKEN,
-      async () => {
-        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        // TestDatabaseProvider will handle async initialization internally
-        return provider.getDatabase();
-      },
-      { singleton: false } // New instance per test for isolation
-    );
-
-    // Unit of Work Provider - for cross-aggregate operations in tests
-    c.register(
-      UNIT_OF_WORK_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        return new DrizzleUnitOfWorkProvider(logger);
-      },
-      { singleton: false } // New instance per test for isolation
-    );
-
-    c.register(
-      DATABASE_CONTEXT_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        // Create context with auto-initialization disabled for manual control.
-        // autoInitialize is set to false in tests to allow explicit, manual initialization of the database context.
-        // This ensures that each test can control when and how initialization occurs, improving test isolation and reliability.
-        // In production or other environments, autoInitialize should be enabled to allow the context to set up automatically.
-        const context = new AsyncDatabaseContext(
-          logger,
-          databaseProvider,
-          {
-            autoInitialize: false,
-          },
-          unitOfWorkProvider
-        );
-        // Initialize it explicitly for tests
-        await context.initialize();
-        return context;
-      },
-      { singleton: false } // New instance per test for isolation
-    );
-
-    // Auth - Use stub for predictable testing
-    c.register(AUTH_PROVIDER_TOKEN, () => new StubAuthProvider(), { singleton: true });
-
-    // Premium Access - Use fake for testing
-    c.register(PREMIUM_ACCESS_SERVICE_TOKEN, () => new FakePremiumAccessService(), {
-      singleton: true,
+    registerCommonInfrastructure(c, {
+      enableLogging: false,
+      environment: 'test',
+      authProvider: 'stub',
+      premiumAccessProvider: 'fake',
     });
-
-    // Quiz Services - Use stubs
-    c.register(QUESTION_SERVICE_TOKEN, () => new StubQuestionService(), { singleton: true });
-    c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
-      singleton: true,
-    });
-
-    // Quiz Application Services - Test implementations
-    c.register(
-      QUIZ_COMPLETION_SERVICE_TOKEN,
-      async () => {
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
-        const clock = await c.resolve(CLOCK_TOKEN);
-        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
-      },
-      { singleton: true } // Singleton instance for improved test performance
-    );
+    // No test-specific overrides needed - all test configuration is handled by registerCommonInfrastructure
   });
 }
 
@@ -145,93 +38,13 @@ function configureTestContainer(container: DIContainer): void {
  */
 function configureDevelopmentContainer(container: DIContainer): void {
   container.registerEnvironmentConfig('development', (c) => {
-    // Infrastructure
-    c.register(LOGGER_TOKEN, () => getRootLogger());
-    c.register(CLOCK_TOKEN, () => systemClock);
-    c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
-
-    // Database configuration with async provider
-    c.register(
-      DATABASE_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
-        const config = {
-          databaseUrl,
-          enableLogging: true,
-          environment: 'development',
-        };
-        return new ProductionDatabaseProvider(logger, config);
-      },
-      { singleton: true }
-    );
-
-    // Register database client from provider
-    c.register(
-      DATABASE_CLIENT_TOKEN,
-      async () => {
-        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        return provider.getDatabase();
-      },
-      { singleton: true }
-    );
-
-    // Unit of Work Provider - for cross-aggregate operations
-    c.register(
-      UNIT_OF_WORK_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        return new DrizzleUnitOfWorkProvider(logger);
-      },
-      { singleton: true }
-    );
-
-    c.register(
-      DATABASE_CONTEXT_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
-      },
-      { singleton: true }
-    );
-
-    // Auth - Use fake provider for local development
-    c.register(
-      AUTH_PROVIDER_TOKEN,
-      () => {
-        const fakeAuth = new FakeAuthProvider();
-        // Configure fake auth to succeed by default for development
-        fakeAuth.givenAuthenticationSucceeds();
-        fakeAuth.givenTokenValidationSucceeds();
-        return fakeAuth;
-      },
-      { singleton: true }
-    );
-
-    // Premium Access - Use real implementation for development (needed for integration tests)
-    c.register(PREMIUM_ACCESS_SERVICE_TOKEN, () => new PremiumAccessService(), {
-      singleton: true,
+    registerCommonInfrastructure(c, {
+      enableLogging: true,
+      environment: 'development',
+      authProvider: 'fake',
+      premiumAccessProvider: 'real',
     });
-
-    // Quiz Services - Use stubs for now (TODO: implement real services)
-    c.register(QUESTION_SERVICE_TOKEN, () => new StubQuestionService(), { singleton: true });
-    c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
-      singleton: true,
-    });
-
-    // Quiz Application Services - Development implementations
-    c.register(
-      QUIZ_COMPLETION_SERVICE_TOKEN,
-      async () => {
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
-        const clock = await c.resolve(CLOCK_TOKEN);
-        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
-      },
-      { singleton: true }
-    );
+    // No development-specific overrides needed - all configuration is handled by registerCommonInfrastructure
   });
 }
 
@@ -242,86 +55,16 @@ function configureDevelopmentContainer(container: DIContainer): void {
  */
 function configureProductionContainer(container: DIContainer): void {
   container.registerEnvironmentConfig('production', (c) => {
-    // Infrastructure
-    c.register(LOGGER_TOKEN, () => getRootLogger());
-    c.register(CLOCK_TOKEN, () => systemClock);
-    c.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
-
-    // Database configuration with async provider
-    c.register(
-      DATABASE_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
-        const config = {
-          databaseUrl,
-          enableLogging: false,
-          environment: 'production',
-          defaultPoolConfig: {
-            max: parseInt(process.env.DB_POOL_MAX || DEFAULT_DB_POOL_MAX.toString(), 10),
-          },
-        };
-        return new ProductionDatabaseProvider(logger, config);
+    registerCommonInfrastructure(c, {
+      enableLogging: false,
+      environment: 'production',
+      poolConfig: {
+        max: parseInt(process.env.DB_POOL_MAX || DEFAULT_DB_POOL_MAX.toString(), 10),
       },
-      { singleton: true }
-    );
-
-    // Register database client from provider
-    c.register(
-      DATABASE_CLIENT_TOKEN,
-      async () => {
-        const provider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        return provider.getDatabase();
-      },
-      { singleton: true }
-    );
-
-    // Unit of Work Provider - for cross-aggregate operations
-    c.register(
-      UNIT_OF_WORK_PROVIDER_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        return new DrizzleUnitOfWorkProvider(logger);
-      },
-      { singleton: true }
-    );
-
-    c.register(
-      DATABASE_CONTEXT_TOKEN,
-      async () => {
-        const logger = await c.resolve(LOGGER_TOKEN);
-        const databaseProvider = await c.resolve(DATABASE_PROVIDER_TOKEN);
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
-      },
-      { singleton: true }
-    );
-
-    // Auth - Use real KeyCloak provider
-    c.register(AUTH_PROVIDER_TOKEN, () => createProductionAuthProvider(), {
-      singleton: true,
+      authProvider: 'production',
+      premiumAccessProvider: 'real',
     });
-
-    // Premium Access - Use real implementation
-    c.register(PREMIUM_ACCESS_SERVICE_TOKEN, () => new PremiumAccessService(), { singleton: true });
-
-    // Quiz Services - Use stubs for now (TODO: implement real services)
-    c.register(QUESTION_SERVICE_TOKEN, () => new StubQuestionService(), { singleton: true });
-    c.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
-      singleton: true,
-    });
-
-    // Quiz Application Services - Production implementations
-    c.register(
-      QUIZ_COMPLETION_SERVICE_TOKEN,
-      async () => {
-        const unitOfWorkProvider = await c.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-        const questionDetailsService = await c.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
-        const clock = await c.resolve(CLOCK_TOKEN);
-        return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
-      },
-      { singleton: true }
-    );
+    // No production-specific overrides needed - all configuration is handled by registerCommonInfrastructure
   });
 }
 
