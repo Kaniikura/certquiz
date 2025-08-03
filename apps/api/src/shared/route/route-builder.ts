@@ -126,7 +126,7 @@ export function createAmbientRoute<
       // Check authentication
       const authError = checkAuthentication(
         c as Context<{ Variables: TVariables & AuthenticatedVariables }>,
-        config.requiresAuth || false
+        config.requiresAuth ?? true
       );
       if (authError) {
         return c.json(authError, 401);
