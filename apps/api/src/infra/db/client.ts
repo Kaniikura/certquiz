@@ -3,7 +3,6 @@ import postgres from 'postgres';
 import {
   createDrizzleInstance,
   PoolConfigs,
-  performHealthCheck,
   shutdownConnection,
   validateDatabaseUrl,
 } from './shared';
@@ -102,15 +101,6 @@ export const db = new Proxy({} as DB, {
     return typeof value === 'function' ? value.bind(actualDb) : value;
   },
 });
-
-/**
- * Health check function
- * Throws an error if the database is unreachable
- */
-export async function ping(): Promise<void> {
-  const pool = getPool();
-  await performHealthCheck(pool);
-}
 
 /**
  * Gracefully shutdown the database connection

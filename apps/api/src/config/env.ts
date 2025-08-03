@@ -47,7 +47,7 @@ const envSchema = z.object({
  * Parse and validate environment variables
  * This will throw an error if required variables are missing or invalid
  */
-export const env = envSchema.parse(process.env);
+const env = envSchema.parse(process.env);
 
 /**
  * Environment type for DI container
@@ -59,18 +59,4 @@ export type Environment = 'test' | 'development' | 'production';
  */
 export function isProduction(): boolean {
   return env.NODE_ENV === 'production';
-}
-
-/**
- * Check if the application is running in development
- */
-export function isDevelopment(): boolean {
-  return env.NODE_ENV === 'development';
-}
-
-/**
- * Check if the application is running in test environment
- */
-export function isTest(): boolean {
-  return env.NODE_ENV === 'test';
 }

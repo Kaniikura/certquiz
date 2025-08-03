@@ -20,7 +20,7 @@ import { QuizNotCompletedError, SessionNotFoundError } from '../shared/errors';
 /**
  * Result of quiz completion operation
  */
-export interface QuizCompletionResult {
+interface QuizCompletionResult {
   sessionId: QuizSessionId;
   finalScore: number;
   completedAt: Date;

@@ -107,17 +107,6 @@ export const PoolConfigs = {
 } as const;
 
 /**
- * Database health check
- * Executes a simple query to verify database connectivity
- *
- * @param pool - postgres.js connection pool
- * @throws Error if database is unreachable
- */
-export async function performHealthCheck(pool: postgres.Sql): Promise<void> {
-  await pool`SELECT 1`; // Will throw if DB is unreachable
-}
-
-/**
  * Create Drizzle database instance
  * Factory function for creating configured Drizzle instances
  *

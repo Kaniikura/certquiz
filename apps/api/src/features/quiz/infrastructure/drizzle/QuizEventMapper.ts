@@ -91,7 +91,7 @@ const quizExpiredSchema = z.object({
 /**
  * Generate deterministic event ID for consistent replay
  */
-export function deterministicEventId(row: QuizSessionEventRow): string {
+function deterministicEventId(row: QuizSessionEventRow): string {
   // UUIDv5(sessionId + version + eventSequence, NAMESPACE) → identical ID every replay
   return uuidv5(`${row.sessionId}:${row.version}:${row.eventSequence}`, EVENT_NAMESPACE);
 }
@@ -109,7 +109,7 @@ interface MapperEntry {
   mapper: MapperFn;
 }
 
-export const MAPPERS: Record<string, MapperEntry> = {
+const MAPPERS: Record<string, MapperEntry> = {
   'quiz.started': {
     schema: quizStartedSchema,
     mapper: (row, payload) => {
