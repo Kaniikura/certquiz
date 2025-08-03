@@ -14,7 +14,7 @@ import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { isValidUUID } from '@api/shared/validation/constants';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import type { IPremiumAccessService } from '../domain/services';
+import type { IPremiumAccessService } from '../domain/services/IPremiumAccessService';
 import { mapQuestionError } from '../shared/error-mapper';
 import type { GetQuestionResponse } from './dto';
 import { getQuestionHandler } from './handler';

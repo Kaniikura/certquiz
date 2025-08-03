@@ -2,7 +2,7 @@ import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import type { IPremiumAccessService } from '../domain/services';
+import type { IPremiumAccessService } from '../domain/services/IPremiumAccessService';
 import { QuestionNotFoundError } from '../shared/errors';
 import type { GetQuestionResponse, QuestionDto, QuestionOptionDto } from './dto';
 import { type GetQuestionRequest, getQuestionSchema } from './validation';

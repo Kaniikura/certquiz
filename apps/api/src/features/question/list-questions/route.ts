@@ -12,7 +12,7 @@ import { createAmbientRoute } from '@api/shared/route/route-builder';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
-import type { IPremiumAccessService } from '../domain/services';
+import type { IPremiumAccessService } from '../domain/services/IPremiumAccessService';
 import { mapQuestionError } from '../shared/error-mapper';
 import type { ListQuestionsResponse } from './dto';
 import { listQuestionsHandler } from './handler';

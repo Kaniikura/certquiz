@@ -5,7 +5,7 @@ import type {
   IQuestionRepository,
   QuestionSummary,
 } from '../domain/repositories/IQuestionRepository';
-import { PremiumAccessService } from '../domain/services';
+import { PremiumAccessService } from '../domain/services/PremiumAccessService';
 import { listQuestionsHandler } from './handler';
 
 describe('listQuestionsHandler', () => {
