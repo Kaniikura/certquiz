@@ -36,6 +36,17 @@ import {
 } from './tokens';
 
 /**
+ * Determines if DI services should use singleton behavior based on environment
+ * Test environments require new instances for proper test isolation
+ *
+ * @param environment - The target environment
+ * @returns true for singleton behavior (non-test), false for new instances (test)
+ */
+function shouldUseSingleton(environment: Environment): boolean {
+  return environment !== 'test';
+}
+
+/**
  * Configuration options for environment-specific service registration
  */
 interface EnvironmentConfig {
@@ -100,7 +111,7 @@ export function registerCommonInfrastructure(
       const provider = await container.resolve(DATABASE_PROVIDER_TOKEN);
       return provider.getDatabase();
     },
-    { singleton: config.environment !== 'test' } // Test isolation requires new instances
+    { singleton: shouldUseSingleton(config.environment) } // Test isolation requires new instances
   );
 
   // Unit of Work Provider with environment-specific singleton behavior
@@ -110,7 +121,7 @@ export function registerCommonInfrastructure(
       const logger = await container.resolve(LOGGER_TOKEN);
       return new DrizzleUnitOfWorkProvider(logger);
     },
-    { singleton: config.environment !== 'test' } // Test isolation requires new instances
+    { singleton: shouldUseSingleton(config.environment) } // Test isolation requires new instances
   );
 
   // Database context with environment-specific initialization
@@ -136,7 +147,7 @@ export function registerCommonInfrastructure(
         return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
       }
     },
-    { singleton: config.environment !== 'test' } // Test isolation requires new instances
+    { singleton: shouldUseSingleton(config.environment) } // Test isolation requires new instances
   );
 
   // Auth provider selection based on configuration
