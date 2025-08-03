@@ -1,6 +1,7 @@
 // Auth bounded context schema
+
+import { userRoleEnum } from '@api/features/user/infrastructure/drizzle/schema/enums';
 import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { userRoleEnum } from './enums';
 
 // Local user table synchronized with identity provider
 export const authUser = pgTable(

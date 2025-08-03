@@ -4,7 +4,7 @@
  */
 
 import * as crypto from 'node:crypto';
-import { authUser } from '@api/features/auth/infrastructure/drizzle/schema';
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';

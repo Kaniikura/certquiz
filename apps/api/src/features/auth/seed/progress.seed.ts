@@ -1,4 +1,4 @@
-import { userProgress } from '@api/features/user/infrastructure/drizzle/schema';
+import { userProgress } from '@api/features/user/infrastructure/drizzle/schema/userProgress';
 import type { DB } from '@api/infra/db/types';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { Result } from '@api/shared/result';
