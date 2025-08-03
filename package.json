@@ -46,11 +46,11 @@
     "lint:check": "biome lint",
     "format": "biome format --write",
     "format:check": "biome format",
-    "check": "tsc --noEmit && biome check --write --unsafe && knip",
-    "ci": "tsc --noEmit && biome check && knip",
-    "knip": "knip",
-    "knip:fix": "knip --fix",
-    "knip:production": "knip --production"
+    "check": "tsc --noEmit && biome check --write --unsafe && bunx knip",
+    "ci": "tsc --noEmit && biome check && bunx knip",
+    "knip": "bunx knip",
+    "knip:fix": "bunx knip --fix",
+    "knip:production": "bunx knip --production"
   },
   "type": "module",
   "workspaces": [

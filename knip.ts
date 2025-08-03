@@ -22,7 +22,7 @@ const config: KnipConfig = {
   // Treat configuration hints as errors to ensure best practices
   treatConfigHintsAsErrors: true,
   // Global ignore patterns for development tools
-  ignoreBinaries: ['docker-compose', 'knip'],
+  ignoreBinaries: ['docker-compose'],
   workspaces: {
     '.': {
       entry: [],
