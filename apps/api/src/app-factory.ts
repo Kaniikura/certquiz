@@ -91,16 +91,21 @@ export async function buildApp(deps: AppDependencies): Promise<
     const { rateLimiter } = await import('./middleware/rate-limit');
     const { InMemoryStore } = await import('./middleware/rate-limit/stores/in-memory');
 
+    // Create rate limiting configuration from environment
+    const rateLimitConfig = {
+      windowMs: env.RATE_LIMIT_WINDOW_MS,
+      limit: env.RATE_LIMIT_MAX_REQUESTS,
+      keyGenerator: env.RATE_LIMIT_KEY_TYPE,
+    };
+
     app.use(
       '/api/*',
       rateLimiter({
         store: new InMemoryStore({
-          windowMs: env.RATE_LIMIT_WINDOW_MS,
-          limit: env.RATE_LIMIT_MAX_REQUESTS,
+          windowMs: rateLimitConfig.windowMs,
+          limit: rateLimitConfig.limit,
         }),
-        windowMs: env.RATE_LIMIT_WINDOW_MS,
-        limit: env.RATE_LIMIT_MAX_REQUESTS,
-        keyGenerator: env.RATE_LIMIT_KEY_TYPE,
+        ...rateLimitConfig,
       })
     );
   }

@@ -1,3 +1,4 @@
+import { getRootLogger } from '@api/infra/logger/root-logger';
 import type { ConsumeResult, RateLimiterStore } from '../types';
 
 interface TokenBucket {
@@ -10,17 +11,28 @@ interface InMemoryStoreOptions {
   windowMs: number;
   /** Maximum number of requests per window */
   limit: number;
-  /** Maximum number of keys to store (optional) */
-  maxKeys?: number;
+  /** Cleanup interval in milliseconds (default: 10 minutes) */
+  cleanupIntervalMs?: number;
 }
 
 export class InMemoryStore implements RateLimiterStore {
   private buckets = new Map<string, TokenBucket>();
   private readonly refillRate: number;
+  private cleanupTimer: NodeJS.Timeout;
+  private readonly logger = getRootLogger().child({ module: 'rate-limit' });
 
   constructor(private options: InMemoryStoreOptions) {
     // Calculate tokens per millisecond for refill rate
     this.refillRate = options.limit / options.windowMs;
+
+    // Start automatic cleanup timer (default: every 10 minutes)
+    const cleanupInterval = options.cleanupIntervalMs ?? 10 * 60 * 1000;
+    this.cleanupTimer = setInterval(() => {
+      this.cleanup().catch((error) => {
+        // Log error but don't throw - cleanup failures shouldn't crash the app
+        this.logger.error({ error }, 'Rate limiter cleanup failed');
+      });
+    }, cleanupInterval);
   }
 
   async consume(key: string): Promise<ConsumeResult> {
@@ -73,6 +85,16 @@ export class InMemoryStore implements RateLimiterStore {
       if (now - bucket.lastRefill > ttl) {
         this.buckets.delete(key);
       }
+    }
+  }
+
+  /**
+   * Gracefully shutdown the store by stopping the cleanup timer.
+   * Call this before terminating the application to prevent memory leaks.
+   */
+  destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
     }
   }
 }

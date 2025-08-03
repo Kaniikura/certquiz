@@ -143,7 +143,6 @@ describe('InMemoryStore', () => {
       store = new InMemoryStore({
         windowMs: 60000,
         limit: 10,
-        maxKeys: 100, // Limit number of keys stored
       });
     });
 
@@ -178,6 +177,113 @@ describe('InMemoryStore', () => {
       expect(result1.remaining).toBe(9);
       // Key-3 should have one less token
       expect(result3.remaining).toBe(8);
+    });
+  });
+
+  describe('Automatic Cleanup', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('should start automatic cleanup timer on construction', () => {
+      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+      new InMemoryStore({ windowMs: 60000, limit: 10 });
+
+      expect(setIntervalSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        10 * 60 * 1000 // Default 10 minutes
+      );
+    });
+
+    it('should use custom cleanup interval when specified', () => {
+      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+      new InMemoryStore({
+        windowMs: 60000,
+        limit: 10,
+        cleanupIntervalMs: 5 * 60 * 1000, // 5 minutes
+      });
+
+      expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 5 * 60 * 1000);
+    });
+
+    it('should automatically clean up expired entries', async () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      const store = new InMemoryStore({
+        windowMs: 60000,
+        limit: 10,
+        cleanupIntervalMs: 1000, // 1 second for testing
+      });
+
+      // Add some entries
+      await store.consume('key-1');
+      await store.consume('key-2');
+
+      // Advance time past expiration
+      vi.setSystemTime(now + 150000); // 2.5 minutes
+
+      // Add a fresh entry
+      await store.consume('key-3');
+
+      // Trigger automatic cleanup by advancing timer
+      await vi.advanceTimersToNextTimerAsync();
+
+      // Test that old entries were cleaned up
+      const result1 = await store.consume('key-1');
+      const result3 = await store.consume('key-3');
+
+      // Key-1 should act like a fresh key (full tokens minus one)
+      expect(result1.remaining).toBe(9);
+      // Key-3 should have one less token from previous consumption
+      expect(result3.remaining).toBe(8);
+
+      store.destroy();
+    });
+
+    it('should handle cleanup errors gracefully', async () => {
+      const store = new InMemoryStore({
+        windowMs: 60000,
+        limit: 10,
+        cleanupIntervalMs: 1000,
+      });
+
+      // Mock cleanup to throw an error
+      vi.spyOn(store, 'cleanup').mockRejectedValue(new Error('Cleanup failed'));
+
+      // Trigger automatic cleanup - should not throw
+      await expect(vi.advanceTimersToNextTimerAsync()).resolves.not.toThrow();
+
+      // Store should still be functional after cleanup error
+      const result = await store.consume('test-key');
+      expect(result.success).toBe(true);
+
+      store.destroy();
+    });
+
+    it('should stop cleanup timer when destroyed', () => {
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+      const store = new InMemoryStore({ windowMs: 60000, limit: 10 });
+
+      store.destroy();
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+    });
+
+    it('should handle destroy when timer is already cleared', () => {
+      const store = new InMemoryStore({ windowMs: 60000, limit: 10 });
+
+      // Destroy twice - should not throw
+      store.destroy();
+      expect(() => store.destroy()).not.toThrow();
     });
   });
 });

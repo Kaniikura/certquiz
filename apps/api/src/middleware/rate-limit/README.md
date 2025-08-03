@@ -264,16 +264,30 @@ class CloudflareStore implements RateLimiterStore {
 
 ## Performance Considerations
 
-### Memory Usage
+### Memory Management
 
-The InMemoryStore automatically cleans up expired entries:
+The InMemoryStore automatically manages memory to prevent leaks:
 
 ```typescript
-// Cleanup happens on each consume() call
-// Entries are kept for 2x the window duration
-// For 10,000 active keys with 1-minute window:
-// ~1MB memory usage
+// Automatic cleanup every 10 minutes (configurable)
+const store = new InMemoryStore({
+  windowMs: 60000,
+  limit: 100,
+  cleanupIntervalMs: 5 * 60 * 1000, // Optional: 5 minutes
+});
+
+// Graceful shutdown (important for production)
+process.on('SIGTERM', () => {
+  store.destroy(); // Stops cleanup timer
+  process.exit(0);
+});
 ```
+
+**Memory Characteristics**:
+- Entries expire after 2x the window duration
+- Automatic cleanup runs every 10 minutes by default
+- ~1MB memory usage for 10,000 active keys (1-minute window)
+- Cleanup happens in background, doesn't block requests
 
 ### Request Overhead
 
@@ -329,7 +343,11 @@ bun test --coverage rate-limit
 1. **All requests blocked**: Check if limit is too low or window too long
 2. **Headers not showing**: Ensure middleware is applied before routes
 3. **IP detection failing**: Check proxy/CDN configuration
-4. **Memory growing**: Verify cleanup is working
+4. **Memory growing**: 
+   - Verify automatic cleanup is enabled (default: every 10 minutes)
+   - Call `store.destroy()` on application shutdown
+   - Consider shorter `cleanupIntervalMs` for high-traffic applications
+   - Monitor memory usage in production
 
 ### Debug Logging
 
