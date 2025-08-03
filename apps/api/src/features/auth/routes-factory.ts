@@ -8,7 +8,7 @@ import type { IDatabaseContext } from '@api/infra/db/IDatabaseContext';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { LoggerVariables } from '@api/middleware/logger';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
-import { createAmbientRoute } from '@api/shared/route/route-builder';
+import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { Hono } from 'hono';
 import type { IAuthUserRepository } from './domain/repositories/IAuthUserRepository';
@@ -33,34 +33,30 @@ export function createAuthRoutes(
   /**
    * POST /login - User authentication
    */
-  authRoutes.post('/login', (c) => {
-    const route = createAmbientRoute<
-      unknown,
-      { token: string; user: { id: string; email: string; role: string } },
-      { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider },
-      LoggerVariables & DatabaseContextVariables
-    >(
-      {
-        operation: 'login',
-        resource: 'auth',
-        requiresAuth: false,
-        errorMapper: mapAuthError,
-      },
-      async (
-        body,
-        deps: { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider },
-        _context
-      ) => {
-        return loginHandler(body, deps.authUserRepo, deps.authProvider);
-      }
-    );
-
-    // Inject dependencies
-    return route(c, {
+  const loginRoute = createStandardRoute<
+    unknown,
+    { token: string; user: { id: string; email: string; role: string } },
+    { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider }
+  >({
+    method: 'post',
+    path: '/login',
+    configOptions: {
+      operation: 'login',
+      resource: 'auth',
+      requiresAuth: false,
+      errorMapper: mapAuthError,
+    },
+    handler: async (body, deps, _context) => {
+      return loginHandler(body, deps.authUserRepo, deps.authProvider);
+    },
+    getDependencies: (c) => ({
       authUserRepo: getRepositoryFromContext(c, AUTH_USER_REPO_TOKEN),
       authProvider: authProvider,
-    });
+    }),
   });
+
+  // Merge login route into authRoutes
+  authRoutes.route('/', loginRoute);
 
   // TODO: Add future auth routes
   // authRoutes.post('/refresh', createRefreshHandler(userRepository, authProvider));

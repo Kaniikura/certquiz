@@ -4,43 +4,33 @@
  */
 
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
-import type { AuthUser } from '@api/middleware/auth/auth-user';
-import type { LoggerVariables } from '@api/middleware/logger';
-import type { DatabaseContextVariables } from '@api/middleware/transaction';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
-import { createAmbientRoute } from '@api/shared/route/route-builder';
+import { createStandardRoute } from '@api/shared/route/routeConfigHelpers';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import { Hono } from 'hono';
+
 import type { IQuestionRepository } from '../domain/repositories/IQuestionRepository';
 import type { IPremiumAccessService } from '../domain/services/IPremiumAccessService';
 import { mapQuestionError } from '../shared/error-mapper';
 import type { ListQuestionsResponse } from './dto';
 import { listQuestionsHandler } from './handler';
 
-// Define context variables for this route
-type ListQuestionsVariables = {
-  user?: AuthUser; // Optional for public access with premium logic
-} & LoggerVariables &
-  DatabaseContextVariables;
-
 export function listQuestionsRoute(premiumAccessService: IPremiumAccessService) {
-  return new Hono<{
-    Variables: ListQuestionsVariables;
-  }>().get('/', (c) => {
-    const route = createAmbientRoute<
-      unknown,
-      ListQuestionsResponse,
-      {
-        questionRepo: IQuestionRepository;
-        logger: LoggerPort;
-        premiumAccessService: IPremiumAccessService;
-      },
-      ListQuestionsVariables
-    >(
-      {
-        operation: 'list',
-        resource: 'questions',
-        requiresAuth: false,
+  return createStandardRoute<
+    unknown,
+    ListQuestionsResponse,
+    {
+      questionRepo: IQuestionRepository;
+      logger: LoggerPort;
+      premiumAccessService: IPremiumAccessService;
+    }
+  >({
+    method: 'get',
+    path: '/',
+    configOptions: {
+      operation: 'list',
+      resource: 'questions',
+      requiresAuth: false,
+      logging: {
         extractLogContext: (_body, context) => {
           const queryParams = {
             limit: context?.req.query('limit'),
@@ -66,49 +56,39 @@ export function listQuestionsRoute(premiumAccessService: IPremiumAccessService) 
             pagination: data.pagination,
           };
         },
-        errorMapper: mapQuestionError,
       },
-      async (
-        _body,
-        deps: {
-          questionRepo: IQuestionRepository;
-          logger: LoggerPort;
-          premiumAccessService: IPremiumAccessService;
-        },
-        context
-      ) => {
-        // Get query parameters from URL
-        const queryParams = {
-          limit: context.req.query('limit'),
-          offset: context.req.query('offset'),
-          examTypes: context.req.query('examTypes'),
-          categories: context.req.query('categories'),
-          difficulty: context.req.query('difficulty'),
-          searchQuery: context.req.query('searchQuery'),
-          includePremium: context.req.query('includePremium'),
-          activeOnly: context.req.query('activeOnly'),
-        };
+      errorMapper: mapQuestionError,
+    },
+    handler: async (_body, deps, context) => {
+      // Get query parameters from URL
+      const queryParams = {
+        limit: context.req.query('limit'),
+        offset: context.req.query('offset'),
+        examTypes: context.req.query('examTypes'),
+        categories: context.req.query('categories'),
+        difficulty: context.req.query('difficulty'),
+        searchQuery: context.req.query('searchQuery'),
+        includePremium: context.req.query('includePremium'),
+        activeOnly: context.req.query('activeOnly'),
+      };
 
-        // Determine authentication status
-        const user = context.get('user');
-        const isAuthenticated = !!user;
+      // Determine authentication status
+      const user = context.get('user');
+      const isAuthenticated = !!user;
 
-        // Delegate to handler
-        return listQuestionsHandler(
-          queryParams,
-          deps.questionRepo,
-          deps.logger,
-          deps.premiumAccessService,
-          isAuthenticated
-        );
-      }
-    );
-
-    // Inject dependencies
-    return route(c, {
+      // Delegate to handler
+      return listQuestionsHandler(
+        queryParams,
+        deps.questionRepo,
+        deps.logger,
+        deps.premiumAccessService,
+        isAuthenticated
+      );
+    },
+    getDependencies: (c) => ({
       questionRepo: getRepositoryFromContext(c, QUESTION_REPO_TOKEN),
       logger: c.get('logger'),
       premiumAccessService: premiumAccessService,
-    });
+    }),
   });
 }

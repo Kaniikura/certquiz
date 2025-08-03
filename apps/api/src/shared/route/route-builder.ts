@@ -80,7 +80,7 @@ function handleRouteError(
 /**
  * Route configuration for ambient routes
  */
-interface AmbientRouteConfig {
+export interface AmbientRouteConfig {
   /** Route operation type for logging */
   operation: RouteOperation;
   /** Resource name for logging */
