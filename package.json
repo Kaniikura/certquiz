@@ -46,8 +46,8 @@
     "lint:check": "biome lint",
     "format": "biome format --write",
     "format:check": "biome format",
-    "check": "tsc --noEmit && biome check --write --unsafe",
-    "check:ci": "tsc --noEmit && biome check",
+    "check": "tsc --noEmit && biome check --write --unsafe && knip",
+    "ci": "tsc --noEmit && biome check && knip",
     "knip": "knip",
     "knip:fix": "knip --fix",
     "knip:production": "knip --production"

@@ -15,7 +15,7 @@
     "test:coverage": "bun vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "check": "tsc --noEmit && biome check --write --unsafe",
-    "check:ci": "tsc --noEmit && biome check",
+    "ci": "tsc --noEmit && biome check",
     "db:generate": "bun drizzle-kit generate",
     "db:migrate": "bun drizzle-kit migrate",
     "db:push": "bun drizzle-kit push",
