@@ -18,7 +18,7 @@ import { Result } from './shared/result';
 
 describe('App Factory', () => {
   describe('buildApp', () => {
-    it('should create app with manual dependencies', () => {
+    it('should create app with manual dependencies', async () => {
       // Arrange
       // Create a minimal logger mock that satisfies the Logger interface
       const mockLogger = {
@@ -111,7 +111,7 @@ describe('App Factory', () => {
       };
 
       // Act
-      const app = buildApp(mockDeps);
+      const app = await buildApp(mockDeps);
 
       // Assert
       expect(app).toBeDefined();

@@ -35,6 +35,15 @@ const envSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
+  // Rate Limiting
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((val) => val === 'true'),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(60000), // 1 minute
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().positive().default(100),
+  RATE_LIMIT_KEY_TYPE: z.enum(['ip', 'user']).default('ip'),
+
   // Testing
   CI: z.literal('true').optional(),
   VITEST_WORKER_ID: z.string().optional(),
@@ -60,3 +69,8 @@ export type Environment = 'test' | 'development' | 'production';
 export function isProduction(): boolean {
   return env.NODE_ENV === 'production';
 }
+
+/**
+ * Export the parsed environment configuration
+ */
+export { env };

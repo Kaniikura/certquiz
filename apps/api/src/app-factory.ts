@@ -4,7 +4,8 @@
  */
 
 import { Hono } from 'hono';
-import pkg from '../package.json' with { type: 'json' };
+import pkg from '../package.json';
+import { env } from './config/env';
 import { createAdminRoutes } from './features/admin/routes-factory';
 // Route modules that will use injected dependencies
 import { createAuthRoutes } from './features/auth/routes-factory';
@@ -68,9 +69,11 @@ export interface AppDependencies {
  * App factory function
  * Creates Hono app with injected dependencies for clean architecture
  */
-export function buildApp(deps: AppDependencies): Hono<{
-  Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
-}> {
+export async function buildApp(deps: AppDependencies): Promise<
+  Hono<{
+    Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
+  }>
+> {
   // Create app with proper type for context variables
   const app = new Hono<{
     Variables: LoggerVariables & RequestIdVariables & DatabaseContextVariables;
@@ -80,6 +83,27 @@ export function buildApp(deps: AppDependencies): Hono<{
   app.use('*', requestIdMiddleware());
   app.use('*', createLoggerMiddleware(deps.logger));
   app.use('*', securityMiddleware());
+
+  // Rate limiting middleware (optional, configured via environment)
+  // Apply to API routes only, excluding health endpoints
+  if (env.RATE_LIMIT_ENABLED ?? env.NODE_ENV === 'production') {
+    // Lazy import to avoid loading if not needed
+    const { rateLimiter } = await import('./middleware/rate-limit');
+    const { InMemoryStore } = await import('./middleware/rate-limit/stores/in-memory');
+
+    app.use(
+      '/api/*',
+      rateLimiter({
+        store: new InMemoryStore({
+          windowMs: env.RATE_LIMIT_WINDOW_MS,
+          limit: env.RATE_LIMIT_MAX_REQUESTS,
+        }),
+        windowMs: env.RATE_LIMIT_WINDOW_MS,
+        limit: env.RATE_LIMIT_MAX_REQUESTS,
+        keyGenerator: env.RATE_LIMIT_KEY_TYPE,
+      })
+    );
+  }
 
   // Database context middleware for database access (applies to all API routes)
   app.use('/api/*', createDatabaseContextMiddleware(deps.databaseContext));
@@ -230,5 +254,5 @@ export async function buildAppWithContainer(container: DIContainer): Promise<
   };
 
   // Use existing buildApp function
-  return buildApp(deps);
+  return await buildApp(deps);
 }
