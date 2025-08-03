@@ -16,24 +16,11 @@ import { loginHandler } from './login/handler';
 import { mapAuthError } from './shared/error-mapper';
 
 /**
- * Create auth routes with dependency injection
- * This factory allows us to inject different implementations for different environments
+ * Create login route with injected dependencies
+ * Follows standard pattern used throughout the codebase
  */
-export function createAuthRoutes(
-  authProvider: IAuthProvider,
-  _databaseContext: IDatabaseContext
-): Hono<{
-  Variables: LoggerVariables & DatabaseContextVariables;
-}> {
-  const authRoutes = new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>();
-
-  // All auth routes are public (login, register, etc.)
-  // Protected user profile routes would go in a separate user feature
-
-  /**
-   * POST /login - User authentication
-   */
-  const loginRoute = createStandardRoute<
+function loginRoute(authProvider: IAuthProvider): ReturnType<typeof createStandardRoute> {
+  return createStandardRoute<
     unknown,
     { token: string; user: { id: string; email: string; role: string } },
     { authUserRepo: IAuthUserRepository; authProvider: IAuthProvider }
@@ -54,9 +41,25 @@ export function createAuthRoutes(
       authProvider: authProvider,
     }),
   });
+}
 
-  // Merge login route into authRoutes
-  authRoutes.route('/', loginRoute);
+/**
+ * Create auth routes with dependency injection
+ * This factory allows us to inject different implementations for different environments
+ */
+export function createAuthRoutes(
+  authProvider: IAuthProvider,
+  _databaseContext: IDatabaseContext
+): Hono<{
+  Variables: LoggerVariables & DatabaseContextVariables;
+}> {
+  const authRoutes = new Hono<{ Variables: LoggerVariables & DatabaseContextVariables }>();
+
+  // All auth routes are public (login, register, etc.)
+  // Protected user profile routes would go in a separate user feature
+
+  // Mount login route using standard pattern
+  authRoutes.route('/', loginRoute(authProvider));
 
   // TODO: Add future auth routes
   // authRoutes.post('/refresh', createRefreshHandler(userRepository, authProvider));
