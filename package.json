@@ -5,6 +5,7 @@
     "@types/bun": "latest",
     "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.2.4",
+    "knip": "5.62.0",
     "typescript": "^5.3.0",
     "vitest": "^3.2.4"
   },
@@ -46,11 +47,11 @@
     "lint:check": "biome lint",
     "format": "biome format --write",
     "format:check": "biome format",
-    "check": "tsc --noEmit && biome check --write --unsafe && bunx knip",
-    "ci": "tsc --noEmit && biome check && bunx knip",
-    "knip": "bunx knip",
-    "knip:fix": "bunx knip --fix",
-    "knip:production": "bunx knip --production"
+    "check": "tsc --noEmit && biome check --write --unsafe && knip",
+    "ci": "tsc --noEmit && biome check && knip",
+    "knip": "knip",
+    "knip:fix": "knip --fix",
+    "knip:production": "knip --production"
   },
   "type": "module",
   "workspaces": [
