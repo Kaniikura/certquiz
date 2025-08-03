@@ -3,9 +3,6 @@
  * @fileoverview Type-safe ID system for Quiz domain
  */
 
-// Import UserId from auth domain to avoid duplication
-export { UserId } from '@api/features/auth/domain/value-objects/UserId';
-
 // Branded types with factory functions for proper type safety
 export type QuestionId = string & { readonly __brand: 'QuestionId' };
 export type OptionId = string & { readonly __brand: 'OptionId' };

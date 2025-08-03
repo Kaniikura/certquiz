@@ -1,3 +1,4 @@
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { Result } from '@api/shared/result';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
@@ -12,13 +13,7 @@ import {
   QuizStartedEvent,
   type QuizStartedPayload,
 } from '../../domain/events/QuizEvents';
-import type {
-  AnswerId,
-  OptionId,
-  QuestionId,
-  QuizSessionId,
-  UserId,
-} from '../../domain/value-objects/Ids';
+import type { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
 import type { QuizSessionEventRow } from './schema/quizSession';
 
 type QuizEventPayloads =

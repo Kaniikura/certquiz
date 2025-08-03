@@ -1,5 +1,6 @@
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
-import type { QuestionId, UserId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { QuizConfig } from '@api/features/quiz/domain/value-objects/QuizConfig';
 import { testIds } from '@api/test-support/utils/id-generators';
 import { TestClock } from '@api/test-support/utils/TestClock';

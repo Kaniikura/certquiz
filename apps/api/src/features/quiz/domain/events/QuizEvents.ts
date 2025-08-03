@@ -3,7 +3,8 @@
  * @fileoverview Event definitions for quiz bounded context
  */
 
-import type { AnswerId, OptionId, QuestionId, QuizSessionId, UserId } from '../value-objects/Ids';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { AnswerId, OptionId, QuestionId, QuizSessionId } from '../value-objects/Ids';
 import type { QuizConfigDTO } from '../value-objects/QuizConfig';
 import { DomainEvent } from './DomainEvent';
 

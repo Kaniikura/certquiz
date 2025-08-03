@@ -3,12 +3,13 @@
  * @fileoverview TDD tests for start quiz business logic
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { ValidationError } from '@api/shared/errors';
 import { testIds } from '@api/test-support/utils/id-generators';
 import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
-import type { QuestionId, UserId } from '../domain/value-objects/Ids';
+import type { QuestionId } from '../domain/value-objects/Ids';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
 import type { QuizStateValue } from '../infrastructure/drizzle/schema/enums';
 import type { StartQuizRequest, StartQuizResponse } from './dto';

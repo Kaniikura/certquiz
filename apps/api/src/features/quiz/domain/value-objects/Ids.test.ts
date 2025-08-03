@@ -3,8 +3,9 @@
  * @fileoverview Comprehensive tests for type-safe ID generation and usage
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { describe, expect, it } from 'vitest';
-import { AnswerId, OptionId, QuestionId, QuizSessionId, UserId } from './Ids';
+import { AnswerId, OptionId, QuestionId, QuizSessionId } from './Ids';
 
 describe('Branded ID Types', () => {
   describe('QuizSessionId', () => {

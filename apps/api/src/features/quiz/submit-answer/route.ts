@@ -3,6 +3,7 @@
  * @fileoverview HTTP endpoint for submitting answers to quiz questions using route utilities
  */
 
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import type { AuthUser } from '@api/middleware/auth/auth-user';
 import type { LoggerVariables } from '@api/middleware/logger';
@@ -18,7 +19,7 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import type { IQuizCompletionService } from '../application/QuizCompletionService';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
-import { QuizSessionId, UserId } from '../domain/value-objects/Ids';
+import { QuizSessionId } from '../domain/value-objects/Ids';
 import { QuizDependencyProvider } from '../shared/dependencies';
 import { mapSubmitAnswerError } from '../shared/error-mapper';
 import type { SubmitAnswerRequest, SubmitAnswerResponse } from './dto';

@@ -14,9 +14,10 @@ import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 // Extract PostgresError using property access to avoid CJS/ESM interop issues
 const { PostgresError } = postgres;
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type { IQuizRepository } from '../../domain/repositories/IQuizRepository';
-import type { QuizSessionId, UserId } from '../../domain/value-objects/Ids';
+import type { QuizSessionId } from '../../domain/value-objects/Ids';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
 

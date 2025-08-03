@@ -1,7 +1,8 @@
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { Mutable } from '@api/test-support/types/Mutable';
 import { testIds } from '@api/test-support/utils/id-generators';
 import { describe, expect, it } from 'vitest';
-import type { QuizSessionId, UserId } from '../value-objects/Ids';
+import type { QuizSessionId } from '../value-objects/Ids';
 import {
   AnswerSubmittedEvent,
   QuizCompletedEvent,

@@ -3,6 +3,7 @@
  * @fileoverview Main aggregate for quiz domain with business logic and invariants
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { Clock } from '@api/shared/clock';
 import { Result } from '@api/shared/result';
 import {
@@ -33,7 +34,7 @@ import {
   QuizStartedEvent,
   type QuizStartedPayload,
 } from '../events/QuizEvents';
-import { type OptionId, type QuestionId, QuizSessionId, type UserId } from '../value-objects/Ids';
+import { type OptionId, type QuestionId, QuizSessionId } from '../value-objects/Ids';
 import { QuestionOrder } from '../value-objects/QuestionOrder';
 import type { QuestionReference } from '../value-objects/QuestionReference';
 import { QuizConfig } from '../value-objects/QuizConfig';

@@ -1,6 +1,7 @@
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
-import type { QuizSessionId, UserId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { QuizSessionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
 
 /**

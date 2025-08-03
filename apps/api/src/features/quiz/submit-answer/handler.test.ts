@@ -3,17 +3,13 @@
  * @fileoverview TDD tests for submit answer business logic
  */
 
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { ValidationError } from '@api/shared/errors';
 import { testIds } from '@api/test-support/utils/id-generators';
 import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../domain/aggregates/QuizSession';
-import {
-  type OptionId,
-  QuestionId,
-  type QuizSessionId,
-  type UserId,
-} from '../domain/value-objects/Ids';
+import { type OptionId, QuestionId, type QuizSessionId } from '../domain/value-objects/Ids';
 import { QuestionReference } from '../domain/value-objects/QuestionReference';
 import { QuizConfig } from '../domain/value-objects/QuizConfig';
 import { QuizState } from '../domain/value-objects/QuizState';
