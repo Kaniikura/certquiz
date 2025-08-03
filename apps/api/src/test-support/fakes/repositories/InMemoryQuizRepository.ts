@@ -48,6 +48,27 @@ export class InMemoryQuizRepository implements IQuizRepository {
     return this.userActiveSessionIndex.get(userId.toString()) || null;
   }
 
+  async countTotalSessions(): Promise<number> {
+    return this.sessions.size;
+  }
+
+  async countActiveSessions(): Promise<number> {
+    let activeCount = 0;
+    for (const session of this.sessions.values()) {
+      if (session.state === QuizState.InProgress) {
+        activeCount++;
+      }
+    }
+    return activeCount;
+  }
+
+  async getAverageScore(): Promise<number> {
+    // TODO: Implement proper score calculation
+    // This requires access to question details to compare selectedOptionIds
+    // with correctOptionIds. For now, return placeholder value.
+    return 0;
+  }
+
   // Test helper methods
   clear(): void {
     this.sessions.clear();

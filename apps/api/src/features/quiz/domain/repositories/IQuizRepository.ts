@@ -29,4 +29,19 @@ export interface IQuizRepository {
    * Find active session for a user (if any)
    */
   findActiveByUser(userId: UserId): Promise<QuizSession | null>;
+
+  /**
+   * Admin statistics: Count total number of quiz sessions
+   */
+  countTotalSessions(): Promise<number>;
+
+  /**
+   * Admin statistics: Count currently active quiz sessions
+   */
+  countActiveSessions(): Promise<number>;
+
+  /**
+   * Admin statistics: Get average quiz score (0-1)
+   */
+  getAverageScore(): Promise<number>;
 }

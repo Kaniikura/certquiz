@@ -167,6 +167,15 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
     return this.questions.get(questionId) || null;
   }
 
+  countTotalQuestions(): Promise<number> {
+    return Promise.resolve(this.questions.size);
+  }
+
+  countPendingQuestions(): Promise<number> {
+    const questions = Array.from(this.questions.values());
+    return Promise.resolve(questions.filter((q) => q.status === QuestionStatus.DRAFT).length);
+  }
+
   // Test helper methods
 
   /**

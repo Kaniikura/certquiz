@@ -41,4 +41,15 @@ export interface IAuthUserRepository {
    * Check if username is already taken by another user
    */
   isUsernameTaken(username: string, excludeUserId?: UserId): Promise<boolean>;
+
+  /**
+   * Admin statistics: Count total number of users
+   */
+  countTotalUsers(): Promise<number>;
+
+  /**
+   * Admin statistics: Count active users (logged in recently)
+   * @param since - Optional date to count users active since
+   */
+  countActiveUsers(since?: Date): Promise<number>;
 }

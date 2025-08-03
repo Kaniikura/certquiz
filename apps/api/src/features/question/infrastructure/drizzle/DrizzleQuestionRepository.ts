@@ -6,7 +6,7 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, arrayContains, count, eq, ilike, or } from 'drizzle-orm';
+import { and, arrayContains, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import type { QuestionId } from '../../../quiz/domain/value-objects/Ids';
 import type { Question } from '../../domain/entities/Question';
 import type {
@@ -466,5 +466,37 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
     }
 
     return conditions;
+  }
+
+  async countTotalQuestions(): Promise<number> {
+    try {
+      const result = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .where(ne(question.status, 'archived'));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count total questions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countPendingQuestions(): Promise<number> {
+    try {
+      const result = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .where(eq(question.status, 'draft'));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count pending questions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
   }
 }

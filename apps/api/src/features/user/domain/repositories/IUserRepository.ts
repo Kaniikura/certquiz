@@ -58,4 +58,14 @@ export interface IUserRepository {
    * Execute operation within transaction
    */
   withTransaction<T>(fn: (repo: IUserRepository) => Promise<T>): Promise<T>;
+
+  /**
+   * Admin statistics: Get average user level across all users
+   */
+  getAverageLevel(): Promise<number>;
+
+  /**
+   * Admin statistics: Get total experience points across all users
+   */
+  getTotalExperience(): Promise<number>;
 }

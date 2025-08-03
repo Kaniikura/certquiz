@@ -22,6 +22,9 @@ describe('submitAnswerHandler', () => {
     save: ReturnType<typeof vi.fn>;
     findExpiredSessions: ReturnType<typeof vi.fn>;
     findActiveByUser: ReturnType<typeof vi.fn>;
+    countTotalSessions: ReturnType<typeof vi.fn>;
+    countActiveSessions: ReturnType<typeof vi.fn>;
+    getAverageScore: ReturnType<typeof vi.fn>;
   };
   let mockQuestionService: {
     getQuestionReference: ReturnType<typeof vi.fn>;
@@ -43,6 +46,9 @@ describe('submitAnswerHandler', () => {
       save: vi.fn(),
       findExpiredSessions: vi.fn(),
       findActiveByUser: vi.fn(),
+      countTotalSessions: vi.fn().mockResolvedValue(0),
+      countActiveSessions: vi.fn().mockResolvedValue(0),
+      getAverageScore: vi.fn().mockResolvedValue(0),
     };
 
     mockQuestionService = {

@@ -151,4 +151,14 @@ export interface IQuestionRepository {
    * @throws {RepositoryError} Database operation error
    */
   findQuestionWithDetails(questionId: QuestionId): Promise<Question | null>;
+
+  /**
+   * Admin statistics: Count total number of questions
+   */
+  countTotalQuestions(): Promise<number>;
+
+  /**
+   * Admin statistics: Count questions pending moderation
+   */
+  countPendingQuestions(): Promise<number>;
 }

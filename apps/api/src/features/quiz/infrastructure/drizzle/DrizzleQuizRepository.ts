@@ -6,7 +6,7 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import type { QuizStateValue } from './schema/enums';
 import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
@@ -172,5 +172,50 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
 
     const sessionId = snapshot[0].sessionId as QuizSessionId;
     return await this.findById(sessionId); // Reuse event-sourcing method
+  }
+
+  async countTotalSessions(): Promise<number> {
+    try {
+      const result = await this.trx
+        .select({ count: sql<number>`COUNT(DISTINCT session_id)` })
+        .from(quizSessionEvent);
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count total sessions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countActiveSessions(): Promise<number> {
+    try {
+      const result = await this.trx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.state, 'IN_PROGRESS' satisfies QuizStateValue));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count active sessions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async getAverageScore(): Promise<number> {
+    try {
+      // For now, return a placeholder value since score calculation requires
+      // parsing the answers JSON and comparing with correct answers
+      // TODO: Implement proper score calculation from answers
+      return 0;
+    } catch (error) {
+      this.logger.error('Failed to get average score:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
   }
 }

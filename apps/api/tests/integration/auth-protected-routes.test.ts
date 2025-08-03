@@ -203,10 +203,33 @@ describe('Authentication Protected Routes Integration', () => {
       const res = await testApp.request('/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       expect(res.status).toBe(200);
-      const body = await res.json();
+
+      // Debug: Log the raw response text if JSON parsing fails
+      const text = await res.text();
+      let body: {
+        success: boolean;
+        data?: {
+          users?: unknown;
+          quizzes?: unknown;
+          questions?: unknown;
+          system?: unknown;
+        };
+      };
+      try {
+        body = JSON.parse(text);
+      } catch (_e) {
+        // Re-throw error with additional context
+        throw new Error(`Failed to parse JSON response: ${text}`);
+      }
+
       expect(body.success).toBe(true);
-      expect(body.data.lastCheckedBy).toBe('admin-user');
+      // Verify the response contains system statistics
+      expect(body.data).toHaveProperty('users');
+      expect(body.data).toHaveProperty('quizzes');
+      expect(body.data).toHaveProperty('questions');
+      expect(body.data).toHaveProperty('system');
     });
 
     it('DELETE /api/admin/quiz/:id should require admin role', async () => {

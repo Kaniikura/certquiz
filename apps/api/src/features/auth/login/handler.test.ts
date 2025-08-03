@@ -27,6 +27,8 @@ const createMockUserRepository = (): IAuthUserRepository => ({
   save: vi.fn(),
   isEmailTaken: vi.fn(),
   isUsernameTaken: vi.fn(),
+  countTotalUsers: vi.fn().mockResolvedValue(0),
+  countActiveUsers: vi.fn().mockResolvedValue(0),
 });
 
 describe('loginHandler', () => {

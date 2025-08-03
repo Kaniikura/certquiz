@@ -4,7 +4,7 @@ import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authU
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import type { User } from '../../domain/entities/User';
 import type { IUserRepository } from '../../domain/repositories/IUserRepository';
 import {
@@ -442,6 +442,36 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
         'Transaction support is required but not available on database connection. ' +
           'Ensure your database connection is properly configured with transaction support.'
       );
+    }
+  }
+
+  async getAverageLevel(): Promise<number> {
+    try {
+      const result = await this.conn
+        .select({ avgLevel: sql<number>`AVG(level)` })
+        .from(userProgress);
+
+      return Number(result[0]?.avgLevel ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to get average level:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async getTotalExperience(): Promise<number> {
+    try {
+      const result = await this.conn
+        .select({ totalExp: sql<number>`SUM(experience)` })
+        .from(userProgress);
+
+      return Number(result[0]?.totalExp ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to get total experience:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
     }
   }
 }

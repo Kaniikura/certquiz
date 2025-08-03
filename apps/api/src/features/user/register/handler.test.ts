@@ -103,6 +103,23 @@ class MockUserRepository implements IUserRepository {
     return await fn(this);
   }
 
+  async getAverageLevel(): Promise<number> {
+    if (this.users.size === 0) return 0;
+    let totalLevel = 0;
+    for (const user of this.users.values()) {
+      totalLevel += user.progress.level.value;
+    }
+    return totalLevel / this.users.size;
+  }
+
+  async getTotalExperience(): Promise<number> {
+    let totalExp = 0;
+    for (const user of this.users.values()) {
+      totalExp += user.progress.experience.value;
+    }
+    return totalExp;
+  }
+
   // Helper methods for testing
   addExistingEmail(email: string) {
     this.emails.add(email);

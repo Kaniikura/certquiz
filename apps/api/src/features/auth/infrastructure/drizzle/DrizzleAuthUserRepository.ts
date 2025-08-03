@@ -1,7 +1,7 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, gte, ne, sql } from 'drizzle-orm';
 import { User } from '../../domain/entities/User';
 import type { IAuthUserRepository } from '../../domain/repositories/IAuthUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
@@ -218,6 +218,42 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
     } catch (error) {
       this.logger.error('Failed to check if username is taken:', {
         username,
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countTotalUsers(): Promise<number> {
+    try {
+      const result = await this.conn.select({ count: sql<number>`COUNT(*)` }).from(authUser);
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count total users:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countActiveUsers(since?: Date): Promise<number> {
+    try {
+      const conditions = [eq(authUser.isActive, true)];
+
+      if (since) {
+        conditions.push(gte(authUser.updatedAt, since));
+      }
+
+      const result = await this.conn
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(authUser)
+        .where(and(...conditions));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count active users:', {
+        since,
         error: this.getErrorDetails(error),
       });
       throw error;
