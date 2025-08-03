@@ -2,13 +2,14 @@
  * Get profile handler tests
  * @fileoverview Tests for user profile retrieval business logic
  */
-
+import type { Email } from '@api/features/auth/domain/value-objects/Email';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { ValidationError } from '@api/shared/errors';
 import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { type Email, type UserId, UserRole } from '../domain/value-objects';
 import { UserNotFoundError } from '../shared/errors';
 import { getProfileHandler } from './handler';
 

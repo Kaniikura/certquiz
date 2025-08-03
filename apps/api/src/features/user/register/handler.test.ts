@@ -2,13 +2,14 @@
  * Register handler tests
  * @fileoverview Tests for user registration business logic
  */
-
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { ValidationError } from '@api/shared/errors';
 import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { User } from '../domain/entities/User';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { Email, type UserId, UserRole } from '../domain/value-objects';
 import { EmailAlreadyTakenError, UsernameAlreadyTakenError } from '../shared/errors';
 import { registerHandler } from './handler';
 

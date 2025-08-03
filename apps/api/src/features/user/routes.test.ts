@@ -66,9 +66,12 @@ describe('User Routes Structure', () => {
   it('should have User domain entities and value objects defined', async () => {
     const { User } = await import('./domain/entities/User');
     const { UserProgress } = await import('./domain/entities/UserProgress');
-    const { Level, Experience, Accuracy, StudyTime, Streak, CategoryStats } = await import(
-      './domain/value-objects'
-    );
+    const { Level } = await import('./domain/value-objects/Level');
+    const { Experience } = await import('./domain/value-objects/Experience');
+    const { Accuracy } = await import('./domain/value-objects/Accuracy');
+    const { StudyTime } = await import('./domain/value-objects/StudyTime');
+    const { Streak } = await import('./domain/value-objects/Streak');
+    const { CategoryStats } = await import('./domain/value-objects/CategoryStats');
 
     expect(User).toBeDefined();
     expect(UserProgress).toBeDefined();

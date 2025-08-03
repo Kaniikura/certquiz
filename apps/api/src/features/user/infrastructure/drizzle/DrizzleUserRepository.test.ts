@@ -2,12 +2,13 @@
  * Unit tests for DrizzleUserRepository using mocks
  * @fileoverview Tests user repository operations with sophisticated mocked database connections
  */
-
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { TestClock } from '@api/test-support/utils/TestClock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { User } from '../../domain/entities/User';
-import { Email, UserId, UserRole } from '../../domain/value-objects';
 import * as postgresErrors from '../../shared/postgres-errors';
 import { DrizzleUserRepository } from './DrizzleUserRepository';
 

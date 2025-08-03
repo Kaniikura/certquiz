@@ -2,11 +2,10 @@
  * Get profile handler implementation
  * @fileoverview Business logic for retrieving user profile and progress
  */
-
+import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
 import type { IUserRepository } from '../domain/repositories/IUserRepository';
-import { UserId } from '../domain/value-objects';
 import { extractCategoryStats } from '../shared/category-stats-utils';
 import { UserNotFoundError } from '../shared/errors';
 import type { GetProfileResponse } from './dto';
