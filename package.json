@@ -58,11 +58,7 @@
     "typespec:compile": "cd packages/typespec && tsp compile .",
     "knip": "knip",
     "knip:fix": "knip --fix",
-    "knip:production": "knip --production",
-    "codemod:barrel-dry-run": "bun run ./scripts/codemods/dry-run-barrel-imports.ts",
-    "codemod:barrel-transform": "bun run ./scripts/codemods/remove-barrel-imports.ts",
-    "codemod:barrel-remove": "bun run ./scripts/codemods/remove-barrel-files.ts",
-    "codemod:validate-imports": "bun run ./scripts/codemods/validate-imports.ts"
+    "knip:production": "knip --production"
   },
   "type": "module",
   "workspaces": [
