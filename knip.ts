@@ -18,6 +18,7 @@ const config: KnipConfig = {
     files: 'error', // Fail on unused files
     classMembers: 'error', // Fail on unused class members
     enumMembers: 'error', // Fail on unused enum members
+    binaries: 'off', // Disable binary checking due to build artifact conflicts
   },
   // Treat configuration hints as errors to ensure best practices
   treatConfigHintsAsErrors: true,
