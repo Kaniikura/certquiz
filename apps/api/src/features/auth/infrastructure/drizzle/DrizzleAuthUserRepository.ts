@@ -1,9 +1,13 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, like, ne, or, type SQL, sql } from 'drizzle-orm';
 import { User } from '../../domain/entities/User';
-import type { IAuthUserRepository } from '../../domain/repositories/IAuthUserRepository';
+import type {
+  IAuthUserRepository,
+  PaginatedUserResult,
+  UserPaginationParams,
+} from '../../domain/repositories/IAuthUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
 import type { UserId } from '../../domain/value-objects/UserId';
 import { authUser } from './schema/authUser';
@@ -258,5 +262,191 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
       });
       throw error;
     }
+  }
+
+  async findAllPaginated(params: UserPaginationParams): Promise<PaginatedUserResult> {
+    try {
+      const { page = 1, pageSize = 20, filters, orderBy = 'createdAt', orderDir = 'desc' } = params;
+
+      // Build filter conditions using extracted helper
+      const conditions = this.buildFilterConditions(filters);
+
+      // Count total records using extracted helper
+      const total = await this.countUsersWithFilters(conditions);
+
+      // Build order clause using extracted helper
+      const orderClause = this.buildOrderClause(orderBy, orderDir);
+
+      // Query users with filters using extracted helper
+      const rows = await this.queryUsersWithFilters(conditions, orderClause, page, pageSize);
+
+      // Convert rows to User entities using extracted helper
+      const items = this.convertRowsToUsers(rows);
+
+      return {
+        items,
+        total,
+        page,
+        pageSize,
+      };
+    } catch (error) {
+      this.logger.error('Failed to find paginated users:', {
+        params,
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async updateRoles(userId: string, roles: string[], updatedBy: string): Promise<void> {
+    try {
+      // For simplicity, we'll use the highest role from the array
+      // In a real system, you might store multiple roles differently
+      const highestRole = this.determineHighestRole(roles);
+
+      await this.conn
+        .update(authUser)
+        .set({
+          role: highestRole as 'guest' | 'user' | 'premium' | 'admin',
+          updatedAt: new Date(),
+        })
+        .where(eq(authUser.userId, userId));
+
+      this.logger.info('User roles updated successfully', {
+        userId,
+        newRole: highestRole,
+        updatedBy,
+      });
+    } catch (error) {
+      this.logger.error('Failed to update user roles:', {
+        userId,
+        roles,
+        updatedBy,
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Build filter conditions for user pagination queries
+   * @param filters Optional filters to apply
+   * @returns Array of SQL conditions
+   */
+  private buildFilterConditions(filters?: UserPaginationParams['filters']) {
+    const conditions: SQL[] = [];
+
+    if (filters) {
+      if (filters.search) {
+        const searchPattern = `%${filters.search}%`;
+        const searchCondition = or(
+          like(authUser.email, searchPattern),
+          like(authUser.username, searchPattern)
+        );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
+      }
+
+      if (filters.role !== undefined) {
+        conditions.push(eq(authUser.role, filters.role as 'guest' | 'user' | 'premium' | 'admin'));
+      }
+
+      if (filters.isActive !== undefined) {
+        conditions.push(eq(authUser.isActive, filters.isActive));
+      }
+    }
+
+    return conditions;
+  }
+
+  /**
+   * Build order clause for user pagination queries
+   * @param orderBy Column to order by
+   * @param orderDir Sort direction
+   * @returns SQL order clause
+   */
+  private buildOrderClause(
+    orderBy: UserPaginationParams['orderBy'] = 'createdAt',
+    orderDir: UserPaginationParams['orderDir'] = 'desc'
+  ) {
+    const orderColumn =
+      orderBy === 'email'
+        ? authUser.email
+        : orderBy === 'username'
+          ? authUser.username
+          : authUser.createdAt;
+
+    return orderDir === 'desc' ? desc(orderColumn) : asc(orderColumn);
+  }
+
+  /**
+   * Count total users matching the filter conditions
+   * @param conditions Array of SQL conditions
+   * @returns Total count of matching users
+   */
+  private async countUsersWithFilters(conditions: SQL[]): Promise<number> {
+    const countResult = await this.conn
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(authUser)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    return Number(countResult[0]?.count ?? 0);
+  }
+
+  /**
+   * Query users with filters, ordering, and pagination
+   * @param conditions Array of SQL conditions
+   * @param orderClause SQL order clause
+   * @param page Page number (1-based)
+   * @param pageSize Number of items per page
+   * @returns Array of raw database rows
+   */
+  private async queryUsersWithFilters(
+    conditions: SQL[],
+    orderClause: SQL,
+    page: number,
+    pageSize: number
+  ) {
+    const offset = (page - 1) * pageSize;
+
+    return await this.conn
+      .select()
+      .from(authUser)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(orderClause)
+      .limit(pageSize)
+      .offset(offset);
+  }
+
+  /**
+   * Convert raw database rows to User entities
+   * @param rows Raw database rows
+   * @returns Array of User entities (invalid rows are skipped with warning)
+   */
+  private convertRowsToUsers(rows: (typeof authUser.$inferSelect)[]): User[] {
+    const items: User[] = [];
+
+    for (const row of rows) {
+      const result = User.fromPersistence(row);
+      if (result.success) {
+        items.push(result.data);
+      } else {
+        this.logger.warn('Skipping invalid user data in pagination', {
+          userId: row.userId,
+          error: result.error.message,
+        });
+      }
+    }
+
+    return items;
+  }
+
+  private determineHighestRole(roles: string[]): string {
+    // Role hierarchy: admin > premium > user > guest
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('premium')) return 'premium';
+    if (roles.includes('user')) return 'user';
+    return 'guest';
   }
 }

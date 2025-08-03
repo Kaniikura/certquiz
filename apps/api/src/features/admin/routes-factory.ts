@@ -3,6 +3,7 @@
  * @fileoverview Creates admin routes with role-based authentication
  */
 
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import { auth } from '@api/middleware/auth';
@@ -15,8 +16,97 @@ import {
   type RepositoryToken,
   USER_REPO_TOKEN,
 } from '@api/shared/types/RepositoryToken';
+import type { Context } from 'hono';
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { getSystemStatsHandler } from './get-system-stats/handler';
+import type { ListUsersParams } from './list-users/dto';
+import { listUsersHandler } from './list-users/handler';
+import type { UpdateUserRolesParams } from './update-user-roles/dto';
+import { updateUserRolesHandler } from './update-user-roles/handler';
+
+/**
+ * Create unit of work for admin operations
+ * Extracted helper to reduce code duplication
+ */
+function createUnitOfWork(
+  c: Context<{ Variables: { user: AuthUser } & DatabaseContextVariables }>,
+  tokens: RepositoryToken<unknown>[]
+): IUnitOfWork {
+  const repositories = new Map<RepositoryToken<unknown>, unknown>();
+
+  // Pre-fetch all required repositories
+  for (const token of tokens) {
+    repositories.set(token, getRepositoryFromContext(c, token));
+  }
+
+  return {
+    getRepository: <T>(token: RepositoryToken<T>): T => {
+      const repo = repositories.get(token as RepositoryToken<unknown>);
+      if (!repo) {
+        throw new Error('Unknown repository token');
+      }
+      return repo as T;
+    },
+    begin: async () => {
+      // No-op for read-only operations
+    },
+    commit: async () => {
+      // No-op for read-only operations
+    },
+    rollback: async () => {
+      // No-op for read-only operations
+    },
+  };
+}
+
+/**
+ * Handle route errors with appropriate status codes
+ * Extracted helper to reduce complexity
+ */
+function handleRouteError(error: unknown) {
+  // Simple error handling for most routes
+  return {
+    success: false,
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: error instanceof Error ? error.message : 'An unexpected error occurred',
+    },
+  };
+}
+
+/**
+ * Handle update user roles errors with detailed status mapping
+ * Extracted helper for complex error handling
+ */
+function handleUpdateUserRolesError(error: unknown) {
+  let status = 500;
+  let code = 'INTERNAL_ERROR';
+
+  if (error instanceof Error) {
+    if (error.name === 'ValidationError') {
+      status = 400;
+      code = 'VALIDATION_ERROR';
+    } else if (error.name === 'NotFoundError') {
+      status = 404;
+      code = 'NOT_FOUND';
+    } else if (error.name === 'AdminPermissionError') {
+      status = 403;
+      code = 'ADMIN_PERMISSION_ERROR';
+    }
+  }
+
+  return {
+    response: {
+      success: false,
+      error: {
+        code,
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      },
+    },
+    status: status as ContentfulStatusCode,
+  };
+}
 
 /**
  * Create admin routes - all require admin role
@@ -32,31 +122,12 @@ export function createAdminRoutes(): Hono<{
   // GET /api/admin/stats - System statistics
   adminRoutes.get('/stats', async (c) => {
     try {
-      const authUserRepo = getRepositoryFromContext(c, AUTH_USER_REPO_TOKEN);
-      const userRepo = getRepositoryFromContext(c, USER_REPO_TOKEN);
-      const quizRepo = getRepositoryFromContext(c, QUIZ_REPO_TOKEN);
-      const questionRepo = getRepositoryFromContext(c, QUESTION_REPO_TOKEN);
-
-      // Create a mock unit of work that provides the repositories
-      const unitOfWork: IUnitOfWork = {
-        getRepository: <T>(token: RepositoryToken<T>): T => {
-          if (token === AUTH_USER_REPO_TOKEN) return authUserRepo as T;
-          if (token === USER_REPO_TOKEN) return userRepo as T;
-          if (token === QUIZ_REPO_TOKEN) return quizRepo as T;
-          if (token === QUESTION_REPO_TOKEN) return questionRepo as T;
-          throw new Error('Unknown repository token');
-        },
-        // These methods are not needed for read-only operations
-        begin: async () => {
-          // No-op for read-only operation
-        },
-        commit: async () => {
-          // No-op for read-only operation
-        },
-        rollback: async () => {
-          // No-op for read-only operation
-        },
-      };
+      const unitOfWork = createUnitOfWork(c, [
+        AUTH_USER_REPO_TOKEN,
+        USER_REPO_TOKEN,
+        QUIZ_REPO_TOKEN,
+        QUESTION_REPO_TOKEN,
+      ]);
 
       const stats = await getSystemStatsHandler(unitOfWork);
 
@@ -65,17 +136,7 @@ export function createAdminRoutes(): Hono<{
         data: stats,
       });
     } catch (error) {
-      // Error will be handled by Hono error boundary
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: error instanceof Error ? error.message : 'An unexpected error occurred',
-          },
-        },
-        500
-      );
+      return c.json(handleRouteError(error), 500);
     }
   });
 
@@ -83,33 +144,57 @@ export function createAdminRoutes(): Hono<{
    * GET /api/admin/users - List all users
    */
   adminRoutes.get('/users', async (c) => {
-    // TODO: Implement user listing with pagination
-    return c.json({
-      success: true,
-      data: {
-        users: [],
-        page: 1,
-        total: 0,
-      },
-    });
+    try {
+      const unitOfWork = createUnitOfWork(c, [AUTH_USER_REPO_TOKEN]);
+
+      // Parse query parameters
+      const query = c.req.query();
+      const params: ListUsersParams = {
+        page: parseInt(query.page || '1', 10),
+        pageSize: parseInt(query.pageSize || '20', 10),
+        search: query.search,
+        role: query.role ? UserRole.fromString(query.role) : undefined,
+        isActive: query.isActive ? query.isActive === 'true' : undefined,
+      };
+
+      const result = await listUsersHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return c.json(handleRouteError(error), 500);
+    }
   });
 
   /**
    * PATCH /api/admin/users/:id/roles - Update user roles
    */
   adminRoutes.patch('/users/:id/roles', async (c) => {
-    const userId = c.req.param('id');
-    const adminUser = c.get('user');
+    try {
+      const unitOfWork = createUnitOfWork(c, [AUTH_USER_REPO_TOKEN]);
+      const userId = c.req.param('id');
+      const adminUser = c.get('user');
 
-    // TODO: Implement role update
-    return c.json({
-      success: true,
-      data: {
+      // Parse request body
+      const body = await c.req.json();
+      const params: UpdateUserRolesParams = {
         userId,
+        roles: body.roles || [],
         updatedBy: adminUser.sub,
-        message: 'Role update coming soon',
-      },
-    });
+      };
+
+      const result = await updateUserRolesHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      const errorResponse = handleUpdateUserRolesError(error);
+      return c.json(errorResponse.response, errorResponse.status);
+    }
   });
 
   /**

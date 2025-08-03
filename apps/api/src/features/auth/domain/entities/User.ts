@@ -18,6 +18,8 @@ export class User extends AggregateRoot<UserId> {
     public readonly identityProviderId: string | null,
     public readonly isActive: boolean,
     public readonly createdAt: Date,
+    // TODO: Add dedicated lastLoginAt field for accurate login tracking
+    // Currently updatedAt is being used as proxy in admin interfaces
     public readonly updatedAt: Date
   ) {
     super(id);

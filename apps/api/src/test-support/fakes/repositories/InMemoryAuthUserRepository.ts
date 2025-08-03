@@ -1,7 +1,12 @@
-import type { User } from '@api/features/auth/domain/entities/User';
-import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
+import { User } from '@api/features/auth/domain/entities/User';
+import type {
+  IAuthUserRepository,
+  PaginatedUserResult,
+  UserPaginationParams,
+} from '@api/features/auth/domain/repositories/IAuthUserRepository';
 import type { Email } from '@api/features/auth/domain/value-objects/Email';
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 
 /**
  * In-memory auth user repository for testing
@@ -89,6 +94,96 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
       }
     }
     return Promise.resolve(activeCount);
+  }
+
+  async findAllPaginated(params: UserPaginationParams): Promise<PaginatedUserResult> {
+    const { page = 1, pageSize = 20, filters, orderBy = 'createdAt', orderDir = 'desc' } = params;
+
+    // Convert Map to array for filtering and sorting
+    let users = Array.from(this.users.values());
+
+    // Apply filters
+    if (filters) {
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        users = users.filter(
+          (user) =>
+            user.email.toString().toLowerCase().includes(searchLower) ||
+            user.username.toLowerCase().includes(searchLower)
+        );
+      }
+
+      if (filters.role !== undefined) {
+        users = users.filter((user) => user.role === filters.role);
+      }
+
+      if (filters.isActive !== undefined) {
+        users = users.filter((user) => user.isActive === filters.isActive);
+      }
+    }
+
+    // Sort users
+    users.sort((a, b) => {
+      let compareValue = 0;
+      switch (orderBy) {
+        case 'email':
+          compareValue = a.email.toString().localeCompare(b.email.toString());
+          break;
+        case 'username':
+          compareValue = a.username.localeCompare(b.username);
+          break;
+        default:
+          compareValue = a.createdAt.getTime() - b.createdAt.getTime();
+          break;
+      }
+      return orderDir === 'desc' ? -compareValue : compareValue;
+    });
+
+    // Calculate pagination
+    const total = users.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedUsers = users.slice(startIndex, endIndex);
+
+    return {
+      items: paginatedUsers,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async updateRoles(userId: string, roles: string[], _updatedBy: string): Promise<void> {
+    const user = await this.findById(UserId.of(userId));
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
+
+    // Update the user's role based on the highest role in the array
+    // Following the role hierarchy: admin > premium > user > guest
+    let highestRole = UserRole.Guest;
+    for (const role of roles) {
+      const parsedRole = UserRole.fromString(role);
+      if (UserRole.hasPermission(parsedRole, highestRole)) {
+        highestRole = parsedRole;
+      }
+    }
+
+    // Create updated user with new role - User constructor is private,
+    // so we need to create a new user from persistence data with updated role
+    const userPersistence = user.toPersistence();
+    const updatedUserData = {
+      ...userPersistence,
+      role: UserRole.roleToString(highestRole),
+      updatedAt: new Date(),
+    };
+
+    const updatedUserResult = User.fromPersistence(updatedUserData);
+    if (!updatedUserResult.success) {
+      throw updatedUserResult.error;
+    }
+
+    await this.save(updatedUserResult.data);
   }
 
   // Test helper methods
