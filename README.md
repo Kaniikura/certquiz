@@ -18,33 +18,37 @@ bun run db:migrate     # Run migrations
 bun run dev           # Start dev servers
 ```
 
-Frontend: http://localhost:5173  
 API: http://localhost:4000/swagger  
 KeyCloak: http://localhost:8080
 
 ## 🛠️ Tech Stack
 
 - **Runtime**: [Bun](https://bun.sh) - Fast all-in-one JavaScript runtime
-- **Frontend**: [SvelteKit](https://kit.svelte.dev) + TypeScript + TailwindCSS
 - **Backend**: [Hono](https://hono.dev) + [Drizzle ORM](https://orm.drizzle.team)
 - **Database**: PostgreSQL 16
 - **Auth**: KeyCloak
 - **Testing**: Vitest
-- **API Spec**: TypeSpec → OpenAPI
 
 ## 📁 Project Structure
 
 ```
 cert-quiz/
 ├── apps/
-│   ├── web/          # SvelteKit frontend
-│   └── api/          # Hono backend API
+│   └── api/          # Hono backend API (VSA + DDD + Repository Pattern)
 ├── packages/
-│   ├── shared/       # Shared types & utilities
-│   └── typespec/     # API specifications
+│   └── shared/       # Essential constants & utilities (QUIZ_SIZES, CONFIG)
 ├── docker/           # Docker configurations
-├── k8s/             # Kubernetes manifests
 └── docs/            # Documentation
+```
+
+**Import Pattern**: Direct imports only, no barrel exports
+```typescript
+// ✅ Direct imports
+import { QUIZ_SIZES } from '@certquiz/shared/constants';
+import { Email } from '@api/features/auth/domain/value-objects/Email';
+
+// ❌ Barrel imports (removed)
+import { Email } from '@api/features/auth';
 ```
 
 ## 🧪 Development Principles
@@ -56,11 +60,10 @@ bun run test --watch      # Run tests in watch mode
 bun run test --coverage   # Check coverage (min 80%)
 ```
 
-### Schema-First API Development
-Define schemas → Generate types → Implement:
+### Schema-Driven Development
+Database schemas drive development:
 ```bash
-bun run typespec:compile   # Generate from TypeSpec
-bun run db:generate       # Generate migrations
+bun run db:generate       # Generate migrations from schema changes
 ```
 
 ## 📚 Documentation
@@ -99,9 +102,10 @@ bun run docker:down      # Stop services
 
 ## 🏗️ Architecture
 
-- **Monorepo**: Shared types between frontend/backend
-- **Type Safety**: End-to-end type safety with TypeScript
-- **Schema-Driven**: Database and API schemas drive development
+- **Vertical Slice Architecture**: Features organized by use case, not layers
+- **Domain-Driven Design**: Rich domain models with business logic
+- **Repository Pattern**: Clean separation between domain and data access
+- **Type Safety**: Comprehensive TypeScript coverage with explicit types
 - **Performance**: Quiz response time < 200ms target
 
 ## 📝 License
