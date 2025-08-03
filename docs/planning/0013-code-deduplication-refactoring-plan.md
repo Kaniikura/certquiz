@@ -62,7 +62,7 @@ const route = createAmbientRoute<
   unknown,
   GetResultsResponse,
   { quizRepo: IQuizRepository },
-  AuthVariables
+  AuthenticatedVariables
 >(
   {
     operation: 'get',
@@ -84,7 +84,7 @@ interface EnvironmentConfig {
   enableLogging: boolean;
   environment: 'test' | 'development' | 'production';
   poolConfig?: DatabasePoolConfig;
-  specialSettings?: Record<string, unknown>;
+  authProvider: 'stub' | 'fake' | 'production';
 }
 
 function registerCommonInfrastructure(
@@ -96,30 +96,98 @@ function registerCommonInfrastructure(
   container.register(CLOCK_TOKEN, () => systemClock);
   container.register(ID_GENERATOR_TOKEN, () => ({ generate: () => crypto.randomUUID() }));
   
-  // Database configuration with environment-specific settings
+  // Database configuration with environment-specific provider selection
   container.register(DATABASE_PROVIDER_TOKEN, async () => {
     const logger = await container.resolve(LOGGER_TOKEN);
-    const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
-    return new ProductionDatabaseProvider(logger, {
-      databaseUrl,
-      enableLogging: config.enableLogging,
-      environment: config.environment,
-      defaultPoolConfig: config.poolConfig,
-    });
-  });
+    
+    // Environment-specific database provider selection
+    if (config.environment === 'test') {
+      return new TestDatabaseProvider(logger);
+    } else {
+      const databaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
+      const dbConfig = {
+        databaseUrl,
+        enableLogging: config.enableLogging,
+        environment: config.environment,
+        ...(config.poolConfig && { defaultPoolConfig: config.poolConfig }),
+      };
+      return new ProductionDatabaseProvider(logger, dbConfig);
+    }
+  }, { singleton: true });
   
-  // Additional common registrations...
+  // Database client registration with environment-specific singleton behavior
+  container.register(DATABASE_CLIENT_TOKEN, async () => {
+    const provider = await container.resolve(DATABASE_PROVIDER_TOKEN);
+    return provider.getDatabase();
+  }, { singleton: config.environment !== 'test' }); // Test isolation requires new instances
+
+  // Unit of Work Provider with environment-specific singleton behavior
+  container.register(UNIT_OF_WORK_PROVIDER_TOKEN, async () => {
+    const logger = await container.resolve(LOGGER_TOKEN);
+    return new DrizzleUnitOfWorkProvider(logger);
+  }, { singleton: config.environment !== 'test' });
+
+  // Database context with environment-specific initialization
+  container.register(DATABASE_CONTEXT_TOKEN, async () => {
+    const logger = await container.resolve(LOGGER_TOKEN);
+    const databaseProvider = await container.resolve(DATABASE_PROVIDER_TOKEN);
+    const unitOfWorkProvider = await container.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
+    
+    if (config.environment === 'test') {
+      // Test environment: manual initialization for precise control
+      const context = new AsyncDatabaseContext(
+        logger,
+        databaseProvider,
+        { autoInitialize: false },
+        unitOfWorkProvider
+      );
+      await context.initialize();
+      return context;
+    } else {
+      // Development/Production: automatic initialization
+      return new AsyncDatabaseContext(logger, databaseProvider, {}, unitOfWorkProvider);
+    }
+  }, { singleton: config.environment !== 'test' });
+
+  // Auth provider selection based on environment
+  switch (config.authProvider) {
+    case 'stub':
+      container.register(AUTH_PROVIDER_TOKEN, () => new StubAuthProvider(), { singleton: true });
+      break;
+    case 'fake':
+      container.register(AUTH_PROVIDER_TOKEN, () => {
+        const fakeAuth = new FakeAuthProvider();
+        fakeAuth.givenAuthenticationSucceeds();
+        fakeAuth.givenTokenValidationSucceeds();
+        return fakeAuth;
+      }, { singleton: true });
+      break;
+    case 'production':
+      container.register(AUTH_PROVIDER_TOKEN, () => createProductionAuthProvider(), { singleton: true });
+      break;
+  }
+  
+  // Additional common service registrations...
 }
 
 function configureTestContainer(container: DIContainer): void {
   registerCommonInfrastructure(container, {
     enableLogging: false,
     environment: 'test',
+    authProvider: 'stub',
   });
   // Test-specific overrides only
 }
 
 // Route Patterns - Builder Pattern
+// Type aliases for better readability and type safety
+type LoggingExtractors = {
+  extractLogContext?: (body: unknown, c?: Context) => Record<string, unknown>;
+  extractSuccessLogData?: (result: unknown, c?: Context) => Record<string, unknown>;
+};
+
+type ErrorMapper = (error: Error) => { status: ContentfulStatusCode; body: Response };
+
 class RouteConfigBuilder {
   private config: Partial<AmbientRouteConfig> = {};
   
@@ -143,16 +211,13 @@ class RouteConfigBuilder {
     return this;
   }
   
-  logging(extractors: {
-    extractLogContext?: (body: unknown, c?: Context) => Record<string, unknown>;
-    extractSuccessLogData?: (result: unknown, c?: Context) => Record<string, unknown>;
-  }): this {
+  logging(extractors: LoggingExtractors): this {
     this.config.extractLogContext = extractors.extractLogContext;
     this.config.extractSuccessLogData = extractors.extractSuccessLogData;
     return this;
   }
   
-  errorMapping(mapper: (error: Error) => { status: ContentfulStatusCode; body: Response }): this {
+  errorMapping(mapper: ErrorMapper): this {
     this.config.errorMapper = mapper;
     return this;
   }
@@ -537,11 +602,11 @@ Phase 4: Full validation suite
 | **Phase 2** | 3-4 hours | Phase 1 complete | `RouteConfigBuilder`, migrated routes |
 | **Phase 3** | 1-2 hours | Phase 2 complete | `JwtStringUtils`, updated middleware |
 | **Phase 4** | 1 hour | All phases complete | Validation report, updated docs |
-| **Total** | **7-10 hours** | - | **~260 lines duplicate code eliminated** |
+| **Total** | **8-12 hours (1.0-1.5 business days)** | - | **~260 lines duplicate code eliminated** |
 
 ### Resource Requirements
 
-- **Developer Time**: 1 developer, 7-10 hours total
+- **Developer Time**: 1 developer, 8-12 hours total (1.0-1.5 business days)
 - **Testing Environment**: Access to development database and test suite
 - **Code Review**: 1 senior developer for pattern validation
 - **Documentation**: Technical writer for pattern documentation (optional)
@@ -652,6 +717,6 @@ This systematic code deduplication refactoring will significantly improve code m
 
 The refactoring will serve as a foundation for continued code quality improvements and will establish patterns that prevent future duplication while maintaining the project's architectural integrity.
 
-**Expected Timeline**: 7-10 hours of focused development time
+**Expected Timeline**: 8-12 hours of focused development time (1.0-1.5 business days)
 **Risk Level**: Low (systematic validation and rollback strategies in place)
 **Team Impact**: Minimal disruption with clear communication and coordination
