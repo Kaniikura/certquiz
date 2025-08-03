@@ -29,7 +29,6 @@
     "db:test:migration": "bun run scripts/test-migration.ts"
   },
   "dependencies": {
-    "@certquiz/shared": "workspace:*",
     "@hono/zod-validator": "^0.6.0",
     "drizzle-orm": "^0.44.2",
     "hono": "^4.7.0",
@@ -44,8 +43,10 @@
     "@types/node": "^24.1.0",
     "drizzle-kit": "^0.31.1",
     "knip": "^5.62.0",
+    "nanoid": "^5.0.0",
     "testcontainers": "^11.5.0",
     "typescript": "^5.8.3",
+    "vite": "^5.0.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   }

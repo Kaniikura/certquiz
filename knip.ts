@@ -21,20 +21,30 @@ const config: KnipConfig = {
   },
   // Treat configuration hints as errors to ensure best practices
   treatConfigHintsAsErrors: true,
+  // Global ignore patterns for development tools
+  ignoreBinaries: ['docker-compose', 'knip'],
   workspaces: {
     '.': {
       entry: [],
     },
     'apps/api': {
       entry: [
-        'src/index.ts',
+        // 'src/index.ts' is automatically included as the entry point
         'src/app-factory.ts',
         'src/**/*.test.ts',
         'src/system/seed/*.ts',
         'scripts/**/*.ts',
         'tests/**/*.test.ts',
       ],
-      project: ['src/**', 'scripts/**'],
+      project: ['src/**', 'scripts/**', 'tests/**'], // Include tests directory
+      // Dependencies that are used but hard to detect statically
+      ignoreDependencies: [
+        'testcontainers', // Used in integration tests
+      ],
+      // Plugin configurations to help knip understand tool usage
+      vitest: {
+        config: ['vitest.config.ts', 'tests/vitest.config.integration.ts'],
+      },
     },
   },
 };
