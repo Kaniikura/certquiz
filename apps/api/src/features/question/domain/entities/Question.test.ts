@@ -405,4 +405,137 @@ describe('Question', () => {
       }
     });
   });
+
+  describe('moderateStatus - Business Rules', () => {
+    const createTestQuestionWithStatus = (status: QuestionStatus = QuestionStatus.DRAFT) => {
+      const options = createValidOptions();
+      const result = Question.create({
+        id: '550e8400-e29b-41d4-a716-446655440000' as QuestionId,
+        version: 1,
+        questionText: 'Test question for moderation?',
+        questionType: 'multiple_choice',
+        explanation: 'Test explanation',
+        options,
+        examTypes: ['CCNA'],
+        categories: ['Networking'],
+        difficulty: 'Intermediate',
+        tags: ['test'],
+        images: [],
+        isPremium: false,
+        status,
+        createdById: 'test-user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      if (!result.success) {
+        throw new Error('Failed to create test question');
+      }
+
+      return result.data;
+    };
+
+    it('should allow moderation of DRAFT questions', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.DRAFT);
+
+      const result = question.moderateStatus(QuestionStatus.ACTIVE);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.action).toBe('approve');
+        expect(result.data.previousStatus).toBe(QuestionStatus.DRAFT);
+        expect(result.data.newStatus).toBe(QuestionStatus.ACTIVE);
+      }
+    });
+
+    it('should prevent moderation of ACTIVE questions', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.ACTIVE);
+
+      const result = question.moderateStatus(QuestionStatus.ARCHIVED);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Only DRAFT questions can be moderated');
+      }
+    });
+
+    it('should prevent moderation of ARCHIVED questions', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.ARCHIVED);
+
+      const result = question.moderateStatus(QuestionStatus.ACTIVE);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Only DRAFT questions can be moderated');
+      }
+    });
+
+    it('should prevent moderation of INACTIVE questions', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.INACTIVE);
+
+      const result = question.moderateStatus(QuestionStatus.ACTIVE);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Only DRAFT questions can be moderated');
+      }
+    });
+
+    it('should require feedback for rejection', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.DRAFT);
+
+      const result = question.moderateStatus(QuestionStatus.ARCHIVED);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Feedback is required for question rejection');
+      }
+    });
+
+    it('should require minimum feedback length for rejection', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.DRAFT);
+
+      const result = question.moderateStatus(QuestionStatus.ARCHIVED, 'short');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('must be at least 10 characters long');
+      }
+    });
+
+    it('should successfully moderate with proper feedback', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.DRAFT);
+
+      const result = question.moderateStatus(
+        QuestionStatus.ARCHIVED,
+        'This question needs improvement because...'
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.action).toBe('reject');
+      }
+    });
+
+    it('should update question status after successful moderation', () => {
+      const question = createTestQuestionWithStatus(QuestionStatus.DRAFT);
+
+      // Verify initial status
+      expect(question.status).toBe(QuestionStatus.DRAFT);
+
+      // Moderate the question
+      const result = question.moderateStatus(QuestionStatus.ACTIVE);
+      expect(result.success).toBe(true);
+
+      // Verify status was updated
+      expect(question.status).toBe(QuestionStatus.ACTIVE);
+
+      // Try to moderate again - should fail
+      const secondResult = question.moderateStatus(QuestionStatus.ARCHIVED, 'Changed my mind');
+      expect(secondResult.success).toBe(false);
+      if (!secondResult.success) {
+        expect(secondResult.error.message).toContain('Only DRAFT questions can be moderated');
+      }
+    });
+  });
 });

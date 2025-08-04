@@ -1,6 +1,7 @@
 import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { ValidationError } from '@api/shared/errors';
 import { Result } from '@api/shared/result';
+import { InvalidQuestionDataError } from '../../shared/errors';
 import type { QuestionSummary } from '../repositories/IQuestionRepository';
 import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 import { QuestionOptions } from '../value-objects/QuestionOptions';
@@ -21,6 +22,15 @@ export enum QuestionStatus {
   INACTIVE = 'inactive',
   DRAFT = 'draft',
   ARCHIVED = 'archived',
+}
+
+/**
+ * Result of a moderation action
+ */
+interface ModerationResult {
+  previousStatus: QuestionStatus;
+  newStatus: QuestionStatus;
+  action: 'approve' | 'reject' | 'request_changes';
 }
 
 /**
@@ -316,6 +326,71 @@ export class Question {
     this._isPremium = isPremium;
     this._version++;
     this._updatedAt = new Date();
+  }
+
+  /**
+   * Moderate the question status with business rule validation
+   *
+   * Business Rules:
+   * - Only DRAFT questions can be moderated
+   * - ARCHIVED status requires feedback with minimum 10 characters
+   *
+   * @param newStatus - The new status to set
+   * @param feedback - Optional feedback for the moderation action
+   * @returns Result containing moderation metadata or error
+   */
+  moderateStatus(newStatus: QuestionStatus, feedback?: string): Result<ModerationResult> {
+    // Business rule: Only DRAFT questions can be moderated
+    if (this._status !== QuestionStatus.DRAFT) {
+      return Result.fail(
+        new InvalidQuestionDataError(
+          `Cannot moderate question with status ${this._status}. Only DRAFT questions can be moderated.`
+        )
+      );
+    }
+
+    // Business rule: Rejection (ARCHIVED) requires feedback
+    if (newStatus === QuestionStatus.ARCHIVED && (!feedback || feedback.trim().length < 10)) {
+      return Result.fail(
+        new InvalidQuestionDataError(
+          'Feedback is required for question rejection and must be at least 10 characters long'
+        )
+      );
+    }
+
+    const previousStatus = this._status;
+
+    // Update the question
+    this._status = newStatus;
+    this._version++;
+    this._updatedAt = new Date();
+
+    // Map status to action for logging
+    const action = this.mapStatusToAction(newStatus);
+
+    return Result.ok({
+      previousStatus,
+      newStatus,
+      action,
+    });
+  }
+
+  /**
+   * Map question status to moderation action for logging
+   */
+  private mapStatusToAction(status: QuestionStatus): 'approve' | 'reject' | 'request_changes' {
+    switch (status) {
+      case QuestionStatus.ACTIVE:
+        return 'approve';
+      case QuestionStatus.INACTIVE:
+      case QuestionStatus.ARCHIVED:
+        return 'reject';
+      case QuestionStatus.DRAFT:
+        return 'request_changes';
+      default:
+        // This should never happen with the current enum, but provides type safety
+        return 'request_changes';
+    }
   }
 
   /**
