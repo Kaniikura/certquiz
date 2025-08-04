@@ -13,7 +13,7 @@ import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
 import { QUESTION_REPO_TOKEN, type RepositoryToken } from '@api/shared/types/RepositoryToken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ListPendingQuestionsParams } from './dto';
+import type { ListPendingQuestionsParams, ListPendingQuestionsResponse } from './dto';
 import { listPendingQuestionsHandler } from './handler';
 
 describe('listPendingQuestionsHandler', () => {
@@ -92,7 +92,10 @@ describe('listPendingQuestionsHandler', () => {
     const params: ListPendingQuestionsParams = { page: 1, pageSize: 20 };
 
     // Act
-    const result = await listPendingQuestionsHandler(params, mockUnitOfWork);
+    const result = (await listPendingQuestionsHandler(
+      params,
+      mockUnitOfWork
+    )) as ListPendingQuestionsResponse;
 
     // Assert
     expect(result.items).toHaveLength(2);
@@ -261,7 +264,10 @@ describe('listPendingQuestionsHandler', () => {
     const params: ListPendingQuestionsParams = { page: 1, pageSize: 20 };
 
     // Act
-    const result = await listPendingQuestionsHandler(params, mockUnitOfWork);
+    const result = (await listPendingQuestionsHandler(
+      params,
+      mockUnitOfWork
+    )) as ListPendingQuestionsResponse;
 
     // Assert
     expect(result.items).toHaveLength(0);
@@ -416,7 +422,10 @@ describe('listPendingQuestionsHandler', () => {
     const params: ListPendingQuestionsParams = { page: 1, pageSize: 20 };
 
     // Act
-    const result = await listPendingQuestionsHandler(params, mockUnitOfWork);
+    const result = (await listPendingQuestionsHandler(
+      params,
+      mockUnitOfWork
+    )) as ListPendingQuestionsResponse;
 
     // Assert
     expect(result.items[0].priority).toBe('low');

@@ -3,7 +3,7 @@
  * @fileoverview Business logic for admin quiz deletion with cascading cleanup
  */
 
-import type { QuizSessionId } from '@api/features/quiz/domain/value-objects/Ids';
+import { QuizSessionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { NotFoundError, ValidationError } from '@api/shared/errors';
@@ -33,11 +33,14 @@ export async function deleteQuizHandler(
 
   const { quizId, deletedBy, reason } = params;
 
+  // Create properly typed QuizSessionId
+  const quizSessionId = QuizSessionId.of(quizId);
+
   // Get repository from unit of work
   const quizRepo = unitOfWork.getRepository(QUIZ_REPO_TOKEN);
 
   // Find the quiz session by ID
-  const quiz = await quizRepo.findById(quizId as QuizSessionId);
+  const quiz = await quizRepo.findById(quizSessionId);
   if (!quiz) {
     throw new NotFoundError('Quiz session not found');
   }
@@ -52,7 +55,7 @@ export async function deleteQuizHandler(
 
   // Perform cascading deletion
   try {
-    await quizRepo.deleteWithCascade(quizId as QuizSessionId);
+    await quizRepo.deleteWithCascade(quizSessionId);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown deletion error';
     throw new Error(`Failed to delete quiz session: ${errorMessage}`);

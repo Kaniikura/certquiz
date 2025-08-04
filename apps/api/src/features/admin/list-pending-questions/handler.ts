@@ -30,7 +30,8 @@ export const listPendingQuestionsHandler = createPaginatedListHandlerWithUow<
   PendingQuestionInfo,
   IUnitOfWork,
   ModerationParams,
-  QuestionWithModerationInfo
+  QuestionWithModerationInfo,
+  IQuestionRepository
 >({
   schema: ListPendingQuestionsParamsSchema,
 
@@ -53,14 +54,14 @@ export const listPendingQuestionsHandler = createPaginatedListHandlerWithUow<
     };
   },
 
-  fetchData: async (repo: unknown, filters, _params) => {
-    return (repo as IQuestionRepository).findQuestionsForModeration(filters);
+  fetchData: async (repo, filters, _params) => {
+    return repo.findQuestionsForModeration(filters);
   },
 
   transformItem: transformQuestionToInfo,
 
   calculateSummary: (items, total) => calculateSummaryStatistics(items, total),
-}) as (params: unknown, unitOfWork: IUnitOfWork) => Promise<ListPendingQuestionsResponse>;
+});
 
 /**
  * Transform QuestionWithModerationInfo to PendingQuestionInfo

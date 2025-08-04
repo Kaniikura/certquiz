@@ -3,10 +3,6 @@
  * @fileoverview Business logic for aggregating system-wide statistics
  */
 
-import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
-import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
-import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
-import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import {
   AUTH_USER_REPO_TOKEN,
@@ -18,10 +14,10 @@ import type { SystemStats } from './dto';
 
 export async function getSystemStatsHandler(unitOfWork: IUnitOfWork): Promise<SystemStats> {
   // Get repositories from unit of work
-  const authUserRepo = unitOfWork.getRepository(AUTH_USER_REPO_TOKEN) as IAuthUserRepository;
-  const userRepo = unitOfWork.getRepository(USER_REPO_TOKEN) as IUserRepository;
-  const quizRepo = unitOfWork.getRepository(QUIZ_REPO_TOKEN) as IQuizRepository;
-  const questionRepo = unitOfWork.getRepository(QUESTION_REPO_TOKEN) as IQuestionRepository;
+  const authUserRepo = unitOfWork.getRepository(AUTH_USER_REPO_TOKEN);
+  const userRepo = unitOfWork.getRepository(USER_REPO_TOKEN);
+  const quizRepo = unitOfWork.getRepository(QUIZ_REPO_TOKEN);
+  const questionRepo = unitOfWork.getRepository(QUESTION_REPO_TOKEN);
 
   // Parallel aggregation for performance
   const [
