@@ -13,6 +13,7 @@ describe('UserRowMapper', () => {
       isActive: true,
       createdAt: new Date('2024-01-01T00:00:00Z'),
       updatedAt: new Date('2024-01-01T00:00:00Z'),
+      lastLoginAt: null,
     };
 
     it('should map valid auth user row to User entity', () => {
@@ -97,6 +98,7 @@ describe('UserRowMapper', () => {
       isActive: true,
       createdAt: new Date('2024-01-01T00:00:00Z'),
       updatedAt: new Date('2024-01-01T00:00:00Z'),
+      lastLoginAt: null,
       // User progress fields
       level: 5,
       experience: 2500,

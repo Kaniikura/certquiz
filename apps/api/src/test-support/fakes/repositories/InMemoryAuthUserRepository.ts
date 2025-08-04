@@ -153,6 +153,28 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     };
   }
 
+  async updateLastLoginAt(userId: UserId): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new Error(`User not found: ${UserId.toString(userId)}`);
+    }
+
+    // Create updated user with new lastLoginAt
+    const userPersistence = user.toPersistence();
+    const updatedUserData = {
+      ...userPersistence,
+      lastLoginAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const updatedUserResult = User.fromPersistence(updatedUserData);
+    if (!updatedUserResult.success) {
+      throw updatedUserResult.error;
+    }
+
+    await this.save(updatedUserResult.data);
+  }
+
   async updateRoles(userId: string, roles: string[], _updatedBy: string): Promise<void> {
     const user = await this.findById(UserId.of(userId));
     if (!user) {

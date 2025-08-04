@@ -33,6 +33,7 @@ describe('listUsersHandler', () => {
       countTotalUsers: vi.fn(),
       countActiveUsers: vi.fn(),
       updateRoles: vi.fn(),
+      updateLastLoginAt: vi.fn(),
     };
 
     mockUnitOfWork = {
@@ -57,6 +58,7 @@ describe('listUsersHandler', () => {
         isActive: true,
         createdAt: new Date('2025-01-01'),
         updatedAt: null, // Explicitly set to null for lastLoginAt to be null
+        lastLoginAt: null,
       }),
       createMockUser({
         userId: 'user-2',
@@ -66,6 +68,7 @@ describe('listUsersHandler', () => {
         isActive: true,
         createdAt: new Date('2025-01-02'),
         updatedAt: null, // Explicitly set to null for lastLoginAt to be null
+        lastLoginAt: null,
       }),
     ];
 
@@ -201,7 +204,8 @@ describe('listUsersHandler', () => {
       role: UserRole.User,
       isActive: true,
       createdAt: new Date('2025-01-01'),
-      updatedAt: lastLogin, // Using updatedAt as proxy for lastLoginAt
+      updatedAt: lastLogin,
+      lastLoginAt: lastLogin,
     });
 
     const mockResult: PaginatedUserResult = {
@@ -232,6 +236,7 @@ function createMockUser(data: {
   isActive: boolean;
   createdAt: Date;
   updatedAt?: Date | null;
+  lastLoginAt?: Date | null;
 }): User {
   // Create a mock user that matches the User entity structure
   const user = {
@@ -245,6 +250,7 @@ function createMockUser(data: {
     // Only set updatedAt if explicitly provided, otherwise use createdAt
     // When updatedAt is null, it should represent no recent activity (null lastLoginAt)
     updatedAt: data.updatedAt !== undefined ? data.updatedAt : data.createdAt,
+    lastLoginAt: data.lastLoginAt !== undefined ? data.lastLoginAt : null,
   } as unknown as User;
 
   return user;

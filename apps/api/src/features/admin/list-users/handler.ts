@@ -62,10 +62,6 @@ export const listUsersHandler = createPaginatedListHandlerWithUow<
     roles: [user.role], // Currently we support single role, but keeping array for future
     isActive: user.isActive,
     createdAt: user.createdAt,
-    // TEMPORARY WORKAROUND: Using updatedAt as proxy for lastLoginAt
-    // WARNING: This is inaccurate as updatedAt changes for ANY user modification
-    // (profile updates, role changes, etc.), not just login events.
-    // TODO: Add dedicated lastLoginAt field to User entity and replace this proxy
-    lastLoginAt: user.updatedAt,
+    lastLoginAt: user.lastLoginAt,
   }),
 });

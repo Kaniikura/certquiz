@@ -32,6 +32,7 @@ describe('updateUserRolesHandler', () => {
       countTotalUsers: vi.fn(),
       countActiveUsers: vi.fn(),
       findAllPaginated: vi.fn(),
+      updateLastLoginAt: vi.fn(),
     };
 
     mockUnitOfWork = {

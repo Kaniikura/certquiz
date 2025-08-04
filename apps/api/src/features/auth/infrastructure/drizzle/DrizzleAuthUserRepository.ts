@@ -9,7 +9,7 @@ import type {
   UserPaginationParams,
 } from '../../domain/repositories/IAuthUserRepository';
 import type { Email } from '../../domain/value-objects/Email';
-import type { UserId } from '../../domain/value-objects/UserId';
+import { UserId } from '../../domain/value-objects/UserId';
 import { authUser } from './schema/authUser';
 
 /**
@@ -292,6 +292,28 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
     } catch (error) {
       this.logger.error('Failed to find paginated users:', {
         params,
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async updateLastLoginAt(userId: UserId): Promise<void> {
+    try {
+      await this.conn
+        .update(authUser)
+        .set({
+          lastLoginAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(authUser.userId, UserId.toString(userId)));
+
+      this.logger.info('User last login updated successfully', {
+        userId: UserId.toString(userId),
+      });
+    } catch (error) {
+      this.logger.error('Failed to update user last login:', {
+        userId: UserId.toString(userId),
         error: this.getErrorDetails(error),
       });
       throw error;

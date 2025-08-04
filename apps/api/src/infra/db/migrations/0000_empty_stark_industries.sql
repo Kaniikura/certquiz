@@ -16,6 +16,7 @@ CREATE TABLE "auth_user" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_login_at" timestamp with time zone,
 	CONSTRAINT "auth_user_email_unique" UNIQUE("email"),
 	CONSTRAINT "auth_user_username_unique" UNIQUE("username"),
 	CONSTRAINT "auth_user_identity_provider_id_unique" UNIQUE("identity_provider_id")

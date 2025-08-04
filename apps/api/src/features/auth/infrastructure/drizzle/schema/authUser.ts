@@ -15,6 +15,7 @@ export const authUser = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   },
   (table) => [index('ix_user_role_active').on(table.role, table.isActive)]
 );

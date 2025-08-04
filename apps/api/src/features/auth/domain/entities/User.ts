@@ -18,9 +18,8 @@ export class User extends AggregateRoot<UserId> {
     public readonly identityProviderId: string | null,
     public readonly isActive: boolean,
     public readonly createdAt: Date,
-    // TODO: Add dedicated lastLoginAt field for accurate login tracking
-    // Currently updatedAt is being used as proxy in admin interfaces
-    public readonly updatedAt: Date
+    public readonly updatedAt: Date,
+    public readonly lastLoginAt: Date | null
   ) {
     super(id);
   }
@@ -73,7 +72,8 @@ export class User extends AggregateRoot<UserId> {
         props.identityProviderId ?? null,
         true, // isActive defaults to true
         now, // createdAt
-        now // updatedAt
+        now, // updatedAt
+        null // lastLoginAt - null for new users
       )
     );
   }
@@ -90,6 +90,7 @@ export class User extends AggregateRoot<UserId> {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    lastLoginAt: Date | null;
   }): Result<User, ValidationError> {
     // Validate email even from persistence (data integrity check)
     const email = Email.create(row.email);
@@ -112,7 +113,8 @@ export class User extends AggregateRoot<UserId> {
         row.identityProviderId,
         row.isActive,
         row.createdAt,
-        row.updatedAt
+        row.updatedAt,
+        row.lastLoginAt
       )
     );
   }
@@ -129,6 +131,7 @@ export class User extends AggregateRoot<UserId> {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    lastLoginAt: Date | null;
   } {
     return {
       userId: UserId.toString(this.id),
@@ -139,6 +142,7 @@ export class User extends AggregateRoot<UserId> {
       isActive: this.isActive,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      lastLoginAt: this.lastLoginAt,
     };
   }
 
@@ -174,7 +178,8 @@ export class User extends AggregateRoot<UserId> {
         this.identityProviderId,
         this.isActive,
         this.createdAt,
-        new Date() // Updated timestamp
+        new Date(), // Updated timestamp
+        this.lastLoginAt // Preserve lastLoginAt
       )
     );
   }
@@ -192,7 +197,27 @@ export class User extends AggregateRoot<UserId> {
         this.identityProviderId,
         false, // isActive = false
         this.createdAt,
-        new Date() // Updated timestamp
+        new Date(), // Updated timestamp
+        this.lastLoginAt // Preserve lastLoginAt
+      )
+    );
+  }
+
+  /**
+   * Update last login timestamp
+   */
+  updateLastLogin(): Result<User, never> {
+    return Result.ok(
+      new User(
+        this.id,
+        this.email,
+        this.username,
+        this.role,
+        this.identityProviderId,
+        this.isActive,
+        this.createdAt,
+        new Date(), // Updated timestamp
+        new Date() // New lastLoginAt
       )
     );
   }

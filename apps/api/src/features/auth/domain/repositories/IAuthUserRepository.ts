@@ -92,5 +92,10 @@ export interface IAuthUserRepository {
    * @param roles - New roles to assign
    * @param updatedBy - Admin user ID who is making the change
    */
+  /**
+   * Update user's last login timestamp
+   */
+  updateLastLoginAt(userId: UserId): Promise<void>;
+
   updateRoles(userId: string, roles: string[], updatedBy: string): Promise<void>;
 }
