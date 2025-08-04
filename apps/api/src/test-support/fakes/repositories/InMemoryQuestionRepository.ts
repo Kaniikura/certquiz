@@ -1,4 +1,4 @@
-import { Question, QuestionStatus } from '@api/features/question/domain/entities/Question';
+import { type Question, QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type {
   IQuestionRepository,
   ModerationParams,
@@ -9,10 +9,7 @@ import type {
   QuestionSummary,
   QuestionWithModerationInfo,
 } from '@api/features/question/domain/repositories/IQuestionRepository';
-import {
-  InvalidQuestionDataError,
-  QuestionNotFoundError,
-} from '@api/features/question/shared/errors';
+import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 
 /**
@@ -21,6 +18,15 @@ import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
  */
 export class InMemoryQuestionRepository implements IQuestionRepository {
   private questions = new Map<string, Question>();
+  private moderationLogs: Array<{
+    questionId: string;
+    action: string;
+    moderatedBy: string;
+    moderatedAt: Date;
+    feedback?: string;
+    previousStatus: QuestionStatus;
+    newStatus: QuestionStatus;
+  }> = [];
 
   async findQuestions(
     filters: QuestionFilters,
@@ -185,7 +191,7 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
   async updateStatus(
     questionId: QuestionId,
     status: QuestionStatus,
-    _moderatedBy: string,
+    moderatedBy: string,
     feedback?: string
   ): Promise<void> {
     const question = this.questions.get(questionId);
@@ -193,47 +199,27 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
       throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
     }
 
-    // Business rule: Only DRAFT questions can be moderated
-    if (question.status !== QuestionStatus.DRAFT) {
-      throw new InvalidQuestionDataError(
-        `Cannot moderate question with status ${question.status}. Only DRAFT questions can be moderated.`
-      );
+    // Use the domain method to handle status update and business rule validation
+    const moderationResult = question.moderateStatus(status, feedback);
+
+    if (!moderationResult.success) {
+      throw moderationResult.error;
     }
 
-    // Business rule: Rejection requires feedback
-    if (status === QuestionStatus.ARCHIVED && (!feedback || feedback.trim().length < 10)) {
-      throw new InvalidQuestionDataError(
-        'Feedback is required for question rejection and must be at least 10 characters long'
-      );
-    }
+    // Update the repository with the modified question
+    this.questions.set(questionId, question);
 
-    // Update the question status by creating a new instance (immutable update)
-    // In a real implementation, this would use the Question entity's status update methods
-    const updatedQuestion = Question.create({
-      id: question.id,
-      version: question.version + 1,
-      questionText: question.questionText,
-      questionType: question.questionType,
-      explanation: question.explanation,
-      detailedExplanation: question.detailedExplanation,
-      options: question.options,
-      examTypes: question.examTypes,
-      categories: question.categories,
-      difficulty: question.difficulty,
-      tags: question.tags,
-      images: question.images,
-      isPremium: question.isPremium,
-      status,
-      createdById: question.createdById,
-      createdAt: question.createdAt,
-      updatedAt: new Date(),
+    // Track moderation log using the domain result
+    const { previousStatus, newStatus, action } = moderationResult.data;
+    this.moderationLogs.push({
+      questionId: questionId.toString(),
+      action,
+      moderatedBy,
+      moderatedAt: new Date(),
+      feedback,
+      previousStatus,
+      newStatus,
     });
-
-    if (updatedQuestion.success) {
-      this.questions.set(questionId, updatedQuestion.data);
-    } else {
-      throw updatedQuestion.error;
-    }
   }
 
   async findQuestionsForModeration(
@@ -347,5 +333,20 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
    */
   getQuestionCount(): number {
     return this.questions.size;
+  }
+
+  /**
+   * Get moderation logs for a question (test helper)
+   */
+  getModerationLogs(questionId: string): Array<{
+    questionId: string;
+    action: string;
+    moderatedBy: string;
+    moderatedAt: Date;
+    feedback?: string;
+    previousStatus: QuestionStatus;
+    newStatus: QuestionStatus;
+  }> {
+    return this.moderationLogs.filter((log) => log.questionId === questionId);
   }
 }

@@ -100,6 +100,11 @@ class MockDatabaseConnection {
   private queryCallStack: Array<{ method: string; args: unknown[] }> = [];
   private statsQueryCount = 0;
 
+  // Track calls for testing
+  public insertCalls: Array<{ table: string; values: unknown }> = [];
+  public updateCalls: Array<{ table: string; data: unknown; where: unknown }> = [];
+  public transactionCalls: Array<{ fn: unknown }> = [];
+
   // Mock select operations with context-aware filtering
   select(fields?: unknown) {
     if (this.selectShouldFail && this.selectFailureError) {
@@ -172,11 +177,16 @@ class MockDatabaseConnection {
 
   // Mock insert operations
   insert(table: unknown) {
+    const tableName = this.getTableName(table);
+
     return {
       values: (data: unknown) => {
         if (this.insertShouldFail && this.insertFailureError) {
           throw this.insertFailureError;
         }
+
+        // Track the insert call
+        this.insertCalls.push({ table: tableName, values: data });
 
         if (this.isQuestionTable(table)) {
           const questionRow = data as MockQuestionRow;
@@ -193,12 +203,17 @@ class MockDatabaseConnection {
 
   // Mock update operations
   update(table: unknown) {
+    const tableName = this.getTableName(table);
+
     return {
       set: (data: unknown) => ({
-        where: (_condition: unknown) => {
+        where: (condition: unknown) => {
           if (this.updateShouldFail && this.updateFailureError) {
             throw this.updateFailureError;
           }
+
+          // Track the update call
+          this.updateCalls.push({ table: tableName, data, where: condition });
 
           if (this.isQuestionTable(table)) {
             const updateData = data as Partial<MockQuestionRow>;
@@ -218,6 +233,9 @@ class MockDatabaseConnection {
 
   // Mock transaction support
   transaction<T>(fn: (tx: MockDatabaseConnection) => Promise<T>): Promise<T> {
+    // Track the transaction call
+    this.transactionCalls.push({ fn });
+
     const tx = new MockDatabaseConnection();
     tx.questions = [...this.questions];
     tx.questionVersions = [...this.questionVersions];
@@ -226,6 +244,9 @@ class MockDatabaseConnection {
     tx.updateShouldFail = this.updateShouldFail;
     tx.updateFailureError = this.updateFailureError;
     tx.currentQueryContext = { ...this.currentQueryContext };
+    tx.insertCalls = this.insertCalls;
+    tx.updateCalls = this.updateCalls;
+
     return fn(tx);
   }
 
@@ -577,6 +598,31 @@ class MockDatabaseConnection {
       keys.includes('questionText') &&
       keys.includes('questionType')
     );
+  }
+
+  private isModerationLogsTable(table: unknown): boolean {
+    if (typeof table !== 'object' || table === null) return false;
+    const keys = Object.keys(table as Record<string, unknown>);
+    return (
+      keys.includes('id') &&
+      keys.includes('questionId') &&
+      keys.includes('action') &&
+      keys.includes('moderatedBy') &&
+      keys.includes('moderatedAt')
+    );
+  }
+
+  private getTableName(table: unknown): string {
+    if (this.isQuestionTable(table)) {
+      return 'question';
+    }
+    if (this.isQuestionVersionTable(table)) {
+      return 'questionVersion';
+    }
+    if (this.isModerationLogsTable(table)) {
+      return 'moderationLogs';
+    }
+    return 'unknown';
   }
 }
 
@@ -1524,6 +1570,323 @@ describe('DrizzleQuestionRepository (Unit Tests)', () => {
           meta: expect.objectContaining({
             error: expect.objectContaining({
               message: 'Stats query failed',
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update question status and create moderation log', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+      const feedback = 'Question looks good, approved for use';
+
+      // Mock the database responses
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question for moderation',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      // Execute updateStatus
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy, feedback);
+
+      // Verify update was called with correct parameters
+      expect(mockConn.updateCalls.length).toBeGreaterThan(0);
+      const updateCall = mockConn.updateCalls.find((call) => call.table === 'question');
+      expect(updateCall).toBeDefined();
+      expect(updateCall?.table).toBe('question');
+      const updateData = updateCall?.data as { status: string; updatedAt: Date };
+      expect(updateData.status).toBe('active');
+      expect(updateData.updatedAt).toBeInstanceOf(Date);
+
+      // Verify moderation log was inserted
+      expect(mockConn.insertCalls.length).toBeGreaterThan(0);
+      const insertCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(insertCall).toBeDefined();
+      expect(insertCall?.table).toBe('moderationLogs');
+      const values = insertCall?.values as {
+        questionId: string;
+        action: string;
+        moderatedBy: string;
+        moderatedAt: Date;
+        feedback?: string;
+        previousStatus: string;
+        newStatus: string;
+      };
+      expect(values.questionId).toBe(questionId.toString());
+      expect(values.action).toBe('approve');
+      expect(values.moderatedBy).toBe(moderatedBy);
+      expect(values.feedback).toBe(feedback);
+      expect(values.previousStatus).toBe('draft');
+      expect(values.newStatus).toBe('active');
+
+      // Verify logging
+      expect(mockLogger.infoMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Question status updated successfully',
+          meta: expect.objectContaining({
+            questionId,
+            previousStatus: 'draft',
+            newStatus: QuestionStatus.ACTIVE,
+            moderatedBy,
+          }),
+        })
+      );
+    });
+
+    it('should enforce business rule that only DRAFT questions can be moderated', async () => {
+      const questionId = QuestionId.of('active-question');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Add an active question
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'active', // Already active
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Already active question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.INACTIVE, moderatedBy)
+      ).rejects.toThrow(InvalidQuestionDataError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.INACTIVE, moderatedBy)
+      ).rejects.toThrow(
+        'Cannot moderate question with status active. Only DRAFT questions can be moderated.'
+      );
+    });
+
+    it('should require feedback for rejection', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Add a draft question
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      // Test without feedback
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ARCHIVED, moderatedBy)
+      ).rejects.toThrow(InvalidQuestionDataError);
+
+      // Test with short feedback
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ARCHIVED, moderatedBy, 'Too short')
+      ).rejects.toThrow(
+        'Feedback is required for question rejection and must be at least 10 characters long'
+      );
+    });
+
+    it('should handle question not found error', async () => {
+      const questionId = QuestionId.of('non-existent-question');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(QuestionNotFoundError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(`Question with ID ${questionId} not found`);
+    });
+
+    it('should use transaction for atomic updates', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy);
+
+      // Verify transaction was called
+      expect(mockConn.transactionCalls).toHaveLength(1);
+    });
+
+    it('should map status to correct moderation action', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Test approve action
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy);
+
+      // Verify approve action
+      const approveCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(approveCall).toBeDefined();
+      const approveValues = approveCall?.values as { action: string };
+      expect(approveValues.action).toBe('approve');
+
+      // Clear calls
+      mockConn.insertCalls = [];
+      mockConn.updateCalls = [];
+
+      // Test reject action
+      await repository.updateStatus(
+        questionId,
+        QuestionStatus.INACTIVE,
+        moderatedBy,
+        'Needs improvement'
+      );
+
+      const rejectCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(rejectCall).toBeDefined();
+      const rejectValues = rejectCall?.values as { action: string };
+      expect(rejectValues.action).toBe('reject');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+      const dbError = new Error('Database connection lost');
+
+      mockConn.simulateSelectFailure(dbError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(QuestionRepositoryError);
+
+      expect(mockLogger.errorMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Failed to find question with details',
+          meta: expect.objectContaining({
+            questionId,
+            error: expect.objectContaining({
+              message: 'Database connection lost',
             }),
           }),
         })

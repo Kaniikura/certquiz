@@ -46,6 +46,8 @@ import {
   mapRowToQuestion,
   mapToQuestionSummary,
 } from './QuestionRowMapper';
+import type { questionStatusEnum } from './schema/enums';
+import { moderationLogs } from './schema/moderation';
 import { question, questionVersion } from './schema/question';
 
 /**
@@ -531,51 +533,50 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
         hasFeedback: !!feedback,
       });
 
-      // First check if question exists and current status
-      const existingQuestion = await this.db
-        .select({
-          id: question.questionId,
-          status: question.status,
-        })
-        .from(question)
-        .where(eq(question.questionId, questionId))
-        .limit(1);
-
-      if (existingQuestion.length === 0) {
+      // Get the full question entity to use domain method
+      const questionEntity = await this.findQuestionWithDetails(questionId);
+      if (!questionEntity) {
         throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
       }
 
-      const currentStatus = existingQuestion[0].status;
+      // Use the domain method to handle status update and business rule validation
+      const moderationResult = questionEntity.moderateStatus(status, feedback);
 
-      // Business rule: Only DRAFT questions can be moderated
-      if (currentStatus !== 'draft') {
-        throw new InvalidQuestionDataError(
-          `Cannot moderate question with status ${currentStatus}. Only DRAFT questions can be moderated.`
-        );
+      if (!moderationResult.success) {
+        throw moderationResult.error;
       }
 
-      // Business rule: Rejection requires feedback
-      if (status === 'archived' && (!feedback || feedback.trim().length < 10)) {
-        throw new InvalidQuestionDataError(
-          'Feedback is required for question rejection and must be at least 10 characters long'
-        );
-      }
+      // Extract moderation metadata from domain result
+      const { previousStatus, newStatus, action } = moderationResult.data;
 
-      // Update the question status with moderation metadata
-      await this.db
-        .update(question)
-        .set({
-          status: mapQuestionStatusToDb(status),
-          updatedAt: new Date(),
-          // Store moderation metadata in a way that fits the current schema
-          // In a full implementation, you might want to add dedicated moderation columns
-        })
-        .where(eq(question.questionId, questionId));
+      // Use transaction to ensure both operations succeed or fail together
+      await this.db.transaction(async (tx) => {
+        // Update the question status using the modified entity
+        await tx
+          .update(question)
+          .set({
+            status: mapQuestionStatusToDb(questionEntity.status),
+            updatedAt: questionEntity.updatedAt,
+          })
+          .where(eq(question.questionId, questionId));
+
+        // Log the moderation action using domain result
+        await tx.insert(moderationLogs).values({
+          questionId,
+          action,
+          moderatedBy,
+          feedback,
+          previousStatus: mapQuestionStatusToDb(
+            previousStatus
+          ) as (typeof questionStatusEnum.enumValues)[number],
+          newStatus: mapQuestionStatusToDb(newStatus),
+        });
+      });
 
       this.logger.info('Question status updated successfully', {
         questionId,
-        previousStatus: currentStatus,
-        newStatus: status,
+        previousStatus: mapQuestionStatusToDb(previousStatus),
+        newStatus: mapQuestionStatusToDb(newStatus),
         moderatedBy,
       });
     } catch (error) {
