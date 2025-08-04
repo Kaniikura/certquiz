@@ -109,12 +109,13 @@ interface ListHandlerWithUowConfig<
   TUnitOfWork,
   TFilters = unknown,
   TRepoResult = unknown,
+  TRepo = unknown,
 > extends Omit<ListHandlerConfig<TParams, TItem, TFilters, TRepoResult>, 'fetchData'> {
   /** Function to get repository from unit of work */
-  getRepository: (unitOfWork: TUnitOfWork) => unknown;
+  getRepository: (unitOfWork: TUnitOfWork) => TRepo;
   /** Function to fetch data using repository */
   fetchData: (
-    repo: unknown,
+    repo: TRepo,
     filters: TFilters,
     params: TParams
   ) => Promise<PaginatedResult<TRepoResult>>;
@@ -133,8 +134,9 @@ export function createPaginatedListHandlerWithUow<
   TUnitOfWork,
   TFilters = unknown,
   TRepoResult = unknown,
+  TRepo = unknown,
 >(
-  config: ListHandlerWithUowConfig<TParams, TItem, TUnitOfWork, TFilters, TRepoResult>
+  config: ListHandlerWithUowConfig<TParams, TItem, TUnitOfWork, TFilters, TRepoResult, TRepo>
 ): (params: unknown, unitOfWork: TUnitOfWork) => Promise<PaginatedResponse<TItem>> {
   return async (params: unknown, unitOfWork: TUnitOfWork): Promise<PaginatedResponse<TItem>> => {
     // Get repository from unit of work

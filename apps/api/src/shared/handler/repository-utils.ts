@@ -25,26 +25,27 @@ import type { PaginatedResult } from '../types/pagination';
  * );
  * ```
  */
-export function createRepositoryFetch<TRepo, TFilters, TResult>(
-  methodName: keyof TRepo,
+export function createRepositoryFetch<
+  TMethodName extends string | number | symbol,
+  TFilters,
+  TResult,
+  TOptions,
+  TRepo extends Record<TMethodName, (options: TOptions) => Promise<PaginatedResult<TResult>>>,
+>(
+  methodName: TMethodName,
   buildOptions: (
     filters: TFilters | undefined,
     pagination: { page: number; pageSize: number }
-  ) => unknown
+  ) => TOptions
 ) {
   return async (
-    repo: unknown,
+    repo: TRepo,
     filters: TFilters | undefined,
     params: { page?: number; pageSize?: number }
   ): Promise<PaginatedResult<TResult>> => {
     const { page = 1, pageSize = 20 } = params;
     const options = buildOptions(filters, { page, pageSize });
 
-    const method = (repo as TRepo)[methodName];
-    if (typeof method !== 'function') {
-      throw new Error(`Method ${String(methodName)} is not a function on repository`);
-    }
-
-    return method.call(repo as TRepo, options);
+    return repo[methodName](options);
   };
 }

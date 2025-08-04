@@ -42,8 +42,12 @@ export function buildMappedFilters<TParams>(
     if (value !== undefined) {
       hasFilters = true;
       if (typeof mapTo === 'function') {
+        // Function mapping: Transform value but keep original parameter name as filter key
+        // Example: state: (v) => parseQuizState(v) → filters.state = parseQuizState(params.state)
         filters[paramKey] = mapTo(value);
       } else {
+        // String mapping: Change parameter name to different filter field name
+        // Example: dateFrom: 'startDate' → filters.startDate = params.dateFrom
         filters[mapTo] = value;
       }
     }
