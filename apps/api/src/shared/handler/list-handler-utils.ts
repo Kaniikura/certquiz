@@ -55,14 +55,9 @@ interface ListHandlerConfig<TParams, TItem, TFilters = unknown, TRepoResult = un
  * });
  * ```
  */
-async function createPaginatedListHandler<
-  TParams,
-  TItem,
-  TFilters = unknown,
-  TRepoResult = unknown,
->(
+function createPaginatedListHandler<TParams, TItem, TFilters = unknown, TRepoResult = unknown>(
   config: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult>
-): Promise<(params: unknown) => Promise<PaginatedResponse<TItem>>> {
+): (params: unknown) => Promise<PaginatedResponse<TItem>> {
   return async (params: unknown): Promise<PaginatedResponse<TItem>> => {
     // 1. Use pre-validated params if available, otherwise validate input parameters
     let validatedParams: TParams;
@@ -171,7 +166,7 @@ export function createPaginatedListHandlerWithUow<
     };
 
     // 4. Use the standard handler with modified config
-    const handler = await createPaginatedListHandler(modifiedConfig);
+    const handler = createPaginatedListHandler(modifiedConfig);
 
     return handler(params);
   };
