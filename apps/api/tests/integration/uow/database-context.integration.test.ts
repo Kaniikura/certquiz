@@ -30,6 +30,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       // Create user entity
@@ -69,6 +70,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       const userResult = User.fromPersistence(userData);
@@ -111,6 +113,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       const userData2 = {
@@ -122,6 +125,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       const userResult1 = User.fromPersistence(userData1);
@@ -165,6 +169,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       const userData2 = {
@@ -176,6 +181,7 @@ describe('Database Context Integration Tests', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       const userResult1 = User.fromPersistence(userData1);
@@ -258,6 +264,7 @@ describe('Database Context Integration Tests', () => {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         };
 
         const userResult = User.fromPersistence(userData);
