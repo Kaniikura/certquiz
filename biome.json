@@ -171,22 +171,7 @@
       }
     },
     {
-      "includes": [
-        "apps/api/scripts/**/*.ts",
-        "apps/api/tests/containers/index.ts",
-        "apps/api/tests/integration/migrations.test.ts",
-        "apps/api/tests/helpers/db-*.ts"
-      ],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noConsole": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["packages/shared/src/index.ts", "apps/api/src/infra/db/schema/index.ts"],
+      "includes": ["packages/shared/src/index.ts"],
       "linter": {
         "rules": {
           "performance": {
