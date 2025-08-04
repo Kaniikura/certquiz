@@ -10,6 +10,8 @@ export {
   questionStatusEnum,
   questionTypeEnum,
 } from '@api/features/question/infrastructure/drizzle/schema/enums';
+export type { ModerationLogRow } from '@api/features/question/infrastructure/drizzle/schema/moderation';
+export { moderationLogs } from '@api/features/question/infrastructure/drizzle/schema/moderation';
 export type {
   QuestionRow,
   QuestionVersionRow,
