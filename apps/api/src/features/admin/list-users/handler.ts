@@ -3,7 +3,10 @@
  * @fileoverview Business logic for admin user listing with pagination
  */
 import type { User } from '@api/features/auth/domain/entities/User';
-import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
+import type {
+  IAuthUserRepository,
+  UserPaginationParams,
+} from '@api/features/auth/domain/repositories/IAuthUserRepository';
 import type { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { extractFilterFields } from '@api/shared/handler/filter-utils';
@@ -28,7 +31,8 @@ export const listUsersHandler = createPaginatedListHandlerWithUow<
   UserSummary,
   IUnitOfWork,
   { search?: string; role?: UserRole; isActive?: boolean } | undefined,
-  User
+  User,
+  IAuthUserRepository
 >({
   schema: listUsersSchema,
 
@@ -37,13 +41,19 @@ export const listUsersHandler = createPaginatedListHandlerWithUow<
   buildFilters: (params) => extractFilterFields(params, ['search', 'role', 'isActive']),
 
   fetchData: createRepositoryFetch<
-    IAuthUserRepository,
+    'findAllPaginated',
     { search?: string; role?: UserRole; isActive?: boolean } | undefined,
-    User
-  >('findAllPaginated', (filters, pagination) => ({
-    ...buildPaginationOptions(pagination),
-    filters,
-  })),
+    User,
+    UserPaginationParams,
+    IAuthUserRepository
+  >(
+    'findAllPaginated',
+    (filters, pagination) =>
+      ({
+        ...buildPaginationOptions(pagination),
+        filters,
+      }) as UserPaginationParams
+  ),
 
   transformItem: (user) => ({
     userId: user.id.toString(),

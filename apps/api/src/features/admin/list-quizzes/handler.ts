@@ -5,6 +5,7 @@
 
 import type {
   AdminQuizFilters,
+  AdminQuizParams,
   IQuizRepository,
   QuizWithUserInfo,
 } from '@api/features/quiz/domain/repositories/IQuizRepository';
@@ -46,7 +47,8 @@ export const listQuizzesHandler = createPaginatedListHandlerWithUow<
   QuizSummary,
   IUnitOfWork,
   AdminQuizFilters | undefined,
-  QuizWithUserInfo
+  QuizWithUserInfo,
+  IQuizRepository
 >({
   schema: listQuizzesSchema,
 
@@ -60,12 +62,19 @@ export const listQuizzesHandler = createPaginatedListHandlerWithUow<
       dateTo: 'endDate',
     }),
 
-  fetchData: createRepositoryFetch<IQuizRepository, AdminQuizFilters | undefined, QuizWithUserInfo>(
+  fetchData: createRepositoryFetch<
     'findAllForAdmin',
-    (filters, pagination) => ({
-      ...buildPaginationOptions(pagination, { orderBy: 'startedAt', orderDir: 'desc' }),
-      filters,
-    })
+    AdminQuizFilters | undefined,
+    QuizWithUserInfo,
+    AdminQuizParams,
+    IQuizRepository
+  >(
+    'findAllForAdmin',
+    (filters, pagination) =>
+      ({
+        ...buildPaginationOptions(pagination, { orderBy: 'startedAt', orderDir: 'desc' }),
+        filters,
+      }) as AdminQuizParams
   ),
 
   transformItem: (quiz) => ({
