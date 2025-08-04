@@ -29,14 +29,3 @@ export interface QuizSummary {
   completedAt: Date | null;
   duration: number | null; // Duration in seconds, null for incomplete
 }
-
-/**
- * Paginated response for quiz listing
- */
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}

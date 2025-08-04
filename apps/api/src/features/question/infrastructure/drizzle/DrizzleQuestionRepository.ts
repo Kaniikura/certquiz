@@ -6,15 +6,31 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, arrayContains, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import {
+  and,
+  arrayContains,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  lte,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type { QuestionId } from '../../../quiz/domain/value-objects/Ids';
-import type { Question } from '../../domain/entities/Question';
+import type { Question, QuestionStatus } from '../../domain/entities/Question';
 import type {
   IQuestionRepository,
+  ModerationParams,
   PaginatedQuestions,
+  PaginatedResult,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,
+  QuestionWithModerationInfo,
 } from '../../domain/repositories/IQuestionRepository';
 import {
   InvalidQuestionDataError,
@@ -25,6 +41,7 @@ import {
 } from '../../shared/errors';
 import {
   mapQuestionStatusToDb,
+  mapQuestionTypeFromDb,
   mapQuestionTypeToDb,
   mapRowToQuestion,
   mapToQuestionSummary,
@@ -497,6 +514,246 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
         error: this.getErrorDetails(error),
       });
       throw error;
+    }
+  }
+
+  async updateStatus(
+    questionId: QuestionId,
+    status: QuestionStatus,
+    moderatedBy: string,
+    feedback?: string
+  ): Promise<void> {
+    try {
+      this.logger.info('Updating question status', {
+        questionId,
+        status,
+        moderatedBy,
+        hasFeedback: !!feedback,
+      });
+
+      // First check if question exists and current status
+      const existingQuestion = await this.db
+        .select({
+          id: question.questionId,
+          status: question.status,
+        })
+        .from(question)
+        .where(eq(question.questionId, questionId))
+        .limit(1);
+
+      if (existingQuestion.length === 0) {
+        throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
+      }
+
+      const currentStatus = existingQuestion[0].status;
+
+      // Business rule: Only DRAFT questions can be moderated
+      if (currentStatus !== 'draft') {
+        throw new InvalidQuestionDataError(
+          `Cannot moderate question with status ${currentStatus}. Only DRAFT questions can be moderated.`
+        );
+      }
+
+      // Business rule: Rejection requires feedback
+      if (status === 'archived' && (!feedback || feedback.trim().length < 10)) {
+        throw new InvalidQuestionDataError(
+          'Feedback is required for question rejection and must be at least 10 characters long'
+        );
+      }
+
+      // Update the question status with moderation metadata
+      await this.db
+        .update(question)
+        .set({
+          status: mapQuestionStatusToDb(status),
+          updatedAt: new Date(),
+          // Store moderation metadata in a way that fits the current schema
+          // In a full implementation, you might want to add dedicated moderation columns
+        })
+        .where(eq(question.questionId, questionId));
+
+      this.logger.info('Question status updated successfully', {
+        questionId,
+        previousStatus: currentStatus,
+        newStatus: status,
+        moderatedBy,
+      });
+    } catch (error) {
+      this.logger.error('Failed to update question status', {
+        questionId,
+        status,
+        moderatedBy,
+        error: this.getErrorDetails(error),
+      });
+
+      // Re-throw our domain errors as-is
+      if (error instanceof QuestionNotFoundError || error instanceof InvalidQuestionDataError) {
+        throw error;
+      }
+
+      throw new QuestionRepositoryError(
+        'updateStatus',
+        `Failed to update question status: ${this.getErrorMessage(error)}`
+      );
+    }
+  }
+
+  async findQuestionsForModeration(
+    params: ModerationParams
+  ): Promise<PaginatedResult<QuestionWithModerationInfo>> {
+    try {
+      this.logger.debug('Finding questions for moderation', { params });
+
+      const {
+        page,
+        pageSize,
+        status,
+        dateFrom,
+        dateTo,
+        examType,
+        difficulty,
+        orderBy = 'createdAt',
+        orderDir = 'desc',
+      } = params;
+      const offset = (page - 1) * pageSize;
+
+      // Build WHERE conditions
+      const conditions = [];
+
+      if (status) {
+        conditions.push(eq(question.status, mapQuestionStatusToDb(status)));
+      } else {
+        // Default to pending questions if no status filter
+        conditions.push(eq(question.status, 'draft'));
+      }
+
+      if (dateFrom) {
+        conditions.push(gte(question.createdAt, dateFrom));
+      }
+
+      if (dateTo) {
+        conditions.push(lte(question.createdAt, dateTo));
+      }
+
+      if (examType) {
+        // Use the latest version for exam type filtering
+        conditions.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${questionVersion} 
+            WHERE ${questionVersion.questionId} = ${question.questionId} 
+            AND ${questionVersion.version} = ${question.currentVersion}
+            AND ${arrayContains(questionVersion.examTypes, [examType])}
+          )`
+        );
+      }
+
+      if (difficulty) {
+        conditions.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${questionVersion} 
+            WHERE ${questionVersion.questionId} = ${question.questionId} 
+            AND ${questionVersion.version} = ${question.currentVersion}
+            AND ${questionVersion.difficulty} = ${difficulty}
+          )`
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Count total records
+      const countResult = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .leftJoin(
+          questionVersion,
+          and(
+            eq(questionVersion.questionId, question.questionId),
+            eq(questionVersion.version, question.currentVersion)
+          )
+        )
+        .where(whereClause);
+
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      // Get paginated data
+      const orderColumn = orderBy === 'createdAt' ? question.createdAt : question.updatedAt;
+      const orderFn = orderDir === 'asc' ? asc : desc;
+
+      const results = await this.db
+        .select({
+          questionId: question.questionId,
+          questionText: questionVersion.questionText,
+          questionType: questionVersion.questionType,
+          examTypes: questionVersion.examTypes,
+          categories: questionVersion.categories,
+          difficulty: questionVersion.difficulty,
+          status: question.status,
+          isPremium: question.isPremium,
+          tags: questionVersion.tags,
+          createdById: question.createdById,
+          createdAt: question.createdAt,
+          updatedAt: question.updatedAt,
+        })
+        .from(question)
+        .leftJoin(
+          questionVersion,
+          and(
+            eq(questionVersion.questionId, question.questionId),
+            eq(questionVersion.version, question.currentVersion)
+          )
+        )
+        .where(whereClause)
+        .orderBy(orderFn(orderColumn))
+        .limit(pageSize)
+        .offset(offset);
+
+      // Map results to domain objects
+      const items: QuestionWithModerationInfo[] = results.map((row) => {
+        const now = new Date();
+        const daysPending = Math.ceil(
+          (now.getTime() - row.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          questionId: row.questionId as QuestionId,
+          questionText: row.questionText || '',
+          questionType: mapQuestionTypeFromDb(row.questionType || 'single'),
+          examTypes: row.examTypes || [],
+          categories: row.categories || [],
+          difficulty: row.difficulty || 'beginner',
+          status: row.status as QuestionStatus,
+          isPremium: row.isPremium || false,
+          tags: row.tags || [],
+          createdById: row.createdById,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          daysPending,
+        };
+      });
+
+      const result: PaginatedResult<QuestionWithModerationInfo> = {
+        items,
+        total: totalCount,
+        page,
+        pageSize,
+      };
+
+      this.logger.debug('Found questions for moderation', {
+        totalCount,
+        currentPage: page,
+        itemCount: items.length,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to find questions for moderation', {
+        params,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuestionRepositoryError(
+        'findQuestionsForModeration',
+        `Failed to find questions: ${this.getErrorMessage(error)}`
+      );
     }
   }
 }

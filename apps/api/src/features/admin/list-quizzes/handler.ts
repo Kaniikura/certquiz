@@ -3,12 +3,20 @@
  * @fileoverview Business logic for admin quiz listing with pagination and filtering
  */
 
-import type { AdminQuizFilters } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type {
+  AdminQuizFilters,
+  IQuizRepository,
+  QuizWithUserInfo,
+} from '@api/features/quiz/domain/repositories/IQuizRepository';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
+import { buildMappedFilters } from '@api/shared/handler/filter-utils';
+import { createPaginatedListHandlerWithUow } from '@api/shared/handler/list-handler-utils';
+import { buildPaginationOptions } from '@api/shared/handler/pagination-utils';
+import { createRepositoryFetch } from '@api/shared/handler/repository-utils';
 import { QUIZ_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
-import type { ListQuizzesParams, PaginatedResponse, QuizSummary } from './dto';
+import type { ListQuizzesParams, QuizSummary } from './dto';
 import { listQuizzesSchema } from './validation';
 
 /**
@@ -29,62 +37,38 @@ function parseQuizState(state: string): QuizState {
 
 /**
  * Handler for listing quizzes with pagination and filters
- * @param params - Pagination and filter parameters
- * @param unitOfWork - Unit of work for database operations
- * @returns Paginated list of quizzes
- * @throws {ValidationError} if parameters are invalid
+ *
+ * Uses the generic list handler utility to reduce code duplication
+ * and maintain consistency with other list endpoints
  */
-export async function listQuizzesHandler(
-  params: ListQuizzesParams,
-  unitOfWork: IUnitOfWork
-): Promise<PaginatedResponse<QuizSummary>> {
-  // Validate input parameters
-  const validationResult = listQuizzesSchema.safeParse(params);
-  if (!validationResult.success) {
-    throw new ValidationError(validationResult.error.errors[0].message);
-  }
+export const listQuizzesHandler = createPaginatedListHandlerWithUow<
+  ListQuizzesParams,
+  QuizSummary,
+  IUnitOfWork,
+  AdminQuizFilters | undefined,
+  QuizWithUserInfo
+>({
+  schema: listQuizzesSchema,
 
-  const { page = 1, pageSize = 20, state, userId, dateFrom, dateTo } = params;
+  getRepository: (unitOfWork) => unitOfWork.getRepository(QUIZ_REPO_TOKEN),
 
-  // Get repository from unit of work
-  const quizRepo = unitOfWork.getRepository(QUIZ_REPO_TOKEN);
+  buildFilters: (params) =>
+    buildMappedFilters(params, {
+      state: (value) => parseQuizState(value as string),
+      userId: 'userId',
+      dateFrom: 'startDate',
+      dateTo: 'endDate',
+    }),
 
-  // Build filters object only if at least one filter is provided
-  let filters: AdminQuizFilters | undefined;
+  fetchData: createRepositoryFetch<IQuizRepository, AdminQuizFilters | undefined, QuizWithUserInfo>(
+    'findAllForAdmin',
+    (filters, pagination) => ({
+      ...buildPaginationOptions(pagination, { orderBy: 'startedAt', orderDir: 'desc' }),
+      filters,
+    })
+  ),
 
-  if (
-    state !== undefined ||
-    userId !== undefined ||
-    dateFrom !== undefined ||
-    dateTo !== undefined
-  ) {
-    filters = {};
-
-    if (state) {
-      filters.state = parseQuizState(state);
-    }
-    if (userId) {
-      filters.userId = userId;
-    }
-    if (dateFrom) {
-      filters.startDate = dateFrom;
-    }
-    if (dateTo) {
-      filters.endDate = dateTo;
-    }
-  }
-
-  // Fetch paginated quizzes with admin info
-  const result = await quizRepo.findAllForAdmin({
-    page,
-    pageSize,
-    filters,
-    orderBy: 'startedAt',
-    orderDir: 'desc',
-  });
-
-  // Map quizzes to summary format with calculated fields
-  const items: QuizSummary[] = result.items.map((quiz) => ({
+  transformItem: (quiz) => ({
     sessionId: quiz.sessionId,
     userId: quiz.userId,
     userEmail: quiz.userEmail,
@@ -96,13 +80,5 @@ export async function listQuizzesHandler(
     duration: quiz.completedAt
       ? Math.round((quiz.completedAt.getTime() - quiz.startedAt.getTime()) / 1000)
       : null, // Duration in seconds
-  }));
-
-  return {
-    items,
-    total: result.total,
-    page: result.page,
-    pageSize: result.pageSize,
-    totalPages: Math.ceil(result.total / result.pageSize),
-  };
-}
+  }),
+});

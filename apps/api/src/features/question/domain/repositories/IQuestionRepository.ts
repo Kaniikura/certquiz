@@ -1,5 +1,5 @@
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
-import type { Question } from '../entities/Question';
+import type { Question, QuestionStatus } from '../entities/Question';
 import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 
 /**
@@ -58,6 +58,60 @@ export interface PaginatedQuestions {
     offset: number;
     hasNext: boolean;
   };
+}
+
+/**
+ * Moderation-specific parameters for filtering questions
+ */
+export interface ModerationParams {
+  /** Page number (1-based) */
+  page: number;
+  /** Items per page (max 100) */
+  pageSize: number;
+  /** Filter by status */
+  status?: QuestionStatus;
+  /** Filter by creation date from */
+  dateFrom?: Date;
+  /** Filter by creation date to */
+  dateTo?: Date;
+  /** Filter by exam type */
+  examType?: string;
+  /** Filter by difficulty */
+  difficulty?: QuestionDifficulty;
+  /** Order by field */
+  orderBy?: 'createdAt' | 'updatedAt';
+  /** Order direction */
+  orderDir?: 'asc' | 'desc';
+}
+
+/**
+ * Question with moderation information for admin views
+ */
+export interface QuestionWithModerationInfo {
+  questionId: QuestionId;
+  questionText: string;
+  questionType: 'multiple_choice' | 'multiple_select' | 'true_false';
+  examTypes: string[];
+  categories: string[];
+  difficulty: string;
+  status: QuestionStatus;
+  isPremium: boolean;
+  tags: string[];
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+  /** Days since submission for priority calculation */
+  daysPending: number;
+}
+
+/**
+ * Paginated result for moderation queries
+ */
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 /**
@@ -161,4 +215,37 @@ export interface IQuestionRepository {
    * Admin statistics: Count questions pending moderation
    */
   countPendingQuestions(): Promise<number>;
+
+  /**
+   * Update question status for moderation actions (admin only)
+   *
+   * @param questionId - Question identifier
+   * @param status - New status to set
+   * @param moderatedBy - ID of the admin performing the action
+   * @param feedback - Optional feedback for rejection or change requests
+   * @returns Promise that resolves when status is updated
+   *
+   * @throws {NotFoundError} Question not found
+   * @throws {ValidationError} Invalid status transition or missing required feedback
+   * @throws {RepositoryError} Database operation error
+   */
+  updateStatus(
+    questionId: QuestionId,
+    status: QuestionStatus,
+    moderatedBy: string,
+    feedback?: string
+  ): Promise<void>;
+
+  /**
+   * Find questions for moderation with filtering and pagination (admin only)
+   *
+   * @param params - Filtering and pagination parameters
+   * @returns Paginated list of questions with moderation information
+   *
+   * @throws {ValidationError} Invalid pagination or filter parameters
+   * @throws {RepositoryError} Database operation error
+   */
+  findQuestionsForModeration(
+    params: ModerationParams
+  ): Promise<PaginatedResult<QuestionWithModerationInfo>>;
 }

@@ -4,6 +4,7 @@
  */
 
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
+import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import { auth } from '@api/middleware/auth';
@@ -22,10 +23,14 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { DeleteQuizParams } from './delete-quiz/dto';
 import { deleteQuizHandler } from './delete-quiz/handler';
 import { getSystemStatsHandler } from './get-system-stats/handler';
+import type { ListPendingQuestionsParams } from './list-pending-questions/dto';
+import { listPendingQuestionsHandler } from './list-pending-questions/handler';
 import type { ListQuizzesParams } from './list-quizzes/dto';
 import { listQuizzesHandler } from './list-quizzes/handler';
 import type { ListUsersParams } from './list-users/dto';
 import { listUsersHandler } from './list-users/handler';
+import type { ModerateQuestionParams } from './moderate-questions/dto';
+import { moderateQuestionHandler } from './moderate-questions/handler';
 import type { UpdateUserRolesParams } from './update-user-roles/dto';
 import { updateUserRolesHandler } from './update-user-roles/handler';
 
@@ -248,6 +253,68 @@ export function createAdminRoutes(): Hono<{
       };
 
       const result = await deleteQuizHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      const errorResponse = handleUpdateUserRolesError(error);
+      return c.json(errorResponse.response, errorResponse.status);
+    }
+  });
+
+  /**
+   * GET /api/admin/questions/pending - List questions pending moderation
+   */
+  adminRoutes.get('/questions/pending', async (c) => {
+    try {
+      const unitOfWork = createUnitOfWork(c, [QUESTION_REPO_TOKEN]);
+
+      // Parse query parameters
+      const query = c.req.query();
+      const params: ListPendingQuestionsParams = {
+        page: parseInt(query.page || '1', 10),
+        pageSize: parseInt(query.pageSize || '20', 10),
+        status: query.status as 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | undefined,
+        dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
+        dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
+        examType: query.examType,
+        difficulty: query.difficulty as ListPendingQuestionsParams['difficulty'],
+        orderBy: query.orderBy as ListPendingQuestionsParams['orderBy'],
+        orderDir: query.orderDir as ListPendingQuestionsParams['orderDir'],
+      };
+
+      const result = await listPendingQuestionsHandler(params, unitOfWork);
+
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return c.json(handleRouteError(error), 500);
+    }
+  });
+
+  /**
+   * PATCH /api/admin/questions/:id/moderate - Moderate a question
+   */
+  adminRoutes.patch('/questions/:id/moderate', async (c) => {
+    try {
+      const unitOfWork = createUnitOfWork(c, [QUESTION_REPO_TOKEN]);
+      const questionId = c.req.param('id');
+      const adminUser = c.get('user');
+
+      // Parse request body
+      const body = await c.req.json();
+      const params: ModerateQuestionParams = {
+        questionId: questionId as QuestionId,
+        action: body.action,
+        moderatedBy: adminUser.sub,
+        feedback: body.feedback,
+      };
+
+      const result = await moderateQuestionHandler(params, unitOfWork);
 
       return c.json({
         success: true,

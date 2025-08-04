@@ -27,14 +27,3 @@ export interface UserSummary {
   createdAt: Date;
   lastLoginAt: Date | null;
 }
-
-/**
- * Paginated response structure
- */
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}

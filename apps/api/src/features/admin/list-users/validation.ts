@@ -22,6 +22,6 @@ export const listUsersSchema = z.object({
     .min(1, 'Page size must be at least 1')
     .max(100, 'Page size cannot exceed 100'),
   search: z.string().optional(),
-  role: z.enum(validRoles).optional(),
+  role: z.enum(validRoles).optional() as z.ZodOptional<z.ZodType<UserRole>>,
   isActive: z.boolean().optional(),
 });

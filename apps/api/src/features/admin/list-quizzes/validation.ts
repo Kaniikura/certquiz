@@ -10,13 +10,12 @@ import { z } from 'zod';
  */
 export const listQuizzesSchema = z
   .object({
-    page: z.number().int().min(1, 'Page must be greater than 0').default(1),
+    page: z.number().int().min(1, 'Page must be greater than 0'),
     pageSize: z
       .number()
       .int()
       .min(1, 'Page size must be between 1 and 100')
-      .max(100, 'Page size must be between 1 and 100')
-      .default(20),
+      .max(100, 'Page size must be between 1 and 100'),
     state: z.enum(['IN_PROGRESS', 'COMPLETED', 'EXPIRED']).optional(),
     userId: z.string().uuid('Invalid user ID format').optional(),
     dateFrom: z.date().optional(),
