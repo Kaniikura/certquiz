@@ -118,6 +118,65 @@ function handleUpdateUserRolesError(error: unknown) {
 }
 
 /**
+ * Handle moderation errors with appropriate status codes and HTTP status
+ * Extracted helper for moderation-specific error handling with proper HTTP codes
+ */
+function handleModerationErrorWithStatus(error: unknown) {
+  let status = 500;
+
+  if (error instanceof Error) {
+    if (error.name === 'ValidationError') {
+      status = 400;
+      return {
+        response: {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.message,
+          },
+        },
+        status: status as ContentfulStatusCode,
+      };
+    } else if (error.name === 'QuestionNotFoundError') {
+      status = 404;
+      return {
+        response: {
+          success: false,
+          error: {
+            code: 'QUESTION_NOT_FOUND',
+            message: error.message,
+          },
+        },
+        status: status as ContentfulStatusCode,
+      };
+    } else if (error.name === 'InvalidQuestionDataError') {
+      status = 400;
+      return {
+        response: {
+          success: false,
+          error: {
+            code: 'INVALID_QUESTION_DATA',
+            message: error.message,
+          },
+        },
+        status: status as ContentfulStatusCode,
+      };
+    }
+  }
+
+  return {
+    response: {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      },
+    },
+    status: status as ContentfulStatusCode,
+  };
+}
+
+/**
  * Create admin routes - all require admin role
  */
 export function createAdminRoutes(): Hono<{
@@ -314,15 +373,15 @@ export function createAdminRoutes(): Hono<{
         feedback: body.feedback,
       };
 
-      const result = await moderateQuestionHandler(params, unitOfWork);
+      await moderateQuestionHandler(params, unitOfWork);
 
       return c.json({
         success: true,
-        data: result,
+        message: 'Question moderated successfully',
       });
     } catch (error) {
-      const errorResponse = handleUpdateUserRolesError(error);
-      return c.json(errorResponse.response, errorResponse.status);
+      const { response, status } = handleModerationErrorWithStatus(error);
+      return c.json(response, status);
     }
   });
 

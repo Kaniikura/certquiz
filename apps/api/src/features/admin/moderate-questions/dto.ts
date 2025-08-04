@@ -3,7 +3,7 @@
  * @fileoverview Request and response types for question moderation
  */
 
-import type { QuestionStatus } from '@api/features/question/domain/entities/Question';
+import { QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 
 /**
@@ -51,9 +51,9 @@ export interface ModerateQuestionResponse {
  * Status mapping for moderation actions
  */
 export const ModerationActionToStatus: Record<ModerationAction, QuestionStatus> = {
-  approve: 'active' as QuestionStatus,
-  reject: 'archived' as QuestionStatus,
-  request_changes: 'draft' as QuestionStatus,
+  approve: QuestionStatus.ACTIVE,
+  reject: QuestionStatus.ARCHIVED,
+  request_changes: QuestionStatus.DRAFT,
 } as const;
 
 /**

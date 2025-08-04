@@ -75,7 +75,7 @@ function transformQuestionToInfo(question: QuestionWithModerationInfo): PendingQ
     examTypes: question.examTypes,
     categories: question.categories,
     difficulty: question.difficulty,
-    status: 'PENDING', // All questions in moderation view are shown as PENDING
+    status: question.status, // Preserve actual status for filtering
     isPremium: question.isPremium,
     tags: question.tags,
     createdById: question.createdById,

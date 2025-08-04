@@ -3,7 +3,7 @@
  * @fileoverview Request and response types for listing questions pending moderation
  */
 
-import type { QuestionStatus } from '@api/features/question/domain/entities/Question';
+import { QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type { QuestionDifficulty } from '@api/features/question/domain/value-objects/QuestionDifficulty';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { PaginatedResponse } from '@api/shared/types/pagination';
@@ -90,10 +90,10 @@ export interface ListPendingQuestionsResponse extends PaginatedResponse<PendingQ
  * Status mapping for filtering
  */
 export const StatusToQuestionStatus: Record<string, QuestionStatus> = {
-  DRAFT: 'draft' as QuestionStatus,
-  ACTIVE: 'active' as QuestionStatus,
-  INACTIVE: 'inactive' as QuestionStatus,
-  ARCHIVED: 'archived' as QuestionStatus,
+  DRAFT: QuestionStatus.DRAFT,
+  ACTIVE: QuestionStatus.ACTIVE,
+  INACTIVE: QuestionStatus.INACTIVE,
+  ARCHIVED: QuestionStatus.ARCHIVED,
 } as const;
 
 /**
