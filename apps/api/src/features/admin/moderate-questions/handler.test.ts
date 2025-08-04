@@ -3,12 +3,14 @@
  * @fileoverview TDD tests for question moderation functionality
  */
 
-import { QuestionStatus } from '@api/features/question/domain/entities/Question';
+import { Question, QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
+import { QuestionOption } from '@api/features/question/domain/value-objects/QuestionOption';
+import { QuestionOptions } from '@api/features/question/domain/value-objects/QuestionOptions';
 import { InvalidQuestionDataError } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
-import { NotFoundError, ValidationError } from '@api/shared/errors';
+import { ValidationError } from '@api/shared/errors';
 import { QUESTION_REPO_TOKEN, type RepositoryToken } from '@api/shared/types/RepositoryToken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModerateQuestionParams, ModerationAction } from './dto';
@@ -17,6 +19,71 @@ import { moderateQuestionHandler } from './handler';
 describe('moderateQuestionHandler', () => {
   let mockQuestionRepo: IQuestionRepository;
   let mockUnitOfWork: IUnitOfWork;
+
+  // Helper to unwrap Result or throw error
+  const unwrapResult = <T>(result: { success: boolean; data?: T; error?: Error }): T => {
+    if (result.success && result.data !== undefined) {
+      return result.data;
+    }
+    throw new Error('Failed to create test data');
+  };
+
+  // Helper to create mock question
+  const createMockQuestion = (
+    questionId: string,
+    status: QuestionStatus = QuestionStatus.DRAFT
+  ): Question => {
+    const questionData = {
+      id: questionId as QuestionId,
+      questionType: 'multiple_choice' as const,
+      questionText: 'Test question',
+      explanation: 'Test explanation',
+      options: unwrapResult(
+        QuestionOptions.create([
+          unwrapResult(
+            QuestionOption.create({
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              text: 'Option A',
+              isCorrect: true,
+            })
+          ),
+          unwrapResult(
+            QuestionOption.create({
+              id: '550e8400-e29b-41d4-a716-446655440001',
+              text: 'Option B',
+              isCorrect: false,
+            })
+          ),
+          unwrapResult(
+            QuestionOption.create({
+              id: '550e8400-e29b-41d4-a716-446655440002',
+              text: 'Option C',
+              isCorrect: false,
+            })
+          ),
+          unwrapResult(
+            QuestionOption.create({
+              id: '550e8400-e29b-41d4-a716-446655440003',
+              text: 'Option D',
+              isCorrect: false,
+            })
+          ),
+        ])
+      ),
+      examTypes: ['CCNA'],
+      categories: ['Networking'],
+      difficulty: 'Intermediate' as const,
+      tags: ['test'],
+      images: [],
+      createdById: 'creator-id',
+      isPremium: false,
+      status,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return unwrapResult(Question.create(questionData));
+  };
 
   beforeEach(() => {
     mockQuestionRepo = {
@@ -46,6 +113,9 @@ describe('moderateQuestionHandler', () => {
   describe('approve action', () => {
     it('should approve question successfully', async () => {
       // Arrange
+      const questionId = '550e8400-e29b-41d4-a716-446655440000';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
       vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
 
       const params: ModerateQuestionParams = {
@@ -76,6 +146,9 @@ describe('moderateQuestionHandler', () => {
 
     it('should approve question without requiring feedback', async () => {
       // Arrange
+      const questionId = '550e8400-e29b-41d4-a716-446655440002';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
       vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
 
       const params: ModerateQuestionParams = {
@@ -97,6 +170,9 @@ describe('moderateQuestionHandler', () => {
   describe('reject action', () => {
     it('should reject question with feedback successfully', async () => {
       // Arrange
+      const questionId = '550e8400-e29b-41d4-a716-446655440004';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
       vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
 
       const params: ModerateQuestionParams = {
@@ -169,6 +245,9 @@ describe('moderateQuestionHandler', () => {
   describe('request_changes action', () => {
     it('should request changes with feedback successfully', async () => {
       // Arrange
+      const questionId = '550e8400-e29b-41d4-a716-446655440010';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
       vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
 
       const params: ModerateQuestionParams = {
@@ -223,9 +302,7 @@ describe('moderateQuestionHandler', () => {
   describe('error handling', () => {
     it('should handle question not found', async () => {
       // Arrange
-      vi.mocked(mockQuestionRepo.updateStatus).mockRejectedValue(
-        new NotFoundError('Question not found')
-      );
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(null);
 
       const params: ModerateQuestionParams = {
         questionId: '550e8400-e29b-41d4-a716-446655440014' as QuestionId,
@@ -234,25 +311,28 @@ describe('moderateQuestionHandler', () => {
       };
 
       // Act & Assert
-      await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(NotFoundError);
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'Question not found'
+        'Question with ID 550e8400-e29b-41d4-a716-446655440014 not found'
       );
     });
 
     it('should handle invalid question status', async () => {
       // Arrange
-      vi.mocked(mockQuestionRepo.updateStatus).mockRejectedValue(
-        new InvalidQuestionDataError(
-          'Cannot moderate question with status ACTIVE. Only DRAFT questions can be moderated.'
-        )
-      );
+      const questionId = '550e8400-e29b-41d4-a716-446655440016';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.ACTIVE); // Question is already ACTIVE
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
 
       const params: ModerateQuestionParams = {
         questionId: '550e8400-e29b-41d4-a716-446655440016' as QuestionId,
         action: 'approve',
         moderatedBy: '550e8400-e29b-41d4-a716-446655440017',
       };
+
+      vi.mocked(mockQuestionRepo.updateStatus).mockRejectedValue(
+        new InvalidQuestionDataError(
+          'Cannot moderate question with status ACTIVE. Only DRAFT questions can be moderated.'
+        )
+      );
 
       // Act & Assert
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
@@ -319,6 +399,9 @@ describe('moderateQuestionHandler', () => {
     it('should return proper audit metadata', async () => {
       // Arrange
       const beforeModeration = new Date();
+      const questionId = '550e8400-e29b-41d4-a716-446655440022';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
       vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
 
       const params: ModerateQuestionParams = {

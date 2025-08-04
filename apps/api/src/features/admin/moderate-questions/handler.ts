@@ -6,6 +6,7 @@
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
+import { QuestionNotFoundError } from '../../question/shared/errors';
 import type { ModerateQuestionParams, ModerateQuestionResponse, ModerationAction } from './dto';
 import { ModerationActionToStatus, StatusToDisplayName } from './dto';
 import { validateModerateQuestionParams } from './validation';
@@ -41,13 +42,19 @@ export async function moderateQuestionHandler(
   // Get repository
   const questionRepo = unitOfWork.getRepository(QUESTION_REPO_TOKEN);
 
+  // First fetch the question to confirm it exists and get its current status
+  const questionEntity = await questionRepo.findQuestionWithDetails(questionId);
+  if (!questionEntity) {
+    throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
+  }
+
+  // Get the actual current status for accurate audit logging
+  const previousStatus = StatusToDisplayName[questionEntity.status];
+
   // Determine target status based on action
   const targetStatus = ModerationActionToStatus[action];
 
-  // Store current status for audit (we'll set this to PENDING as default since we don't know the actual previous status)
-  const previousStatus = StatusToDisplayName.draft; // Assuming all moderated questions are DRAFT
-
-  // Update question status
+  // Update question status (this will also enforce business rules internally)
   await questionRepo.updateStatus(questionId, targetStatus, moderatedBy, feedback);
 
   // Create response with audit information
@@ -80,7 +87,7 @@ function validateModerationAction(action: ModerationAction, feedback?: string): 
   }
 
   // Business rule: feedback has maximum length
-  if (feedback && feedback.length > 1000) {
+  if (feedback && feedback.trim().length > 1000) {
     throw new ValidationError('Feedback must not exceed 1000 characters');
   }
 }

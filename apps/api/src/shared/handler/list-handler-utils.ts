@@ -26,6 +26,8 @@ interface ListHandlerConfig<TParams, TItem, TFilters = unknown, TRepoResult = un
   calculateSummary?: (items: TItem[], total: number) => unknown;
   /** Optional custom validation function */
   customValidate?: (params: TParams) => ValidationResult<TParams>;
+  /** Optional pre-validated parameters to skip validation */
+  preValidatedParams?: TParams;
 }
 
 /**
@@ -62,16 +64,22 @@ async function createPaginatedListHandler<
   config: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult>
 ): Promise<(params: unknown) => Promise<PaginatedResponse<TItem>>> {
   return async (params: unknown): Promise<PaginatedResponse<TItem>> => {
-    // 1. Validate input parameters
-    const validation = config.customValidate
-      ? config.customValidate(params as TParams)
-      : validateWithSchema(config.schema, params);
+    // 1. Use pre-validated params if available, otherwise validate input parameters
+    let validatedParams: TParams;
 
-    if (!validation.success) {
-      throw new ValidationError(validation.errors.join(', '));
+    if (config.preValidatedParams) {
+      validatedParams = config.preValidatedParams;
+    } else {
+      const validation = config.customValidate
+        ? config.customValidate(params as TParams)
+        : validateWithSchema(config.schema, params);
+
+      if (!validation.success) {
+        throw new ValidationError(validation.errors.join(', '));
+      }
+
+      validatedParams = validation.data;
     }
-
-    const validatedParams = validation.data;
 
     // 2. Build filters from validated params
     const filters = config.buildFilters(validatedParams);
@@ -139,27 +147,30 @@ export function createPaginatedListHandlerWithUow<
   config: ListHandlerWithUowConfig<TParams, TItem, TUnitOfWork, TFilters, TRepoResult, TRepo>
 ): (params: unknown, unitOfWork: TUnitOfWork) => Promise<PaginatedResponse<TItem>> {
   return async (params: unknown, unitOfWork: TUnitOfWork): Promise<PaginatedResponse<TItem>> => {
-    // Get repository from unit of work
+    // 1. Validate input parameters once at the beginning
+    const validation = config.customValidate
+      ? config.customValidate(params as TParams)
+      : validateWithSchema(config.schema, params);
+
+    if (!validation.success) {
+      throw new ValidationError(validation.errors.join(', '));
+    }
+
+    const validatedParams = validation.data;
+
+    // 2. Get repository from unit of work
     const repository = config.getRepository(unitOfWork);
 
-    // Create a modified config that captures params for fetchData
+    // 3. Create a modified config with pre-validated params to skip re-validation
     const modifiedConfig: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult> = {
       ...config,
+      preValidatedParams: validatedParams,
       fetchData: async (filters: TFilters) => {
-        // We need to validate params first to get the typed version
-        const validation = config.customValidate
-          ? config.customValidate(params as TParams)
-          : validateWithSchema(config.schema, params);
-
-        if (!validation.success) {
-          throw new ValidationError(validation.errors.join(', '));
-        }
-
-        return config.fetchData(repository, filters, validation.data);
+        return config.fetchData(repository, filters, validatedParams);
       },
     };
 
-    // Use the standard handler with modified config
+    // 4. Use the standard handler with modified config
     const handler = await createPaginatedListHandler(modifiedConfig);
 
     return handler(params);
