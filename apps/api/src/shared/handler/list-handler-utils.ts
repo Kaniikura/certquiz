@@ -196,6 +196,6 @@ export function createPaginatedListHandlerWithUow<
     // 4. Use the standard handler with modified config
     const handler = createPaginatedListHandler(modifiedConfig);
 
-    return handler(params);
+    return handler(validatedParams);
   };
 }
