@@ -18,24 +18,11 @@ function createQuestionWithStatus(
   baseQuestion: Question,
   status: QuestionStatus
 ): Result<Question> {
-  return Question.create({
-    id: baseQuestion.id,
-    version: baseQuestion.version + 1,
-    questionText: baseQuestion.questionText,
-    questionType: baseQuestion.questionType,
-    explanation: baseQuestion.explanation,
-    detailedExplanation: baseQuestion.detailedExplanation,
-    options: baseQuestion.options,
-    examTypes: baseQuestion.examTypes,
-    categories: baseQuestion.categories,
-    difficulty: baseQuestion.difficulty,
-    tags: baseQuestion.tags,
-    images: baseQuestion.images,
-    isPremium: baseQuestion.isPremium,
+  return Question.fromJSON({
+    ...baseQuestion.toJSON(),
     status,
-    createdById: baseQuestion.createdById,
-    createdAt: baseQuestion.createdAt,
-    updatedAt: new Date(),
+    version: baseQuestion.version + 1,
+    updatedAt: new Date().toISOString(),
   });
 }
 
