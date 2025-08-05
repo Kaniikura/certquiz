@@ -46,7 +46,6 @@ import {
   mapRowToQuestion,
   mapToQuestionSummary,
 } from './QuestionRowMapper';
-import type { questionStatusEnum } from './schema/enums';
 import { moderationLogs } from './schema/moderation';
 import { question, questionVersion } from './schema/question';
 
@@ -566,9 +565,7 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
           action,
           moderatedBy,
           feedback,
-          previousStatus: mapQuestionStatusToDb(
-            previousStatus
-          ) as (typeof questionStatusEnum.enumValues)[number],
+          previousStatus: mapQuestionStatusToDb(previousStatus),
           newStatus: mapQuestionStatusToDb(newStatus),
         });
       });
