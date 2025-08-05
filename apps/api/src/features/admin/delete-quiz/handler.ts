@@ -54,12 +54,8 @@ export async function deleteQuizHandler(
   }
 
   // Perform cascading deletion
-  try {
-    await quizRepo.deleteWithCascade(quizSessionId);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown deletion error';
-    throw new Error(`Failed to delete quiz session: ${errorMessage}`);
-  }
+  // QuizRepositoryError will be thrown with proper context if deletion fails
+  await quizRepo.deleteWithCascade(quizSessionId);
 
   // Return audit metadata
   return {

@@ -6,6 +6,7 @@
 import type { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSession';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
+import { QuizRepositoryError } from '@api/features/quiz/shared/errors';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { NotFoundError, ValidationError } from '@api/shared/errors';
 import { QUIZ_REPO_TOKEN, type RepositoryToken } from '@api/shared/types/RepositoryToken';
@@ -274,7 +275,7 @@ describe('deleteQuizHandler', () => {
 
     vi.mocked(mockQuizRepo.findById).mockResolvedValue(mockQuiz as unknown as QuizSession);
     vi.mocked(mockQuizRepo.deleteWithCascade).mockRejectedValue(
-      new Error('Foreign key constraint violation')
+      new QuizRepositoryError('deleteWithCascade', 'Foreign key constraint violation')
     );
 
     const params: DeleteQuizParams = {
@@ -285,7 +286,7 @@ describe('deleteQuizHandler', () => {
 
     // Act & Assert
     await expect(deleteQuizHandler(params, mockUnitOfWork)).rejects.toThrow(
-      'Failed to delete quiz session: Foreign key constraint violation'
+      'Quiz repository deleteWithCascade failed: Foreign key constraint violation'
     );
 
     // Verify repository calls
