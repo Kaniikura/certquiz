@@ -5,12 +5,12 @@
 
 import type {
   IQuizRepository,
-  PaginatedResult,
   QuizWithUserInfo,
 } from '@api/features/quiz/domain/repositories/IQuizRepository';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import { QUIZ_REPO_TOKEN, type RepositoryToken } from '@api/shared/types/RepositoryToken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ListQuizzesParams } from './dto';

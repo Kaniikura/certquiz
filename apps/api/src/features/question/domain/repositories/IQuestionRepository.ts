@@ -1,4 +1,5 @@
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import type { Question, QuestionStatus } from '../entities/Question';
 import type { QuestionDifficulty } from '../value-objects/QuestionDifficulty';
 
@@ -102,16 +103,6 @@ export interface QuestionWithModerationInfo {
   updatedAt: Date;
   /** Days since submission for priority calculation */
   daysPending: number;
-}
-
-/**
- * Paginated result for moderation queries
- */
-export interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 /**

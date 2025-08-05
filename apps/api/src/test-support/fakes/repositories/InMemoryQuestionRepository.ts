@@ -3,7 +3,6 @@ import type {
   IQuestionRepository,
   ModerationParams,
   PaginatedQuestions,
-  PaginatedResult,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,
@@ -11,6 +10,7 @@ import type {
 } from '@api/features/question/domain/repositories/IQuestionRepository';
 import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 
 /**
  * In-memory question repository for testing

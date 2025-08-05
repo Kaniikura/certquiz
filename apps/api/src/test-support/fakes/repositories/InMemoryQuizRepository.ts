@@ -3,11 +3,11 @@ import type { QuizSession } from '@api/features/quiz/domain/aggregates/QuizSessi
 import type {
   AdminQuizParams,
   IQuizRepository,
-  PaginatedResult,
   QuizWithUserInfo,
 } from '@api/features/quiz/domain/repositories/IQuizRepository';
 import type { QuizSessionId } from '@api/features/quiz/domain/value-objects/Ids';
 import { QuizState } from '@api/features/quiz/domain/value-objects/QuizState';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 
 /**
  * In-memory implementation of IQuizRepository

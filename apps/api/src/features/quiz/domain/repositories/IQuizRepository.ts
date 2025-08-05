@@ -4,6 +4,7 @@
  */
 
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import type { QuizSession } from '../aggregates/QuizSession';
 import type { QuizSessionId } from '../value-objects/Ids';
 import type { QuizState } from '../value-objects/QuizState';
@@ -41,16 +42,6 @@ export interface AdminQuizParams {
   filters?: AdminQuizFilters;
   orderBy?: 'startedAt' | 'completedAt';
   orderDir?: 'asc' | 'desc';
-}
-
-/**
- * Paginated result type
- */
-export interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 export interface IQuizRepository {

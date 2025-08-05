@@ -6,6 +6,7 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import {
   and,
   arrayContains,
@@ -26,7 +27,6 @@ import type {
   IQuestionRepository,
   ModerationParams,
   PaginatedQuestions,
-  PaginatedResult,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,

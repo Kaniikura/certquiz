@@ -17,11 +17,11 @@ import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 const { PostgresError } = postgres;
 
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type {
   AdminQuizParams,
   IQuizRepository,
-  PaginatedResult,
   QuizWithUserInfo,
 } from '../../domain/repositories/IQuizRepository';
 import type { QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
