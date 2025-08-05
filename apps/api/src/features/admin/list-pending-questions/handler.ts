@@ -31,7 +31,8 @@ export const listPendingQuestionsHandler = createPaginatedListHandlerWithUow<
   IUnitOfWork,
   ModerationParams,
   QuestionWithModerationInfo,
-  IQuestionRepository
+  IQuestionRepository,
+  ListPendingQuestionsResponse['summary']
 >({
   schema: ListPendingQuestionsParamsSchema,
 

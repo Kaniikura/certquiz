@@ -13,7 +13,13 @@ import type { ZodSchema } from 'zod';
 /**
  * Configuration for creating a list handler
  */
-interface ListHandlerConfig<TParams, TItem, TFilters = unknown, TRepoResult = unknown> {
+interface ListHandlerConfig<
+  TParams,
+  TItem,
+  TFilters = unknown,
+  TRepoResult = unknown,
+  TSummary = unknown,
+> {
   /** Zod schema for validating input parameters */
   schema: ZodSchema<TParams>;
   /** Function to build repository filters from validated params */
@@ -23,7 +29,7 @@ interface ListHandlerConfig<TParams, TItem, TFilters = unknown, TRepoResult = un
   /** Function to transform repository items to response items */
   transformItem: (item: TRepoResult) => TItem;
   /** Optional function to calculate additional summary data */
-  calculateSummary?: (items: TItem[], total: number) => unknown;
+  calculateSummary?: (items: TItem[], total: number) => TSummary;
   /** Optional custom validation function */
   customValidate?: (params: TParams) => ValidationResult<TParams>;
   /** Optional pre-validated parameters to skip validation */
@@ -55,10 +61,16 @@ interface ListHandlerConfig<TParams, TItem, TFilters = unknown, TRepoResult = un
  * });
  * ```
  */
-function createPaginatedListHandler<TParams, TItem, TFilters = unknown, TRepoResult = unknown>(
-  config: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult>
-): (params: unknown) => Promise<PaginatedResponse<TItem>> {
-  return async (params: unknown): Promise<PaginatedResponse<TItem>> => {
+function createPaginatedListHandler<
+  TParams,
+  TItem,
+  TFilters = unknown,
+  TRepoResult = unknown,
+  TSummary = unknown,
+>(
+  config: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult, TSummary>
+): (params: unknown) => Promise<PaginatedResponse<TItem> & { summary?: TSummary }> {
+  return async (params: unknown): Promise<PaginatedResponse<TItem> & { summary?: TSummary }> => {
     // 1. Use pre-validated params if available, otherwise validate input parameters
     let validatedParams: TParams;
 
@@ -96,7 +108,7 @@ function createPaginatedListHandler<TParams, TItem, TFilters = unknown, TRepoRes
     // 6. Add optional summary if calculator provided
     if (config.calculateSummary) {
       const summary = config.calculateSummary(transformedItems, result.total);
-      return { ...response, summary } as PaginatedResponse<TItem> & { summary: unknown };
+      return { ...response, summary };
     }
 
     return response;
@@ -113,7 +125,8 @@ interface ListHandlerWithUowConfig<
   TFilters = unknown,
   TRepoResult = unknown,
   TRepo = unknown,
-> extends Omit<ListHandlerConfig<TParams, TItem, TFilters, TRepoResult>, 'fetchData'> {
+  TSummary = unknown,
+> extends Omit<ListHandlerConfig<TParams, TItem, TFilters, TRepoResult, TSummary>, 'fetchData'> {
   /** Function to get repository from unit of work */
   getRepository: (unitOfWork: TUnitOfWork) => TRepo;
   /** Function to fetch data using repository */
@@ -138,10 +151,25 @@ export function createPaginatedListHandlerWithUow<
   TFilters = unknown,
   TRepoResult = unknown,
   TRepo = unknown,
+  TSummary = unknown,
 >(
-  config: ListHandlerWithUowConfig<TParams, TItem, TUnitOfWork, TFilters, TRepoResult, TRepo>
-): (params: unknown, unitOfWork: TUnitOfWork) => Promise<PaginatedResponse<TItem>> {
-  return async (params: unknown, unitOfWork: TUnitOfWork): Promise<PaginatedResponse<TItem>> => {
+  config: ListHandlerWithUowConfig<
+    TParams,
+    TItem,
+    TUnitOfWork,
+    TFilters,
+    TRepoResult,
+    TRepo,
+    TSummary
+  >
+): (
+  params: unknown,
+  unitOfWork: TUnitOfWork
+) => Promise<PaginatedResponse<TItem> & { summary?: TSummary }> {
+  return async (
+    params: unknown,
+    unitOfWork: TUnitOfWork
+  ): Promise<PaginatedResponse<TItem> & { summary?: TSummary }> => {
     // 1. Validate input parameters once at the beginning
     const validation = config.customValidate
       ? config.customValidate(params as TParams)
@@ -157,7 +185,7 @@ export function createPaginatedListHandlerWithUow<
     const repository = config.getRepository(unitOfWork);
 
     // 3. Create a modified config with pre-validated params to skip re-validation
-    const modifiedConfig: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult> = {
+    const modifiedConfig: ListHandlerConfig<TParams, TItem, TFilters, TRepoResult, TSummary> = {
       ...config,
       preValidatedParams: validatedParams,
       fetchData: async (filters: TFilters) => {
