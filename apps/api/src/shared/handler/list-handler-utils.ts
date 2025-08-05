@@ -124,7 +124,7 @@ interface ListHandlerWithUowConfig<
   TUnitOfWork,
   TFilters = unknown,
   TRepoResult = unknown,
-  TRepo = unknown,
+  TRepo = Record<string, unknown>,
   TSummary = unknown,
 > extends Omit<ListHandlerConfig<TParams, TItem, TFilters, TRepoResult, TSummary>, 'fetchData'> {
   /** Function to get repository from unit of work */
@@ -150,7 +150,7 @@ export function createPaginatedListHandlerWithUow<
   TUnitOfWork,
   TFilters = unknown,
   TRepoResult = unknown,
-  TRepo = unknown,
+  TRepo = Record<string, unknown>,
   TSummary = unknown,
 >(
   config: ListHandlerWithUowConfig<
