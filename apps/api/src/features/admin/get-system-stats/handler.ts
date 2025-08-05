@@ -20,27 +20,45 @@ export async function getSystemStatsHandler(unitOfWork: IUnitOfWork): Promise<Sy
   const questionRepo = unitOfWork.getRepository(QUESTION_REPO_TOKEN);
 
   // Parallel aggregation for performance
-  const [
-    totalUsers,
-    activeUsers,
-    averageLevel,
-    totalExperience,
-    totalSessions,
-    activeSessions,
-    averageScore,
-    totalQuestions,
-    pendingQuestions,
-  ] = await Promise.all([
-    authUserRepo.countTotalUsers(),
-    authUserRepo.countActiveUsers(),
-    userRepo.getAverageLevel(),
-    userRepo.getTotalExperience(),
-    quizRepo.countTotalSessions(),
-    quizRepo.countActiveSessions(),
-    quizRepo.getAverageScore(),
-    questionRepo.countTotalQuestions(),
-    questionRepo.countPendingQuestions(),
-  ]);
+  let totalUsers: number;
+  let activeUsers: number;
+  let averageLevel: number;
+  let totalExperience: number;
+  let totalSessions: number;
+  let activeSessions: number;
+  let averageScore: number;
+  let totalQuestions: number;
+  let pendingQuestions: number;
+
+  try {
+    [
+      totalUsers,
+      activeUsers,
+      averageLevel,
+      totalExperience,
+      totalSessions,
+      activeSessions,
+      averageScore,
+      totalQuestions,
+      pendingQuestions,
+    ] = await Promise.all([
+      authUserRepo.countTotalUsers(),
+      authUserRepo.countActiveUsers(),
+      userRepo.getAverageLevel(),
+      userRepo.getTotalExperience(),
+      quizRepo.countTotalSessions(),
+      quizRepo.countActiveSessions(),
+      quizRepo.getAverageScore(),
+      questionRepo.countTotalQuestions(),
+      questionRepo.countPendingQuestions(),
+    ]);
+  } catch (error) {
+    // Log the error with context for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Re-throw with additional context while preserving the original error
+    throw new Error(`Failed to fetch system statistics: ${errorMessage}`, { cause: error });
+  }
 
   return {
     users: {

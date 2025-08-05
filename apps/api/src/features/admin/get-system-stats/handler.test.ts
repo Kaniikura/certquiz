@@ -212,4 +212,54 @@ describe('getSystemStatsHandler', () => {
     // Add some buffer for execution overhead
     expect(elapsedTime).toBeLessThan(maxDelay + 50);
   });
+
+  it('should handle repository errors gracefully', async () => {
+    // Arrange
+    const mockError = new Error('Database connection failed');
+
+    const mockAuthUserRepo: Partial<IAuthUserRepository> = {
+      countTotalUsers: vi.fn().mockResolvedValue(150),
+      countActiveUsers: vi.fn().mockResolvedValue(45),
+    };
+    const mockUserRepo: Partial<IUserRepository> = {
+      getAverageLevel: vi.fn().mockResolvedValue(3.2),
+      getTotalExperience: vi.fn().mockRejectedValue(mockError), // This will fail
+    };
+    const mockQuizRepo: Partial<IQuizRepository> = {
+      countTotalSessions: vi.fn().mockResolvedValue(500),
+      countActiveSessions: vi.fn().mockResolvedValue(12),
+      getAverageScore: vi.fn().mockResolvedValue(0.75),
+    };
+    const mockQuestionRepo: Partial<IQuestionRepository> = {
+      countTotalQuestions: vi.fn().mockResolvedValue(1000),
+      countPendingQuestions: vi.fn().mockResolvedValue(25),
+    };
+
+    const mockUnitOfWork: IUnitOfWork = {
+      getRepository: <T>(token: RepositoryToken<T>): T => {
+        if (token === AUTH_USER_REPO_TOKEN) return mockAuthUserRepo as T;
+        if (token === USER_REPO_TOKEN) return mockUserRepo as T;
+        if (token === QUIZ_REPO_TOKEN) return mockQuizRepo as T;
+        if (token === QUESTION_REPO_TOKEN) return mockQuestionRepo as T;
+        throw new Error(`Unknown token: ${String(token)}`);
+      },
+      begin: vi.fn().mockResolvedValue(undefined),
+      commit: vi.fn().mockResolvedValue(undefined),
+      rollback: vi.fn().mockResolvedValue(undefined),
+      getQuestionDetailsService: vi.fn().mockReturnValue(null),
+    };
+
+    // Act & Assert
+    await expect(getSystemStatsHandler(mockUnitOfWork)).rejects.toThrow(
+      'Failed to fetch system statistics: Database connection failed'
+    );
+
+    // Verify the error includes the original error as cause
+    try {
+      await getSystemStatsHandler(mockUnitOfWork);
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error & { cause?: unknown }).cause).toBe(mockError);
+    }
+  });
 });
