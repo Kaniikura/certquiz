@@ -300,6 +300,39 @@ describe('moderateQuestionHandler', () => {
     });
   });
 
+  describe('XSS protection', () => {
+    it('should escape HTML entities in feedback', async () => {
+      // Arrange
+      const questionId = '550e8400-e29b-41d4-a716-446655440023';
+      const mockQuestion = createMockQuestion(questionId, QuestionStatus.DRAFT);
+      vi.mocked(mockQuestionRepo.findQuestionWithDetails).mockResolvedValue(mockQuestion);
+      vi.mocked(mockQuestionRepo.updateStatus).mockResolvedValue(undefined);
+
+      const params: ModerateQuestionParams = {
+        questionId: '550e8400-e29b-41d4-a716-446655440023' as QuestionId,
+        action: 'reject',
+        moderatedBy: '550e8400-e29b-41d4-a716-446655440024',
+        feedback: '<script>alert("XSS")</script> & other "dangerous" \'characters\' />',
+      };
+
+      // Act
+      const result = await moderateQuestionHandler(params, mockUnitOfWork);
+
+      // Assert
+      expect(result.feedback).toBe(
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; &#x2F;&gt;'
+      );
+
+      // Verify the escaped feedback was passed to the repository
+      expect(mockQuestionRepo.updateStatus).toHaveBeenCalledWith(
+        '550e8400-e29b-41d4-a716-446655440023',
+        QuestionStatus.ARCHIVED,
+        '550e8400-e29b-41d4-a716-446655440024',
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; &#x2F;&gt;'
+      );
+    });
+  });
+
   describe('error handling', () => {
     it('should handle question not found', async () => {
       // Arrange

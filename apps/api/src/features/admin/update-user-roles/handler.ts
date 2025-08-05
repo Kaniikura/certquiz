@@ -6,6 +6,7 @@
 import type { User } from '@api/features/auth/domain/entities/User';
 import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
 import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
@@ -43,12 +44,16 @@ export const updateUserRolesHandler = createAdminActionHandler<
     const { roles, updatedBy } = params;
 
     // Validate role combinations
-    if (roles.includes('admin') && roles.includes('user')) {
+    if (roles.includes(UserRole.Admin) && roles.includes(UserRole.User)) {
       throw new AdminPermissionError('Invalid role combination: admin cannot have user role');
     }
 
     // Prevent self-demotion for admins
-    if (user.id.toString() === updatedBy && user.role === 'admin' && !roles.includes('admin')) {
+    if (
+      UserId.equals(user.id, UserId.of(updatedBy)) &&
+      user.role === UserRole.Admin &&
+      !roles.includes(UserRole.Admin)
+    ) {
       throw new AdminPermissionError('Admins cannot remove their own admin role');
     }
   },

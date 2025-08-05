@@ -13,6 +13,23 @@ import type { ModerateQuestionParams, ModerateQuestionResponse } from './dto';
 import { ModerationActionToStatus, StatusToDisplayName } from './dto';
 
 /**
+ * Escape HTML entities to prevent XSS attacks
+ * @param text - The text to escape
+ * @returns The escaped text
+ */
+function escapeHtml(text: string): string {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+  };
+  return text.replace(/[&<>"'/]/g, (char) => htmlEntities[char] || char);
+}
+
+/**
  * Zod schema for moderation parameters
  * Extracted inline to avoid circular dependencies
  */
@@ -82,13 +99,19 @@ export const moderateQuestionHandler = createAdminActionHandler<
     // Determine target status based on action
     const targetStatus = ModerationActionToStatus[action];
 
+    // Escape feedback to prevent XSS attacks
+    const sanitizedFeedback = feedback ? escapeHtml(feedback) : feedback;
+
     // Update question status (this will also enforce business rules internally)
-    await repo.updateStatus(questionId, targetStatus, moderatedBy, feedback);
+    await repo.updateStatus(questionId, targetStatus, moderatedBy, sanitizedFeedback);
   },
 
   buildResponse: (question, params) => {
     const { questionId, action, moderatedBy, feedback } = params;
     const targetStatus = ModerationActionToStatus[action];
+
+    // Return sanitized feedback in response
+    const sanitizedFeedback = feedback ? escapeHtml(feedback) : feedback;
 
     return {
       success: true,
@@ -98,7 +121,7 @@ export const moderateQuestionHandler = createAdminActionHandler<
       moderatedBy,
       moderatedAt: new Date(),
       action,
-      feedback,
+      feedback: sanitizedFeedback,
     };
   },
 });
