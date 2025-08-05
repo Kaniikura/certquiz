@@ -7,7 +7,7 @@ import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { QuestionNotFoundError } from '../../question/shared/errors';
-import type { ModerateQuestionParams, ModerateQuestionResponse, ModerationAction } from './dto';
+import type { ModerateQuestionParams, ModerateQuestionResponse } from './dto';
 import { ModerationActionToStatus, StatusToDisplayName } from './dto';
 import { validateModerateQuestionParams } from './validation';
 
@@ -35,9 +35,6 @@ export async function moderateQuestionHandler(
 
   const validatedParams = validation.data;
   const { questionId, action, moderatedBy, feedback } = validatedParams;
-
-  // Additional business rule validation
-  validateModerationAction(action, feedback);
 
   // Get repository
   const questionRepo = unitOfWork.getRepository(QUESTION_REPO_TOKEN);
@@ -70,24 +67,4 @@ export async function moderateQuestionHandler(
   };
 
   return response;
-}
-
-/**
- * Validate moderation action business rules
- */
-function validateModerationAction(action: ModerationAction, feedback?: string): void {
-  // Business rule: reject and request_changes require feedback
-  if ((action === 'reject' || action === 'request_changes') && !feedback) {
-    throw new ValidationError(`Feedback is required for ${action} action`);
-  }
-
-  // Business rule: feedback must meet minimum length requirements
-  if (feedback && feedback.trim().length < 10) {
-    throw new ValidationError('Feedback must be at least 10 characters long');
-  }
-
-  // Business rule: feedback has maximum length
-  if (feedback && feedback.trim().length > 1000) {
-    throw new ValidationError('Feedback must not exceed 1000 characters');
-  }
 }

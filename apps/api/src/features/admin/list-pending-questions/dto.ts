@@ -47,9 +47,9 @@ export interface PendingQuestionInfo {
   /** Question categories */
   categories: string[];
   /** Question difficulty level */
-  difficulty: string;
+  difficulty: QuestionDifficulty;
   /** Current status */
-  status: string;
+  status: QuestionStatus;
   /** Whether this is premium content */
   isPremium: boolean;
   /** Question tags */

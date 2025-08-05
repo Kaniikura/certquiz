@@ -32,6 +32,7 @@ import type {
   QuestionSummary,
   QuestionWithModerationInfo,
 } from '../../domain/repositories/IQuestionRepository';
+import type { QuestionDifficulty } from '../../domain/value-objects/QuestionDifficulty';
 import {
   InvalidQuestionDataError,
   QuestionNotFoundError,
@@ -718,7 +719,7 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
           questionType: mapQuestionTypeFromDb(row.questionType || 'single'),
           examTypes: row.examTypes || [],
           categories: row.categories || [],
-          difficulty: row.difficulty || 'beginner',
+          difficulty: (row.difficulty || 'Beginner') as QuestionDifficulty,
           status: row.status as QuestionStatus,
           isPremium: row.isPremium || false,
           tags: row.tags || [],

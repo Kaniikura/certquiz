@@ -93,7 +93,7 @@ export interface QuestionWithModerationInfo {
   questionType: 'multiple_choice' | 'multiple_select' | 'true_false';
   examTypes: string[];
   categories: string[];
-  difficulty: string;
+  difficulty: QuestionDifficulty;
   status: QuestionStatus;
   isPremium: boolean;
   tags: string[];
