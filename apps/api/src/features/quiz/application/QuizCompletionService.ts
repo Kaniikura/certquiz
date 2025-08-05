@@ -12,7 +12,6 @@ import type { IUserRepository } from '../../user/domain/repositories/IUserReposi
 import { UserNotFoundError } from '../../user/shared/errors';
 import type { IQuizRepository } from '../domain/repositories/IQuizRepository';
 import type { QuizSessionId } from '../domain/value-objects/Ids';
-import type { IQuestionDetailsService } from '../domain/value-objects/QuestionDetailsService';
 import { QuizState } from '../domain/value-objects/QuizState';
 import { buildAnswerResults, calculateScoreSummary } from '../get-results/scoring-utils';
 import { QuizNotCompletedError, SessionNotFoundError } from '../shared/errors';
@@ -56,7 +55,6 @@ export interface IQuizCompletionService {
 export class QuizCompletionService implements IQuizCompletionService {
   constructor(
     private readonly unitOfWorkProvider: IUnitOfWorkProvider,
-    private readonly questionDetailsService: IQuestionDetailsService,
     private readonly clock: Clock
   ) {}
 
@@ -106,8 +104,9 @@ export class QuizCompletionService implements IQuizCompletionService {
 
         // 6. Calculate quiz results using existing scoring utilities
         const questionIds = session.getQuestionIds();
-        const questionDetailsMap =
-          await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
+        const questionDetailsMap = await unitOfWork
+          .getQuestionDetailsService()
+          .getMultipleQuestionDetails(questionIds);
 
         const { correctCount } = buildAnswerResults(session, questionDetailsMap);
         const scoreSummary = calculateScoreSummary(correctCount, session.config.questionCount);

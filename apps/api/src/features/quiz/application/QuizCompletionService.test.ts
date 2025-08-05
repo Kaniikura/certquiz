@@ -127,6 +127,7 @@ describe('QuizCompletionService', () => {
         if (token === USER_REPO_TOKEN) return mockUserRepo;
         throw new Error(`Unknown token: ${token.toString()}`);
       }),
+      getQuestionDetailsService: vi.fn().mockReturnValue(mockQuestionDetailsService),
     } as IUnitOfWork;
 
     mockUnitOfWorkProvider = {
@@ -193,7 +194,7 @@ describe('QuizCompletionService', () => {
     user = userResult.data;
 
     // Create service instance
-    service = new QuizCompletionService(mockUnitOfWorkProvider, mockQuestionDetailsService, clock);
+    service = new QuizCompletionService(mockUnitOfWorkProvider, clock);
   });
 
   describe('completeQuizWithProgressUpdate', () => {

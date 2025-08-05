@@ -11,7 +11,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
 import type { ExamType } from '../../domain/value-objects/ExamTypes';
 import { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
+import type {
+  IQuestionDetailsService,
+  QuestionDetails,
+} from '../../domain/value-objects/QuestionDetailsService';
 import { QuizConfig } from '../../domain/value-objects/QuizConfig';
+import { QuizState } from '../../domain/value-objects/QuizState';
 import { DrizzleQuizRepository } from './DrizzleQuizRepository';
 
 // Extract PostgresError for proper mocking
@@ -32,12 +37,48 @@ interface MockSnapshotRow {
   ownerId: string;
   state: string;
   expiresAt: Date;
+  answers?: Record<string, unknown>;
+  questionCount?: number;
+  startedAt?: Date;
+  completedAt?: Date | null;
+}
+
+// Mock question details service implementation
+class MockQuestionDetailsService implements IQuestionDetailsService {
+  private questionDetails: Map<string, QuestionDetails> = new Map();
+
+  async getQuestionDetails(questionId: QuestionId): Promise<QuestionDetails | null> {
+    return this.questionDetails.get(questionId.toString()) || null;
+  }
+
+  async getMultipleQuestionDetails(
+    questionIds: QuestionId[]
+  ): Promise<Map<QuestionId, QuestionDetails>> {
+    const result = new Map<QuestionId, QuestionDetails>();
+    for (const questionId of questionIds) {
+      const details = this.questionDetails.get(questionId.toString());
+      if (details) {
+        result.set(questionId, details);
+      }
+    }
+    return result;
+  }
+
+  // Helper method for tests to add question details
+  addQuestionDetails(details: QuestionDetails): void {
+    this.questionDetails.set(details.id.toString(), details);
+  }
+
+  clearQuestionDetails(): void {
+    this.questionDetails.clear();
+  }
 }
 
 // Mock logger implementation
 class MockLogger implements LoggerPort {
   public debugMessages: Array<{ message: string; meta?: Record<string, unknown> }> = [];
   public infoMessages: Array<{ message: string; meta?: Record<string, unknown> }> = [];
+  public warnMessages: Array<{ message: string; meta?: Record<string, unknown> }> = [];
   public errorMessages: Array<{ message: string; meta?: Record<string, unknown> }> = [];
 
   debug(message: string, meta?: Record<string, unknown>): void {
@@ -48,8 +89,8 @@ class MockLogger implements LoggerPort {
     this.infoMessages.push({ message, meta });
   }
 
-  warn(_message: string, _meta?: Record<string, unknown>): void {
-    // Not used in these tests
+  warn(message: string, meta?: Record<string, unknown>): void {
+    this.warnMessages.push({ message, meta });
   }
 
   error(message: string, meta?: Record<string, unknown>): void {
@@ -65,9 +106,42 @@ class MockTransactionContext {
   private insertFailureError: Error | null = null;
   private currentQueryContext: { type?: 'expired' | 'activeByUser'; now?: Date; userId?: string } =
     {};
+  private adminFilterState?: string;
 
   // Mock query builder for select operations
-  select() {
+  select(fields?: unknown) {
+    // Handle count queries
+    if (fields && typeof fields === 'object' && 'count' in fields) {
+      return {
+        from: (table: unknown) => {
+          if (this.isSnapshotTable(table)) {
+            return {
+              // Direct where for simple count
+              where: (_condition: unknown) => {
+                const completedSnapshots = this.snapshots.filter((s) => s.state === 'COMPLETED');
+                return [{ count: completedSnapshots.length }];
+              },
+              // innerJoin for admin count query
+              innerJoin: (_table: unknown, _condition: unknown) => ({
+                where: (_condition: unknown) => {
+                  // Apply admin filter state to count
+                  let filteredCount = this.snapshots.length;
+                  if (this.adminFilterState) {
+                    filteredCount = this.snapshots.filter(
+                      (s) => s.state === this.adminFilterState
+                    ).length;
+                  }
+                  return [{ count: filteredCount }];
+                },
+              }),
+            };
+          }
+          return [{ count: this.events.length }];
+        },
+      };
+    }
+
+    // Handle regular queries (not count queries)
     return {
       from: (table: unknown) => {
         if (this.isEventTable(table)) {
@@ -78,10 +152,87 @@ class MockTransactionContext {
           };
         }
         if (this.isSnapshotTable(table)) {
+          const self = this;
           return {
-            where: (_condition: unknown) => ({
-              limit: (n: number) => {
-                return this.getFilteredSnapshots().slice(0, n);
+            // Direct where for getAverageScore or with limit chain
+            where: (condition: unknown) => {
+              // Check if we need to filter based on condition
+              const shouldFilterCompleted = this.shouldFilterCompleted(condition);
+              const shouldFilterByUser = this.shouldFilterByUser(condition);
+              const shouldFilterExpired = this.shouldFilterExpired(condition);
+
+              let filteredSnapshots = [...this.snapshots];
+
+              if (shouldFilterCompleted) {
+                filteredSnapshots = filteredSnapshots.filter((s) => s.state === 'COMPLETED');
+              }
+
+              if (shouldFilterByUser && this.currentQueryContext.userId) {
+                filteredSnapshots = filteredSnapshots.filter(
+                  (s) => s.ownerId === this.currentQueryContext.userId && s.state === 'IN_PROGRESS'
+                );
+              }
+
+              if (shouldFilterExpired && this.currentQueryContext.now) {
+                const now = this.currentQueryContext.now;
+                filteredSnapshots = filteredSnapshots.filter(
+                  (s) =>
+                    s.state === 'IN_PROGRESS' &&
+                    s.expiresAt &&
+                    s.expiresAt.getTime() < now.getTime()
+                );
+              }
+
+              // Return object that can chain to limit()
+              const result = filteredSnapshots.map((s) => ({
+                sessionId: s.sessionId,
+                ownerId: s.ownerId,
+                state: s.state,
+                expiresAt: s.expiresAt,
+                questionCount: s.questionCount || 0,
+                answers: s.answers || null,
+                startedAt: s.startedAt,
+                completedAt: s.completedAt,
+              }));
+
+              // Add limit method to the result array
+              type ResultWithLimit = typeof result & { limit: (n: number) => typeof result };
+              const resultWithLimit = result as ResultWithLimit;
+              resultWithLimit.limit = (n: number) => result.slice(0, n);
+
+              return resultWithLimit;
+            },
+            // innerJoin for findAllForAdmin
+            innerJoin: (_table: unknown, _condition: unknown) => ({
+              where: (_whereCondition: unknown) => {
+                // Apply filters based on whereCondition
+                let filteredSnapshots = [...self.snapshots];
+
+                // This is a simplified filter - in real implementation it would parse the condition
+                if (self.adminFilterState) {
+                  filteredSnapshots = filteredSnapshots.filter(
+                    (s) => s.state === self.adminFilterState
+                  );
+                }
+
+                return {
+                  orderBy: (..._columns: unknown[]) => ({
+                    limit: (n: number) => ({
+                      offset: (o: number) => {
+                        return filteredSnapshots.slice(o, o + n).map((s) => ({
+                          sessionId: s.sessionId,
+                          userId: s.ownerId,
+                          userEmail: `user-${s.ownerId}@example.com`,
+                          state: s.state,
+                          questionCount: s.questionCount || 0,
+                          startedAt: s.startedAt || new Date(),
+                          completedAt: s.completedAt || null,
+                          answers: s.answers || null,
+                        }));
+                      },
+                    }),
+                  }),
+                };
               },
             }),
           };
@@ -210,18 +361,58 @@ class MockTransactionContext {
     // Snapshot table has ownerId, expiresAt but no eventType
     return keys.includes('ownerId') && keys.includes('expiresAt') && !keys.includes('eventType');
   }
+
+  // Helper methods for condition checking
+  private shouldFilterCompleted(_condition: unknown): boolean {
+    // Only filter by COMPLETED if we're not doing user/expired queries
+    return (
+      this.currentQueryContext.type !== 'activeByUser' &&
+      this.currentQueryContext.type !== 'expired'
+    );
+  }
+
+  private shouldFilterByUser(_condition: unknown): boolean {
+    // Check if this is a user-specific query
+    return this.currentQueryContext.type === 'activeByUser';
+  }
+
+  private shouldFilterExpired(_condition: unknown): boolean {
+    // Check if this is an expired sessions query
+    return this.currentQueryContext.type === 'expired';
+  }
+
+  private isCompletedStateCondition(_condition: unknown): boolean {
+    // Simple check - in real implementation would parse the SQL condition
+    // For getAverageScore, we're looking for completed state
+    return true; // Default to true for getAverageScore queries
+  }
+
+  // Method to set admin filter state for testing
+  setAdminFilterState(state: string): void {
+    this.adminFilterState = state;
+  }
+
+  clearAdminFilterState(): void {
+    this.adminFilterState = undefined;
+  }
 }
 
 describe('DrizzleQuizRepository (Unit Tests)', () => {
   let mockTrx: MockTransactionContext;
   let mockLogger: MockLogger;
+  let mockQuestionDetailsService: MockQuestionDetailsService;
   let repository: DrizzleQuizRepository;
   let clock: TestClock;
 
   beforeEach(() => {
     mockTrx = new MockTransactionContext();
     mockLogger = new MockLogger();
-    repository = new DrizzleQuizRepository(mockTrx as never, mockLogger);
+    mockQuestionDetailsService = new MockQuestionDetailsService();
+    repository = new DrizzleQuizRepository(
+      mockTrx as never,
+      mockQuestionDetailsService,
+      mockLogger
+    );
     clock = new TestClock(new Date('2025-01-01T12:00:00Z'));
     // Clear any previous query context
     mockTrx.clearQueryContext();
@@ -650,6 +841,377 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       expect(result).toBeDefined();
       // If events were sorted correctly, the session should be reconstructed properly
       expect(result?.version).toBe(2);
+    });
+  });
+
+  describe('getAverageScore', () => {
+    it('should return 0 when no completed quizzes exist', async () => {
+      const result = await repository.getAverageScore();
+
+      expect(result).toBe(0);
+      expect(mockLogger.debugMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'No completed quizzes found',
+        })
+      );
+    });
+
+    it('should calculate average score for completed quizzes', async () => {
+      const sessionId1 = QuizSessionId.generate();
+      const sessionId2 = QuizSessionId.generate();
+      const questionId1 = QuestionId.generate();
+      const questionId2 = QuestionId.generate();
+      const optionId1 = OptionId.generate();
+      const optionId2 = OptionId.generate();
+      const optionId3 = OptionId.generate();
+      const optionId4 = OptionId.generate();
+
+      // Add question details
+      mockQuestionDetailsService.addQuestionDetails({
+        id: questionId1,
+        text: 'Question 1',
+        options: [
+          { id: optionId1.toString(), text: 'Option 1', isCorrect: true },
+          { id: optionId2.toString(), text: 'Option 2', isCorrect: false },
+        ],
+        correctOptionIds: [optionId1],
+      });
+
+      mockQuestionDetailsService.addQuestionDetails({
+        id: questionId2,
+        text: 'Question 2',
+        options: [
+          { id: optionId3.toString(), text: 'Option 3', isCorrect: false },
+          { id: optionId4.toString(), text: 'Option 4', isCorrect: true },
+        ],
+        correctOptionIds: [optionId4],
+      });
+
+      // Add completed quiz with 100% score (both correct)
+      mockTrx.addSnapshot({
+        sessionId: sessionId1.toString(),
+        ownerId: UserId.generate().toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 2,
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId1.toString(),
+            selectedOptionIds: [optionId1.toString()], // Correct
+            answeredAt: new Date().toISOString(),
+          },
+          answer2: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId2.toString(),
+            selectedOptionIds: [optionId4.toString()], // Correct
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Add completed quiz with 50% score (one correct)
+      mockTrx.addSnapshot({
+        sessionId: sessionId2.toString(),
+        ownerId: UserId.generate().toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 2,
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId1.toString(),
+            selectedOptionIds: [optionId1.toString()], // Correct
+            answeredAt: new Date().toISOString(),
+          },
+          answer2: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId2.toString(),
+            selectedOptionIds: [optionId3.toString()], // Incorrect
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const result = await repository.getAverageScore();
+
+      // Average of 100% and 50% = 75%
+      expect(result).toBe(75);
+      expect(mockLogger.debugMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Average score calculated',
+          meta: expect.objectContaining({
+            totalQuizzes: 2,
+            validQuizzes: 2,
+            averageScore: 75,
+          }),
+        })
+      );
+    });
+
+    it('should skip quizzes without answers', async () => {
+      // Add completed quiz without answers
+      mockTrx.addSnapshot({
+        sessionId: QuizSessionId.generate().toString(),
+        ownerId: UserId.generate().toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 2,
+        answers: undefined,
+      });
+
+      const result = await repository.getAverageScore();
+
+      expect(result).toBe(0);
+      expect(mockLogger.debugMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'No valid quizzes with scores found',
+        })
+      );
+    });
+
+    it('should handle missing question details gracefully', async () => {
+      const questionId = QuestionId.generate();
+
+      // Add completed quiz with answers
+      mockTrx.addSnapshot({
+        sessionId: QuizSessionId.generate().toString(),
+        ownerId: UserId.generate().toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 1,
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId.toString(),
+            selectedOptionIds: [OptionId.generate().toString()],
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Don't add question details - buildAnswerResults will skip this question
+
+      const result = await repository.getAverageScore();
+
+      // When question details are missing, the score is calculated as 0
+      // (0 correct out of 1 question = 0%)
+      expect(result).toBe(0);
+      // No warning is logged because buildAnswerResults silently skips missing questions
+      expect(mockLogger.warnMessages).toHaveLength(0);
+    });
+  });
+
+  describe('findAllForAdmin', () => {
+    it('should return paginated results with user info', async () => {
+      const sessionId = QuizSessionId.generate();
+      const userId = UserId.generate();
+      const questionId = QuestionId.generate();
+      const optionId1 = OptionId.generate();
+      const optionId2 = OptionId.generate();
+
+      // Add question details
+      mockQuestionDetailsService.addQuestionDetails({
+        id: questionId,
+        text: 'Question 1',
+        options: [
+          { id: optionId1.toString(), text: 'Option 1', isCorrect: true },
+          { id: optionId2.toString(), text: 'Option 2', isCorrect: false },
+        ],
+        correctOptionIds: [optionId1],
+      });
+
+      // Add completed quiz
+      mockTrx.addSnapshot({
+        sessionId: sessionId.toString(),
+        ownerId: userId.toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 1,
+        startedAt: new Date('2025-01-01T10:00:00Z'),
+        completedAt: new Date('2025-01-01T10:30:00Z'),
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId.toString(),
+            selectedOptionIds: [optionId1.toString()], // Correct answer
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const result = await repository.findAllForAdmin({
+        page: 1,
+        pageSize: 10,
+        filters: {},
+      });
+
+      expect(result).toEqual({
+        items: [
+          expect.objectContaining({
+            sessionId: sessionId.toString(),
+            userId: userId.toString(),
+            userEmail: `user-${userId.toString()}@example.com`,
+            state: QuizState.Completed,
+            score: 100, // 100% score
+            questionCount: 1,
+            startedAt: new Date('2025-01-01T10:00:00Z'),
+            completedAt: new Date('2025-01-01T10:30:00Z'),
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      });
+    });
+
+    it('should calculate scores only for completed quizzes', async () => {
+      const sessionId1 = QuizSessionId.generate();
+      const sessionId2 = QuizSessionId.generate();
+      const userId = UserId.generate();
+
+      // Add in-progress quiz
+      mockTrx.addSnapshot({
+        sessionId: sessionId1.toString(),
+        ownerId: userId.toString(),
+        state: 'IN_PROGRESS',
+        expiresAt: new Date(),
+        questionCount: 2,
+        startedAt: new Date(),
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: QuestionId.generate().toString(),
+            selectedOptionIds: [OptionId.generate().toString()],
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Add completed quiz
+      mockTrx.addSnapshot({
+        sessionId: sessionId2.toString(),
+        ownerId: userId.toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 1,
+        startedAt: new Date(),
+        completedAt: new Date(),
+        answers: {},
+      });
+
+      const result = await repository.findAllForAdmin({
+        page: 1,
+        pageSize: 10,
+        filters: {},
+      });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.items[0].score).toBeNull(); // In-progress quiz
+      expect(result.items[1].score).toBeNull(); // Completed but no answers
+    });
+
+    it('should handle quiz state filtering', async () => {
+      const sessionId = QuizSessionId.generate();
+      const userId = UserId.generate();
+
+      // Add completed quiz
+      mockTrx.addSnapshot({
+        sessionId: sessionId.toString(),
+        ownerId: userId.toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 1,
+        startedAt: new Date(),
+        completedAt: new Date(),
+      });
+
+      // Add in-progress quiz
+      mockTrx.addSnapshot({
+        sessionId: QuizSessionId.generate().toString(),
+        ownerId: userId.toString(),
+        state: 'IN_PROGRESS',
+        expiresAt: new Date(),
+        questionCount: 1,
+        startedAt: new Date(),
+      });
+
+      // Set the admin filter state for the mock
+      mockTrx.setAdminFilterState('COMPLETED');
+
+      const result = await repository.findAllForAdmin({
+        page: 1,
+        pageSize: 10,
+        filters: { state: QuizState.Completed },
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].state).toBe(QuizState.Completed);
+      expect(result.total).toBe(1);
+    });
+
+    it('should handle pagination correctly', async () => {
+      // Add 5 quizzes
+      for (let i = 0; i < 5; i++) {
+        mockTrx.addSnapshot({
+          sessionId: QuizSessionId.generate().toString(),
+          ownerId: UserId.generate().toString(),
+          state: 'COMPLETED',
+          expiresAt: new Date(),
+          questionCount: 1,
+          startedAt: new Date(),
+          completedAt: new Date(),
+        });
+      }
+
+      const result = await repository.findAllForAdmin({
+        page: 2,
+        pageSize: 2,
+        filters: {},
+      });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(5);
+      expect(result.page).toBe(2);
+      expect(result.pageSize).toBe(2);
+    });
+
+    it('should handle score calculation errors gracefully', async () => {
+      const sessionId = QuizSessionId.generate();
+      const questionId = QuestionId.generate();
+
+      // Add completed quiz with answers but no question details
+      mockTrx.addSnapshot({
+        sessionId: sessionId.toString(),
+        ownerId: UserId.generate().toString(),
+        state: 'COMPLETED',
+        expiresAt: new Date(),
+        questionCount: 1,
+        startedAt: new Date(),
+        completedAt: new Date(),
+        answers: {
+          answer1: {
+            answerId: AnswerId.generate().toString(),
+            questionId: questionId.toString(),
+            selectedOptionIds: [OptionId.generate().toString()],
+            answeredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const result = await repository.findAllForAdmin({
+        page: 1,
+        pageSize: 10,
+        filters: {},
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].score).toBeNull(); // Score calculation failed
+      expect(mockLogger.warnMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Missing question details for score calculation',
+        })
+      );
     });
   });
 });

@@ -67,6 +67,10 @@ function createUnitOfWork(
     rollback: async () => {
       // No-op for read-only operations
     },
+    getQuestionDetailsService: () => {
+      // Admin routes don't need question details service
+      throw new Error('Question details service not needed for admin operations');
+    },
   };
 }
 

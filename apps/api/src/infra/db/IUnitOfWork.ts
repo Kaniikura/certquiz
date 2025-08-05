@@ -47,6 +47,7 @@
  * interface compatibility and future migration to explicit transaction control.
  */
 
+import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
 
 export interface IUnitOfWork {
@@ -96,6 +97,16 @@ export interface IUnitOfWork {
    * ```
    */
   getRepository<T>(token: RepositoryToken<T>): T;
+
+  /**
+   * Get the question details service for this unit of work
+   *
+   * This service operates within the same transaction context as the unit of work,
+   * ensuring consistent reads when calculating quiz scores.
+   *
+   * @returns IQuestionDetailsService instance bound to the current transaction
+   */
+  getQuestionDetailsService(): IQuestionDetailsService;
 
   // Future repositories can be added by creating new tokens
 }

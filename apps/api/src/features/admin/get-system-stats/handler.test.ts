@@ -45,6 +45,7 @@ describe('getSystemStatsHandler', () => {
       begin: vi.fn().mockResolvedValue(undefined),
       commit: vi.fn().mockResolvedValue(undefined),
       rollback: vi.fn().mockResolvedValue(undefined),
+      getQuestionDetailsService: vi.fn().mockReturnValue(null),
     };
 
     // Act
@@ -115,6 +116,7 @@ describe('getSystemStatsHandler', () => {
       begin: vi.fn().mockResolvedValue(undefined),
       commit: vi.fn().mockResolvedValue(undefined),
       rollback: vi.fn().mockResolvedValue(undefined),
+      getQuestionDetailsService: vi.fn().mockReturnValue(null),
     };
 
     // Act
@@ -194,6 +196,7 @@ describe('getSystemStatsHandler', () => {
       begin: vi.fn().mockResolvedValue(undefined),
       commit: vi.fn().mockResolvedValue(undefined),
       rollback: vi.fn().mockResolvedValue(undefined),
+      getQuestionDetailsService: vi.fn().mockReturnValue(null),
     };
 
     const startTime = Date.now();

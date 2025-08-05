@@ -5,6 +5,8 @@
 
 import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/drizzle/DrizzleAuthUserRepository';
 import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';
+import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
+import { DrizzleQuestionDetailsService } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuestionDetailsService';
 import { DrizzleQuizRepository } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuizRepository';
 import { DrizzleUserRepository } from '@api/features/user/infrastructure/drizzle/DrizzleUserRepository';
 import type { Logger } from '@api/infra/logger/root-logger';
@@ -27,14 +29,21 @@ import type { TransactionContext } from './uow';
  * Eliminates code duplication by centralizing repository creation logic
  * Returns unknown to match the established pattern for repository caching
  */
-function createRepository(token: symbol, db: TransactionContext, logger: Logger): unknown {
+function createRepository(
+  token: symbol,
+  db: TransactionContext,
+  logger: Logger,
+  questionDetailsService?: IQuestionDetailsService
+): unknown {
   switch (token) {
     case AUTH_USER_REPO_TOKEN:
       return new DrizzleAuthUserRepository(db, logger);
     case USER_REPO_TOKEN:
       return new DrizzleUserRepository(db, logger);
-    case QUIZ_REPO_TOKEN:
-      return new DrizzleQuizRepository(db, logger);
+    case QUIZ_REPO_TOKEN: {
+      const service = questionDetailsService || new DrizzleQuestionDetailsService(db, logger);
+      return new DrizzleQuizRepository(db, service, logger);
+    }
     case QUESTION_REPO_TOKEN:
       return new DrizzleQuestionRepository(db, logger);
     default:
@@ -98,6 +107,7 @@ export class AsyncDatabaseContext implements IDatabaseContext {
   private repositoryCache = new Map<symbol, unknown>();
   private db: DB | null = null;
   private initPromise: Promise<void> | null = null;
+  private questionDetailsService: IQuestionDetailsService | null = null;
 
   constructor(
     private readonly logger: Logger,
@@ -213,5 +223,29 @@ export class AsyncDatabaseContext implements IDatabaseContext {
     this.repositoryCache.set(tokenSymbol, repository);
 
     return repository as T;
+  }
+
+  /**
+   * Get the question details service for this database context
+   * Uses lazy initialization to create the service only when needed
+   */
+  getQuestionDetailsService(): IQuestionDetailsService {
+    if (!this.db) {
+      throw new Error(
+        'AsyncDatabaseContext not initialized. This is likely a bug - ' +
+          'context should auto-initialize unless explicitly disabled for testing. ' +
+          'If this is a test, ensure you call initialize() before getQuestionDetailsService(). ' +
+          'If this is production code, check that autoInitialize is not disabled.'
+      );
+    }
+
+    if (!this.questionDetailsService) {
+      this.questionDetailsService = new DrizzleQuestionDetailsService(
+        this.db as TransactionContext,
+        this.logger
+      );
+      this.logger.debug('Question details service created for database context');
+    }
+    return this.questionDetailsService;
   }
 }

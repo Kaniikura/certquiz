@@ -41,6 +41,7 @@ describe('listQuizzesHandler', () => {
       begin: vi.fn(),
       commit: vi.fn(),
       rollback: vi.fn(),
+      getQuestionDetailsService: vi.fn().mockReturnValue(null),
     };
   });
 

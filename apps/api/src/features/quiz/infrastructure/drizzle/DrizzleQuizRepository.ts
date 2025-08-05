@@ -24,13 +24,16 @@ import type {
   PaginatedResult,
   QuizWithUserInfo,
 } from '../../domain/repositories/IQuizRepository';
-import type { QuizSessionId } from '../../domain/value-objects/Ids';
+import type { QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
+import type { IQuestionDetailsService } from '../../domain/value-objects/QuestionDetailsService';
+import { buildAnswerResults, calculateScoreSummary } from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
     private readonly trx: TransactionContext,
+    private readonly questionDetailsService: IQuestionDetailsService,
     logger: LoggerPort
   ) {
     super(logger);
@@ -214,10 +217,108 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
 
   async getAverageScore(): Promise<number> {
     try {
-      // For now, return a placeholder value since score calculation requires
-      // parsing the answers JSON and comparing with correct answers
-      // TODO: Implement proper score calculation from answers
-      return 0;
+      this.logger.debug('Calculating average quiz score');
+
+      // Get all completed quizzes
+      const completedQuizzes = await this.trx
+        .select({
+          sessionId: quizSessionSnapshot.sessionId,
+          questionCount: quizSessionSnapshot.questionCount,
+          answers: quizSessionSnapshot.answers,
+        })
+        .from(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.state, 'COMPLETED' satisfies QuizStateValue));
+
+      if (completedQuizzes.length === 0) {
+        this.logger.debug('No completed quizzes found');
+        return 0;
+      }
+
+      let totalScore = 0;
+      let validQuizCount = 0;
+
+      // Calculate score for each completed quiz
+      for (const quiz of completedQuizzes) {
+        if (!quiz.answers) {
+          continue;
+        }
+
+        try {
+          // Parse answers from JSONB
+          const answersMap = quiz.answers as Record<
+            string,
+            {
+              answerId: string;
+              questionId: string;
+              selectedOptionIds: string[];
+              answeredAt: string;
+            }
+          >;
+
+          // Get question IDs from answers
+          const questionIds = Object.values(answersMap).map(
+            (answer) => answer.questionId as QuestionId
+          );
+
+          if (questionIds.length === 0) {
+            continue;
+          }
+
+          // Fetch question details
+          const questionDetailsMap =
+            await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
+
+          // Create a session-like object with only the methods needed for scoring
+          const sessionForScoring = {
+            getAnswers: () => {
+              const answerMap = new Map<
+                string,
+                { selectedOptionIds: string[]; answeredAt: Date }
+              >();
+              for (const [_, answerData] of Object.entries(answersMap)) {
+                answerMap.set(answerData.questionId, {
+                  selectedOptionIds: answerData.selectedOptionIds,
+                  answeredAt: new Date(answerData.answeredAt),
+                });
+              }
+              return answerMap;
+            },
+            config: { questionCount: quiz.questionCount },
+          };
+
+          // Type assertion to QuizSession is necessary here because we're only providing
+          // the minimal interface needed for scoring utilities
+          const mockSession = sessionForScoring as unknown as QuizSession;
+
+          // Calculate score using existing utilities
+          const { correctCount } = buildAnswerResults(mockSession, questionDetailsMap);
+          const scoreSummary = calculateScoreSummary(correctCount, quiz.questionCount);
+
+          totalScore += scoreSummary.percentage;
+          validQuizCount++;
+        } catch (error) {
+          this.logger.warn('Failed to calculate score for quiz in average calculation', {
+            sessionId: quiz.sessionId,
+            error: this.getErrorDetails(error),
+          });
+          // Skip this quiz in the average calculation
+        }
+      }
+
+      if (validQuizCount === 0) {
+        this.logger.debug('No valid quizzes with scores found');
+        return 0;
+      }
+
+      const averageScore = Math.round(totalScore / validQuizCount);
+
+      this.logger.debug('Average score calculated', {
+        totalQuizzes: completedQuizzes.length,
+        validQuizzes: validQuizCount,
+        averageScore,
+      });
+
+      return averageScore;
     } catch (error) {
       this.logger.error('Failed to get average score:', {
         error: this.getErrorDetails(error),
@@ -287,40 +388,112 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         .offset(offset);
 
       // Calculate scores and map to QuizWithUserInfo
-      const items: QuizWithUserInfo[] = results.map((row) => {
-        // TODO: Implement proper score calculation with question validation
-        // Score calculation requires comparing actual answers with correct answers
-        // from question data, which is not available in this context.
-        // Return null until proper scoring logic is implemented.
-        const score: number | null = null;
+      const items: QuizWithUserInfo[] = await Promise.all(
+        results.map(async (row) => {
+          let score: number | null = null;
 
-        // Convert database state value to QuizState enum
-        let quizState: QuizState;
-        switch (row.state) {
-          case 'IN_PROGRESS':
-            quizState = QuizState.InProgress;
-            break;
-          case 'COMPLETED':
-            quizState = QuizState.Completed;
-            break;
-          case 'EXPIRED':
-            quizState = QuizState.Expired;
-            break;
-          default:
-            throw new Error(`Unknown quiz state: ${row.state}`);
-        }
+          // Only calculate score for completed quizzes
+          if (row.state === 'COMPLETED' && row.answers) {
+            try {
+              // Parse answers from JSONB
+              const answersMap = row.answers as Record<
+                string,
+                {
+                  answerId: string;
+                  questionId: string;
+                  selectedOptionIds: string[];
+                  answeredAt: string;
+                }
+              >;
 
-        return {
-          sessionId: row.sessionId,
-          userId: row.userId,
-          userEmail: row.userEmail,
-          state: quizState,
-          score,
-          questionCount: row.questionCount,
-          startedAt: row.startedAt,
-          completedAt: row.completedAt,
-        };
-      });
+              // Get question IDs from answers
+              const questionIds = Object.values(answersMap).map(
+                (answer) => answer.questionId as QuestionId
+              );
+
+              // If no answers, keep score as null
+              if (questionIds.length === 0) {
+                score = null;
+              } else {
+                // Fetch question details
+                const questionDetailsMap =
+                  await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
+
+                // Create a session-like object with only the methods needed for scoring
+                const sessionForScoring = {
+                  getAnswers: () => {
+                    const answerMap = new Map<
+                      string,
+                      { selectedOptionIds: string[]; answeredAt: Date }
+                    >();
+                    for (const [_, answerData] of Object.entries(answersMap)) {
+                      answerMap.set(answerData.questionId, {
+                        selectedOptionIds: answerData.selectedOptionIds,
+                        answeredAt: new Date(answerData.answeredAt),
+                      });
+                    }
+                    return answerMap;
+                  },
+                  config: { questionCount: row.questionCount },
+                };
+
+                // Type assertion to QuizSession is necessary here because we're only providing
+                // the minimal interface needed for scoring utilities
+                const mockSession = sessionForScoring as unknown as QuizSession;
+
+                // Check if we got details for all questions
+                if (questionDetailsMap.size < questionIds.length) {
+                  // Some question details are missing, can't calculate accurate score
+                  this.logger.warn('Missing question details for score calculation', {
+                    sessionId: row.sessionId,
+                    requestedQuestions: questionIds.length,
+                    foundQuestions: questionDetailsMap.size,
+                  });
+                  score = null;
+                } else {
+                  // Calculate score using existing utilities
+                  const { correctCount } = buildAnswerResults(mockSession, questionDetailsMap);
+                  const scoreSummary = calculateScoreSummary(correctCount, row.questionCount);
+                  score = scoreSummary.percentage;
+                }
+              }
+            } catch (error) {
+              this.logger.warn('Failed to calculate score for quiz', {
+                sessionId: row.sessionId,
+                error: this.getErrorDetails(error),
+              });
+              // Keep score as null if calculation fails
+            }
+          }
+
+          // Convert database state value to QuizState enum
+          let quizState: QuizState;
+          switch (row.state) {
+            case 'IN_PROGRESS':
+              quizState = QuizState.InProgress;
+              break;
+            case 'COMPLETED':
+              quizState = QuizState.Completed;
+              break;
+            case 'EXPIRED':
+              quizState = QuizState.Expired;
+              break;
+            default:
+              throw new Error(`Unknown quiz state: ${row.state}`);
+          }
+
+          return {
+            sessionId: row.sessionId,
+            userId: row.userId,
+            userEmail: row.userEmail,
+            state: quizState,
+            score,
+            questionCount: row.questionCount,
+            startedAt: row.startedAt,
+            completedAt: row.completedAt,
+          };
+        })
+      );
 
       const result: PaginatedResult<QuizWithUserInfo> = {
         items,

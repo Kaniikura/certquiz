@@ -11,7 +11,6 @@ import {
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
-  QUESTION_DETAILS_SERVICE_TOKEN,
   QUESTION_SERVICE_TOKEN,
 } from './tokens';
 
@@ -31,7 +30,6 @@ describe('Async Container Configuration', () => {
       expect(container.has(AUTH_PROVIDER_TOKEN)).toBe(true);
       expect(container.has(PREMIUM_ACCESS_SERVICE_TOKEN)).toBe(true);
       expect(container.has(QUESTION_SERVICE_TOKEN)).toBe(true);
-      expect(container.has(QUESTION_DETAILS_SERVICE_TOKEN)).toBe(true);
     });
 
     it('should use TestDatabaseProvider in test environment', async () => {
@@ -132,7 +130,6 @@ describe('Async Container Configuration', () => {
       expect(container.has(AUTH_PROVIDER_TOKEN)).toBe(true);
       expect(container.has(PREMIUM_ACCESS_SERVICE_TOKEN)).toBe(true);
       expect(container.has(QUESTION_SERVICE_TOKEN)).toBe(true);
-      expect(container.has(QUESTION_DETAILS_SERVICE_TOKEN)).toBe(true);
     });
 
     it('should use ProductionDatabaseProvider in development environment', async () => {
@@ -235,7 +232,6 @@ describe('Async Container Configuration', () => {
       expect(container.has(AUTH_PROVIDER_TOKEN)).toBe(true);
       expect(container.has(PREMIUM_ACCESS_SERVICE_TOKEN)).toBe(true);
       expect(container.has(QUESTION_SERVICE_TOKEN)).toBe(true);
-      expect(container.has(QUESTION_DETAILS_SERVICE_TOKEN)).toBe(true);
     });
 
     it('should use ProductionDatabaseProvider in production environment', async () => {
@@ -410,7 +406,7 @@ describe('Async Container Configuration', () => {
   });
 
   describe('Question services configuration', () => {
-    it('should use stub question services in all environments', async () => {
+    it('should use stub question service in all environments', async () => {
       // Arrange
       const environments: Array<'test' | 'development' | 'production'> = [
         'test',
@@ -427,11 +423,10 @@ describe('Async Container Configuration', () => {
         // Act
         const container = createConfiguredContainer(env);
         const questionService = await container.resolve(QUESTION_SERVICE_TOKEN);
-        const questionDetailsService = await container.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
 
         // Assert
         expect(questionService.constructor.name).toBe('StubQuestionService');
-        expect(questionDetailsService.constructor.name).toBe('StubQuestionDetailsService');
+        expect(questionService).toBeDefined();
 
         // Cleanup
         if (env !== 'test') {
