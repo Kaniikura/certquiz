@@ -1126,8 +1126,17 @@ describe('Question Routes HTTP Integration', () => {
 
         expect(data).toMatchObject({
           success: true,
-          message: 'Question moderated successfully',
+          data: {
+            success: true,
+            questionId: draftQuestionId,
+            previousStatus: 'PENDING',
+            newStatus: 'APPROVED',
+            action: 'approve',
+            feedback: 'Question is well-structured and accurate',
+          },
         });
+        expect(data.data.moderatedBy).toBeDefined();
+        expect(data.data.moderatedAt).toBeDefined();
       });
 
       it('should reject a draft question with feedback', async () => {
@@ -1150,8 +1159,18 @@ describe('Question Routes HTTP Integration', () => {
 
         expect(data).toMatchObject({
           success: true,
-          message: 'Question moderated successfully',
+          data: {
+            success: true,
+            questionId: draftQuestionId,
+            previousStatus: 'PENDING',
+            newStatus: 'REJECTED',
+            action: 'reject',
+            feedback:
+              'The explanation needs more detail and the question text has grammatical errors.',
+          },
         });
+        expect(data.data.moderatedBy).toBeDefined();
+        expect(data.data.moderatedAt).toBeDefined();
       });
 
       it('should require feedback for rejection', async () => {

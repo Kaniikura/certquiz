@@ -392,11 +392,11 @@ export function createAdminRoutes(): Hono<{
         feedback: body.feedback,
       };
 
-      await moderateQuestionHandler(params, unitOfWork);
+      const result = await moderateQuestionHandler(params, unitOfWork);
 
       return c.json({
         success: true,
-        message: 'Question moderated successfully',
+        data: result,
       });
     } catch (error) {
       const { response, status } = handleModerationErrorWithStatus(error);
