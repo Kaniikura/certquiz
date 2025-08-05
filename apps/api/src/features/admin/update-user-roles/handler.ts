@@ -3,9 +3,11 @@
  * @fileoverview Business logic for admin role management
  */
 
+import type { User } from '@api/features/auth/domain/entities/User';
+import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
 import { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
-import { NotFoundError, ValidationError } from '@api/shared/errors';
+import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
 import { AUTH_USER_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { AdminPermissionError } from '../shared/admin-errors';
 import type { UpdateUserRolesParams, UpdateUserRolesResponse } from './dto';
@@ -20,49 +22,48 @@ import { updateUserRolesSchema } from './validation';
  * @throws {NotFoundError} if user doesn't exist
  * @throws {AdminPermissionError} if role combination is invalid or self-demotion attempted
  */
-export async function updateUserRolesHandler(
-  params: UpdateUserRolesParams,
-  unitOfWork: IUnitOfWork
-): Promise<UpdateUserRolesResponse> {
-  // Validate input parameters
-  const validationResult = updateUserRolesSchema.safeParse(params);
-  if (!validationResult.success) {
-    throw new ValidationError(validationResult.error.errors[0].message);
-  }
+export const updateUserRolesHandler = createAdminActionHandler<
+  UpdateUserRolesParams,
+  User,
+  IAuthUserRepository,
+  UpdateUserRolesResponse,
+  IUnitOfWork
+>({
+  schema: updateUserRolesSchema,
 
-  const { userId, roles, updatedBy } = params;
+  getRepository: (unitOfWork) => unitOfWork.getRepository(AUTH_USER_REPO_TOKEN),
 
-  // Validate role combinations
-  if (roles.includes('admin') && roles.includes('user')) {
-    throw new AdminPermissionError('Invalid role combination: admin cannot have user role');
-  }
+  findEntity: async (repo, params) => {
+    return repo.findById(UserId.of(params.userId));
+  },
 
-  // Get repository from unit of work
-  const authUserRepo = unitOfWork.getRepository(AUTH_USER_REPO_TOKEN);
+  notFoundMessage: 'User not found',
 
-  // Check if user exists
-  const user = await authUserRepo.findById(UserId.of(userId));
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
+  validateBusinessRules: (user, params) => {
+    const { roles, updatedBy } = params;
 
-  // Store previous roles for response
-  const previousRoles = [user.role];
+    // Validate role combinations
+    if (roles.includes('admin') && roles.includes('user')) {
+      throw new AdminPermissionError('Invalid role combination: admin cannot have user role');
+    }
 
-  // Prevent self-demotion for admins
-  if (user.id.toString() === updatedBy && user.role === 'admin' && !roles.includes('admin')) {
-    throw new AdminPermissionError('Admins cannot remove their own admin role');
-  }
+    // Prevent self-demotion for admins
+    if (user.id.toString() === updatedBy && user.role === 'admin' && !roles.includes('admin')) {
+      throw new AdminPermissionError('Admins cannot remove their own admin role');
+    }
+  },
 
-  // Update roles with audit trail
-  await authUserRepo.updateRoles(userId, roles, updatedBy);
+  executeAction: async (repo, _user, params) => {
+    // Update roles with audit trail
+    await repo.updateRoles(params.userId, params.roles, params.updatedBy);
+  },
 
-  return {
+  buildResponse: (user, params) => ({
     success: true,
-    userId,
-    previousRoles,
-    newRoles: roles,
-    updatedBy,
+    userId: params.userId,
+    previousRoles: [user.role],
+    newRoles: params.roles,
+    updatedBy: params.updatedBy,
     updatedAt: new Date(),
-  };
-}
+  }),
+});

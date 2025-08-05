@@ -313,7 +313,7 @@ describe('moderateQuestionHandler', () => {
 
       // Act & Assert
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'Question with ID 550e8400-e29b-41d4-a716-446655440014 not found'
+        'Question not found'
       );
     });
 
@@ -359,7 +359,7 @@ describe('moderateQuestionHandler', () => {
       );
       // @ts-expect-error Testing invalid input for validation
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'questionId: Must be a valid UUID'
+        'Must be a valid UUID'
       );
     });
 
@@ -376,7 +376,7 @@ describe('moderateQuestionHandler', () => {
         ValidationError
       );
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'moderatedBy: Must be a valid UUID'
+        'Must be a valid UUID'
       );
     });
 

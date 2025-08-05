@@ -142,7 +142,7 @@ function handleModerationErrorWithStatus(error: unknown) {
         },
         status: status as ContentfulStatusCode,
       };
-    } else if (error.name === 'QuestionNotFoundError') {
+    } else if (error.name === 'QuestionNotFoundError' || error.name === 'NotFoundError') {
       status = 404;
       return {
         response: {

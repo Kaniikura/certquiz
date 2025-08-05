@@ -1193,7 +1193,7 @@ describe('Question Routes HTTP Integration', () => {
           success: false,
           error: {
             code: 'VALIDATION_ERROR',
-            message: expect.stringContaining('feedback'),
+            message: 'Feedback is required for reject action',
           },
         });
       });

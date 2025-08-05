@@ -87,6 +87,12 @@ describe('updateUserRolesHandler', () => {
 
   it('should reject invalid role combinations', async () => {
     // Arrange
+    const mockUser = {
+      id: UserId.of('550e8400-e29b-41d4-a716-446655440002'),
+      role: 'user',
+    } as User;
+    vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockUser);
+
     const params: UpdateUserRolesParams = {
       userId: '550e8400-e29b-41d4-a716-446655440002',
       roles: ['user', 'admin'], // Invalid: regular users can't be admins
