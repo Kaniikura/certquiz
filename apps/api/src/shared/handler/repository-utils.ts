@@ -37,7 +37,11 @@ export function createRepositoryFetch<
     filters: TFilters | undefined,
     pagination: { page: number; pageSize: number }
   ) => TOptions
-) {
+): (
+  repo: TRepo,
+  filters: TFilters | undefined,
+  params: { page?: number; pageSize?: number }
+) => Promise<PaginatedResult<TResult>> {
   return async (
     repo: TRepo,
     filters: TFilters | undefined,
