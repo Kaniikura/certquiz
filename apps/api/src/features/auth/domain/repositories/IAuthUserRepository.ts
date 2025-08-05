@@ -87,15 +87,15 @@ export interface IAuthUserRepository {
   findAllPaginated(params: UserPaginationParams): Promise<PaginatedUserResult>;
 
   /**
-   * Admin management: Update user roles
-   * @param userId - The user ID to update
-   * @param roles - New roles to assign
-   * @param updatedBy - Admin user ID who is making the change
-   */
-  /**
    * Update user's last login timestamp
    */
   updateLastLoginAt(userId: UserId): Promise<void>;
 
-  updateRoles(userId: string, roles: string[], updatedBy: string): Promise<void>;
+  /**
+   * Admin management: Update user role
+   * @param userId - The user ID to update
+   * @param role - New role to assign
+   * @param updatedBy - Admin user ID who is making the change
+   */
+  updateRole(userId: string, role: string, updatedBy: string): Promise<void>;
 }

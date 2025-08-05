@@ -320,18 +320,14 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
     }
   }
 
-  async updateRoles(userId: UserId, roles: string[], updatedBy: string): Promise<void> {
+  async updateRole(userId: UserId, role: string, updatedBy: string): Promise<void> {
     try {
-      // Validate roles array
-      if (!roles || roles.length === 0) {
-        throw new Error('Roles array cannot be empty');
+      // Validate role is provided
+      if (!role) {
+        throw new Error('Role cannot be empty');
       }
 
-      // For simplicity, we'll use the highest role from the array
-      // In a real system, you might store multiple roles differently
-      const highestRole = this.determineHighestRole(roles);
-
-      // Validate the determined role is one of the allowed values
+      // Validate the role is one of the allowed values
       const validRoles = ['guest', 'user', 'premium', 'admin'] as const;
       type ValidRole = (typeof validRoles)[number];
 
@@ -339,27 +335,27 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
         return validRoles.includes(role as ValidRole);
       };
 
-      if (!isValidRole(highestRole)) {
-        throw new Error(`Invalid role determined: ${highestRole}`);
+      if (!isValidRole(role)) {
+        throw new Error(`Invalid role: ${role}`);
       }
 
       await this.conn
         .update(authUser)
         .set({
-          role: highestRole,
+          role: role,
           updatedAt: new Date(),
         })
         .where(eq(authUser.userId, UserId.toString(userId)));
 
-      this.logger.info('User roles updated successfully', {
+      this.logger.info('User role updated successfully', {
         userId: UserId.toString(userId),
-        newRole: highestRole,
+        newRole: role,
         updatedBy,
       });
     } catch (error) {
-      this.logger.error('Failed to update user roles:', {
+      this.logger.error('Failed to update user role:', {
         userId: UserId.toString(userId),
-        roles,
+        role,
         updatedBy,
         error: this.getErrorDetails(error),
       });
@@ -479,13 +475,5 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
     }
 
     return items;
-  }
-
-  private determineHighestRole(roles: string[]): string {
-    // Role hierarchy: admin > premium > user > guest
-    if (roles.includes('admin')) return 'admin';
-    if (roles.includes('premium')) return 'premium';
-    if (roles.includes('user')) return 'user';
-    return 'guest';
   }
 }

@@ -273,7 +273,7 @@ describe('Authentication Protected Routes Integration', () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ roles: ['premium'] }),
+        body: JSON.stringify({ role: 'premium' }),
       });
       expect(res.status).toBe(403);
     });
@@ -294,7 +294,7 @@ describe('Authentication Protected Routes Integration', () => {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ roles: ['user', 'premium'] }),
+          body: JSON.stringify({ role: 'premium' }),
         }
       );
 

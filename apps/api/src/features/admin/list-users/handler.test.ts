@@ -32,7 +32,7 @@ describe('listUsersHandler', () => {
       isUsernameTaken: vi.fn(),
       countTotalUsers: vi.fn(),
       countActiveUsers: vi.fn(),
-      updateRoles: vi.fn(),
+      updateRole: vi.fn(),
       updateLastLoginAt: vi.fn(),
     };
 

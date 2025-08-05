@@ -175,28 +175,21 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     await this.save(updatedUserResult.data);
   }
 
-  async updateRoles(userId: string, roles: string[], _updatedBy: string): Promise<void> {
+  async updateRole(userId: string, role: string, _updatedBy: string): Promise<void> {
     const user = await this.findById(UserId.of(userId));
     if (!user) {
       throw new Error(`User not found: ${userId}`);
     }
 
-    // Update the user's role based on the highest role in the array
-    // Following the role hierarchy: admin > premium > user > guest
-    let highestRole = UserRole.Guest;
-    for (const role of roles) {
-      const parsedRole = UserRole.fromString(role);
-      if (UserRole.hasPermission(parsedRole, highestRole)) {
-        highestRole = parsedRole;
-      }
-    }
+    // Parse and validate the role
+    const parsedRole = UserRole.fromString(role);
 
     // Create updated user with new role - User constructor is private,
     // so we need to create a new user from persistence data with updated role
     const userPersistence = user.toPersistence();
     const updatedUserData = {
       ...userPersistence,
-      role: UserRole.roleToString(highestRole),
+      role: UserRole.roleToString(parsedRole),
       updatedAt: new Date(),
     };
 

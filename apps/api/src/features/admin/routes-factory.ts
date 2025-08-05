@@ -254,7 +254,7 @@ export function createAdminRoutes(): Hono<{
       const body = await c.req.json();
       const params: UpdateUserRolesParams = {
         userId,
-        roles: body.roles || [],
+        role: body.role,
         updatedBy: adminUser.sub,
       };
 

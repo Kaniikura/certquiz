@@ -1,5 +1,5 @@
 /**
- * Update user roles handler tests
+ * Update user role handler tests
  * @fileoverview Tests for admin role management functionality
  */
 
@@ -22,7 +22,7 @@ describe('updateUserRolesHandler', () => {
   beforeEach(() => {
     mockAuthUserRepo = {
       findById: vi.fn(),
-      updateRoles: vi.fn(),
+      updateRole: vi.fn(),
       findByEmail: vi.fn(),
       findByIdentityProviderId: vi.fn(),
       findByUsername: vi.fn(),
@@ -47,7 +47,7 @@ describe('updateUserRolesHandler', () => {
     };
   });
 
-  it('should update user roles with validation', async () => {
+  it('should update user role with validation', async () => {
     // Arrange
     const userId = '550e8400-e29b-41d4-a716-446655440000';
     const mockUser = createMockUser({
@@ -59,11 +59,11 @@ describe('updateUserRolesHandler', () => {
     });
 
     vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockUser);
-    vi.mocked(mockAuthUserRepo.updateRoles).mockResolvedValue(undefined);
+    vi.mocked(mockAuthUserRepo.updateRole).mockResolvedValue(undefined);
 
     const params: UpdateUserRolesParams = {
       userId,
-      roles: ['user', 'premium'],
+      role: 'premium',
       updatedBy: '550e8400-e29b-41d4-a716-446655440001',
     };
 
@@ -73,38 +73,30 @@ describe('updateUserRolesHandler', () => {
     // Assert
     expect(result.success).toBe(true);
     expect(result.userId).toBe(userId);
-    expect(result.previousRoles).toEqual(['user']);
-    expect(result.newRoles).toEqual(['user', 'premium']);
+    expect(result.previousRole).toBe('user');
+    expect(result.newRole).toBe('premium');
     expect(result.updatedBy).toBe('550e8400-e29b-41d4-a716-446655440001');
     expect(result.updatedAt).toBeInstanceOf(Date);
 
-    expect(mockAuthUserRepo.updateRoles).toHaveBeenCalledWith(
+    expect(mockAuthUserRepo.updateRole).toHaveBeenCalledWith(
       userId,
-      ['user', 'premium'],
+      'premium',
       '550e8400-e29b-41d4-a716-446655440001'
     );
   });
 
-  it('should reject invalid role combinations', async () => {
+  it('should validate invalid roles', async () => {
     // Arrange
-    const mockUser = {
-      id: UserId.of('550e8400-e29b-41d4-a716-446655440002'),
-      role: 'user',
-    } as User;
-    vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockUser);
-
     const params: UpdateUserRolesParams = {
       userId: '550e8400-e29b-41d4-a716-446655440002',
-      roles: ['user', 'admin'], // Invalid: regular users can't be admins
+      role: 'invalid-role',
       updatedBy: '550e8400-e29b-41d4-a716-446655440003',
     };
 
     // Act & Assert
+    await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(ValidationError);
     await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(
-      AdminPermissionError
-    );
-    await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(
-      'Invalid role combination'
+      'Invalid role specified'
     );
   });
 
@@ -114,7 +106,7 @@ describe('updateUserRolesHandler', () => {
 
     const params: UpdateUserRolesParams = {
       userId: '550e8400-e29b-41d4-a716-446655440004',
-      roles: ['premium'],
+      role: 'premium',
       updatedBy: '550e8400-e29b-41d4-a716-446655440005',
     };
 
@@ -138,7 +130,7 @@ describe('updateUserRolesHandler', () => {
 
     const params: UpdateUserRolesParams = {
       userId: adminId,
-      roles: ['user'], // Trying to remove admin role from self
+      role: 'user', // Trying to remove admin role from self
       updatedBy: adminId, // Same as userId
     };
 
@@ -151,27 +143,12 @@ describe('updateUserRolesHandler', () => {
     );
   });
 
-  it('should validate empty roles array', async () => {
+  it('should validate empty role', async () => {
     // Arrange
     const params: UpdateUserRolesParams = {
       userId: '550e8400-e29b-41d4-a716-446655440007',
-      roles: [],
+      role: '',
       updatedBy: '550e8400-e29b-41d4-a716-446655440008',
-    };
-
-    // Act & Assert
-    await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(ValidationError);
-    await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(
-      'At least one role must be specified'
-    );
-  });
-
-  it('should validate invalid roles', async () => {
-    // Arrange
-    const params: UpdateUserRolesParams = {
-      userId: '550e8400-e29b-41d4-a716-446655440009',
-      roles: ['invalid-role'],
-      updatedBy: '550e8400-e29b-41d4-a716-446655440010',
     };
 
     // Act & Assert
@@ -182,7 +159,7 @@ describe('updateUserRolesHandler', () => {
     // Arrange
     const params: UpdateUserRolesParams = {
       userId: 'invalid-uuid',
-      roles: ['user'],
+      role: 'user',
       updatedBy: '550e8400-e29b-41d4-a716-446655440011',
     };
 
@@ -190,23 +167,23 @@ describe('updateUserRolesHandler', () => {
     await expect(updateUserRolesHandler(params, mockUnitOfWork)).rejects.toThrow(ValidationError);
   });
 
-  it('should allow admin to update other admin roles', async () => {
+  it('should allow admin to update other user roles', async () => {
     // Arrange
-    const otherAdminId = '550e8400-e29b-41d4-a716-446655440012';
-    const mockAdmin = createMockUser({
-      userId: otherAdminId,
-      email: 'other-admin@example.com',
-      username: 'otheradmin',
-      role: UserRole.Admin,
+    const otherUserId = '550e8400-e29b-41d4-a716-446655440012';
+    const mockUser = createMockUser({
+      userId: otherUserId,
+      email: 'other-user@example.com',
+      username: 'otheruser',
+      role: UserRole.User,
       isActive: true,
     });
 
-    vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockAdmin);
-    vi.mocked(mockAuthUserRepo.updateRoles).mockResolvedValue(undefined);
+    vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockUser);
+    vi.mocked(mockAuthUserRepo.updateRole).mockResolvedValue(undefined);
 
     const params: UpdateUserRolesParams = {
-      userId: otherAdminId,
-      roles: ['admin', 'premium'], // Admin can have multiple roles
+      userId: otherUserId,
+      role: 'premium', // Upgrading user to premium
       updatedBy: '550e8400-e29b-41d4-a716-446655440013', // Different admin
     };
 
@@ -215,7 +192,7 @@ describe('updateUserRolesHandler', () => {
 
     // Assert
     expect(result.success).toBe(true);
-    expect(result.newRoles).toEqual(['admin', 'premium']);
+    expect(result.newRole).toBe('premium');
   });
 
   it('should handle guest role upgrades', async () => {
@@ -230,11 +207,11 @@ describe('updateUserRolesHandler', () => {
     });
 
     vi.mocked(mockAuthUserRepo.findById).mockResolvedValue(mockGuest);
-    vi.mocked(mockAuthUserRepo.updateRoles).mockResolvedValue(undefined);
+    vi.mocked(mockAuthUserRepo.updateRole).mockResolvedValue(undefined);
 
     const params: UpdateUserRolesParams = {
       userId: guestId,
-      roles: ['user'],
+      role: 'user',
       updatedBy: '550e8400-e29b-41d4-a716-446655440015',
     };
 
@@ -243,8 +220,8 @@ describe('updateUserRolesHandler', () => {
 
     // Assert
     expect(result.success).toBe(true);
-    expect(result.previousRoles).toEqual(['guest']);
-    expect(result.newRoles).toEqual(['user']);
+    expect(result.previousRole).toBe('guest');
+    expect(result.newRole).toBe('user');
   });
 });
 

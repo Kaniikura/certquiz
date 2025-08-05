@@ -30,7 +30,7 @@ const createMockUserRepository = (): IAuthUserRepository => ({
   countTotalUsers: vi.fn().mockResolvedValue(0),
   countActiveUsers: vi.fn().mockResolvedValue(0),
   findAllPaginated: vi.fn(),
-  updateRoles: vi.fn(),
+  updateRole: vi.fn(),
   updateLastLoginAt: vi.fn(),
 });
 

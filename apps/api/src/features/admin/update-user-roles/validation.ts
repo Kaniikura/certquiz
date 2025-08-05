@@ -1,5 +1,5 @@
 /**
- * Update user roles validation
+ * Update user role validation
  * @fileoverview Input validation for role update operations
  */
 
@@ -12,12 +12,12 @@ import { z } from 'zod';
 const validRoles = Object.values(UserRole);
 
 /**
- * Schema for update user roles request
+ * Schema for update user role request
  */
 export const updateUserRolesSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
-  roles: z
-    .array(z.enum(validRoles as [string, ...string[]]))
-    .min(1, 'At least one role must be specified'),
+  role: z.enum(validRoles as [string, ...string[]], {
+    errorMap: () => ({ message: 'Invalid role specified' }),
+  }),
   updatedBy: z.string().uuid('Invalid updater ID format'),
 });

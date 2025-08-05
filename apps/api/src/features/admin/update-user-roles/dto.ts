@@ -4,11 +4,11 @@
  */
 
 /**
- * Request parameters for updating user roles
+ * Request parameters for updating user role
  */
 export interface UpdateUserRolesParams {
   userId: string;
-  roles: string[];
+  role: string;
   updatedBy: string;
 }
 
@@ -18,8 +18,8 @@ export interface UpdateUserRolesParams {
 export interface UpdateUserRolesResponse {
   success: boolean;
   userId: string;
-  previousRoles: string[];
-  newRoles: string[];
+  previousRole: string;
+  newRole: string;
   updatedBy: string;
   updatedAt: Date;
 }

@@ -1,5 +1,5 @@
 /**
- * Update user roles handler
+ * Update user role handler
  * @fileoverview Business logic for admin role management
  */
 
@@ -15,13 +15,13 @@ import type { UpdateUserRolesParams, UpdateUserRolesResponse } from './dto';
 import { updateUserRolesSchema } from './validation';
 
 /**
- * Handler for updating user roles with validation and permission checks
+ * Handler for updating user role with validation and permission checks
  * @param params - Role update parameters
  * @param unitOfWork - Unit of work for database operations
- * @returns Update confirmation with previous and new roles
+ * @returns Update confirmation with previous and new role
  * @throws {ValidationError} if parameters are invalid
  * @throws {NotFoundError} if user doesn't exist
- * @throws {AdminPermissionError} if role combination is invalid or self-demotion attempted
+ * @throws {AdminPermissionError} if invalid role or self-demotion attempted
  */
 export const updateUserRolesHandler = createAdminActionHandler<
   UpdateUserRolesParams,
@@ -41,33 +41,28 @@ export const updateUserRolesHandler = createAdminActionHandler<
   notFoundMessage: 'User not found',
 
   validateBusinessRules: (user, params) => {
-    const { roles, updatedBy } = params;
-
-    // Validate role combinations
-    if (roles.includes(UserRole.Admin) && roles.includes(UserRole.User)) {
-      throw new AdminPermissionError('Invalid role combination: admin cannot have user role');
-    }
+    const { role, updatedBy } = params;
 
     // Prevent self-demotion for admins
     if (
       UserId.equals(user.id, UserId.of(updatedBy)) &&
       user.role === UserRole.Admin &&
-      !roles.includes(UserRole.Admin)
+      role !== UserRole.Admin
     ) {
       throw new AdminPermissionError('Admins cannot remove their own admin role');
     }
   },
 
   executeAction: async (repo, _user, params) => {
-    // Update roles with audit trail
-    await repo.updateRoles(params.userId, params.roles, params.updatedBy);
+    // Update role with audit trail
+    await repo.updateRole(params.userId, params.role, params.updatedBy);
   },
 
   buildResponse: (user, params) => ({
     success: true,
     userId: params.userId,
-    previousRoles: [user.role],
-    newRoles: params.roles,
+    previousRole: user.role,
+    newRole: params.role,
     updatedBy: params.updatedBy,
     updatedAt: new Date(),
   }),
