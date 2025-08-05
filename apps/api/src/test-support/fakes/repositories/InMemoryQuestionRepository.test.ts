@@ -6,8 +6,38 @@ import {
   QuestionNotFoundError,
 } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { Result } from '@api/shared/result';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryQuestionRepository } from './InMemoryQuestionRepository';
+
+/**
+ * Helper function to create a new Question with a specific status
+ * while preserving all other properties from the base question
+ */
+function createQuestionWithStatus(
+  baseQuestion: Question,
+  status: QuestionStatus
+): Result<Question> {
+  return Question.create({
+    id: baseQuestion.id,
+    version: baseQuestion.version + 1,
+    questionText: baseQuestion.questionText,
+    questionType: baseQuestion.questionType,
+    explanation: baseQuestion.explanation,
+    detailedExplanation: baseQuestion.detailedExplanation,
+    options: baseQuestion.options,
+    examTypes: baseQuestion.examTypes,
+    categories: baseQuestion.categories,
+    difficulty: baseQuestion.difficulty,
+    tags: baseQuestion.tags,
+    images: baseQuestion.images,
+    isPremium: baseQuestion.isPremium,
+    status,
+    createdById: baseQuestion.createdById,
+    createdAt: baseQuestion.createdAt,
+    updatedAt: new Date(),
+  });
+}
 
 describe('InMemoryQuestionRepository - Moderation Tests', () => {
   let repository: InMemoryQuestionRepository;
@@ -151,25 +181,7 @@ describe('InMemoryQuestionRepository - Moderation Tests', () => {
       // Reset to draft for second moderation (simulate re-submission)
       const updatedQuestion = await repository.findQuestionWithDetails(testQuestionId);
       if (updatedQuestion) {
-        const draftResult = Question.create({
-          id: updatedQuestion.id,
-          version: updatedQuestion.version + 1,
-          questionText: updatedQuestion.questionText,
-          questionType: updatedQuestion.questionType,
-          explanation: updatedQuestion.explanation,
-          detailedExplanation: updatedQuestion.detailedExplanation,
-          options: updatedQuestion.options,
-          examTypes: updatedQuestion.examTypes,
-          categories: updatedQuestion.categories,
-          difficulty: updatedQuestion.difficulty,
-          tags: updatedQuestion.tags,
-          images: updatedQuestion.images,
-          isPremium: updatedQuestion.isPremium,
-          status: QuestionStatus.DRAFT,
-          createdById: updatedQuestion.createdById,
-          createdAt: updatedQuestion.createdAt,
-          updatedAt: new Date(),
-        });
+        const draftResult = createQuestionWithStatus(updatedQuestion, QuestionStatus.DRAFT);
 
         if (draftResult.success) {
           repository.addQuestion(draftResult.data);
