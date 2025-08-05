@@ -19,16 +19,80 @@ const { PostgresError } = postgres;
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { PaginatedResult } from '@api/shared/types/pagination';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
+import { Answer } from '../../domain/entities/Answer';
 import type {
   AdminQuizParams,
   IQuizRepository,
   QuizWithUserInfo,
 } from '../../domain/repositories/IQuizRepository';
-import type { QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
-import type { IQuestionDetailsService } from '../../domain/value-objects/QuestionDetailsService';
+import type { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
+import type {
+  IQuestionDetailsService,
+  QuestionDetails,
+} from '../../domain/value-objects/QuestionDetailsService';
+import type { AnswerResult } from '../../get-results/dto';
 import { buildAnswerResults, calculateScoreSummary } from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
+
+/**
+ * Minimal interface for scoring operations
+ * Replaces unsafe type assertions to QuizSession
+ */
+interface ScoringSession {
+  getAnswers(): ReadonlyMap<QuestionId, Answer>;
+}
+
+/**
+ * Creates a type-safe scoring session from raw answer data
+ * @param answersMap Raw answer data from database
+ * @returns Safe scoring session for use with scoring utilities
+ */
+function createScoringSession(
+  answersMap: Record<
+    string,
+    {
+      answerId: string;
+      questionId: string;
+      selectedOptionIds: string[];
+      answeredAt: string;
+    }
+  >
+): ScoringSession {
+  return {
+    getAnswers: () => {
+      const answerMap = new Map<QuestionId, Answer>();
+      for (const [_, answerData] of Object.entries(answersMap)) {
+        const answer = Answer.fromEventReplay(
+          answerData.answerId as AnswerId,
+          answerData.questionId as QuestionId,
+          answerData.selectedOptionIds as OptionId[],
+          new Date(answerData.answeredAt)
+        );
+        answerMap.set(answerData.questionId as QuestionId, answer);
+      }
+      return answerMap;
+    },
+  };
+}
+
+/**
+ * Safely calls buildAnswerResults with a ScoringSession
+ * @param scoringSession Minimal scoring session interface
+ * @param questionDetailsMap Question details for scoring
+ * @returns Answer results and correct count
+ */
+function buildAnswerResultsFromScoringSession(
+  scoringSession: ScoringSession,
+  questionDetailsMap: Map<QuestionId, QuestionDetails>
+): { answerResults: AnswerResult[]; correctCount: number } {
+  // Create a minimal QuizSession-like object that only implements getAnswers()
+  const mockSession = {
+    getAnswers: scoringSession.getAnswers.bind(scoringSession),
+  } as QuizSession;
+
+  return buildAnswerResults(mockSession, questionDetailsMap);
+}
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
@@ -268,30 +332,14 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
           const questionDetailsMap =
             await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
 
-          // Create a session-like object with only the methods needed for scoring
-          const sessionForScoring = {
-            getAnswers: () => {
-              const answerMap = new Map<
-                string,
-                { selectedOptionIds: string[]; answeredAt: Date }
-              >();
-              for (const [_, answerData] of Object.entries(answersMap)) {
-                answerMap.set(answerData.questionId, {
-                  selectedOptionIds: answerData.selectedOptionIds,
-                  answeredAt: new Date(answerData.answeredAt),
-                });
-              }
-              return answerMap;
-            },
-            config: { questionCount: quiz.questionCount },
-          };
+          // Create type-safe scoring session using helper function
+          const scoringSession = createScoringSession(answersMap);
 
-          // Type assertion to QuizSession is necessary here because we're only providing
-          // the minimal interface needed for scoring utilities
-          const mockSession = sessionForScoring as unknown as QuizSession;
-
-          // Calculate score using existing utilities
-          const { correctCount } = buildAnswerResults(mockSession, questionDetailsMap);
+          // Calculate score using existing utilities with type safety
+          const { correctCount } = buildAnswerResultsFromScoringSession(
+            scoringSession,
+            questionDetailsMap
+          );
           const scoreSummary = calculateScoreSummary(correctCount, quiz.questionCount);
 
           totalScore += scoreSummary.percentage;
@@ -419,27 +467,8 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
                 const questionDetailsMap =
                   await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
 
-                // Create a session-like object with only the methods needed for scoring
-                const sessionForScoring = {
-                  getAnswers: () => {
-                    const answerMap = new Map<
-                      string,
-                      { selectedOptionIds: string[]; answeredAt: Date }
-                    >();
-                    for (const [_, answerData] of Object.entries(answersMap)) {
-                      answerMap.set(answerData.questionId, {
-                        selectedOptionIds: answerData.selectedOptionIds,
-                        answeredAt: new Date(answerData.answeredAt),
-                      });
-                    }
-                    return answerMap;
-                  },
-                  config: { questionCount: row.questionCount },
-                };
-
-                // Type assertion to QuizSession is necessary here because we're only providing
-                // the minimal interface needed for scoring utilities
-                const mockSession = sessionForScoring as unknown as QuizSession;
+                // Create type-safe scoring session using helper function
+                const scoringSession = createScoringSession(answersMap);
 
                 // Check if we got details for all questions
                 if (questionDetailsMap.size < questionIds.length) {
@@ -451,8 +480,11 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
                   });
                   score = null;
                 } else {
-                  // Calculate score using existing utilities
-                  const { correctCount } = buildAnswerResults(mockSession, questionDetailsMap);
+                  // Calculate score using existing utilities with type safety
+                  const { correctCount } = buildAnswerResultsFromScoringSession(
+                    scoringSession,
+                    questionDetailsMap
+                  );
                   const scoreSummary = calculateScoreSummary(correctCount, row.questionCount);
                   score = scoreSummary.percentage;
                 }
