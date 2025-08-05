@@ -295,6 +295,23 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
     }
   }
 
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   *
+   * Current implementation uses offset-based pagination which degrades performance
+   * with large page numbers (e.g., page 1000 requires skipping 20,000 rows).
+   *
+   * Future optimization should implement cursor-based pagination:
+   * - Use a stable sort key (e.g., createdAt + questionId) as cursor
+   * - Maintain constant query performance regardless of page position
+   * - Requires API contract changes to support cursor tokens
+   *
+   * Consider implementing when:
+   * - Dataset grows significantly (>100k questions)
+   * - Users frequently access deep pages
+   * - Performance monitoring shows degradation
+   */
+
   async findQuestions(
     filters: QuestionFilters,
     pagination: QuestionPagination
@@ -389,11 +406,11 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
 
       const premiumQuestions = premiumResult[0]?.count ?? 0;
 
-      // Get statistics from version table
-      const versionRows = await this.db
+      // Get exam type statistics using database-level aggregation
+      const examTypeRows = await this.db
         .select({
-          examTypes: questionVersion.examTypes,
-          difficulty: questionVersion.difficulty,
+          examType: sql<string>`unnest(${questionVersion.examTypes})`.as('exam_type'),
+          count: sql<number>`COUNT(*)`.as('count'),
         })
         .from(question)
         .innerJoin(
@@ -403,20 +420,35 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
             eq(question.currentVersion, questionVersion.version)
           )
         )
-        .where(eq(question.status, 'active'));
+        .where(eq(question.status, 'active'))
+        .groupBy(sql`unnest(${questionVersion.examTypes})`);
 
-      // Aggregate statistics
+      // Get difficulty statistics using database-level aggregation
+      const difficultyRows = await this.db
+        .select({
+          difficulty: questionVersion.difficulty,
+          count: count(),
+        })
+        .from(question)
+        .innerJoin(
+          questionVersion,
+          and(
+            eq(question.questionId, questionVersion.questionId),
+            eq(question.currentVersion, questionVersion.version)
+          )
+        )
+        .where(eq(question.status, 'active'))
+        .groupBy(questionVersion.difficulty);
+
+      // Transform results into the expected format
       const questionsByExamType: Record<string, number> = {};
+      for (const row of examTypeRows) {
+        questionsByExamType[row.examType] = Number(row.count);
+      }
+
       const questionsByDifficulty: Record<string, number> = {};
-
-      for (const row of versionRows) {
-        // Count by exam type
-        for (const examType of row.examTypes) {
-          questionsByExamType[examType] = (questionsByExamType[examType] || 0) + 1;
-        }
-
-        // Count by difficulty
-        questionsByDifficulty[row.difficulty] = (questionsByDifficulty[row.difficulty] || 0) + 1;
+      for (const row of difficultyRows) {
+        questionsByDifficulty[row.difficulty] = Number(row.count);
       }
 
       return {
@@ -596,6 +628,13 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
       );
     }
   }
+
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   * Same performance considerations as findQuestions method apply here.
+   * Consider implementing cursor-based pagination for moderation queries
+   * when performance becomes an issue with large datasets.
+   */
 
   async findQuestionsForModeration(
     params: ModerationParams

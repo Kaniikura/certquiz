@@ -375,6 +375,13 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
     }
   }
 
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   * Current offset-based pagination has same performance limitations as
+   * described in DrizzleQuestionRepository. Consider implementing cursor-based
+   * pagination when dealing with large numbers of quiz sessions.
+   */
+
   async findAllForAdmin(params: AdminQuizParams): Promise<PaginatedResult<QuizWithUserInfo>> {
     try {
       this.logger.debug('Finding quizzes for admin', { params });

@@ -114,65 +114,83 @@ class MockDatabaseConnection {
     // Track query for analysis
     this.queryCallStack.push({ method: 'select', args: [fields] });
 
-    // Check query type by looking at the selected fields
-    const isStatsQuery = this.isStatsQuery(fields);
-    const isCountQuery = this.isCountQuery(fields);
+    // Determine query type
+    const queryType = this.determineQueryType(fields);
 
+    // Delegate to appropriate builder based on query type
+    return this.createQueryBuilder(queryType);
+  }
+
+  private determineQueryType(
+    fields: unknown
+  ): 'stats' | 'count' | 'examType' | 'difficulty' | 'default' {
+    if (this.isExamTypeAggregationQuery(fields)) return 'examType';
+    if (this.isDifficultyAggregationQuery(fields)) return 'difficulty';
+    if (this.isStatsQuery(fields)) return 'stats';
+    if (this.isCountQuery(fields)) return 'count';
+    return 'default';
+  }
+
+  private createQueryBuilder(queryType: string) {
     return {
       from: (table: unknown) => {
-        if (this.isQuestionTable(table)) {
-          return {
-            innerJoin: (_versionTable: unknown, _condition: unknown) => ({
-              where: (_condition: unknown) => {
-                if (isStatsQuery) {
-                  // For stats queries, return version data with examTypes and difficulty
-                  return this.getStatsVersionRows();
-                }
-                if (isCountQuery) {
-                  // For count queries within joins, return count based on context
-                  return this.getFilteredCountResults();
-                }
-                return {
-                  limit: (n: number) => {
-                    return this.getJoinQueryResults().slice(0, n);
-                  },
-                  orderBy: (_field: unknown) => ({
-                    limit: (n: number) => ({
-                      offset: (offset: number) => {
-                        return this.getJoinQueryResults().slice(offset, offset + n);
-                      },
-                    }),
-                  }),
-                };
-              },
-            }),
-            where: (condition: unknown) => {
-              // Track where conditions for analysis
-              this.queryCallStack.push({ method: 'where', args: [condition] });
-
-              if (isCountQuery) {
-                // For simple count queries on question table (stats method)
-                return this.getStatsCountResults(condition);
-              }
-              return {
-                limit: (n: number) => {
-                  if (this.currentQueryContext.type === 'getStats') {
-                    return this.getStatsResults();
-                  }
-                  return this.getQuestionResults().slice(0, n);
-                },
-              };
-            },
-          };
+        if (!this.isQuestionTable(table)) {
+          return this.createEmptyQueryResult();
         }
-        return {
-          where: () => ({
-            limit: () => [],
-            innerJoin: () => ({ where: () => ({ limit: () => [] }) }),
-          }),
-        };
+        return this.createQuestionQueryResult(queryType);
       },
     };
+  }
+
+  private createEmptyQueryResult() {
+    return {
+      where: () => ({
+        limit: () => [],
+        innerJoin: () => ({ where: () => ({ limit: () => [] }) }),
+      }),
+    };
+  }
+
+  private createQuestionQueryResult(queryType: string) {
+    return {
+      innerJoin: (_versionTable: unknown, _condition: unknown) => ({
+        where: (_condition: unknown) => this.handleInnerJoinWhere(queryType),
+      }),
+      where: (condition: unknown) => this.handleDirectWhere(queryType, condition),
+    };
+  }
+
+  private handleInnerJoinWhere(queryType: string) {
+    switch (queryType) {
+      case 'examType':
+        return this.handleExamTypeAggregationQuery();
+      case 'difficulty':
+        return this.handleDifficultyAggregationQuery();
+      case 'stats':
+        return this.handleStatsQuery();
+      case 'count':
+        return this.handleCountQuery();
+      default:
+        return this.handleDefaultJoinQuery();
+    }
+  }
+
+  private handleDirectWhere(queryType: string, condition: unknown) {
+    // Track where conditions for analysis
+    this.queryCallStack.push({ method: 'where', args: [condition] });
+
+    switch (queryType) {
+      case 'count':
+        return this.handleDirectCountQuery(condition);
+      case 'examType':
+      case 'difficulty':
+        return this.handleDirectAggregationQuery(
+          queryType === 'examType',
+          queryType === 'difficulty'
+        );
+      default:
+        return this.handleDirectDefaultQuery();
+    }
   }
 
   // Mock insert operations
@@ -331,6 +349,82 @@ class MockDatabaseConnection {
     this.currentQueryContext = {};
     this.queryCallStack = [];
     this.statsQueryCount = 0;
+  }
+
+  // Extracted methods to reduce complexity in the where() handler
+  private handleExamTypeAggregationQuery() {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        return this.getExamTypeAggregationResults();
+      },
+    };
+  }
+
+  private handleDifficultyAggregationQuery() {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        return this.getDifficultyAggregationResults();
+      },
+    };
+  }
+
+  private handleStatsQuery() {
+    return this.getStatsVersionRows();
+  }
+
+  private handleCountQuery() {
+    return this.getFilteredCountResults();
+  }
+
+  private handleDefaultJoinQuery() {
+    return {
+      limit: (n: number) => {
+        return this.getJoinQueryResults().slice(0, n);
+      },
+      orderBy: (_field: unknown) => ({
+        limit: (n: number) => ({
+          offset: (offset: number) => {
+            return this.getJoinQueryResults().slice(offset, offset + n);
+          },
+        }),
+      }),
+      groupBy: (_groupByField: unknown) => {
+        // Handle groupBy for aggregation queries that weren't caught earlier
+        // Note: This shouldn't normally happen as aggregation queries
+        // should be caught by the earlier conditions
+        return [];
+      },
+    };
+  }
+
+  // Methods for direct where queries (not through innerJoin)
+  private handleDirectCountQuery(condition: unknown) {
+    return this.getStatsCountResults(condition);
+  }
+
+  private handleDirectAggregationQuery(isExamType: boolean, isDifficulty: boolean) {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        if (isExamType) {
+          return this.getExamTypeAggregationResults();
+        }
+        if (isDifficulty) {
+          return this.getDifficultyAggregationResults();
+        }
+        return [];
+      },
+    };
+  }
+
+  private handleDirectDefaultQuery() {
+    return {
+      limit: (n: number) => {
+        if (this.currentQueryContext.type === 'getStats') {
+          return this.getStatsResults();
+        }
+        return this.getQuestionResults().slice(0, n);
+      },
+    };
   }
 
   private getJoinQueryResults(): MockJoinedQuestionRow[] {
@@ -523,6 +617,40 @@ class MockDatabaseConnection {
     return [{ count: activeQuestions.length }];
   }
 
+  private getExamTypeAggregationResults(): Array<{ examType: string; count: number }> {
+    const activeQuestions = this.questions.filter((q) => q.status === 'active');
+    const examTypeCounts: Record<string, number> = {};
+
+    for (const question of activeQuestions) {
+      const version = this.questionVersions.find(
+        (v) => v.questionId === question.questionId && v.version === question.currentVersion
+      );
+      if (version) {
+        for (const examType of version.examTypes) {
+          examTypeCounts[examType] = (examTypeCounts[examType] || 0) + 1;
+        }
+      }
+    }
+
+    return Object.entries(examTypeCounts).map(([examType, count]) => ({ examType, count }));
+  }
+
+  private getDifficultyAggregationResults(): Array<{ difficulty: string; count: number }> {
+    const activeQuestions = this.questions.filter((q) => q.status === 'active');
+    const difficultyCounts: Record<string, number> = {};
+
+    for (const question of activeQuestions) {
+      const version = this.questionVersions.find(
+        (v) => v.questionId === question.questionId && v.version === question.currentVersion
+      );
+      if (version) {
+        difficultyCounts[version.difficulty] = (difficultyCounts[version.difficulty] || 0) + 1;
+      }
+    }
+
+    return Object.entries(difficultyCounts).map(([difficulty, count]) => ({ difficulty, count }));
+  }
+
   private hasMultipleWhereConditions(condition: unknown): boolean {
     // In a real WHERE with AND conditions, there would be multiple conditions
     // Check if this is an AND condition with multiple parts
@@ -577,8 +705,45 @@ class MockDatabaseConnection {
 
   private isCountQuery(fields: unknown): boolean {
     if (typeof fields !== 'object' || fields === null) return false;
-    const keys = Object.keys(fields as Record<string, unknown>);
-    return keys.includes('count');
+    const fieldsObj = fields as Record<string, unknown>;
+    const keys = Object.keys(fieldsObj);
+
+    // A simple count query has exactly one field named 'count'
+    // Aggregation queries have additional fields like 'examType' or 'difficulty'
+    return keys.length === 1 && keys.includes('count');
+  }
+
+  private isExamTypeAggregationQuery(fields: unknown): boolean {
+    if (typeof fields !== 'object' || fields === null) return false;
+    const fieldsObj = fields as Record<string, unknown>;
+
+    // Check if this is an aggregation query for exam types
+    // Look for a field with fieldAlias 'exam_type' and another with fieldAlias 'count'
+    const hasExamType = Object.values(fieldsObj).some((field) => {
+      if (field && typeof field === 'object' && 'fieldAlias' in field) {
+        return field.fieldAlias === 'exam_type';
+      }
+      return false;
+    });
+
+    const hasCount = Object.values(fieldsObj).some((field) => {
+      if (field && typeof field === 'object' && 'fieldAlias' in field) {
+        return field.fieldAlias === 'count';
+      }
+      return false;
+    });
+
+    return hasExamType && hasCount;
+  }
+
+  private isDifficultyAggregationQuery(fields: unknown): boolean {
+    if (typeof fields !== 'object' || fields === null) return false;
+    const fieldsObj = fields as Record<string, unknown>;
+    const keys = Object.keys(fieldsObj);
+
+    // Check if this looks like a difficulty aggregation query
+    // It should have exactly 2 fields and include 'difficulty' and 'count'
+    return keys.length === 2 && keys.includes('difficulty') && keys.includes('count');
   }
 
   private isQuestionTable(table: unknown): boolean {
