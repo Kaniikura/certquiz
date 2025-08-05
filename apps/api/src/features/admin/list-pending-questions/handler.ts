@@ -98,7 +98,7 @@ function calculateSummaryStatistics(
   if (items.length === 0) {
     return {
       totalPending: totalCount,
-      averageDaysPending: 0,
+      currentPageAverageDaysPending: 0,
       priorityCounts: {
         low: 0,
         medium: 0,
@@ -108,11 +108,12 @@ function calculateSummaryStatistics(
     };
   }
 
-  // Calculate average days pending from current page items
+  // Calculate average days pending from current page items only
+  // Note: For performance reasons, we don't fetch aggregate statistics for all questions
   const totalDaysPending = items.reduce((sum, item) => sum + item.daysPending, 0);
-  const averageDaysPending = totalDaysPending / items.length;
+  const currentPageAverageDaysPending = totalDaysPending / items.length;
 
-  // Count priorities in current page
+  // Count priorities in current page only
   const priorityCounts = items.reduce(
     (counts, item) => {
       counts[item.priority]++;
@@ -123,7 +124,7 @@ function calculateSummaryStatistics(
 
   return {
     totalPending: totalCount,
-    averageDaysPending: Number(averageDaysPending.toFixed(1)),
+    currentPageAverageDaysPending: Number(currentPageAverageDaysPending.toFixed(1)),
     priorityCounts,
   };
 }

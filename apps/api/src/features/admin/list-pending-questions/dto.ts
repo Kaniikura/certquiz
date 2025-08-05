@@ -72,11 +72,11 @@ export interface PendingQuestionInfo {
 export interface ListPendingQuestionsResponse extends PaginatedResponse<PendingQuestionInfo> {
   /** Summary statistics */
   summary: {
-    /** Total pending questions */
+    /** Total pending questions across all pages */
     totalPending: number;
-    /** Average days pending */
-    averageDaysPending: number;
-    /** Questions by priority */
+    /** Average days pending for questions in current page only */
+    currentPageAverageDaysPending: number;
+    /** Priority counts for questions in current page only */
     priorityCounts: {
       low: number;
       medium: number;

@@ -140,7 +140,7 @@ describe('listPendingQuestionsHandler', () => {
     });
 
     expect(result.summary.totalPending).toBe(25);
-    expect(result.summary.averageDaysPending).toBe(7.5); // (5 + 10) / 2
+    expect(result.summary.currentPageAverageDaysPending).toBe(7.5); // (5 + 10) / 2
     expect(result.summary.priorityCounts.medium).toBe(1);
     expect(result.summary.priorityCounts.high).toBe(1);
 
@@ -275,7 +275,7 @@ describe('listPendingQuestionsHandler', () => {
     expect(result.total).toBe(0);
     expect(result.totalPages).toBe(0);
     expect(result.summary.totalPending).toBe(0);
-    expect(result.summary.averageDaysPending).toBe(0);
+    expect(result.summary.currentPageAverageDaysPending).toBe(0);
     expect(result.summary.priorityCounts.low).toBe(0);
     expect(result.summary.priorityCounts.medium).toBe(0);
     expect(result.summary.priorityCounts.high).toBe(0);
