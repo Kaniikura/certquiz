@@ -320,28 +320,45 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
     }
   }
 
-  async updateRoles(userId: string, roles: string[], updatedBy: string): Promise<void> {
+  async updateRoles(userId: UserId, roles: string[], updatedBy: string): Promise<void> {
     try {
+      // Validate roles array
+      if (!roles || roles.length === 0) {
+        throw new Error('Roles array cannot be empty');
+      }
+
       // For simplicity, we'll use the highest role from the array
       // In a real system, you might store multiple roles differently
       const highestRole = this.determineHighestRole(roles);
 
+      // Validate the determined role is one of the allowed values
+      const validRoles = ['guest', 'user', 'premium', 'admin'] as const;
+      type ValidRole = (typeof validRoles)[number];
+
+      const isValidRole = (role: string): role is ValidRole => {
+        return validRoles.includes(role as ValidRole);
+      };
+
+      if (!isValidRole(highestRole)) {
+        throw new Error(`Invalid role determined: ${highestRole}`);
+      }
+
       await this.conn
         .update(authUser)
         .set({
-          role: highestRole as 'guest' | 'user' | 'premium' | 'admin',
+          role: highestRole,
           updatedAt: new Date(),
         })
-        .where(eq(authUser.userId, userId));
+        .where(eq(authUser.userId, UserId.toString(userId)));
 
       this.logger.info('User roles updated successfully', {
-        userId,
+        userId: UserId.toString(userId),
         newRole: highestRole,
         updatedBy,
       });
     } catch (error) {
       this.logger.error('Failed to update user roles:', {
-        userId,
+        userId: UserId.toString(userId),
         roles,
         updatedBy,
         error: this.getErrorDetails(error),
