@@ -5,6 +5,7 @@
 
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { NotFoundError, ValidationError } from '@api/shared/errors';
+import { validateWithSchema } from '@api/shared/validation/zod-utils';
 import type { ZodSchema } from 'zod';
 
 /**
@@ -117,9 +118,9 @@ export function createAdminActionHandler<
 ): (params: TParams, unitOfWork: TUnitOfWork) => Promise<TResponse> {
   return async (params: TParams, unitOfWork: TUnitOfWork): Promise<TResponse> => {
     // Step 1: Validate input parameters
-    const validationResult = config.schema.safeParse(params);
+    const validationResult = validateWithSchema(config.schema, params);
     if (!validationResult.success) {
-      throw new ValidationError(validationResult.error.errors[0].message);
+      throw new ValidationError(validationResult.errors[0]);
     }
 
     // Step 2: Get repository from unit of work

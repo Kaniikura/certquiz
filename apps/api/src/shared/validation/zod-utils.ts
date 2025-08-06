@@ -11,6 +11,19 @@ import type { ZodSchema } from 'zod';
 export type ValidationResult<T> = { success: true; data: T } | { success: false; errors: string[] };
 
 /**
+ * Helper function to format Zod error objects into readable strings
+ *
+ * @param errors - Array of Zod error objects
+ * @returns Array of formatted error messages
+ */
+function formatZodErrors(errors: { path: (string | number)[]; message: string }[]): string[] {
+  return errors.map((err) => {
+    const field = err.path.join('.');
+    return field ? `${field}: ${err.message}` : err.message;
+  });
+}
+
+/**
  * Generic validation function using Zod schemas
  * Provides consistent validation result format across the application
  *
@@ -40,11 +53,7 @@ export function validateWithSchema<T>(schema: ZodSchema<T>, data: unknown): Vali
     };
   }
 
-  // Format errors into readable messages
-  const errors = result.error.errors.map((err) => {
-    const field = err.path.join('.');
-    return field ? `${field}: ${err.message}` : err.message;
-  });
+  const errors = formatZodErrors(result.error.errors);
 
   return {
     success: false,
