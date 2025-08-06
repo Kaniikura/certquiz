@@ -183,58 +183,29 @@ function handleModerationErrorWithStatus(error: unknown): {
   };
   status: ContentfulStatusCode;
 } {
-  let status = 500;
+  // Helper function to create error response with reduced duplication
+  const createErrorResponse = (code: string, message: string, status: ContentfulStatusCode) => ({
+    response: { success: false as const, error: { code, message } },
+    status,
+  });
 
   if (error instanceof Error) {
     if (error.name === 'ValidationError') {
-      status = 400;
-      return {
-        response: {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: error.message,
-          },
-        },
-        status: status as ContentfulStatusCode,
-      };
-    } else if (error.name === 'QuestionNotFoundError' || error.name === 'NotFoundError') {
-      status = 404;
-      return {
-        response: {
-          success: false,
-          error: {
-            code: 'QUESTION_NOT_FOUND',
-            message: error.message,
-          },
-        },
-        status: status as ContentfulStatusCode,
-      };
-    } else if (error.name === 'InvalidQuestionDataError') {
-      status = 400;
-      return {
-        response: {
-          success: false,
-          error: {
-            code: 'INVALID_QUESTION_DATA',
-            message: error.message,
-          },
-        },
-        status: status as ContentfulStatusCode,
-      };
+      return createErrorResponse('VALIDATION_ERROR', error.message, 400);
+    }
+    if (error.name === 'QuestionNotFoundError' || error.name === 'NotFoundError') {
+      return createErrorResponse('QUESTION_NOT_FOUND', error.message, 404);
+    }
+    if (error.name === 'InvalidQuestionDataError') {
+      return createErrorResponse('INVALID_QUESTION_DATA', error.message, 400);
     }
   }
 
-  return {
-    response: {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
-      },
-    },
-    status: status as ContentfulStatusCode,
-  };
+  return createErrorResponse(
+    'INTERNAL_ERROR',
+    error instanceof Error ? error.message : 'An unexpected error occurred',
+    500
+  );
 }
 
 /**
