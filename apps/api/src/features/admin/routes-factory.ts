@@ -8,6 +8,7 @@ import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import { auth } from '@api/middleware/auth';
 import type { DatabaseContextVariables } from '@api/middleware/transaction';
+import { AppError } from '@api/shared/errors';
 import type { AuthUser } from '@api/shared/types/auth-user';
 import {
   AUTH_USER_REPO_TOKEN,
@@ -108,28 +109,48 @@ async function executeWithTransaction<T>(
 
 /**
  * Handle route errors with appropriate status codes
- * Extracted helper to reduce complexity
+ * Leverages AppError infrastructure for proper HTTP status mapping
  */
 function handleRouteError(error: unknown): {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-  };
-} {
-  // Simple error handling for most routes
-  return {
-    success: false,
+  response: {
+    success: false;
     error: {
-      code: 'INTERNAL_ERROR',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      code: string;
+      message: string;
+    };
+  };
+  status: ContentfulStatusCode;
+} {
+  // Leverage AppError infrastructure for proper status code mapping
+  if (error instanceof AppError) {
+    return {
+      response: {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      },
+      status: error.statusCode as ContentfulStatusCode,
+    };
+  }
+
+  // Fallback for non-AppError instances
+  return {
+    response: {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      },
     },
+    status: 500,
   };
 }
 
 /**
- * Handle update user roles errors with detailed status mapping
- * Extracted helper for complex error handling
+ * Handle update user roles errors with AppError infrastructure
+ * Uses AppError properties for consistent error handling
  */
 function handleUpdateUserRolesError(error: unknown): {
   response: {
@@ -141,37 +162,36 @@ function handleUpdateUserRolesError(error: unknown): {
   };
   status: ContentfulStatusCode;
 } {
-  let status = 500;
-  let code = 'INTERNAL_ERROR';
-
-  if (error instanceof Error) {
-    if (error.name === 'ValidationError') {
-      status = 400;
-      code = 'VALIDATION_ERROR';
-    } else if (error.name === 'NotFoundError') {
-      status = 404;
-      code = 'NOT_FOUND';
-    } else if (error.name === 'AdminPermissionError') {
-      status = 403;
-      code = 'ADMIN_PERMISSION_ERROR';
-    }
+  // Leverage AppError infrastructure for consistent status code mapping
+  if (error instanceof AppError) {
+    return {
+      response: {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      },
+      status: error.statusCode as ContentfulStatusCode,
+    };
   }
 
+  // Fallback for non-AppError instances
   return {
     response: {
       success: false,
       error: {
-        code,
+        code: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     },
-    status: status as ContentfulStatusCode,
+    status: 500,
   };
 }
 
 /**
- * Handle moderation errors with appropriate status codes and HTTP status
- * Extracted helper for moderation-specific error handling with proper HTTP codes
+ * Handle moderation errors with AppError infrastructure
+ * Uses AppError properties for consistent error handling
  */
 function handleModerationErrorWithStatus(error: unknown): {
   response: {
@@ -183,29 +203,31 @@ function handleModerationErrorWithStatus(error: unknown): {
   };
   status: ContentfulStatusCode;
 } {
-  // Helper function to create error response with reduced duplication
-  const createErrorResponse = (code: string, message: string, status: ContentfulStatusCode) => ({
-    response: { success: false as const, error: { code, message } },
-    status,
-  });
-
-  if (error instanceof Error) {
-    if (error.name === 'ValidationError') {
-      return createErrorResponse('VALIDATION_ERROR', error.message, 400);
-    }
-    if (error.name === 'QuestionNotFoundError' || error.name === 'NotFoundError') {
-      return createErrorResponse('QUESTION_NOT_FOUND', error.message, 404);
-    }
-    if (error.name === 'InvalidQuestionDataError') {
-      return createErrorResponse('INVALID_QUESTION_DATA', error.message, 400);
-    }
+  // Leverage AppError infrastructure for consistent status code mapping
+  if (error instanceof AppError) {
+    return {
+      response: {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      },
+      status: error.statusCode as ContentfulStatusCode,
+    };
   }
 
-  return createErrorResponse(
-    'INTERNAL_ERROR',
-    error instanceof Error ? error.message : 'An unexpected error occurred',
-    500
-  );
+  // Fallback for non-AppError instances
+  return {
+    response: {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      },
+    },
+    status: 500,
+  };
 }
 
 /**
@@ -236,7 +258,8 @@ export function createAdminRoutes(): Hono<{
         data: stats,
       });
     } catch (error) {
-      return c.json(handleRouteError(error), 500);
+      const errorResponse = handleRouteError(error);
+      return c.json(errorResponse.response, errorResponse.status);
     }
   });
 
@@ -264,7 +287,8 @@ export function createAdminRoutes(): Hono<{
         data: result,
       });
     } catch (error) {
-      return c.json(handleRouteError(error), 500);
+      const errorResponse = handleRouteError(error);
+      return c.json(errorResponse.response, errorResponse.status);
     }
   });
 
@@ -323,7 +347,8 @@ export function createAdminRoutes(): Hono<{
         data: result,
       });
     } catch (error) {
-      return c.json(handleRouteError(error), 500);
+      const errorResponse = handleRouteError(error);
+      return c.json(errorResponse.response, errorResponse.status);
     }
   });
 
@@ -352,7 +377,8 @@ export function createAdminRoutes(): Hono<{
         data: result,
       });
     } catch (error) {
-      return c.json(handleRouteError(error), 500);
+      const errorResponse = handleRouteError(error);
+      return c.json(errorResponse.response, errorResponse.status);
     }
   });
 
@@ -384,7 +410,8 @@ export function createAdminRoutes(): Hono<{
         data: result,
       });
     } catch (error) {
-      return c.json(handleRouteError(error), 500);
+      const errorResponse = handleRouteError(error);
+      return c.json(errorResponse.response, errorResponse.status);
     }
   });
 

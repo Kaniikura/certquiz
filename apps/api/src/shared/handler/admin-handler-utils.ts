@@ -63,6 +63,13 @@ export interface AdminActionHandlerConfig<
    * Optional custom error message for when entity is not found
    */
   notFoundMessage?: string;
+
+  /**
+   * Optional custom error factory for when entity is not found
+   * If not provided, will use generic NotFoundError with notFoundMessage
+   * Receives the message and the transformed parameters for context
+   */
+  notFoundErrorFactory?: (message: string, params: TOutput) => Error;
 }
 
 /**
@@ -148,7 +155,11 @@ export function createAdminActionHandler<
     // Step 3: Find the entity
     const entity = await config.findEntity(repository, transformedParams);
     if (!entity) {
-      throw new NotFoundError(config.notFoundMessage || 'Entity not found');
+      const message = config.notFoundMessage || 'Entity not found';
+      const error = config.notFoundErrorFactory
+        ? config.notFoundErrorFactory(message, transformedParams)
+        : new NotFoundError(message);
+      throw error;
     }
 
     // Step 4: Validate business rules (if provided)

@@ -5,6 +5,7 @@
 
 import type { Question } from '@api/features/question/domain/entities/Question';
 import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
+import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
@@ -86,6 +87,9 @@ export const moderateQuestionHandler = createAdminActionHandler<
   },
 
   notFoundMessage: 'Question not found',
+
+  notFoundErrorFactory: (_message, params) =>
+    new QuestionNotFoundError(params.questionId.toString()),
 
   validateBusinessRules: async (_question, _params) => {
     // Business rules are enforced by the repository's updateStatus method
