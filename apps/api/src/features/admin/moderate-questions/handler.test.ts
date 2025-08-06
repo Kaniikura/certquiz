@@ -320,7 +320,7 @@ describe('moderateQuestionHandler', () => {
 
       // Assert
       expect(result.feedback).toBe(
-        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; &#x2F;&gt;'
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; /&gt;'
       );
 
       // Verify the escaped feedback was passed to the repository
@@ -328,7 +328,7 @@ describe('moderateQuestionHandler', () => {
         '550e8400-e29b-41d4-a716-446655440023',
         QuestionStatus.ARCHIVED,
         '550e8400-e29b-41d4-a716-446655440024',
-        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; &#x2F;&gt;'
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt; &amp; other &quot;dangerous&quot; &#x27;characters&#x27; /&gt;'
       );
     });
   });

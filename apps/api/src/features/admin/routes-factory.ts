@@ -36,10 +36,10 @@ import type { UpdateUserRolesParams } from './update-user-roles/dto';
 import { updateUserRolesHandler } from './update-user-roles/handler';
 
 /**
- * Create unit of work for admin operations
- * Extracted helper to reduce code duplication
+ * Create unit of work for read-only admin operations
+ * Extracted helper to reduce code duplication for operations that don't need transactions
  */
-function createUnitOfWork(
+function createReadOnlyUnitOfWork(
   c: Context<{ Variables: { user: AuthUser } & DatabaseContextVariables }>,
   tokens: RepositoryToken<unknown>[]
 ): IUnitOfWork {
@@ -72,6 +72,40 @@ function createUnitOfWork(
       throw new Error('Question details service not needed for admin operations');
     },
   };
+}
+
+/**
+ * Execute admin write operation within a database transaction
+ * Ensures data consistency and automatic rollback on errors
+ */
+async function executeWithTransaction<T>(
+  c: Context<{ Variables: { user: AuthUser } & DatabaseContextVariables }>,
+  operation: (unitOfWork: IUnitOfWork) => Promise<T>
+): Promise<T> {
+  const dbContext = c.get('dbContext');
+  return dbContext.withinTransaction(async (txCtx) => {
+    // Create a UnitOfWork adapter that wraps the transaction context
+    const unitOfWork: IUnitOfWork = {
+      getRepository: <R>(token: RepositoryToken<R>): R => {
+        return txCtx.getRepository(token);
+      },
+      begin: async () => {
+        // No-op - transaction already started by dbContext.withinTransaction
+      },
+      commit: async () => {
+        // No-op - transaction will be committed automatically by dbContext.withinTransaction
+      },
+      rollback: async () => {
+        // No-op - transaction will be rolled back automatically on error
+      },
+      getQuestionDetailsService: () => {
+        // Admin routes don't need question details service
+        throw new Error('Question details service not needed for admin operations');
+      },
+    };
+
+    return operation(unitOfWork);
+  });
 }
 
 /**
@@ -195,7 +229,7 @@ export function createAdminRoutes(): Hono<{
   // GET /api/admin/stats - System statistics
   adminRoutes.get('/stats', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [
+      const unitOfWork = createReadOnlyUnitOfWork(c, [
         AUTH_USER_REPO_TOKEN,
         USER_REPO_TOKEN,
         QUIZ_REPO_TOKEN,
@@ -218,7 +252,7 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.get('/users', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [AUTH_USER_REPO_TOKEN]);
+      const unitOfWork = createReadOnlyUnitOfWork(c, [AUTH_USER_REPO_TOKEN]);
 
       // Parse query parameters
       const query = c.req.query();
@@ -246,7 +280,6 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.patch('/users/:id/roles', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [AUTH_USER_REPO_TOKEN]);
       const userId = c.req.param('id');
       const adminUser = c.get('user');
 
@@ -258,7 +291,9 @@ export function createAdminRoutes(): Hono<{
         updatedBy: adminUser.sub,
       };
 
-      const result = await updateUserRolesHandler(params, unitOfWork);
+      const result = await executeWithTransaction(c, async (unitOfWork) => {
+        return updateUserRolesHandler(params, unitOfWork);
+      });
 
       return c.json({
         success: true,
@@ -275,7 +310,7 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.get('/quizzes', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [QUIZ_REPO_TOKEN]);
+      const unitOfWork = createReadOnlyUnitOfWork(c, [QUIZ_REPO_TOKEN]);
 
       // Parse query parameters
       const query = c.req.query();
@@ -304,7 +339,6 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.delete('/quiz/:id', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [QUIZ_REPO_TOKEN]);
       const quizId = c.req.param('id');
       const adminUser = c.get('user');
 
@@ -316,7 +350,9 @@ export function createAdminRoutes(): Hono<{
         reason: body.reason || 'Admin deletion - no reason provided',
       };
 
-      const result = await deleteQuizHandler(params, unitOfWork);
+      const result = await executeWithTransaction(c, async (unitOfWork) => {
+        return deleteQuizHandler(params, unitOfWork);
+      });
 
       return c.json({
         success: true,
@@ -333,7 +369,7 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.get('/questions/pending', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [QUESTION_REPO_TOKEN]);
+      const unitOfWork = createReadOnlyUnitOfWork(c, [QUESTION_REPO_TOKEN]);
 
       // Parse query parameters
       const query = c.req.query();
@@ -365,7 +401,6 @@ export function createAdminRoutes(): Hono<{
    */
   adminRoutes.patch('/questions/:id/moderate', async (c) => {
     try {
-      const unitOfWork = createUnitOfWork(c, [QUESTION_REPO_TOKEN]);
       const questionId = c.req.param('id');
       const adminUser = c.get('user');
 
@@ -392,7 +427,9 @@ export function createAdminRoutes(): Hono<{
         feedback: body.feedback,
       };
 
-      const result = await moderateQuestionHandler(params, unitOfWork);
+      const result = await executeWithTransaction(c, async (unitOfWork) => {
+        return moderateQuestionHandler(params, unitOfWork);
+      });
 
       return c.json({
         success: true,
