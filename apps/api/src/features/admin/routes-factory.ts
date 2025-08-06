@@ -381,8 +381,7 @@ export function createAdminRoutes(): Hono<{
         data: result,
       });
     } catch (error) {
-      const errorResponse = handleUpdateUserRolesError(error);
-      return c.json(errorResponse.response, errorResponse.status);
+      return c.json(handleRouteError(error), 500);
     }
   });
 
