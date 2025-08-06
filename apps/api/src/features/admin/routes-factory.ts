@@ -112,7 +112,13 @@ async function executeWithTransaction<T>(
  * Handle route errors with appropriate status codes
  * Extracted helper to reduce complexity
  */
-function handleRouteError(error: unknown) {
+function handleRouteError(error: unknown): {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+  };
+} {
   // Simple error handling for most routes
   return {
     success: false,
@@ -127,7 +133,16 @@ function handleRouteError(error: unknown) {
  * Handle update user roles errors with detailed status mapping
  * Extracted helper for complex error handling
  */
-function handleUpdateUserRolesError(error: unknown) {
+function handleUpdateUserRolesError(error: unknown): {
+  response: {
+    success: false;
+    error: {
+      code: string;
+      message: string;
+    };
+  };
+  status: ContentfulStatusCode;
+} {
   let status = 500;
   let code = 'INTERNAL_ERROR';
 
@@ -160,7 +175,16 @@ function handleUpdateUserRolesError(error: unknown) {
  * Handle moderation errors with appropriate status codes and HTTP status
  * Extracted helper for moderation-specific error handling with proper HTTP codes
  */
-function handleModerationErrorWithStatus(error: unknown) {
+function handleModerationErrorWithStatus(error: unknown): {
+  response: {
+    success: false;
+    error: {
+      code: string;
+      message: string;
+    };
+  };
+  status: ContentfulStatusCode;
+} {
   let status = 500;
 
   if (error instanceof Error) {
