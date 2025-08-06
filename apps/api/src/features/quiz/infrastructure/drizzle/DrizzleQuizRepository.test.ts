@@ -268,7 +268,7 @@ class MockTransactionContext {
                           questionCount: s.questionCount || 0,
                           startedAt: s.startedAt || new Date(),
                           completedAt: s.completedAt || null,
-                          answers: s.answers || null,
+                          correctAnswers: s.correctAnswers ?? null,
                         }));
                       },
                     }),
@@ -1074,6 +1074,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         state: 'COMPLETED',
         expiresAt: new Date(),
         questionCount: 1,
+        correctAnswers: 1, // 1 correct answer out of 1 question = 100%
         startedAt: new Date('2025-01-01T10:00:00Z'),
         completedAt: new Date('2025-01-01T10:30:00Z'),
         answers: {
@@ -1222,27 +1223,19 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       expect(result.pageSize).toBe(2);
     });
 
-    it('should handle score calculation errors gracefully', async () => {
+    it('should handle missing correctAnswers gracefully', async () => {
       const sessionId = QuizSessionId.generate();
-      const questionId = QuestionId.generate();
 
-      // Add completed quiz with answers but no question details
+      // Add completed quiz without correctAnswers (e.g., legacy data or error case)
       mockTrx.addSnapshot({
         sessionId: sessionId.toString(),
         ownerId: UserId.generate().toString(),
         state: 'COMPLETED',
         expiresAt: new Date(),
         questionCount: 1,
+        correctAnswers: null, // Missing correct answers data
         startedAt: new Date(),
         completedAt: new Date(),
-        answers: {
-          answer1: {
-            answerId: AnswerId.generate().toString(),
-            questionId: questionId.toString(),
-            selectedOptionIds: [OptionId.generate().toString()],
-            answeredAt: new Date().toISOString(),
-          },
-        },
       });
 
       const result = await repository.findAllForAdmin({
@@ -1252,12 +1245,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       });
 
       expect(result.items).toHaveLength(1);
-      expect(result.items[0].score).toBeNull(); // Score calculation failed
-      expect(mockLogger.warnMessages).toContainEqual(
-        expect.objectContaining({
-          message: 'Missing question details for score calculation',
-        })
-      );
+      expect(result.items[0].score).toBeNull(); // Score is null when correctAnswers is missing
     });
   });
 });

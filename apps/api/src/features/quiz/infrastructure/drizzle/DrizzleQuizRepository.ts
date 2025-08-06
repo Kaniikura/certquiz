@@ -19,57 +19,16 @@ const { PostgresError } = postgres;
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
 import type { PaginatedResult } from '@api/shared/types/pagination';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
-import { Answer } from '../../domain/entities/Answer';
 import type {
   AdminQuizParams,
   IQuizRepository,
   QuizWithUserInfo,
 } from '../../domain/repositories/IQuizRepository';
-import type { AnswerId, OptionId, QuestionId, QuizSessionId } from '../../domain/value-objects/Ids';
-import type {
-  IQuestionDetailsService,
-  QuestionDetails,
-} from '../../domain/value-objects/QuestionDetailsService';
-import type { AnswerResult } from '../../get-results/dto';
-import {
-  buildAnswerResultsFromAnswers,
-  calculateScoreSummary,
-} from '../../get-results/scoring-utils';
+import type { QuizSessionId } from '../../domain/value-objects/Ids';
+import type { IQuestionDetailsService } from '../../domain/value-objects/QuestionDetailsService';
+import { buildAnswerResultsFromAnswers } from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
-
-/**
- * Helper to convert raw answer data to domain Answer objects and call scoring utility
- * @param answersMap Raw answer data from database
- * @param questionDetailsMap Question details for scoring
- * @returns Answer results and correct count
- */
-function buildAnswerResultsFromRawData(
-  answersMap: Record<
-    string,
-    {
-      answerId: string;
-      questionId: string;
-      selectedOptionIds: string[];
-      answeredAt: string;
-    }
-  >,
-  questionDetailsMap: Map<QuestionId, QuestionDetails>
-): { answerResults: AnswerResult[]; correctCount: number } {
-  // Convert raw data to Answer map
-  const answers = new Map<QuestionId, Answer>();
-  for (const [_, answerData] of Object.entries(answersMap)) {
-    const answer = Answer.fromEventReplay(
-      answerData.answerId as AnswerId,
-      answerData.questionId as QuestionId,
-      answerData.selectedOptionIds as OptionId[],
-      new Date(answerData.answeredAt)
-    );
-    answers.set(answerData.questionId as QuestionId, answer);
-  }
-
-  return buildAnswerResultsFromAnswers(answers, questionDetailsMap);
-}
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
@@ -504,7 +463,7 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
           questionCount: quizSessionSnapshot.questionCount,
           startedAt: quizSessionSnapshot.startedAt,
           completedAt: quizSessionSnapshot.completedAt,
-          answers: quizSessionSnapshot.answers,
+          correctAnswers: quizSessionSnapshot.correctAnswers, // Fetch pre-calculated value
         })
         .from(quizSessionSnapshot)
         .innerJoin(authUser, eq(quizSessionSnapshot.ownerId, authUser.userId))
@@ -513,94 +472,49 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         .limit(pageSize)
         .offset(offset);
 
-      // Calculate scores and map to QuizWithUserInfo
-      const items: QuizWithUserInfo[] = await Promise.all(
-        results.map(async (row) => {
-          let score: number | null = null;
+      // Map results to QuizWithUserInfo without async operations
+      const items: QuizWithUserInfo[] = results.map((row) => {
+        let score: number | null = null;
 
-          // Only calculate score for completed quizzes
-          if (row.state === 'COMPLETED' && row.answers) {
-            try {
-              // Parse answers from JSONB
-              const answersMap = row.answers as Record<
-                string,
-                {
-                  answerId: string;
-                  questionId: string;
-                  selectedOptionIds: string[];
-                  answeredAt: string;
-                }
-              >;
+        // Calculate score from pre-calculated correct answers
+        if (
+          row.state === 'COMPLETED' &&
+          row.correctAnswers !== null &&
+          row.correctAnswers !== undefined &&
+          row.questionCount > 0
+        ) {
+          score = Math.round((row.correctAnswers / row.questionCount) * 100);
+        }
 
-              // Get question IDs from answers
-              const questionIds = Object.values(answersMap).map(
-                (answer) => answer.questionId as QuestionId
-              );
+        // Convert database state value to QuizState enum
+        let quizState: QuizState;
+        switch (row.state) {
+          case 'IN_PROGRESS':
+            quizState = QuizState.InProgress;
+            break;
+          case 'COMPLETED':
+            quizState = QuizState.Completed;
+            break;
+          case 'EXPIRED':
+            quizState = QuizState.Expired;
+            break;
+          default:
+            // This should not happen with proper data, but good to have a fallback
+            this.logger.warn('Unknown quiz state in findAllForAdmin', { state: row.state });
+            quizState = row.state as QuizState;
+        }
 
-              // If no answers, keep score as null
-              if (questionIds.length === 0) {
-                score = null;
-              } else {
-                // Fetch question details
-                const questionDetailsMap =
-                  await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
-
-                // Check if we got details for all questions
-                if (questionDetailsMap.size < questionIds.length) {
-                  // Some question details are missing, can't calculate accurate score
-                  this.logger.warn('Missing question details for score calculation', {
-                    sessionId: row.sessionId,
-                    requestedQuestions: questionIds.length,
-                    foundQuestions: questionDetailsMap.size,
-                  });
-                  score = null;
-                } else {
-                  // Calculate score using new utility function
-                  const { correctCount } = buildAnswerResultsFromRawData(
-                    answersMap,
-                    questionDetailsMap
-                  );
-                  const scoreSummary = calculateScoreSummary(correctCount, row.questionCount);
-                  score = scoreSummary.percentage;
-                }
-              }
-            } catch (error) {
-              this.logger.warn('Failed to calculate score for quiz', {
-                sessionId: row.sessionId,
-                error: this.getErrorDetails(error),
-              });
-              // Keep score as null if calculation fails
-            }
-          }
-
-          // Convert database state value to QuizState enum
-          let quizState: QuizState;
-          switch (row.state) {
-            case 'IN_PROGRESS':
-              quizState = QuizState.InProgress;
-              break;
-            case 'COMPLETED':
-              quizState = QuizState.Completed;
-              break;
-            case 'EXPIRED':
-              quizState = QuizState.Expired;
-              break;
-            default:
-              throw new Error(`Unknown quiz state: ${row.state}`);
-          }
-
-          return {
-            sessionId: row.sessionId,
-            userId: row.userId,
-            userEmail: row.userEmail,
-            state: quizState,
-            score,
-            questionCount: row.questionCount,
-            startedAt: row.startedAt,
-            completedAt: row.completedAt,
-          };
-        })
-      );
+        return {
+          sessionId: row.sessionId,
+          userId: row.userId,
+          userEmail: row.userEmail,
+          state: quizState,
+          score,
+          questionCount: row.questionCount,
+          startedAt: row.startedAt,
+          completedAt: row.completedAt,
+        };
+      });
 
       const result: PaginatedResult<QuizWithUserInfo> = {
         items,
