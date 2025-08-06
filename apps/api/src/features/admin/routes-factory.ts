@@ -4,7 +4,6 @@
  */
 
 import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
-import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { getRepositoryFromContext } from '@api/infra/repositories/providers';
 import { auth } from '@api/middleware/auth';
@@ -30,8 +29,7 @@ import type { ListQuizzesParams } from './list-quizzes/dto';
 import { listQuizzesHandler } from './list-quizzes/handler';
 import type { ListUsersParams } from './list-users/dto';
 import { listUsersHandler } from './list-users/handler';
-import type { ModerateQuestionParams } from './moderate-questions/dto';
-import { moderateQuestionHandler } from './moderate-questions/handler';
+import { type ModerateQuestionInput, moderateQuestionHandler } from './moderate-questions/handler';
 import type { UpdateUserRolesParams } from './update-user-roles/dto';
 import { updateUserRolesHandler } from './update-user-roles/handler';
 
@@ -444,8 +442,8 @@ export function createAdminRoutes(): Hono<{
 
       // Parse request body
       const body = await c.req.json();
-      const params: ModerateQuestionParams = {
-        questionId: questionId as QuestionId,
+      const params: ModerateQuestionInput = {
+        questionId: questionId,
         action: body.action,
         moderatedBy: adminUser.sub,
         feedback: body.feedback,

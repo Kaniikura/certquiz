@@ -18,7 +18,7 @@ import { ModerationActionToStatus, StatusToDisplayName } from './dto';
 /**
  * Input type for schema validation (before transformation)
  */
-interface ModerateQuestionInput {
+export interface ModerateQuestionInput {
   questionId: string;
   action: 'approve' | 'reject' | 'request_changes';
   moderatedBy: string;

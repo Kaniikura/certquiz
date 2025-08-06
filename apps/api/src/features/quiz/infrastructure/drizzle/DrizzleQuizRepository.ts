@@ -9,6 +9,7 @@ import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, asc, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import postgres from 'postgres';
+import { z } from 'zod';
 import { QuizState } from '../../domain/value-objects/QuizState';
 import type { QuizStateValue } from './schema/enums';
 import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
@@ -34,6 +35,18 @@ import type { AnswerResult } from '../../get-results/dto';
 import { buildAnswerResults, calculateScoreSummary } from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
+
+/**
+ * Zod schema for validating quiz answers JSONB structure
+ */
+const quizAnswersSchema = z.record(
+  z.object({
+    answerId: z.string(),
+    questionId: z.string(),
+    selectedOptionIds: z.array(z.string()),
+    answeredAt: z.string(),
+  })
+);
 
 /**
  * Minimal interface for scoring operations
@@ -308,16 +321,8 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         }
 
         try {
-          // Parse answers from JSONB
-          const answersMap = quiz.answers as Record<
-            string,
-            {
-              answerId: string;
-              questionId: string;
-              selectedOptionIds: string[];
-              answeredAt: string;
-            }
-          >;
+          // Validate answers from JSONB using schema
+          const answersMap = quizAnswersSchema.parse(quiz.answers);
 
           // Get question IDs from answers
           const questionIds = Object.values(answersMap).map(
