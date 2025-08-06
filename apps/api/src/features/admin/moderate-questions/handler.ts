@@ -10,26 +10,10 @@ import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { ValidationError } from '@api/shared/errors';
 import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
+import { escape as escapeHtml } from 'he';
 import { z } from 'zod';
 import type { ModerateQuestionParams, ModerateQuestionResponse } from './dto';
 import { ModerationActionToStatus, StatusToDisplayName } from './dto';
-
-/**
- * Escape HTML entities to prevent XSS attacks
- * @param text - The text to escape
- * @returns The escaped text
- */
-function escapeHtml(text: string): string {
-  const htmlEntities: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '/': '&#x2F;',
-  };
-  return text.replace(/[&<>"'/]/g, (char) => htmlEntities[char] || char);
-}
 
 /**
  * Input type for schema validation (before transformation)
