@@ -246,7 +246,7 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
       const conditions = [eq(authUser.isActive, true)];
 
       if (since) {
-        conditions.push(gte(authUser.updatedAt, since));
+        conditions.push(gte(authUser.lastLoginAt, since));
       }
 
       const result = await this.conn

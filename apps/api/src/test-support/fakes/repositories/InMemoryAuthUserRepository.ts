@@ -83,13 +83,11 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
       return Promise.resolve(this.users.size);
     }
 
-    // For testing purposes, we'll simulate that users have a lastActiveAt property
-    // In real implementation, this would query based on login timestamps
+    // Count users who have logged in since the specified date
     let activeCount = 0;
     for (const user of this.users.values()) {
-      // For testing, we'll consider all users active if created after the given date
-      // In real implementation, this would check last login time
-      if (user.createdAt >= since) {
+      // Check if user has logged in and if lastLoginAt is after the specified date
+      if (user.lastLoginAt && user.lastLoginAt >= since) {
         activeCount++;
       }
     }
