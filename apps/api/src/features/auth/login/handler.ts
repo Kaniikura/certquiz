@@ -52,6 +52,9 @@ export const loginHandler = validateAndHandle(
       return Result.fail(new InvalidCredentialsError());
     }
 
+    // Update last login timestamp
+    await userRepository.updateLastLoginAt(user.id);
+
     // Return successful login response
     return Result.ok({
       token: authResult.data.accessToken,

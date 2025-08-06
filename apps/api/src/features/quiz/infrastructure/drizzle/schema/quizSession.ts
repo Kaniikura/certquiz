@@ -65,6 +65,9 @@ export const quizSessionSnapshot = pgTable(
     questionOrder: uuid('question_order').array().notNull(), // Ordered question IDs
     answers: jsonb('answers'), // Map<QuestionId, Answer>
 
+    // Performance optimization: pre-calculated score for aggregation queries
+    correctAnswers: integer('correct_answers'), // Number of correct answers (null for incomplete quizzes)
+
     // Metadata
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -106,6 +109,10 @@ export const quizSessionSnapshot = pgTable(
     check(
       'ck_question_index_bounds',
       sql`${table.currentQuestionIndex} >= 0 AND ${table.currentQuestionIndex} < ${table.questionCount}`
+    ),
+    check(
+      'ck_correct_answers_bounds',
+      sql`${table.correctAnswers} IS NULL OR (${table.correctAnswers} >= 0 AND ${table.correctAnswers} <= ${table.questionCount})`
     ),
   ]
 );

@@ -3,6 +3,7 @@
  * @fileoverview Zod schema for user registration input validation with type inference
  */
 
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { z } from 'zod';
 
 /**
@@ -24,5 +25,5 @@ export const registerSchema = z.object({
       'Username can only contain letters, numbers, underscores, and hyphens'
     ),
   identityProviderId: z.string().optional(),
-  role: z.enum(['guest', 'user', 'premium', 'admin']).optional().default('user'),
+  role: z.enum(UserRole.USER_ROLE_TUPLE).optional().default('user'),
 });

@@ -27,6 +27,11 @@ const createMockUserRepository = (): IAuthUserRepository => ({
   save: vi.fn(),
   isEmailTaken: vi.fn(),
   isUsernameTaken: vi.fn(),
+  countTotalUsers: vi.fn().mockResolvedValue(0),
+  countActiveUsers: vi.fn().mockResolvedValue(0),
+  findAllPaginated: vi.fn(),
+  updateRole: vi.fn(),
+  updateLastLoginAt: vi.fn(),
 });
 
 describe('loginHandler', () => {
@@ -121,6 +126,7 @@ describe('loginHandler', () => {
           isActive: false, // Inactive user
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         })
       );
 
@@ -148,6 +154,7 @@ describe('loginHandler', () => {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         })
       );
 
@@ -176,12 +183,14 @@ describe('loginHandler', () => {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         })
       );
 
       const mockToken = 'jwt-token-123';
 
       vi.mocked(mockUserRepo.findByEmail).mockResolvedValue(activeUser);
+      vi.mocked(mockUserRepo.updateLastLoginAt).mockResolvedValue(undefined);
       fakeAuthProvider.givenAuthenticationSucceeds('test@example.com', mockToken);
 
       // Act
@@ -213,6 +222,7 @@ describe('loginHandler', () => {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         })
       );
 

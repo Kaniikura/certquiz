@@ -1,6 +1,8 @@
 import type { IAuthUserRepository } from '@api/features/auth/domain/repositories/IAuthUserRepository';
 import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
 import type { IQuizRepository } from '@api/features/quiz/domain/repositories/IQuizRepository';
+import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
+import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import type { IUserRepository } from '@api/features/user/domain/repositories/IUserRepository';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import type { RepositoryToken } from '@api/shared/types/RepositoryToken';
@@ -95,6 +97,11 @@ export class InMemoryUnitOfWork implements IUnitOfWork {
       this.repositoryCache.set(token, repo);
     }
     return this.repositoryCache.get(token) as T;
+  }
+
+  getQuestionDetailsService(): IQuestionDetailsService {
+    // Return a stub question details service for testing
+    return new StubQuestionDetailsService();
   }
 
   /**

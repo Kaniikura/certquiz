@@ -17,6 +17,11 @@ describe('getResultsHandler', () => {
     save: ReturnType<typeof vi.fn>;
     findExpiredSessions: ReturnType<typeof vi.fn>;
     findActiveByUser: ReturnType<typeof vi.fn>;
+    countTotalSessions: ReturnType<typeof vi.fn>;
+    countActiveSessions: ReturnType<typeof vi.fn>;
+    getAverageScore: ReturnType<typeof vi.fn>;
+    findAllForAdmin: ReturnType<typeof vi.fn>;
+    deleteWithCascade: ReturnType<typeof vi.fn>;
   };
   let mockQuestionDetailsService: {
     getQuestionDetails: ReturnType<typeof vi.fn>;
@@ -37,6 +42,11 @@ describe('getResultsHandler', () => {
       save: vi.fn(),
       findExpiredSessions: vi.fn(),
       findActiveByUser: vi.fn(),
+      countTotalSessions: vi.fn().mockResolvedValue(0),
+      countActiveSessions: vi.fn().mockResolvedValue(0),
+      getAverageScore: vi.fn().mockResolvedValue(0),
+      findAllForAdmin: vi.fn(),
+      deleteWithCascade: vi.fn(),
     };
 
     mockQuestionDetailsService = {

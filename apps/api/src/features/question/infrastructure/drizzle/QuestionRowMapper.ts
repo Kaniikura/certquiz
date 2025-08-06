@@ -27,7 +27,10 @@ export function mapQuestionTypeToDb(type: QuestionType): 'single' | 'multiple' {
  * @param type Database question type
  * @param options Question options (optional) for inferring true/false questions
  */
-function mapQuestionTypeFromDb(type: 'single' | 'multiple', options?: unknown): QuestionType {
+export function mapQuestionTypeFromDb(
+  type: 'single' | 'multiple',
+  options?: unknown
+): QuestionType {
   // Multiple select is straightforward
   if (type === 'multiple') {
     return 'multiple_select';

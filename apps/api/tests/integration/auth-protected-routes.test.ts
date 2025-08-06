@@ -197,16 +197,113 @@ describe('Authentication Protected Routes Integration', () => {
 
     it('GET /api/admin/stats should allow admin users', async () => {
       const token = await createTestToken({
-        sub: 'admin-user',
+        sub: '550e8400-e29b-41d4-a716-446655440001',
         realm_access: { roles: ['certquiz-admin'] },
       });
       const res = await testApp.request('/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      expect(res.status).toBe(200);
+
+      // Debug: Log the raw response text if JSON parsing fails
+      const text = await res.text();
+      let body: {
+        success: boolean;
+        data?: {
+          users?: unknown;
+          quizzes?: unknown;
+          questions?: unknown;
+          system?: unknown;
+        };
+      };
+      try {
+        body = JSON.parse(text);
+      } catch (_e) {
+        // Re-throw error with additional context
+        throw new Error(`Failed to parse JSON response: ${text}`);
+      }
+
+      expect(body.success).toBe(true);
+      // Verify the response contains system statistics
+      expect(body.data).toHaveProperty('users');
+      expect(body.data).toHaveProperty('quizzes');
+      expect(body.data).toHaveProperty('questions');
+      expect(body.data).toHaveProperty('system');
+    });
+
+    it('GET /api/admin/users should require admin role', async () => {
+      const token = await createTestToken({
+        realm_access: { roles: ['certquiz-user'] },
+      });
+      const res = await testApp.request('/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('GET /api/admin/users should allow admin users with pagination', async () => {
+      const token = await createTestToken({
+        sub: '550e8400-e29b-41d4-a716-446655440001',
+        realm_access: { roles: ['certquiz-admin'] },
+      });
+      const res = await testApp.request('/api/admin/users?page=1&pageSize=10', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(body.data.lastCheckedBy).toBe('admin-user');
+      expect(body.data).toHaveProperty('items');
+      expect(body.data).toHaveProperty('total');
+      expect(body.data).toHaveProperty('page');
+      expect(body.data).toHaveProperty('pageSize');
+      expect(body.data).toHaveProperty('totalPages');
+      expect(body.data.page).toBe(1);
+      expect(body.data.pageSize).toBe(10);
+    });
+
+    it('PATCH /api/admin/users/:id/roles should require admin role', async () => {
+      const token = await createTestToken({
+        realm_access: { roles: ['certquiz-user'] },
+      });
+      const res = await testApp.request('/api/admin/users/test-user/roles', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'premium' }),
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('PATCH /api/admin/users/:id/roles should allow admin to update roles', async () => {
+      const token = await createTestToken({
+        sub: '550e8400-e29b-41d4-a716-446655440001',
+        realm_access: { roles: ['certquiz-admin'] },
+      });
+
+      // This will fail with user not found, but that's expected in test environment
+      // The important part is that it passes authentication and reaches the handler
+      const res = await testApp.request(
+        '/api/admin/users/550e8400-e29b-41d4-a716-446655440000/roles',
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: 'premium' }),
+        }
+      );
+
+      // In test environment, we expect 404 as user doesn't exist
+      // In real environment with data, this would be 200
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
     });
 
     it('DELETE /api/admin/quiz/:id should require admin role', async () => {

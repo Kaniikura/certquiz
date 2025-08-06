@@ -139,6 +139,7 @@ describe('User', () => {
         isActive: true,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
+        lastLoginAt: null,
       };
 
       // Act
@@ -170,6 +171,7 @@ describe('User', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       // Act
@@ -194,6 +196,7 @@ describe('User', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       // Act
@@ -218,6 +221,7 @@ describe('User', () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        lastLoginAt: null,
       };
 
       // Act
@@ -522,6 +526,7 @@ describe('User', () => {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          lastLoginAt: null,
         })
       );
 

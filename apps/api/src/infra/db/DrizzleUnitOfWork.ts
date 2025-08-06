@@ -18,6 +18,8 @@
 import { randomUUID } from 'node:crypto';
 import { DrizzleAuthUserRepository } from '@api/features/auth/infrastructure/drizzle/DrizzleAuthUserRepository';
 import { DrizzleQuestionRepository } from '@api/features/question/infrastructure/drizzle/DrizzleQuestionRepository';
+import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
+import { DrizzleQuestionDetailsService } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuestionDetailsService';
 import { DrizzleQuizRepository } from '@api/features/quiz/infrastructure/drizzle/DrizzleQuizRepository';
 import { DrizzleUserRepository } from '@api/features/user/infrastructure/drizzle/DrizzleUserRepository';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
@@ -46,6 +48,7 @@ import type { TransactionContext } from './uow';
 export class DrizzleUnitOfWork implements IUnitOfWork {
   private readonly repositoryCache = new Map<symbol, unknown>();
   private readonly transactionId: string;
+  private questionDetailsService: IQuestionDetailsService | null = null;
 
   constructor(
     private readonly tx: TransactionContext,
@@ -106,6 +109,20 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
   }
 
   /**
+   * Get the question details service for this unit of work
+   * Uses lazy initialization to create the service only when needed
+   */
+  getQuestionDetailsService(): IQuestionDetailsService {
+    if (!this.questionDetailsService) {
+      this.questionDetailsService = new DrizzleQuestionDetailsService(this.tx, this.logger);
+      this.logger.debug('Question details service created', {
+        transactionId: this.transactionId,
+      });
+    }
+    return this.questionDetailsService;
+  }
+
+  /**
    * Create a repository instance based on the provided token
    * @internal
    */
@@ -115,8 +132,9 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
         return new DrizzleAuthUserRepository(this.tx, this.logger);
       case USER_REPO_TOKEN:
         return new DrizzleUserRepository(this.tx, this.logger);
-      case QUIZ_REPO_TOKEN:
-        return new DrizzleQuizRepository(this.tx, this.logger);
+      case QUIZ_REPO_TOKEN: {
+        return new DrizzleQuizRepository(this.tx, this.getQuestionDetailsService(), this.logger);
+      }
       case QUESTION_REPO_TOKEN:
         return new DrizzleQuestionRepository(this.tx, this.logger);
       default:

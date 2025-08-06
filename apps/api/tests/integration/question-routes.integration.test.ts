@@ -1,5 +1,8 @@
 import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
-import type { QuestionSummary } from '@api/features/question/domain/repositories/IQuestionRepository';
+import type {
+  QuestionSummary,
+  QuestionWithModerationInfo,
+} from '@api/features/question/domain/repositories/IQuestionRepository';
 import type { QuestionOptionJSON } from '@api/features/question/domain/value-objects/QuestionOption';
 import { getDb } from '@api/infra/db/client';
 import {
@@ -932,6 +935,465 @@ describe('Question Routes HTTP Integration', () => {
 
         // Should either reject with 401 or treat as unauthenticated
         expect([200, 401]).toContain(res.status);
+      });
+    });
+  });
+
+  describe('Admin Moderation Endpoints', () => {
+    let draftQuestionId: string;
+
+    beforeEach(async () => {
+      // Create a draft question for moderation testing
+      const adminToken = await createAdminToken();
+      const draftQuestionData = createTestQuestionData({
+        questionText: `Draft question for moderation testing (${Date.now()})`,
+        status: 'draft',
+        isPremium: false,
+      });
+
+      const res = await testApp.request('/api/questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify(draftQuestionData),
+      });
+
+      if (res.status === 201) {
+        const data = await res.json();
+        draftQuestionId = data.data.question.id;
+      }
+    });
+
+    describe('GET /admin/moderate-questions', () => {
+      it('should require admin authentication', async () => {
+        const res = await testApp.request('/api/admin/questions/pending');
+
+        expect(res.status).toBe(401);
+        const data = await res.json();
+        expect(data.error).toBeDefined();
+      });
+
+      it('should require admin role', async () => {
+        const userToken = await createTestToken(); // Regular user token
+        const res = await testApp.request('/api/admin/questions/pending', {
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+          },
+        });
+
+        expect(res.status).toBe(403);
+        const data = await res.json();
+        expect(data).toEqual({
+          error: 'Insufficient permissions',
+        });
+      });
+
+      it('should return paginated questions for moderation', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request('/api/admin/questions/pending', {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+
+        expect(data).toMatchObject({
+          success: true,
+          data: {
+            items: expect.any(Array),
+            total: expect.any(Number),
+            page: expect.any(Number),
+            pageSize: expect.any(Number),
+          },
+        });
+
+        // Verify each item has moderation info
+        data.data.items.forEach((item: QuestionWithModerationInfo) => {
+          expect(item).toMatchObject({
+            questionId: expect.any(String),
+            questionText: expect.any(String),
+            questionType: expect.any(String),
+            status: expect.any(String),
+            daysPending: expect.any(Number),
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
+          });
+        });
+      });
+
+      it('should handle pagination parameters', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request('/api/admin/questions/pending?page=1&pageSize=5', {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+
+        expect(data.data.page).toBe(1);
+        expect(data.data.pageSize).toBe(5);
+        expect(data.data.items.length).toBeLessThanOrEqual(5);
+      });
+
+      it('should filter by status', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request('/api/admin/questions/pending?status=DRAFT', {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+
+        // All returned questions should have draft status
+        data.data.items.forEach((item: QuestionWithModerationInfo) => {
+          expect(item.status).toBe('draft');
+        });
+      });
+
+      it('should handle date range filtering', async () => {
+        const adminToken = await createAdminToken();
+        const today = new Date().toISOString().split('T')[0];
+        const res = await testApp.request(
+          `/api/admin/questions/pending?dateFrom=${today}&dateTo=${today}`,
+          {
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+            },
+          }
+        );
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.data.items).toBeDefined();
+      });
+    });
+
+    describe('PATCH /admin/moderate-questions/:questionId', () => {
+      it('should require admin authentication', async () => {
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'approve',
+            feedback: 'Looks good!',
+          }),
+        });
+
+        expect(res.status).toBe(401);
+      });
+
+      it('should require admin role', async () => {
+        const userToken = await createTestToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({
+            action: 'approve',
+            feedback: 'Looks good!',
+          }),
+        });
+
+        expect(res.status).toBe(403);
+      });
+
+      it('should approve a draft question successfully', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'approve',
+            feedback: 'Question is well-structured and accurate',
+          }),
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+
+        expect(data).toMatchObject({
+          success: true,
+          data: {
+            success: true,
+            questionId: draftQuestionId,
+            previousStatus: 'PENDING',
+            newStatus: 'APPROVED',
+            action: 'approve',
+            feedback: 'Question is well-structured and accurate',
+          },
+        });
+        expect(data.data.moderatedBy).toBeDefined();
+        expect(data.data.moderatedAt).toBeDefined();
+      });
+
+      it('should reject a draft question with feedback', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'reject',
+            feedback:
+              'The explanation needs more detail and the question text has grammatical errors.',
+          }),
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+
+        expect(data).toMatchObject({
+          success: true,
+          data: {
+            success: true,
+            questionId: draftQuestionId,
+            previousStatus: 'PENDING',
+            newStatus: 'REJECTED',
+            action: 'reject',
+            feedback:
+              'The explanation needs more detail and the question text has grammatical errors.',
+          },
+        });
+        expect(data.data.moderatedBy).toBeDefined();
+        expect(data.data.moderatedAt).toBeDefined();
+      });
+
+      it('should require feedback for rejection', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'reject',
+            // Missing feedback
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'feedback: Feedback is required for reject action',
+          },
+        });
+      });
+
+      it('should require minimum feedback length for rejection', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'reject',
+            feedback: 'Too short', // Less than 10 characters
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: expect.stringContaining('at least 10 characters'),
+          },
+        });
+      });
+
+      it('should return 404 for non-existent question', async () => {
+        const adminToken = await createAdminToken();
+        const nonExistentId = '550e8400-e29b-41d4-a716-446655440000';
+        const res = await testApp.request(`/api/admin/questions/${nonExistentId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'approve',
+            feedback: 'Good question',
+          }),
+        });
+
+        expect(res.status).toBe(404);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'QUESTION_NOT_FOUND',
+          },
+        });
+      });
+
+      it('should return 400 for invalid question ID format', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request('/api/admin/questions/invalid-uuid/moderate', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'approve',
+            feedback: 'Good question',
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+          },
+        });
+      });
+
+      it('should return 400 for invalid action', async () => {
+        const adminToken = await createAdminToken();
+        const res = await testApp.request(`/api/admin/questions/${draftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'invalid_action',
+            feedback: 'Good question',
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+          },
+        });
+      });
+
+      it('should prevent moderation of non-draft questions', async () => {
+        // Create a fresh draft question for this specific test
+        const adminToken = await createAdminToken();
+        const freshDraftQuestionData = createTestQuestionData({
+          questionText: `Fresh draft question for double moderation test (${Date.now()})`,
+          status: 'draft',
+          isPremium: false,
+        });
+
+        const createRes = await testApp.request('/api/questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify(freshDraftQuestionData),
+        });
+
+        expect(createRes.status).toBe(201);
+        const createData = await createRes.json();
+        const freshDraftQuestionId = createData.data.question.id;
+
+        // First approve the question
+        const firstResponse = await testApp.request(
+          `/api/admin/questions/${freshDraftQuestionId}/moderate`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${adminToken}`,
+            },
+            body: JSON.stringify({
+              action: 'approve',
+              feedback: 'Question approved successfully', // Must be >= 10 characters
+            }),
+          }
+        );
+
+        expect(firstResponse.status).toBe(200);
+
+        // Then try to moderate it again
+        const res = await testApp.request(`/api/admin/questions/${freshDraftQuestionId}/moderate`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            action: 'reject',
+            feedback: 'Changed my mind',
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data).toMatchObject({
+          success: false,
+          error: {
+            code: 'INVALID_QUESTION_DATA',
+            message: expect.stringContaining('Only DRAFT questions can be moderated'),
+          },
+        });
+      });
+    });
+
+    describe('Moderation Data Persistence', () => {
+      it('should persist moderation metadata', async () => {
+        const adminToken = await createAdminToken();
+        const feedback = 'Excellent question with clear explanations';
+
+        // Moderate the question
+        const moderateRes = await testApp.request(
+          `/api/admin/questions/${draftQuestionId}/moderate`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${adminToken}`,
+            },
+            body: JSON.stringify({
+              action: 'approve',
+              feedback,
+            }),
+          }
+        );
+
+        expect(moderateRes.status).toBe(200);
+
+        // Verify the question status was updated by trying to fetch it
+        const questionRes = await testApp.request(`/api/questions/${draftQuestionId}`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        expect(questionRes.status).toBe(200);
+        const questionData = await questionRes.json();
+        expect(questionData.data.question.status).toBe('active'); // Should be approved
       });
     });
   });

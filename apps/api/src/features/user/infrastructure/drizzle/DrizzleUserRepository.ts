@@ -1,10 +1,11 @@
 import type { Email } from '@api/features/auth/domain/value-objects/Email';
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import { UserRole } from '@api/features/auth/domain/value-objects/UserRole';
 import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import type { User } from '../../domain/entities/User';
 import type { IUserRepository } from '../../domain/repositories/IUserRepository';
 import {
@@ -21,8 +22,6 @@ import { mapJoinedRowToUser } from './UserRowMapper';
  * Uses transactions to ensure consistency between authUser and userProgress
  */
 export class DrizzleUserRepository extends BaseRepository implements IUserRepository {
-  private readonly validRoles = ['guest', 'user', 'premium', 'admin'] as const;
-
   constructor(
     private readonly conn: TransactionContext,
     logger: LoggerPort
@@ -33,13 +32,13 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
   /**
    * Validate and cast role string to union type
    */
-  private validateAndCastRole(role: string): 'guest' | 'user' | 'premium' | 'admin' {
-    if (!this.validRoles.includes(role as 'guest' | 'user' | 'premium' | 'admin')) {
+  private validateAndCastRole(role: string): UserRole.UserRoleString {
+    if (!UserRole.USER_ROLE_VALUES.includes(role as UserRole.UserRoleString)) {
       throw new Error(
-        `Invalid role value: ${role}. Valid roles are: ${this.validRoles.join(', ')}`
+        `Invalid role value: ${role}. Valid roles are: ${UserRole.USER_ROLE_VALUES.join(', ')}`
       );
     }
-    return role as 'guest' | 'user' | 'premium' | 'admin';
+    return role as UserRole.UserRoleString;
   }
 
   /**
@@ -442,6 +441,36 @@ export class DrizzleUserRepository extends BaseRepository implements IUserReposi
         'Transaction support is required but not available on database connection. ' +
           'Ensure your database connection is properly configured with transaction support.'
       );
+    }
+  }
+
+  async getAverageLevel(): Promise<number> {
+    try {
+      const result = await this.conn
+        .select({ avgLevel: sql<number>`AVG(level)` })
+        .from(userProgress);
+
+      return Number(result[0]?.avgLevel ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to get average level:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async getTotalExperience(): Promise<number> {
+    try {
+      const result = await this.conn
+        .select({ totalExp: sql<number>`SUM(experience)` })
+        .from(userProgress);
+
+      return Number(result[0]?.totalExp ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to get total experience:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
     }
   }
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { UserRole } from '../../domain/value-objects/UserRole';
 import { validateAndMapAuthUser } from './AuthUserValidator';
 import type { AuthUserRow } from './schema/authUser';
 
@@ -12,6 +13,7 @@ describe('AuthUserValidator', () => {
     isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:00:00Z'),
+    lastLoginAt: null,
   };
 
   it('should validate and map valid auth user row', () => {
@@ -100,12 +102,7 @@ describe('AuthUserValidator', () => {
   });
 
   it('should handle all valid user roles', () => {
-    const roles: Array<'guest' | 'user' | 'premium' | 'admin'> = [
-      'guest',
-      'user',
-      'premium',
-      'admin',
-    ];
+    const roles: Array<UserRole.UserRoleString> = [...UserRole.USER_ROLE_VALUES];
 
     for (const role of roles) {
       const rowWithRole = {

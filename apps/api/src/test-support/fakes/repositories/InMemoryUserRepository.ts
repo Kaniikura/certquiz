@@ -99,6 +99,21 @@ export class InMemoryUserRepository implements IUserRepository {
     return true;
   }
 
+  async getAverageLevel(): Promise<number> {
+    const users = Array.from(this.users.values());
+    if (users.length === 0) {
+      return 0;
+    }
+
+    const totalLevel = users.reduce((sum, user) => sum + user.progress.level.value, 0);
+    return totalLevel / users.length;
+  }
+
+  async getTotalExperience(): Promise<number> {
+    const users = Array.from(this.users.values());
+    return users.reduce((sum, user) => sum + user.progress.experience.value, 0);
+  }
+
   // Test helper methods
 
   /**

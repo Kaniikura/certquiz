@@ -1,6 +1,6 @@
 import type { IPremiumAccessService } from '@api/features/question/domain/services/IPremiumAccessService';
 import type { IQuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
-import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
+// import type { IQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
 import type { IQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import type { Clock } from '@api/shared/clock';
 import type { IdGenerator } from '@api/shared/id-generator/IdGenerator';
@@ -28,9 +28,10 @@ export const PREMIUM_ACCESS_SERVICE_TOKEN =
 
 // Quiz Services
 export const QUESTION_SERVICE_TOKEN = createServiceToken<IQuestionService>('QUESTION_SERVICE');
-export const QUESTION_DETAILS_SERVICE_TOKEN = createServiceToken<IQuestionDetailsService>(
-  'QUESTION_DETAILS_SERVICE'
-);
+// Question Details Service is now created per transaction context in UnitOfWork/DatabaseContext
+// export const QUESTION_DETAILS_SERVICE_TOKEN = createServiceToken<IQuestionDetailsService>(
+//   'QUESTION_DETAILS_SERVICE'
+// );
 
 // Quiz Application Services
 export const QUIZ_COMPLETION_SERVICE_TOKEN =

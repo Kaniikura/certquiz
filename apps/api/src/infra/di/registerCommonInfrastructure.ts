@@ -6,7 +6,7 @@
 import type { Environment } from '@api/config/env';
 import { PremiumAccessService } from '@api/features/question/domain/services/PremiumAccessService';
 import { QuizCompletionService } from '@api/features/quiz/application/QuizCompletionService';
-import { StubQuestionDetailsService } from '@api/features/quiz/domain/value-objects/QuestionDetailsService';
+
 import { StubQuestionService } from '@api/features/quiz/start-quiz/QuestionService';
 import { systemClock } from '@api/shared/clock';
 import { FakePremiumAccessService } from '@api/test-support/fakes/services/FakePremiumAccessService';
@@ -29,7 +29,6 @@ import {
   ID_GENERATOR_TOKEN,
   LOGGER_TOKEN,
   PREMIUM_ACCESS_SERVICE_TOKEN,
-  QUESTION_DETAILS_SERVICE_TOKEN,
   QUESTION_SERVICE_TOKEN,
   QUIZ_COMPLETION_SERVICE_TOKEN,
   UNIT_OF_WORK_PROVIDER_TOKEN,
@@ -188,18 +187,15 @@ export function registerCommonInfrastructure(
   // Quiz services - currently use stubs across all environments
   // TODO: Implement real services for production
   container.register(QUESTION_SERVICE_TOKEN, () => new StubQuestionService(), { singleton: true });
-  container.register(QUESTION_DETAILS_SERVICE_TOKEN, () => new StubQuestionDetailsService(), {
-    singleton: true,
-  });
+  // Question Details Service is now created per transaction context in UnitOfWork/DatabaseContext
 
   // Quiz application services
   container.register(
     QUIZ_COMPLETION_SERVICE_TOKEN,
     async () => {
       const unitOfWorkProvider = await container.resolve(UNIT_OF_WORK_PROVIDER_TOKEN);
-      const questionDetailsService = await container.resolve(QUESTION_DETAILS_SERVICE_TOKEN);
       const clock = await container.resolve(CLOCK_TOKEN);
-      return new QuizCompletionService(unitOfWorkProvider, questionDetailsService, clock);
+      return new QuizCompletionService(unitOfWorkProvider, clock);
     },
     { singleton: true }
   );

@@ -6,16 +6,33 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, arrayContains, count, eq, ilike, or } from 'drizzle-orm';
+import type { PaginatedResult } from '@api/shared/types/pagination';
+import {
+  and,
+  arrayContains,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  lte,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type { QuestionId } from '../../../quiz/domain/value-objects/Ids';
-import type { Question } from '../../domain/entities/Question';
+import type { Question, QuestionStatus } from '../../domain/entities/Question';
 import type {
   IQuestionRepository,
+  ModerationParams,
   PaginatedQuestions,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,
+  QuestionWithModerationInfo,
 } from '../../domain/repositories/IQuestionRepository';
+import type { QuestionDifficulty } from '../../domain/value-objects/QuestionDifficulty';
 import {
   InvalidQuestionDataError,
   QuestionNotFoundError,
@@ -25,10 +42,12 @@ import {
 } from '../../shared/errors';
 import {
   mapQuestionStatusToDb,
+  mapQuestionTypeFromDb,
   mapQuestionTypeToDb,
   mapRowToQuestion,
   mapToQuestionSummary,
 } from './QuestionRowMapper';
+import { moderationLogs } from './schema/moderation';
 import { question, questionVersion } from './schema/question';
 
 /**
@@ -276,6 +295,23 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
     }
   }
 
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   *
+   * Current implementation uses offset-based pagination which degrades performance
+   * with large page numbers (e.g., page 1000 requires skipping 20,000 rows).
+   *
+   * Future optimization should implement cursor-based pagination:
+   * - Use a stable sort key (e.g., createdAt + questionId) as cursor
+   * - Maintain constant query performance regardless of page position
+   * - Requires API contract changes to support cursor tokens
+   *
+   * Consider implementing when:
+   * - Dataset grows significantly (>100k questions)
+   * - Users frequently access deep pages
+   * - Performance monitoring shows degradation
+   */
+
   async findQuestions(
     filters: QuestionFilters,
     pagination: QuestionPagination
@@ -370,11 +406,11 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
 
       const premiumQuestions = premiumResult[0]?.count ?? 0;
 
-      // Get statistics from version table
-      const versionRows = await this.db
+      // Get exam type statistics using database-level aggregation
+      const examTypeRows = await this.db
         .select({
-          examTypes: questionVersion.examTypes,
-          difficulty: questionVersion.difficulty,
+          examType: sql<string>`unnest(${questionVersion.examTypes})`.as('exam_type'),
+          count: sql<number>`COUNT(*)`.as('count'),
         })
         .from(question)
         .innerJoin(
@@ -384,20 +420,35 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
             eq(question.currentVersion, questionVersion.version)
           )
         )
-        .where(eq(question.status, 'active'));
+        .where(eq(question.status, 'active'))
+        .groupBy(sql`unnest(${questionVersion.examTypes})`);
 
-      // Aggregate statistics
+      // Get difficulty statistics using database-level aggregation
+      const difficultyRows = await this.db
+        .select({
+          difficulty: questionVersion.difficulty,
+          count: count(),
+        })
+        .from(question)
+        .innerJoin(
+          questionVersion,
+          and(
+            eq(question.questionId, questionVersion.questionId),
+            eq(question.currentVersion, questionVersion.version)
+          )
+        )
+        .where(eq(question.status, 'active'))
+        .groupBy(questionVersion.difficulty);
+
+      // Transform results into the expected format
       const questionsByExamType: Record<string, number> = {};
+      for (const row of examTypeRows) {
+        questionsByExamType[row.examType] = Number(row.count);
+      }
+
       const questionsByDifficulty: Record<string, number> = {};
-
-      for (const row of versionRows) {
-        // Count by exam type
-        for (const examType of row.examTypes) {
-          questionsByExamType[examType] = (questionsByExamType[examType] || 0) + 1;
-        }
-
-        // Count by difficulty
-        questionsByDifficulty[row.difficulty] = (questionsByDifficulty[row.difficulty] || 0) + 1;
+      for (const row of difficultyRows) {
+        questionsByDifficulty[row.difficulty] = Number(row.count);
       }
 
       return {
@@ -466,5 +517,281 @@ export class DrizzleQuestionRepository extends BaseRepository implements IQuesti
     }
 
     return conditions;
+  }
+
+  async countTotalQuestions(): Promise<number> {
+    try {
+      const result = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .where(ne(question.status, 'archived'));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count total questions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countPendingQuestions(): Promise<number> {
+    try {
+      const result = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .where(eq(question.status, 'draft'));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count pending questions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async updateStatus(
+    questionId: QuestionId,
+    status: QuestionStatus,
+    moderatedBy: string,
+    feedback?: string
+  ): Promise<void> {
+    try {
+      this.logger.info('Updating question status', {
+        questionId,
+        status,
+        moderatedBy,
+        hasFeedback: !!feedback,
+      });
+
+      // Get the full question entity to use domain method
+      const questionEntity = await this.findQuestionWithDetails(questionId);
+      if (!questionEntity) {
+        throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
+      }
+
+      // Use the domain method to handle status update and business rule validation
+      const moderationResult = questionEntity.moderateStatus(status, feedback);
+
+      if (!moderationResult.success) {
+        throw moderationResult.error;
+      }
+
+      // Extract moderation metadata from domain result
+      const { previousStatus, newStatus, action } = moderationResult.data;
+
+      // Use transaction to ensure both operations succeed or fail together
+      await this.db.transaction(async (tx) => {
+        // Update the question status using the modified entity
+        await tx
+          .update(question)
+          .set({
+            status: mapQuestionStatusToDb(questionEntity.status),
+            updatedAt: questionEntity.updatedAt,
+          })
+          .where(eq(question.questionId, questionId));
+
+        // Log the moderation action using domain result
+        await tx.insert(moderationLogs).values({
+          questionId,
+          action,
+          moderatedBy,
+          feedback,
+          previousStatus: mapQuestionStatusToDb(previousStatus),
+          newStatus: mapQuestionStatusToDb(newStatus),
+        });
+      });
+
+      this.logger.info('Question status updated successfully', {
+        questionId,
+        previousStatus: mapQuestionStatusToDb(previousStatus),
+        newStatus: mapQuestionStatusToDb(newStatus),
+        moderatedBy,
+      });
+    } catch (error) {
+      this.logger.error('Failed to update question status', {
+        questionId,
+        status,
+        moderatedBy,
+        error: this.getErrorDetails(error),
+      });
+
+      // Re-throw our domain errors as-is
+      if (error instanceof QuestionNotFoundError || error instanceof InvalidQuestionDataError) {
+        throw error;
+      }
+
+      throw new QuestionRepositoryError(
+        'updateStatus',
+        `Failed to update question status: ${this.getErrorMessage(error)}`
+      );
+    }
+  }
+
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   * Same performance considerations as findQuestions method apply here.
+   * Consider implementing cursor-based pagination for moderation queries
+   * when performance becomes an issue with large datasets.
+   */
+
+  async findQuestionsForModeration(
+    params: ModerationParams
+  ): Promise<PaginatedResult<QuestionWithModerationInfo>> {
+    try {
+      this.logger.debug('Finding questions for moderation', { params });
+
+      const {
+        page,
+        pageSize,
+        status,
+        dateFrom,
+        dateTo,
+        examType,
+        difficulty,
+        orderBy = 'createdAt',
+        orderDir = 'desc',
+      } = params;
+      const offset = (page - 1) * pageSize;
+
+      // Build WHERE conditions
+      const conditions = [];
+
+      if (status) {
+        conditions.push(eq(question.status, mapQuestionStatusToDb(status)));
+      } else {
+        // Default to pending questions if no status filter
+        conditions.push(eq(question.status, 'draft'));
+      }
+
+      if (dateFrom) {
+        conditions.push(gte(question.createdAt, dateFrom));
+      }
+
+      if (dateTo) {
+        conditions.push(lte(question.createdAt, dateTo));
+      }
+
+      if (examType) {
+        // Use the latest version for exam type filtering
+        conditions.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${questionVersion} 
+            WHERE ${questionVersion.questionId} = ${question.questionId} 
+            AND ${questionVersion.version} = ${question.currentVersion}
+            AND ${arrayContains(questionVersion.examTypes, [examType])}
+          )`
+        );
+      }
+
+      if (difficulty) {
+        conditions.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${questionVersion} 
+            WHERE ${questionVersion.questionId} = ${question.questionId} 
+            AND ${questionVersion.version} = ${question.currentVersion}
+            AND ${questionVersion.difficulty} = ${difficulty}
+          )`
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Count total records
+      const countResult = await this.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(question)
+        .leftJoin(
+          questionVersion,
+          and(
+            eq(questionVersion.questionId, question.questionId),
+            eq(questionVersion.version, question.currentVersion)
+          )
+        )
+        .where(whereClause);
+
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      // Get paginated data
+      const orderColumn = orderBy === 'createdAt' ? question.createdAt : question.updatedAt;
+      const orderFn = orderDir === 'asc' ? asc : desc;
+
+      const results = await this.db
+        .select({
+          questionId: question.questionId,
+          questionText: questionVersion.questionText,
+          questionType: questionVersion.questionType,
+          examTypes: questionVersion.examTypes,
+          categories: questionVersion.categories,
+          difficulty: questionVersion.difficulty,
+          status: question.status,
+          isPremium: question.isPremium,
+          tags: questionVersion.tags,
+          createdById: question.createdById,
+          createdAt: question.createdAt,
+          updatedAt: question.updatedAt,
+        })
+        .from(question)
+        .leftJoin(
+          questionVersion,
+          and(
+            eq(questionVersion.questionId, question.questionId),
+            eq(questionVersion.version, question.currentVersion)
+          )
+        )
+        .where(whereClause)
+        .orderBy(orderFn(orderColumn))
+        .limit(pageSize)
+        .offset(offset);
+
+      // Map results to domain objects
+      const items: QuestionWithModerationInfo[] = results.map((row) => {
+        const now = new Date();
+        const daysPending = Math.ceil(
+          (now.getTime() - row.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          questionId: row.questionId as QuestionId,
+          questionText: row.questionText || '',
+          questionType: mapQuestionTypeFromDb(row.questionType || 'single'),
+          examTypes: row.examTypes || [],
+          categories: row.categories || [],
+          difficulty: (row.difficulty || 'Beginner') as QuestionDifficulty,
+          status: row.status as QuestionStatus,
+          isPremium: row.isPremium || false,
+          tags: row.tags || [],
+          createdById: row.createdById,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          daysPending,
+        };
+      });
+
+      const result: PaginatedResult<QuestionWithModerationInfo> = {
+        items,
+        total: totalCount,
+        page,
+        pageSize,
+      };
+
+      this.logger.debug('Found questions for moderation', {
+        totalCount,
+        currentPage: page,
+        itemCount: items.length,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to find questions for moderation', {
+        params,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuestionRepositoryError(
+        'findQuestionsForModeration',
+        `Failed to find questions: ${this.getErrorMessage(error)}`
+      );
+    }
   }
 }

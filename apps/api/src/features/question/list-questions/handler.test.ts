@@ -16,6 +16,10 @@ describe('listQuestionsHandler', () => {
     createQuestion: ReturnType<typeof vi.fn>;
     updateQuestion: ReturnType<typeof vi.fn>;
     findQuestionWithDetails: ReturnType<typeof vi.fn>;
+    countTotalQuestions: ReturnType<typeof vi.fn>;
+    countPendingQuestions: ReturnType<typeof vi.fn>;
+    updateStatus: ReturnType<typeof vi.fn>;
+    findQuestionsForModeration: ReturnType<typeof vi.fn>;
   };
   let mockLogger: LoggerPort;
   let premiumAccessService: PremiumAccessService;
@@ -31,6 +35,10 @@ describe('listQuestionsHandler', () => {
       createQuestion: vi.fn(),
       updateQuestion: vi.fn(),
       findQuestionWithDetails: vi.fn(),
+      countTotalQuestions: vi.fn().mockResolvedValue(0),
+      countPendingQuestions: vi.fn().mockResolvedValue(0),
+      updateStatus: vi.fn(),
+      findQuestionsForModeration: vi.fn(),
     };
 
     // Setup logger mock

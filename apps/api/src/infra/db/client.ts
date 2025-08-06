@@ -110,7 +110,6 @@ export async function shutdownDatabase(): Promise<void> {
     timeout: 5,
     onError: (error) => {
       // Log error but don't throw - we want graceful shutdown
-      // biome-ignore lint/suspicious/noConsole: Critical shutdown error logging
       console.error('[database] Error during shutdown:', error);
     },
   });

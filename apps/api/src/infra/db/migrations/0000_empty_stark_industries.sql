@@ -16,6 +16,7 @@ CREATE TABLE "auth_user" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_login_at" timestamp with time zone,
 	CONSTRAINT "auth_user_email_unique" UNIQUE("email"),
 	CONSTRAINT "auth_user_username_unique" UNIQUE("username"),
 	CONSTRAINT "auth_user_identity_provider_id_unique" UNIQUE("identity_provider_id")
@@ -86,6 +87,7 @@ CREATE TABLE "quiz_session_snapshot" (
 	"config" jsonb NOT NULL,
 	"question_order" uuid[] NOT NULL,
 	"answers" jsonb,
+	"correct_answers" integer,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "ck_session_state_consistency" CHECK (
       CASE 
@@ -95,7 +97,8 @@ CREATE TABLE "quiz_session_snapshot" (
         ELSE true
       END
     ),
-	CONSTRAINT "ck_question_index_bounds" CHECK ("quiz_session_snapshot"."current_question_index" >= 0 AND "quiz_session_snapshot"."current_question_index" < "quiz_session_snapshot"."question_count")
+	CONSTRAINT "ck_question_index_bounds" CHECK ("quiz_session_snapshot"."current_question_index" >= 0 AND "quiz_session_snapshot"."current_question_index" < "quiz_session_snapshot"."question_count"),
+	CONSTRAINT "ck_correct_answers_bounds" CHECK ("quiz_session_snapshot"."correct_answers" IS NULL OR ("quiz_session_snapshot"."correct_answers" >= 0 AND "quiz_session_snapshot"."correct_answers" <= "quiz_session_snapshot"."question_count"))
 );
 --> statement-breakpoint
 CREATE TABLE "subscriptions" (
@@ -146,6 +149,17 @@ CREATE TABLE "webhook_event" (
 	"error_message" text
 );
 --> statement-breakpoint
+CREATE TABLE "moderation_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"question_id" uuid NOT NULL,
+	"action" text NOT NULL,
+	"moderated_by" uuid NOT NULL,
+	"moderated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"feedback" text,
+	"previous_status" "question_status" NOT NULL,
+	"new_status" "question_status" NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "bookmarks" ADD CONSTRAINT "bookmarks_user_id_auth_user_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bookmarks" ADD CONSTRAINT "bookmarks_question_id_question_question_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."question"("question_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "question" ADD CONSTRAINT "question_created_by_id_auth_user_user_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."auth_user"("user_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -153,6 +167,8 @@ ALTER TABLE "question_version" ADD CONSTRAINT "question_version_question_id_ques
 ALTER TABLE "quiz_session_snapshot" ADD CONSTRAINT "quiz_session_snapshot_owner_id_auth_user_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_user_id_auth_user_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_progress" ADD CONSTRAINT "user_progress_user_id_auth_user_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."auth_user"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "moderation_logs" ADD CONSTRAINT "moderation_logs_question_id_question_question_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."question"("question_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "moderation_logs" ADD CONSTRAINT "moderation_logs_moderated_by_auth_user_user_id_fk" FOREIGN KEY ("moderated_by") REFERENCES "public"."auth_user"("user_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ix_user_email" ON "auth_user" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "ix_user_identity_provider" ON "auth_user" USING btree ("identity_provider_id");--> statement-breakpoint
 CREATE INDEX "ix_user_role_active" ON "auth_user" USING btree ("role","is_active");--> statement-breakpoint
@@ -180,6 +196,7 @@ CREATE INDEX "ix_snapshot_owner_started" ON "quiz_session_snapshot" USING btree 
 CREATE INDEX "ix_snapshot_state_started" ON "quiz_session_snapshot" USING btree ("state","started_at");--> statement-breakpoint
 CREATE INDEX "ix_snapshot_expired_cleanup" ON "quiz_session_snapshot" USING btree ("completed_at") WHERE state IN ('COMPLETED', 'EXPIRED');--> statement-breakpoint
 CREATE INDEX "ix_snapshot_active_expiry" ON "quiz_session_snapshot" USING btree ("expires_at") WHERE state = 'IN_PROGRESS';--> statement-breakpoint
+CREATE INDEX "ix_snapshot_score_analysis" ON "quiz_session_snapshot" USING btree ("state","correct_answers") WHERE state = 'COMPLETED';--> statement-breakpoint
 CREATE INDEX "ix_subscriptions_status" ON "subscriptions" USING btree ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "unq_bmac_email" ON "subscriptions" USING btree ("buy_me_a_coffee_email");--> statement-breakpoint
 CREATE INDEX "ix_progress_experience_desc" ON "user_progress" USING btree ("experience" DESC);--> statement-breakpoint
@@ -188,4 +205,7 @@ CREATE INDEX "ix_progress_user_stats" ON "user_progress" USING btree ("user_id",
 CREATE INDEX "ix_progress_category_stats_gin" ON "user_progress" USING gin ("category_stats");--> statement-breakpoint
 CREATE INDEX "ix_webhook_status_scheduled" ON "webhook_event" USING btree ("status","scheduled_at");--> statement-breakpoint
 CREATE INDEX "ix_webhook_type" ON "webhook_event" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "ix_webhook_retry" ON "webhook_event" USING btree ("retry_count") WHERE status = 'failed';
+CREATE INDEX "ix_webhook_retry" ON "webhook_event" USING btree ("retry_count") WHERE status = 'failed';--> statement-breakpoint
+CREATE INDEX "ix_moderation_logs_question" ON "moderation_logs" USING btree ("question_id","moderated_at" DESC);--> statement-breakpoint
+CREATE INDEX "ix_moderation_logs_moderator" ON "moderation_logs" USING btree ("moderated_by","moderated_at" DESC);--> statement-breakpoint
+CREATE INDEX "ix_moderation_logs_action" ON "moderation_logs" USING btree ("action","moderated_at" DESC);

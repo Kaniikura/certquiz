@@ -1,0 +1,41 @@
+{
+  "root": false,
+  "extends": "//",
+  "overrides": [
+    {
+      "includes": ["src/infra/db/client.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "scripts/**/*.ts",
+        "tests/containers/index.ts",
+        "tests/integration/migrations.test.ts",
+        "tests/helpers/db-*.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/infra/db/schema/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ]
+}

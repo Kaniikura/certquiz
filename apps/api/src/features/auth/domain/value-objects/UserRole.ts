@@ -8,6 +8,15 @@ export enum UserRole {
 export namespace UserRole {
   const ROLE_HIERARCHY = [UserRole.Guest, UserRole.User, UserRole.Premium, UserRole.Admin] as const;
 
+  /** Type representing the string values of UserRole enum */
+  export type UserRoleString = 'guest' | 'user' | 'premium' | 'admin';
+
+  /** Array of all valid role string values for runtime use */
+  export const USER_ROLE_VALUES = Object.values(UserRole) as readonly UserRoleString[];
+
+  /** Tuple of role values for Zod enum validation */
+  export const USER_ROLE_TUPLE = USER_ROLE_VALUES as [UserRoleString, ...UserRoleString[]];
+
   export function fromString(value: string): UserRole {
     switch (value) {
       case 'guest':

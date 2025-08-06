@@ -3,11 +3,13 @@
  * @fileoverview Event-sourcing implementation using Drizzle ORM with optimistic locking
  */
 
+import { authUser } from '@api/features/auth/infrastructure/drizzle/schema/authUser';
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import postgres from 'postgres';
+import { QuizState } from '../../domain/value-objects/QuizState';
 import type { QuizStateValue } from './schema/enums';
 import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 
@@ -15,15 +17,23 @@ import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
 const { PostgresError } = postgres;
 
 import type { UserId } from '@api/features/auth/domain/value-objects/UserId';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 import { QuizSession } from '../../domain/aggregates/QuizSession';
-import type { IQuizRepository } from '../../domain/repositories/IQuizRepository';
+import type {
+  AdminQuizParams,
+  IQuizRepository,
+  QuizWithUserInfo,
+} from '../../domain/repositories/IQuizRepository';
 import type { QuizSessionId } from '../../domain/value-objects/Ids';
+import type { IQuestionDetailsService } from '../../domain/value-objects/QuestionDetailsService';
+import { buildAnswerResultsFromAnswers } from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
   constructor(
     private readonly trx: TransactionContext,
+    private readonly questionDetailsService: IQuestionDetailsService,
     logger: LoggerPort
   ) {
     super(logger);
@@ -94,6 +104,9 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
       // Insert events - PostgreSQL will automatically detect conflicts
       await this.trx.insert(quizSessionEvent).values(eventInserts);
 
+      // Update snapshot table for performance queries
+      await this.updateSnapshot(session);
+
       // Mark events as committed in aggregate
       session.markChangesAsCommitted();
 
@@ -122,6 +135,137 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         'save',
         `Failed to save quiz session: ${this.getErrorMessage(error)}`
       );
+    }
+  }
+
+  /**
+   * Updates the quiz session snapshot for performance queries
+   * @param session - Quiz session aggregate with current state
+   */
+  private async updateSnapshot(session: QuizSession): Promise<void> {
+    try {
+      // Convert session answers to JSONB format
+      const answersMap: Record<
+        string,
+        {
+          answerId: string;
+          questionId: string;
+          selectedOptionIds: string[];
+          answeredAt: string;
+        }
+      > = {};
+      const submittedAnswers = session.getAnswers();
+
+      for (const [questionId, answer] of submittedAnswers) {
+        answersMap[answer.id] = {
+          answerId: answer.id,
+          questionId: questionId.toString(),
+          selectedOptionIds: answer.selectedOptionIds.map((id) => id.toString()),
+          answeredAt: answer.answeredAt.toISOString(),
+        };
+      }
+
+      // Calculate correct_answers if quiz is completed
+      let correctAnswers: number | null = null;
+      if (session.state === QuizState.Completed && submittedAnswers.size > 0) {
+        try {
+          const questionIds = session.getQuestionIds();
+          const questionDetailsMap =
+            await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
+          const { correctCount } = buildAnswerResultsFromAnswers(
+            submittedAnswers,
+            questionDetailsMap
+          );
+          correctAnswers = correctCount;
+        } catch (error) {
+          this.logger.warn('Failed to calculate correct answers for snapshot', {
+            sessionId: session.id,
+            error: this.getErrorMessage(error),
+          });
+          // Continue with null correctAnswers - will be calculated later if needed
+        }
+      }
+
+      // Map domain state to database state
+      let dbState: QuizStateValue;
+      switch (session.state) {
+        case QuizState.InProgress:
+          dbState = 'IN_PROGRESS';
+          break;
+        case QuizState.Completed:
+          dbState = 'COMPLETED';
+          break;
+        case QuizState.Expired:
+          dbState = 'EXPIRED';
+          break;
+        default:
+          throw new Error(`Unknown quiz state: ${session.state}`);
+      }
+
+      // Calculate expires_at based on config
+      let expiresAt: Date | null = null;
+      if (session.config.timeLimit) {
+        expiresAt = new Date(session.startedAt.getTime() + session.config.timeLimit * 1000);
+      } else if (session.config.fallbackLimitSeconds) {
+        expiresAt = new Date(
+          session.startedAt.getTime() + session.config.fallbackLimitSeconds * 1000
+        );
+      }
+
+      // Calculate current question index based on answered questions
+      const currentQuestionIndex = submittedAnswers.size;
+
+      // Prepare snapshot data
+      const snapshotData = {
+        sessionId: session.id,
+        ownerId: session.userId,
+        state: dbState,
+        questionCount: session.config.questionCount,
+        currentQuestionIndex,
+        startedAt: session.startedAt,
+        expiresAt,
+        completedAt: session.completedAt,
+        version: session.version,
+        config: session.config as unknown as Record<string, unknown>, // QuizConfig is serializable as JSONB
+        questionOrder: session.getQuestionIds().map((id) => id.toString()),
+        answers: Object.keys(answersMap).length > 0 ? answersMap : null,
+        correctAnswers,
+        updatedAt: new Date(),
+      };
+
+      // Upsert snapshot record (PostgreSQL UPSERT)
+      await this.trx
+        .insert(quizSessionSnapshot)
+        .values(snapshotData)
+        .onConflictDoUpdate({
+          target: quizSessionSnapshot.sessionId,
+          set: {
+            state: snapshotData.state,
+            questionCount: snapshotData.questionCount,
+            currentQuestionIndex: snapshotData.currentQuestionIndex,
+            expiresAt: snapshotData.expiresAt,
+            completedAt: snapshotData.completedAt,
+            version: snapshotData.version,
+            config: snapshotData.config,
+            questionOrder: snapshotData.questionOrder,
+            answers: snapshotData.answers,
+            correctAnswers: snapshotData.correctAnswers,
+            updatedAt: snapshotData.updatedAt,
+          },
+        });
+
+      this.logger.debug('Quiz session snapshot updated', {
+        sessionId: session.id,
+        state: dbState,
+        correctAnswers,
+      });
+    } catch (error) {
+      this.logger.error('Failed to update quiz session snapshot', {
+        sessionId: session.id,
+        error: this.getErrorMessage(error),
+      });
+      // Don't throw error - snapshot update failure shouldn't fail the main operation
+      // The snapshot is for performance only, not critical for consistency
     }
   }
 
@@ -172,5 +316,370 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
 
     const sessionId = snapshot[0].sessionId as QuizSessionId;
     return await this.findById(sessionId); // Reuse event-sourcing method
+  }
+
+  async countTotalSessions(): Promise<number> {
+    try {
+      const result = await this.trx
+        .select({ count: sql<number>`COUNT(DISTINCT session_id)` })
+        .from(quizSessionEvent);
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count total sessions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async countActiveSessions(): Promise<number> {
+    try {
+      const result = await this.trx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.state, 'IN_PROGRESS' satisfies QuizStateValue));
+
+      return Number(result[0]?.count ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to count active sessions:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  async getAverageScore(): Promise<number> {
+    try {
+      this.logger.debug('Calculating average quiz score using database aggregation');
+
+      // Use database aggregation with the pre-calculated correct_answers column
+      const result = await this.trx
+        .select({
+          averagePercentage: sql<number>`
+            ROUND(
+              AVG(
+                CASE 
+                  WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL AND ${quizSessionSnapshot.questionCount} > 0
+                  THEN (${quizSessionSnapshot.correctAnswers}::float / ${quizSessionSnapshot.questionCount}::float) * 100
+                  ELSE NULL
+                END
+              )
+            )
+          `,
+          validQuizCount: sql<number>`
+            COUNT(
+              CASE 
+                WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+                THEN 1
+                ELSE NULL
+              END
+            )
+          `,
+          totalCompletedQuizzes: sql<number>`COUNT(*)`,
+        })
+        .from(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.state, 'COMPLETED' satisfies QuizStateValue));
+
+      const aggregationResult = result[0];
+
+      if (!aggregationResult || aggregationResult.validQuizCount === 0) {
+        this.logger.debug('No completed quizzes with valid scores found');
+        return 0;
+      }
+
+      const averageScore = Math.round(aggregationResult.averagePercentage || 0);
+
+      this.logger.debug('Average score calculated via database aggregation', {
+        totalCompletedQuizzes: aggregationResult.totalCompletedQuizzes,
+        validQuizzes: aggregationResult.validQuizCount,
+        averageScore,
+      });
+
+      return averageScore;
+    } catch (error) {
+      this.logger.error('Failed to get average score:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get query execution plan for average score calculation
+   * Used by performance tests to validate optimal database aggregation
+   * @returns PostgreSQL query execution plan in JSON format
+   */
+  async getAverageScoreQueryPlan(): Promise<{
+    'Node Type': string;
+    'Total Cost': number;
+    'Plan Rows': number;
+    Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+    [key: string]: unknown;
+  }> {
+    try {
+      this.logger.debug('Getting query execution plan for average score calculation');
+
+      // Use EXPLAIN with the same query structure as getAverageScore
+      const result = await this.trx.execute(sql`
+        EXPLAIN (FORMAT JSON) 
+        SELECT 
+          ROUND(
+            AVG(
+              CASE 
+                WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL AND ${quizSessionSnapshot.questionCount} > 0
+                THEN (${quizSessionSnapshot.correctAnswers}::float / ${quizSessionSnapshot.questionCount}::float) * 100
+                ELSE NULL
+              END
+            )
+          ) as average_percentage,
+          COUNT(
+            CASE 
+              WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+              THEN 1
+              ELSE NULL
+            END
+          ) as valid_quiz_count,
+          COUNT(*) as total_completed_quizzes
+        FROM ${quizSessionSnapshot}
+        WHERE ${quizSessionSnapshot.state} = 'COMPLETED'
+      `);
+
+      // Parse query plan with defensive handling for different result structures
+      let queryPlan: {
+        'Node Type': string;
+        'Total Cost': number;
+        'Plan Rows': number;
+        Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+        [key: string]: unknown;
+      };
+
+      try {
+        // Handle different possible result structures from Drizzle/PostgreSQL
+        let rawPlan: unknown;
+
+        if (Array.isArray(result) && result.length > 0) {
+          const firstResult = result[0] as Record<string, unknown>;
+
+          // Check if it's directly the EXPLAIN result
+          if (firstResult['QUERY PLAN']) {
+            rawPlan = (firstResult['QUERY PLAN'] as unknown[])[0];
+          } else if (firstResult['Node Type']) {
+            // Direct query plan object
+            rawPlan = firstResult;
+          } else {
+            throw new Error('Unable to find query plan in result structure');
+          }
+        } else {
+          throw new Error('Invalid EXPLAIN result structure');
+        }
+
+        queryPlan = rawPlan as {
+          'Node Type': string;
+          'Total Cost': number;
+          'Plan Rows': number;
+          Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+          [key: string]: unknown;
+        };
+
+        // Validate required fields exist
+        if (!queryPlan['Node Type']) {
+          throw new Error('Query plan missing Node Type');
+        }
+        if (typeof queryPlan['Total Cost'] !== 'number') {
+          throw new Error('Query plan missing or invalid Total Cost');
+        }
+        if (typeof queryPlan['Plan Rows'] !== 'number') {
+          throw new Error('Query plan missing or invalid Plan Rows');
+        }
+      } catch (parseError) {
+        this.logger.error('Failed to parse query execution plan', {
+          parseError: this.getErrorMessage(parseError),
+          rawResult: JSON.stringify(result, null, 2),
+        });
+        throw new Error(`Query plan parsing failed: ${this.getErrorMessage(parseError)}`);
+      }
+
+      this.logger.debug('Query execution plan retrieved', {
+        nodeType: queryPlan['Node Type'],
+        totalCost: queryPlan['Total Cost'],
+        planRows: queryPlan['Plan Rows'],
+      });
+
+      return queryPlan;
+    } catch (error) {
+      this.logger.error('Failed to get query execution plan:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * TODO: Performance Optimization - Cursor-Based Pagination
+   * Current offset-based pagination has same performance limitations as
+   * described in DrizzleQuestionRepository. Consider implementing cursor-based
+   * pagination when dealing with large numbers of quiz sessions.
+   */
+
+  async findAllForAdmin(params: AdminQuizParams): Promise<PaginatedResult<QuizWithUserInfo>> {
+    try {
+      this.logger.debug('Finding quizzes for admin', { params });
+
+      const { page, pageSize, filters, orderBy = 'startedAt', orderDir = 'desc' } = params;
+      const offset = (page - 1) * pageSize;
+
+      // Build WHERE conditions
+      const conditions = [];
+
+      if (filters?.state) {
+        conditions.push(eq(quizSessionSnapshot.state, filters.state as QuizStateValue));
+      }
+
+      if (filters?.userId) {
+        conditions.push(eq(quizSessionSnapshot.ownerId, filters.userId));
+      }
+
+      if (filters?.startDate) {
+        conditions.push(gte(quizSessionSnapshot.startedAt, filters.startDate));
+      }
+
+      if (filters?.endDate) {
+        conditions.push(lte(quizSessionSnapshot.startedAt, filters.endDate));
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Count total records
+      const countResult = await this.trx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(quizSessionSnapshot)
+        .innerJoin(authUser, eq(quizSessionSnapshot.ownerId, authUser.userId))
+        .where(whereClause);
+
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      // Get paginated data with user info
+      const orderColumn =
+        orderBy === 'startedAt' ? quizSessionSnapshot.startedAt : quizSessionSnapshot.completedAt;
+      const orderFn = orderDir === 'asc' ? asc : desc;
+
+      const results = await this.trx
+        .select({
+          sessionId: quizSessionSnapshot.sessionId,
+          userId: quizSessionSnapshot.ownerId,
+          userEmail: authUser.email,
+          state: quizSessionSnapshot.state,
+          questionCount: quizSessionSnapshot.questionCount,
+          startedAt: quizSessionSnapshot.startedAt,
+          completedAt: quizSessionSnapshot.completedAt,
+          correctAnswers: quizSessionSnapshot.correctAnswers, // Fetch pre-calculated value
+        })
+        .from(quizSessionSnapshot)
+        .innerJoin(authUser, eq(quizSessionSnapshot.ownerId, authUser.userId))
+        .where(whereClause)
+        .orderBy(orderFn(orderColumn))
+        .limit(pageSize)
+        .offset(offset);
+
+      // Map results to QuizWithUserInfo without async operations
+      const items: QuizWithUserInfo[] = results.map((row) => {
+        let score: number | null = null;
+
+        // Calculate score from pre-calculated correct answers
+        if (
+          row.state === 'COMPLETED' &&
+          row.correctAnswers !== null &&
+          row.correctAnswers !== undefined &&
+          row.questionCount > 0
+        ) {
+          score = Math.round((row.correctAnswers / row.questionCount) * 100);
+        }
+
+        // Convert database state value to QuizState enum
+        let quizState: QuizState;
+        switch (row.state) {
+          case 'IN_PROGRESS':
+            quizState = QuizState.InProgress;
+            break;
+          case 'COMPLETED':
+            quizState = QuizState.Completed;
+            break;
+          case 'EXPIRED':
+            quizState = QuizState.Expired;
+            break;
+          default:
+            // This should not happen with proper data, but good to have a fallback
+            this.logger.warn('Unknown quiz state in findAllForAdmin', { state: row.state });
+            quizState = row.state as QuizState;
+        }
+
+        return {
+          sessionId: row.sessionId,
+          userId: row.userId,
+          userEmail: row.userEmail,
+          state: quizState,
+          score,
+          questionCount: row.questionCount,
+          startedAt: row.startedAt,
+          completedAt: row.completedAt,
+        };
+      });
+
+      const result: PaginatedResult<QuizWithUserInfo> = {
+        items,
+        total: totalCount,
+        page,
+        pageSize,
+      };
+
+      this.logger.debug('Found quizzes for admin', {
+        totalCount,
+        currentPage: page,
+        itemCount: items.length,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to find quizzes for admin', {
+        params,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuizRepositoryError(
+        'findAllForAdmin',
+        `Failed to find quizzes: ${this.getErrorMessage(error)}`
+      );
+    }
+  }
+
+  async deleteWithCascade(sessionId: QuizSessionId): Promise<void> {
+    try {
+      this.logger.info('Deleting quiz session with cascade', { sessionId });
+
+      // Delete events first (child records)
+      const eventDeleteResult = await this.trx
+        .delete(quizSessionEvent)
+        .where(eq(quizSessionEvent.sessionId, sessionId));
+
+      // Delete snapshot (parent record)
+      const snapshotDeleteResult = await this.trx
+        .delete(quizSessionSnapshot)
+        .where(eq(quizSessionSnapshot.sessionId, sessionId));
+
+      this.logger.info('Quiz session deleted successfully', {
+        sessionId,
+        eventsDeleted: (eventDeleteResult as { rowCount?: number }).rowCount || 0,
+        snapshotDeleted: (snapshotDeleteResult as { rowCount?: number }).rowCount || 0,
+      });
+    } catch (error) {
+      this.logger.error('Failed to delete quiz session', {
+        sessionId,
+        error: this.getErrorDetails(error),
+      });
+      throw new QuizRepositoryError(
+        'deleteWithCascade',
+        `Failed to delete quiz session: ${this.getErrorMessage(error)}`
+      );
+    }
   }
 }

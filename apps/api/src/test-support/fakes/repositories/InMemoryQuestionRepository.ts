@@ -1,13 +1,16 @@
 import { type Question, QuestionStatus } from '@api/features/question/domain/entities/Question';
 import type {
   IQuestionRepository,
+  ModerationParams,
   PaginatedQuestions,
   QuestionFilters,
   QuestionPagination,
   QuestionSummary,
+  QuestionWithModerationInfo,
 } from '@api/features/question/domain/repositories/IQuestionRepository';
 import { QuestionNotFoundError } from '@api/features/question/shared/errors';
 import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
+import type { PaginatedResult } from '@api/shared/types/pagination';
 
 /**
  * In-memory question repository for testing
@@ -15,6 +18,15 @@ import type { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
  */
 export class InMemoryQuestionRepository implements IQuestionRepository {
   private questions = new Map<string, Question>();
+  private moderationLogs: Array<{
+    questionId: string;
+    action: string;
+    moderatedBy: string;
+    moderatedAt: Date;
+    feedback?: string;
+    previousStatus: QuestionStatus;
+    newStatus: QuestionStatus;
+  }> = [];
 
   async findQuestions(
     filters: QuestionFilters,
@@ -167,6 +179,132 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
     return this.questions.get(questionId) || null;
   }
 
+  countTotalQuestions(): Promise<number> {
+    return Promise.resolve(this.questions.size);
+  }
+
+  countPendingQuestions(): Promise<number> {
+    const questions = Array.from(this.questions.values());
+    return Promise.resolve(questions.filter((q) => q.status === QuestionStatus.DRAFT).length);
+  }
+
+  async updateStatus(
+    questionId: QuestionId,
+    status: QuestionStatus,
+    moderatedBy: string,
+    feedback?: string
+  ): Promise<void> {
+    const question = this.questions.get(questionId);
+    if (!question) {
+      throw new QuestionNotFoundError(`Question with ID ${questionId} not found`);
+    }
+
+    // Use the domain method to handle status update and business rule validation
+    const moderationResult = question.moderateStatus(status, feedback);
+
+    if (!moderationResult.success) {
+      throw moderationResult.error;
+    }
+
+    // Update the repository with the modified question
+    this.questions.set(questionId, question);
+
+    // Track moderation log using the domain result
+    const { previousStatus, newStatus, action } = moderationResult.data;
+    this.moderationLogs.push({
+      questionId: questionId.toString(),
+      action,
+      moderatedBy,
+      moderatedAt: new Date(),
+      feedback,
+      previousStatus,
+      newStatus,
+    });
+  }
+
+  async findQuestionsForModeration(
+    params: ModerationParams
+  ): Promise<PaginatedResult<QuestionWithModerationInfo>> {
+    let filteredQuestions = Array.from(this.questions.values());
+
+    // Apply status filter (default to DRAFT if not specified)
+    if (params.status) {
+      filteredQuestions = filteredQuestions.filter((q) => q.status === params.status);
+    } else {
+      filteredQuestions = filteredQuestions.filter((q) => q.status === QuestionStatus.DRAFT);
+    }
+
+    // Apply date filters
+    if (params.dateFrom) {
+      const dateFrom = params.dateFrom;
+      filteredQuestions = filteredQuestions.filter((q) => q.createdAt >= dateFrom);
+    }
+
+    if (params.dateTo) {
+      const dateTo = params.dateTo;
+      filteredQuestions = filteredQuestions.filter((q) => q.createdAt <= dateTo);
+    }
+
+    // Apply exam type filter
+    if (params.examType) {
+      const examType = params.examType;
+      filteredQuestions = filteredQuestions.filter((q) => q.examTypes.includes(examType));
+    }
+
+    // Apply difficulty filter
+    if (params.difficulty) {
+      filteredQuestions = filteredQuestions.filter((q) => q.difficulty === params.difficulty);
+    }
+
+    // Apply sorting
+    const orderBy = params.orderBy || 'createdAt';
+    const orderDir = params.orderDir || 'desc';
+
+    filteredQuestions.sort((a, b) => {
+      const dateA = orderBy === 'createdAt' ? a.createdAt : a.updatedAt;
+      const dateB = orderBy === 'createdAt' ? b.createdAt : b.updatedAt;
+
+      const comparison = dateA.getTime() - dateB.getTime();
+      return orderDir === 'asc' ? comparison : -comparison;
+    });
+
+    // Apply pagination
+    const totalCount = filteredQuestions.length;
+    const offset = (params.page - 1) * params.pageSize;
+    const paginatedQuestions = filteredQuestions.slice(offset, offset + params.pageSize);
+
+    // Map to QuestionWithModerationInfo
+    const items: QuestionWithModerationInfo[] = paginatedQuestions.map((question) => {
+      const now = new Date();
+      const daysPending = Math.ceil(
+        (now.getTime() - question.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        questionId: question.id,
+        questionText: question.questionText,
+        questionType: question.questionType,
+        examTypes: question.examTypes,
+        categories: question.categories,
+        difficulty: question.difficulty,
+        status: question.status,
+        isPremium: question.isPremium,
+        tags: question.tags,
+        createdById: question.createdById,
+        createdAt: question.createdAt,
+        updatedAt: question.updatedAt,
+        daysPending,
+      };
+    });
+
+    return {
+      items,
+      total: totalCount,
+      page: params.page,
+      pageSize: params.pageSize,
+    };
+  }
+
   // Test helper methods
 
   /**
@@ -195,5 +333,20 @@ export class InMemoryQuestionRepository implements IQuestionRepository {
    */
   getQuestionCount(): number {
     return this.questions.size;
+  }
+
+  /**
+   * Get moderation logs for a question (test helper)
+   */
+  getModerationLogs(questionId: string): Array<{
+    questionId: string;
+    action: string;
+    moderatedBy: string;
+    moderatedAt: Date;
+    feedback?: string;
+    previousStatus: QuestionStatus;
+    newStatus: QuestionStatus;
+  }> {
+    return this.moderationLogs.filter((log) => log.questionId === questionId);
   }
 }

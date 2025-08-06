@@ -4,6 +4,7 @@
  */
 
 import type { QuizSession } from '../domain/aggregates/QuizSession';
+import type { Answer } from '../domain/entities/Answer';
 import { OptionId, type QuestionId } from '../domain/value-objects/Ids';
 import type { QuestionDetails } from '../domain/value-objects/QuestionDetailsService';
 import type { AnswerOption, AnswerResult, ScoreSummary } from './dto';
@@ -43,20 +44,19 @@ function buildAnswerOptions(
 }
 
 /**
- * Builds answer results from session answers and question details
- * @param session - Quiz session with submitted answers
+ * Builds answer results from answer array and question details (improved version)
+ * @param answers - Array of submitted answers
  * @param questionDetailsMap - Map of question details
  * @returns Array of answer results and correct count
  */
-export function buildAnswerResults(
-  session: QuizSession,
+export function buildAnswerResultsFromAnswers(
+  answers: ReadonlyMap<QuestionId, Answer>,
   questionDetailsMap: Map<QuestionId, QuestionDetails>
 ): { answerResults: AnswerResult[]; correctCount: number } {
   const answerResults: AnswerResult[] = [];
   let correctCount = 0;
-  const submittedAnswers = session.getAnswers();
 
-  for (const [questionId, answer] of submittedAnswers) {
+  for (const [questionId, answer] of answers) {
     const questionDetails = questionDetailsMap.get(questionId);
     if (!questionDetails) {
       continue; // Skip if question details not found
@@ -83,6 +83,20 @@ export function buildAnswerResults(
   }
 
   return { answerResults, correctCount };
+}
+
+/**
+ * Builds answer results from session answers and question details (backward compatibility wrapper)
+ * @param session - Quiz session with submitted answers
+ * @param questionDetailsMap - Map of question details
+ * @returns Array of answer results and correct count
+ */
+export function buildAnswerResults(
+  session: QuizSession,
+  questionDetailsMap: Map<QuestionId, QuestionDetails>
+): { answerResults: AnswerResult[]; correctCount: number } {
+  const submittedAnswers = session.getAnswers();
+  return buildAnswerResultsFromAnswers(submittedAnswers, questionDetailsMap);
 }
 
 /**

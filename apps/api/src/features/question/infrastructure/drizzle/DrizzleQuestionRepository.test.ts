@@ -100,6 +100,11 @@ class MockDatabaseConnection {
   private queryCallStack: Array<{ method: string; args: unknown[] }> = [];
   private statsQueryCount = 0;
 
+  // Track calls for testing
+  public insertCalls: Array<{ table: string; values: unknown }> = [];
+  public updateCalls: Array<{ table: string; data: unknown; where: unknown }> = [];
+  public transactionCalls: Array<{ fn: unknown }> = [];
+
   // Mock select operations with context-aware filtering
   select(fields?: unknown) {
     if (this.selectShouldFail && this.selectFailureError) {
@@ -109,74 +114,97 @@ class MockDatabaseConnection {
     // Track query for analysis
     this.queryCallStack.push({ method: 'select', args: [fields] });
 
-    // Check query type by looking at the selected fields
-    const isStatsQuery = this.isStatsQuery(fields);
-    const isCountQuery = this.isCountQuery(fields);
+    // Determine query type
+    const queryType = this.determineQueryType(fields);
 
+    // Delegate to appropriate builder based on query type
+    return this.createQueryBuilder(queryType);
+  }
+
+  private determineQueryType(
+    fields: unknown
+  ): 'stats' | 'count' | 'examType' | 'difficulty' | 'default' {
+    if (this.isExamTypeAggregationQuery(fields)) return 'examType';
+    if (this.isDifficultyAggregationQuery(fields)) return 'difficulty';
+    if (this.isStatsQuery(fields)) return 'stats';
+    if (this.isCountQuery(fields)) return 'count';
+    return 'default';
+  }
+
+  private createQueryBuilder(queryType: string) {
     return {
       from: (table: unknown) => {
-        if (this.isQuestionTable(table)) {
-          return {
-            innerJoin: (_versionTable: unknown, _condition: unknown) => ({
-              where: (_condition: unknown) => {
-                if (isStatsQuery) {
-                  // For stats queries, return version data with examTypes and difficulty
-                  return this.getStatsVersionRows();
-                }
-                if (isCountQuery) {
-                  // For count queries within joins, return count based on context
-                  return this.getFilteredCountResults();
-                }
-                return {
-                  limit: (n: number) => {
-                    return this.getJoinQueryResults().slice(0, n);
-                  },
-                  orderBy: (_field: unknown) => ({
-                    limit: (n: number) => ({
-                      offset: (offset: number) => {
-                        return this.getJoinQueryResults().slice(offset, offset + n);
-                      },
-                    }),
-                  }),
-                };
-              },
-            }),
-            where: (condition: unknown) => {
-              // Track where conditions for analysis
-              this.queryCallStack.push({ method: 'where', args: [condition] });
-
-              if (isCountQuery) {
-                // For simple count queries on question table (stats method)
-                return this.getStatsCountResults(condition);
-              }
-              return {
-                limit: (n: number) => {
-                  if (this.currentQueryContext.type === 'getStats') {
-                    return this.getStatsResults();
-                  }
-                  return this.getQuestionResults().slice(0, n);
-                },
-              };
-            },
-          };
+        if (!this.isQuestionTable(table)) {
+          return this.createEmptyQueryResult();
         }
-        return {
-          where: () => ({
-            limit: () => [],
-            innerJoin: () => ({ where: () => ({ limit: () => [] }) }),
-          }),
-        };
+        return this.createQuestionQueryResult(queryType);
       },
     };
   }
 
+  private createEmptyQueryResult() {
+    return {
+      where: () => ({
+        limit: () => [],
+        innerJoin: () => ({ where: () => ({ limit: () => [] }) }),
+      }),
+    };
+  }
+
+  private createQuestionQueryResult(queryType: string) {
+    return {
+      innerJoin: (_versionTable: unknown, _condition: unknown) => ({
+        where: (_condition: unknown) => this.handleInnerJoinWhere(queryType),
+      }),
+      where: (condition: unknown) => this.handleDirectWhere(queryType, condition),
+    };
+  }
+
+  private handleInnerJoinWhere(queryType: string) {
+    switch (queryType) {
+      case 'examType':
+        return this.handleExamTypeAggregationQuery();
+      case 'difficulty':
+        return this.handleDifficultyAggregationQuery();
+      case 'stats':
+        return this.handleStatsQuery();
+      case 'count':
+        return this.handleCountQuery();
+      default:
+        return this.handleDefaultJoinQuery();
+    }
+  }
+
+  private handleDirectWhere(queryType: string, condition: unknown) {
+    // Track where conditions for analysis
+    this.queryCallStack.push({ method: 'where', args: [condition] });
+
+    switch (queryType) {
+      case 'count':
+        return this.handleDirectCountQuery(condition);
+      case 'examType':
+      case 'difficulty':
+        return this.handleDirectAggregationQuery(
+          queryType === 'examType',
+          queryType === 'difficulty'
+        );
+      default:
+        return this.handleDirectDefaultQuery();
+    }
+  }
+
   // Mock insert operations
   insert(table: unknown) {
+    const tableName = this.getTableName(table);
+
     return {
       values: (data: unknown) => {
         if (this.insertShouldFail && this.insertFailureError) {
           throw this.insertFailureError;
         }
+
+        // Track the insert call
+        this.insertCalls.push({ table: tableName, values: data });
 
         if (this.isQuestionTable(table)) {
           const questionRow = data as MockQuestionRow;
@@ -193,12 +221,17 @@ class MockDatabaseConnection {
 
   // Mock update operations
   update(table: unknown) {
+    const tableName = this.getTableName(table);
+
     return {
       set: (data: unknown) => ({
-        where: (_condition: unknown) => {
+        where: (condition: unknown) => {
           if (this.updateShouldFail && this.updateFailureError) {
             throw this.updateFailureError;
           }
+
+          // Track the update call
+          this.updateCalls.push({ table: tableName, data, where: condition });
 
           if (this.isQuestionTable(table)) {
             const updateData = data as Partial<MockQuestionRow>;
@@ -218,6 +251,9 @@ class MockDatabaseConnection {
 
   // Mock transaction support
   transaction<T>(fn: (tx: MockDatabaseConnection) => Promise<T>): Promise<T> {
+    // Track the transaction call
+    this.transactionCalls.push({ fn });
+
     const tx = new MockDatabaseConnection();
     tx.questions = [...this.questions];
     tx.questionVersions = [...this.questionVersions];
@@ -226,6 +262,9 @@ class MockDatabaseConnection {
     tx.updateShouldFail = this.updateShouldFail;
     tx.updateFailureError = this.updateFailureError;
     tx.currentQueryContext = { ...this.currentQueryContext };
+    tx.insertCalls = this.insertCalls;
+    tx.updateCalls = this.updateCalls;
+
     return fn(tx);
   }
 
@@ -310,6 +349,82 @@ class MockDatabaseConnection {
     this.currentQueryContext = {};
     this.queryCallStack = [];
     this.statsQueryCount = 0;
+  }
+
+  // Extracted methods to reduce complexity in the where() handler
+  private handleExamTypeAggregationQuery() {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        return this.getExamTypeAggregationResults();
+      },
+    };
+  }
+
+  private handleDifficultyAggregationQuery() {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        return this.getDifficultyAggregationResults();
+      },
+    };
+  }
+
+  private handleStatsQuery() {
+    return this.getStatsVersionRows();
+  }
+
+  private handleCountQuery() {
+    return this.getFilteredCountResults();
+  }
+
+  private handleDefaultJoinQuery() {
+    return {
+      limit: (n: number) => {
+        return this.getJoinQueryResults().slice(0, n);
+      },
+      orderBy: (_field: unknown) => ({
+        limit: (n: number) => ({
+          offset: (offset: number) => {
+            return this.getJoinQueryResults().slice(offset, offset + n);
+          },
+        }),
+      }),
+      groupBy: (_groupByField: unknown) => {
+        // Handle groupBy for aggregation queries that weren't caught earlier
+        // Note: This shouldn't normally happen as aggregation queries
+        // should be caught by the earlier conditions
+        return [];
+      },
+    };
+  }
+
+  // Methods for direct where queries (not through innerJoin)
+  private handleDirectCountQuery(condition: unknown) {
+    return this.getStatsCountResults(condition);
+  }
+
+  private handleDirectAggregationQuery(isExamType: boolean, isDifficulty: boolean) {
+    return {
+      groupBy: (_groupByField: unknown) => {
+        if (isExamType) {
+          return this.getExamTypeAggregationResults();
+        }
+        if (isDifficulty) {
+          return this.getDifficultyAggregationResults();
+        }
+        return [];
+      },
+    };
+  }
+
+  private handleDirectDefaultQuery() {
+    return {
+      limit: (n: number) => {
+        if (this.currentQueryContext.type === 'getStats') {
+          return this.getStatsResults();
+        }
+        return this.getQuestionResults().slice(0, n);
+      },
+    };
   }
 
   private getJoinQueryResults(): MockJoinedQuestionRow[] {
@@ -502,6 +617,40 @@ class MockDatabaseConnection {
     return [{ count: activeQuestions.length }];
   }
 
+  private getExamTypeAggregationResults(): Array<{ examType: string; count: number }> {
+    const activeQuestions = this.questions.filter((q) => q.status === 'active');
+    const examTypeCounts: Record<string, number> = {};
+
+    for (const question of activeQuestions) {
+      const version = this.questionVersions.find(
+        (v) => v.questionId === question.questionId && v.version === question.currentVersion
+      );
+      if (version) {
+        for (const examType of version.examTypes) {
+          examTypeCounts[examType] = (examTypeCounts[examType] || 0) + 1;
+        }
+      }
+    }
+
+    return Object.entries(examTypeCounts).map(([examType, count]) => ({ examType, count }));
+  }
+
+  private getDifficultyAggregationResults(): Array<{ difficulty: string; count: number }> {
+    const activeQuestions = this.questions.filter((q) => q.status === 'active');
+    const difficultyCounts: Record<string, number> = {};
+
+    for (const question of activeQuestions) {
+      const version = this.questionVersions.find(
+        (v) => v.questionId === question.questionId && v.version === question.currentVersion
+      );
+      if (version) {
+        difficultyCounts[version.difficulty] = (difficultyCounts[version.difficulty] || 0) + 1;
+      }
+    }
+
+    return Object.entries(difficultyCounts).map(([difficulty, count]) => ({ difficulty, count }));
+  }
+
   private hasMultipleWhereConditions(condition: unknown): boolean {
     // In a real WHERE with AND conditions, there would be multiple conditions
     // Check if this is an AND condition with multiple parts
@@ -556,8 +705,45 @@ class MockDatabaseConnection {
 
   private isCountQuery(fields: unknown): boolean {
     if (typeof fields !== 'object' || fields === null) return false;
-    const keys = Object.keys(fields as Record<string, unknown>);
-    return keys.includes('count');
+    const fieldsObj = fields as Record<string, unknown>;
+    const keys = Object.keys(fieldsObj);
+
+    // A simple count query has exactly one field named 'count'
+    // Aggregation queries have additional fields like 'examType' or 'difficulty'
+    return keys.length === 1 && keys.includes('count');
+  }
+
+  private isExamTypeAggregationQuery(fields: unknown): boolean {
+    if (typeof fields !== 'object' || fields === null) return false;
+    const fieldsObj = fields as Record<string, unknown>;
+
+    // Check if this is an aggregation query for exam types
+    // Look for a field with fieldAlias 'exam_type' and another with fieldAlias 'count'
+    const hasExamType = Object.values(fieldsObj).some((field) => {
+      if (field && typeof field === 'object' && 'fieldAlias' in field) {
+        return field.fieldAlias === 'exam_type';
+      }
+      return false;
+    });
+
+    const hasCount = Object.values(fieldsObj).some((field) => {
+      if (field && typeof field === 'object' && 'fieldAlias' in field) {
+        return field.fieldAlias === 'count';
+      }
+      return false;
+    });
+
+    return hasExamType && hasCount;
+  }
+
+  private isDifficultyAggregationQuery(fields: unknown): boolean {
+    if (typeof fields !== 'object' || fields === null) return false;
+    const fieldsObj = fields as Record<string, unknown>;
+    const keys = Object.keys(fieldsObj);
+
+    // Check if this looks like a difficulty aggregation query
+    // It should have exactly 2 fields and include 'difficulty' and 'count'
+    return keys.length === 2 && keys.includes('difficulty') && keys.includes('count');
   }
 
   private isQuestionTable(table: unknown): boolean {
@@ -577,6 +763,31 @@ class MockDatabaseConnection {
       keys.includes('questionText') &&
       keys.includes('questionType')
     );
+  }
+
+  private isModerationLogsTable(table: unknown): boolean {
+    if (typeof table !== 'object' || table === null) return false;
+    const keys = Object.keys(table as Record<string, unknown>);
+    return (
+      keys.includes('id') &&
+      keys.includes('questionId') &&
+      keys.includes('action') &&
+      keys.includes('moderatedBy') &&
+      keys.includes('moderatedAt')
+    );
+  }
+
+  private getTableName(table: unknown): string {
+    if (this.isQuestionTable(table)) {
+      return 'question';
+    }
+    if (this.isQuestionVersionTable(table)) {
+      return 'questionVersion';
+    }
+    if (this.isModerationLogsTable(table)) {
+      return 'moderationLogs';
+    }
+    return 'unknown';
   }
 }
 
@@ -1524,6 +1735,323 @@ describe('DrizzleQuestionRepository (Unit Tests)', () => {
           meta: expect.objectContaining({
             error: expect.objectContaining({
               message: 'Stats query failed',
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update question status and create moderation log', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+      const feedback = 'Question looks good, approved for use';
+
+      // Mock the database responses
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question for moderation',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      // Execute updateStatus
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy, feedback);
+
+      // Verify update was called with correct parameters
+      expect(mockConn.updateCalls.length).toBeGreaterThan(0);
+      const updateCall = mockConn.updateCalls.find((call) => call.table === 'question');
+      expect(updateCall).toBeDefined();
+      expect(updateCall?.table).toBe('question');
+      const updateData = updateCall?.data as { status: string; updatedAt: Date };
+      expect(updateData.status).toBe('active');
+      expect(updateData.updatedAt).toBeInstanceOf(Date);
+
+      // Verify moderation log was inserted
+      expect(mockConn.insertCalls.length).toBeGreaterThan(0);
+      const insertCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(insertCall).toBeDefined();
+      expect(insertCall?.table).toBe('moderationLogs');
+      const values = insertCall?.values as {
+        questionId: string;
+        action: string;
+        moderatedBy: string;
+        moderatedAt: Date;
+        feedback?: string;
+        previousStatus: string;
+        newStatus: string;
+      };
+      expect(values.questionId).toBe(questionId.toString());
+      expect(values.action).toBe('approve');
+      expect(values.moderatedBy).toBe(moderatedBy);
+      expect(values.feedback).toBe(feedback);
+      expect(values.previousStatus).toBe('draft');
+      expect(values.newStatus).toBe('active');
+
+      // Verify logging
+      expect(mockLogger.infoMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Question status updated successfully',
+          meta: expect.objectContaining({
+            questionId,
+            previousStatus: 'draft',
+            newStatus: QuestionStatus.ACTIVE,
+            moderatedBy,
+          }),
+        })
+      );
+    });
+
+    it('should enforce business rule that only DRAFT questions can be moderated', async () => {
+      const questionId = QuestionId.of('active-question');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Add an active question
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'active', // Already active
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Already active question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.INACTIVE, moderatedBy)
+      ).rejects.toThrow(InvalidQuestionDataError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.INACTIVE, moderatedBy)
+      ).rejects.toThrow(
+        'Cannot moderate question with status active. Only DRAFT questions can be moderated.'
+      );
+    });
+
+    it('should require feedback for rejection', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Add a draft question
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      // Test without feedback
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ARCHIVED, moderatedBy)
+      ).rejects.toThrow(InvalidQuestionDataError);
+
+      // Test with short feedback
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ARCHIVED, moderatedBy, 'Too short')
+      ).rejects.toThrow(
+        'Feedback is required for question rejection and must be at least 10 characters long'
+      );
+    });
+
+    it('should handle question not found error', async () => {
+      const questionId = QuestionId.of('non-existent-question');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(QuestionNotFoundError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(`Question with ID ${questionId} not found`);
+    });
+
+    it('should use transaction for atomic updates', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy);
+
+      // Verify transaction was called
+      expect(mockConn.transactionCalls).toHaveLength(1);
+    });
+
+    it('should map status to correct moderation action', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      // Test approve action
+      mockConn.addCompleteQuestion(
+        {
+          questionId: questionId.toString(),
+          currentVersion: 1,
+          createdById: '550e8400-e29b-41d4-a716-446655440000',
+          isPremium: false,
+          status: 'draft',
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+          updatedAt: new Date('2025-01-01T12:00:00Z'),
+        },
+        {
+          questionId: questionId.toString(),
+          version: 1,
+          questionText: 'Test question',
+          questionType: 'single',
+          explanation: 'Test explanation',
+          detailedExplanation: null,
+          options: [
+            { id: '550e8400-e29b-41d4-a716-446655440001', text: 'Option A', isCorrect: true },
+            { id: '550e8400-e29b-41d4-a716-446655440002', text: 'Option B', isCorrect: false },
+          ],
+          examTypes: ['CCNA'],
+          categories: ['Networking'],
+          difficulty: 'Beginner',
+          tags: [],
+          images: [],
+          createdAt: new Date('2025-01-01T12:00:00Z'),
+        }
+      );
+
+      await repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy);
+
+      // Verify approve action
+      const approveCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(approveCall).toBeDefined();
+      const approveValues = approveCall?.values as { action: string };
+      expect(approveValues.action).toBe('approve');
+
+      // Clear calls
+      mockConn.insertCalls = [];
+      mockConn.updateCalls = [];
+
+      // Test reject action
+      await repository.updateStatus(
+        questionId,
+        QuestionStatus.INACTIVE,
+        moderatedBy,
+        'Needs improvement'
+      );
+
+      const rejectCall = mockConn.insertCalls.find((call) => call.table === 'moderationLogs');
+      expect(rejectCall).toBeDefined();
+      const rejectValues = rejectCall?.values as { action: string };
+      expect(rejectValues.action).toBe('reject');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      const questionId = QuestionId.of('test-question-1');
+      const moderatedBy = '550e8400-e29b-41d4-a716-446655440001';
+      const dbError = new Error('Database connection lost');
+
+      mockConn.simulateSelectFailure(dbError);
+
+      await expect(
+        repository.updateStatus(questionId, QuestionStatus.ACTIVE, moderatedBy)
+      ).rejects.toThrow(QuestionRepositoryError);
+
+      expect(mockLogger.errorMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'Failed to find question with details',
+          meta: expect.objectContaining({
+            questionId,
+            error: expect.objectContaining({
+              message: 'Database connection lost',
             }),
           }),
         })
