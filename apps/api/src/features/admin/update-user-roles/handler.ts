@@ -59,7 +59,7 @@ export const updateUserRolesHandler = createAdminActionHandler<
 
   executeAction: async (repo, _user, params) => {
     // Update role with audit trail
-    await repo.updateRole(params.userId, params.role, params.updatedBy);
+    await repo.updateRole(UserId.of(params.userId), params.role, params.updatedBy);
   },
 
   buildResponse: (user, params) => ({

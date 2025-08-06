@@ -406,6 +406,116 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
   }
 
   /**
+   * Get query execution plan for average score calculation
+   * Used by performance tests to validate optimal database aggregation
+   * @returns PostgreSQL query execution plan in JSON format
+   */
+  async getAverageScoreQueryPlan(): Promise<{
+    'Node Type': string;
+    'Total Cost': number;
+    'Plan Rows': number;
+    Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+    [key: string]: unknown;
+  }> {
+    try {
+      this.logger.debug('Getting query execution plan for average score calculation');
+
+      // Use EXPLAIN with the same query structure as getAverageScore
+      const result = await this.trx.execute(sql`
+        EXPLAIN (FORMAT JSON) 
+        SELECT 
+          ROUND(
+            AVG(
+              CASE 
+                WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL AND ${quizSessionSnapshot.questionCount} > 0
+                THEN (${quizSessionSnapshot.correctAnswers}::float / ${quizSessionSnapshot.questionCount}::float) * 100
+                ELSE NULL
+              END
+            )
+          ) as average_percentage,
+          COUNT(
+            CASE 
+              WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+              THEN 1
+              ELSE NULL
+            END
+          ) as valid_quiz_count,
+          COUNT(*) as total_completed_quizzes
+        FROM ${quizSessionSnapshot}
+        WHERE ${quizSessionSnapshot.state} = 'COMPLETED'
+      `);
+
+      // Parse query plan with defensive handling for different result structures
+      let queryPlan: {
+        'Node Type': string;
+        'Total Cost': number;
+        'Plan Rows': number;
+        Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+        [key: string]: unknown;
+      };
+
+      try {
+        // Handle different possible result structures from Drizzle/PostgreSQL
+        let rawPlan: unknown;
+
+        if (Array.isArray(result) && result.length > 0) {
+          const firstResult = result[0] as Record<string, unknown>;
+
+          // Check if it's directly the EXPLAIN result
+          if (firstResult['QUERY PLAN']) {
+            rawPlan = (firstResult['QUERY PLAN'] as unknown[])[0];
+          } else if (firstResult['Node Type']) {
+            // Direct query plan object
+            rawPlan = firstResult;
+          } else {
+            throw new Error('Unable to find query plan in result structure');
+          }
+        } else {
+          throw new Error('Invalid EXPLAIN result structure');
+        }
+
+        queryPlan = rawPlan as {
+          'Node Type': string;
+          'Total Cost': number;
+          'Plan Rows': number;
+          Plans?: Array<{ 'Node Type': string; [key: string]: unknown }>;
+          [key: string]: unknown;
+        };
+
+        // Validate required fields exist
+        if (!queryPlan['Node Type']) {
+          throw new Error('Query plan missing Node Type');
+        }
+        if (typeof queryPlan['Total Cost'] !== 'number') {
+          throw new Error('Query plan missing or invalid Total Cost');
+        }
+        if (typeof queryPlan['Plan Rows'] !== 'number') {
+          throw new Error('Query plan missing or invalid Plan Rows');
+        }
+      } catch (parseError) {
+        this.logger.error('Failed to parse query execution plan', {
+          parseError: this.getErrorMessage(parseError),
+          rawResult: JSON.stringify(result, null, 2),
+        });
+        throw new Error(`Query plan parsing failed: ${this.getErrorMessage(parseError)}`);
+      }
+
+      this.logger.debug('Query execution plan retrieved', {
+        nodeType: queryPlan['Node Type'],
+        totalCost: queryPlan['Total Cost'],
+        planRows: queryPlan['Plan Rows'],
+      });
+
+      return queryPlan;
+    } catch (error) {
+      this.logger.error('Failed to get query execution plan:', {
+        error: this.getErrorDetails(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
    * TODO: Performance Optimization - Cursor-Based Pagination
    * Current offset-based pagination has same performance limitations as
    * described in DrizzleQuestionRepository. Consider implementing cursor-based

@@ -97,5 +97,5 @@ export interface IAuthUserRepository {
    * @param role - New role to assign
    * @param updatedBy - Admin user ID who is making the change
    */
-  updateRole(userId: string, role: string, updatedBy: string): Promise<void>;
+  updateRole(userId: UserId, role: string, updatedBy: string): Promise<void>;
 }

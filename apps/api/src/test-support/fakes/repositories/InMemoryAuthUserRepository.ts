@@ -173,10 +173,10 @@ export class InMemoryAuthUserRepository implements IAuthUserRepository {
     await this.save(updatedUserResult.data);
   }
 
-  async updateRole(userId: string, role: string, _updatedBy: string): Promise<void> {
-    const user = await this.findById(UserId.of(userId));
+  async updateRole(userId: UserId, role: string, _updatedBy: string): Promise<void> {
+    const user = await this.findById(userId);
     if (!user) {
-      throw new Error(`User not found: ${userId}`);
+      throw new Error(`User not found: ${UserId.toString(userId)}`);
     }
 
     // Parse and validate the role
