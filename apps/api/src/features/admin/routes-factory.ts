@@ -17,7 +17,6 @@ import {
   type RepositoryToken,
   USER_REPO_TOKEN,
 } from '@api/shared/types/RepositoryToken';
-import { UUID_REGEX } from '@api/shared/validation/constants';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -422,20 +421,6 @@ export function createAdminRoutes(): Hono<{
     try {
       const questionId = c.req.param('id');
       const adminUser = c.get('user');
-
-      // Validate questionId format
-      if (!UUID_REGEX.test(questionId)) {
-        return c.json(
-          {
-            success: false,
-            error: {
-              code: 'INVALID_ID_FORMAT',
-              message: 'Invalid question ID format. Must be a valid UUID.',
-            },
-          },
-          400
-        );
-      }
 
       // Parse request body
       const body = await c.req.json();

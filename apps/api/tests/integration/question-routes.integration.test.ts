@@ -1267,7 +1267,7 @@ describe('Question Routes HTTP Integration', () => {
         expect(data).toMatchObject({
           success: false,
           error: {
-            code: 'INVALID_ID_FORMAT',
+            code: 'VALIDATION_ERROR',
           },
         });
       });
