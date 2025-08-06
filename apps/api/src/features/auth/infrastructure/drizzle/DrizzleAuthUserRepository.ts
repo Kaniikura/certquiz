@@ -1,7 +1,7 @@
 import type { TransactionContext } from '@api/infra/unit-of-work';
 import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
-import { and, asc, desc, eq, gte, like, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, ne, or, type SQL, sql } from 'drizzle-orm';
 import { User } from '../../domain/entities/User';
 import type {
   IAuthUserRepository,
@@ -364,8 +364,8 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
       if (filters.search) {
         const searchPattern = `%${filters.search}%`;
         const searchCondition = or(
-          like(authUser.email, searchPattern),
-          like(authUser.username, searchPattern)
+          ilike(authUser.email, searchPattern),
+          ilike(authUser.username, searchPattern)
         );
         if (searchCondition) {
           conditions.push(searchCondition);
