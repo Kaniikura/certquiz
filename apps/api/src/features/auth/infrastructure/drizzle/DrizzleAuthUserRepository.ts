@@ -12,6 +12,9 @@ import type { Email } from '../../domain/value-objects/Email';
 import { UserId } from '../../domain/value-objects/UserId';
 import { authUser } from './schema/authUser';
 
+// Type alias to match the role strings from UserRole enum
+type UserRoleString = 'guest' | 'user' | 'premium' | 'admin';
+
 /**
  * Drizzle implementation of User repository
  * Uses Queryable interface to work with both DB client and transactions
@@ -153,14 +156,14 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
         .insert(authUser)
         .values({
           ...data,
-          role: data.role as 'guest' | 'user' | 'premium' | 'admin',
+          role: data.role as UserRoleString,
         })
         .onConflictDoUpdate({
           target: authUser.userId,
           set: {
             email: data.email,
             username: data.username,
-            role: data.role as 'guest' | 'user' | 'premium' | 'admin',
+            role: data.role as UserRoleString,
             identityProviderId: data.identityProviderId,
             isActive: data.isActive,
             updatedAt: data.updatedAt,
@@ -322,27 +325,13 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
 
   async updateRole(userId: UserId, role: string, updatedBy: string): Promise<void> {
     try {
-      // Validate role is provided
-      if (!role) {
-        throw new Error('Role cannot be empty');
-      }
-
-      // Validate the role is one of the allowed values
-      const validRoles = ['guest', 'user', 'premium', 'admin'] as const;
-      type ValidRole = (typeof validRoles)[number];
-
-      const isValidRole = (role: string): role is ValidRole => {
-        return validRoles.includes(role as ValidRole);
-      };
-
-      if (!isValidRole(role)) {
-        throw new Error(`Invalid role: ${role}`);
-      }
+      // Role validation is handled by Zod schema in handler layer
+      // Repository focuses on persistence only
 
       await this.conn
         .update(authUser)
         .set({
-          role: role,
+          role: role as UserRoleString,
           updatedAt: new Date(),
         })
         .where(eq(authUser.userId, UserId.toString(userId)));
@@ -384,7 +373,7 @@ export class DrizzleAuthUserRepository extends BaseRepository implements IAuthUs
       }
 
       if (filters.role !== undefined) {
-        conditions.push(eq(authUser.role, filters.role as 'guest' | 'user' | 'premium' | 'admin'));
+        conditions.push(eq(authUser.role, filters.role as UserRoleString));
       }
 
       if (filters.isActive !== undefined) {
