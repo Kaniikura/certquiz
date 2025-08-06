@@ -386,11 +386,11 @@ describe('moderateQuestionHandler', () => {
       };
 
       // Act & Assert
-      // @ts-expect-error Testing invalid input for validation
+      // Testing invalid input for validation
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
         ValidationError
       );
-      // @ts-expect-error Testing invalid input for validation
+      // Testing invalid input for validation
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
         'Must be a valid UUID'
       );

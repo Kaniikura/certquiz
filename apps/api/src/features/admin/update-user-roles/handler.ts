@@ -43,11 +43,14 @@ export const updateUserRolesHandler = createAdminActionHandler<
   validateBusinessRules: (user, params) => {
     const { role, updatedBy } = params;
 
+    // Convert string role to UserRole enum for proper comparison
+    const newRole = UserRole.fromString(role);
+
     // Prevent self-demotion for admins
     if (
       UserId.equals(user.id, UserId.of(updatedBy)) &&
       user.role === UserRole.Admin &&
-      role !== UserRole.Admin
+      newRole !== UserRole.Admin
     ) {
       throw new AdminPermissionError('Admins cannot remove their own admin role');
     }
@@ -61,7 +64,7 @@ export const updateUserRolesHandler = createAdminActionHandler<
   buildResponse: (user, params) => ({
     success: true,
     userId: params.userId,
-    previousRole: user.role,
+    previousRole: UserRole.roleToString(user.role),
     newRole: params.role,
     updatedBy: params.updatedBy,
     updatedAt: new Date(),

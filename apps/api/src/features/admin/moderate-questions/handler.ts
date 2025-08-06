@@ -5,7 +5,9 @@
 
 import type { Question } from '@api/features/question/domain/entities/Question';
 import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
+import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
+import { ValidationError } from '@api/shared/errors';
 import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { z } from 'zod';
@@ -30,13 +32,26 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Input type for schema validation (before transformation)
+ */
+interface ModerateQuestionInput {
+  questionId: string;
+  action: 'approve' | 'reject' | 'request_changes';
+  moderatedBy: string;
+  feedback?: string;
+}
+
+/**
  * Zod schema for moderation parameters
  * Extracted inline to avoid circular dependencies
  */
 const moderateQuestionSchema = z
   .object({
-    questionId: z.string().uuid({ message: 'Must be a valid UUID' }),
-    action: z.enum(['approve', 'reject', 'request_changes'], {
+    questionId: z
+      .string()
+      .uuid({ message: 'Must be a valid UUID' })
+      .transform((id) => QuestionId.of(id)),
+    action: z.enum(['approve', 'reject', 'request_changes'] as const, {
       errorMap: () => ({ message: 'Action must be approve, reject, or request_changes' }),
     }),
     moderatedBy: z.string().uuid({ message: 'Must be a valid UUID' }),
@@ -71,14 +86,36 @@ const moderateQuestionSchema = z
  * @throws {NotFoundError} Question not found
  * @throws {InvalidQuestionDataError} Invalid status transition or missing feedback
  */
-export const moderateQuestionHandler = createAdminActionHandler<
+/**
+ * Wrapper handler that processes input through the schema transformation
+ */
+export const moderateQuestionHandler = async (
+  inputParams: ModerateQuestionInput,
+  unitOfWork: IUnitOfWork
+): Promise<ModerateQuestionResponse> => {
+  // Transform input through schema to get properly typed params
+  const validationResult = moderateQuestionSchema.safeParse(inputParams);
+  if (!validationResult.success) {
+    throw new ValidationError(validationResult.error.errors[0].message);
+  }
+
+  const params = validationResult.data;
+
+  // Use the internal handler with transformed params
+  return internalModerateQuestionHandler(params, unitOfWork);
+};
+
+/**
+ * Internal handler with proper types after transformation
+ */
+const internalModerateQuestionHandler = createAdminActionHandler<
   ModerateQuestionParams,
   Question,
   IQuestionRepository,
   ModerateQuestionResponse,
   IUnitOfWork
 >({
-  schema: moderateQuestionSchema as unknown as z.ZodSchema<ModerateQuestionParams>,
+  schema: z.custom<ModerateQuestionParams>(() => true), // Skip validation as it's already done
 
   getRepository: (unitOfWork) => unitOfWork.getRepository(QUESTION_REPO_TOKEN),
 
