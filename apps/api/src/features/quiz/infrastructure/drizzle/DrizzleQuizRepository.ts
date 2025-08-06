@@ -360,7 +360,7 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
             ROUND(
               AVG(
                 CASE 
-                  WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+                  WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL AND ${quizSessionSnapshot.questionCount} > 0
                   THEN (${quizSessionSnapshot.correctAnswers}::float / ${quizSessionSnapshot.questionCount}::float) * 100
                   ELSE NULL
                 END
