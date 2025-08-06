@@ -25,6 +25,7 @@ import { deleteQuizSchema } from './validation';
  */
 export const deleteQuizHandler = createAdminActionHandler<
   DeleteQuizParams,
+  DeleteQuizParams,
   QuizSession,
   IQuizRepository,
   DeleteQuizResponse,

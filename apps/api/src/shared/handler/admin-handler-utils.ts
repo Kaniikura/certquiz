@@ -6,11 +6,12 @@
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
 import { NotFoundError, ValidationError } from '@api/shared/errors';
 import { validateWithSchema } from '@api/shared/validation/zod-utils';
-import type { ZodSchema } from 'zod';
+import type { ZodSchema, ZodTypeDef } from 'zod';
 
 /**
  * Configuration for creating an admin action handler
- * @template TParams - The input parameters type
+ * @template TInput - The raw input parameters type (before transformation)
+ * @template TOutput - The transformed parameters type (after validation)
  * @template TEntity - The entity type being operated on
  * @template TRepo - The repository type
  * @template TResponse - The response type
@@ -18,16 +19,18 @@ import type { ZodSchema } from 'zod';
  * @public
  */
 export interface AdminActionHandlerConfig<
-  TParams,
+  TInput,
+  TOutput,
   TEntity,
   TRepo,
   TResponse,
   TUnitOfWork = IUnitOfWork,
 > {
   /**
-   * Zod schema for validating input parameters
+   * Zod schema for validating and transforming input parameters
+   * Supports schemas with .transform() for type conversions
    */
-  schema: ZodSchema<TParams>;
+  schema: ZodSchema<TOutput, ZodTypeDef, TInput>;
 
   /**
    * Function to get the repository from the unit of work
@@ -38,23 +41,23 @@ export interface AdminActionHandlerConfig<
    * Function to find the entity by ID or other criteria
    * Should return null if entity not found
    */
-  findEntity: (repo: TRepo, params: TParams) => Promise<TEntity | null>;
+  findEntity: (repo: TRepo, params: TOutput) => Promise<TEntity | null>;
 
   /**
    * Optional function to validate business rules before executing the action
    * Should throw appropriate errors if validation fails
    */
-  validateBusinessRules?: (entity: TEntity, params: TParams) => void | Promise<void>;
+  validateBusinessRules?: (entity: TEntity, params: TOutput) => void | Promise<void>;
 
   /**
    * Function to execute the main action
    */
-  executeAction: (repo: TRepo, entity: TEntity, params: TParams) => Promise<void>;
+  executeAction: (repo: TRepo, entity: TEntity, params: TOutput) => Promise<void>;
 
   /**
    * Function to build the response after successful execution
    */
-  buildResponse: (entity: TEntity, params: TParams) => TResponse;
+  buildResponse: (entity: TEntity, params: TOutput) => TResponse;
 
   /**
    * Optional custom error message for when entity is not found
@@ -64,23 +67,25 @@ export interface AdminActionHandlerConfig<
 
 /**
  * Creates a standardized admin action handler with common patterns:
- * - Input validation
+ * - Input validation with optional transformation
  * - Entity retrieval
  * - Business rule validation
  * - Action execution
  * - Audit response generation
  *
- * @template TParams - The input parameters type
+ * @template TInput - The raw input parameters type (before transformation)
+ * @template TOutput - The transformed parameters type (after validation)
  * @template TEntity - The entity type being operated on
  * @template TRepo - The repository type
  * @template TResponse - The response type
  * @template TUnitOfWork - The unit of work type
  *
  * @param config - Configuration object for the handler
- * @returns Handler function that accepts params and unit of work
+ * @returns Handler function that accepts raw input params and unit of work
  *
  * @example
  * ```typescript
+ * // Example without transformation (backward compatible)
  * export const deleteQuizHandler = createAdminActionHandler({
  *   schema: deleteQuizSchema,
  *   getRepository: (uow) => uow.getRepository(QUIZ_REPO_TOKEN),
@@ -105,43 +110,57 @@ export interface AdminActionHandlerConfig<
  *     deletedAt: new Date(),
  *   }),
  * });
+ *
+ * // Example with transformation
+ * export const moderateQuestionHandler = createAdminActionHandler({
+ *   schema: z.object({
+ *     questionId: z.string().uuid().transform(id => QuestionId.of(id)),
+ *     action: z.enum(['approve', 'reject', 'request_changes']),
+ *     // ... other fields
+ *   }),
+ *   // ... rest of config uses transformed types
+ * });
  * ```
  */
 export function createAdminActionHandler<
-  TParams,
-  TEntity,
-  TRepo,
-  TResponse,
+  TInput = unknown,
+  TOutput = TInput,
+  TEntity = unknown,
+  TRepo = unknown,
+  TResponse = unknown,
   TUnitOfWork = IUnitOfWork,
 >(
-  config: AdminActionHandlerConfig<TParams, TEntity, TRepo, TResponse, TUnitOfWork>
-): (params: TParams, unitOfWork: TUnitOfWork) => Promise<TResponse> {
-  return async (params: TParams, unitOfWork: TUnitOfWork): Promise<TResponse> => {
-    // Step 1: Validate input parameters
+  config: AdminActionHandlerConfig<TInput, TOutput, TEntity, TRepo, TResponse, TUnitOfWork>
+): (params: TInput, unitOfWork: TUnitOfWork) => Promise<TResponse> {
+  return async (params: TInput, unitOfWork: TUnitOfWork): Promise<TResponse> => {
+    // Step 1: Validate and transform input parameters
     const validationResult = validateWithSchema(config.schema, params);
     if (!validationResult.success) {
       throw new ValidationError(validationResult.errors[0]);
     }
 
+    // validationResult.data is now of type TOutput (transformed)
+    const transformedParams = validationResult.data;
+
     // Step 2: Get repository from unit of work
     const repository = config.getRepository(unitOfWork);
 
     // Step 3: Find the entity
-    const entity = await config.findEntity(repository, params);
+    const entity = await config.findEntity(repository, transformedParams);
     if (!entity) {
       throw new NotFoundError(config.notFoundMessage || 'Entity not found');
     }
 
     // Step 4: Validate business rules (if provided)
     if (config.validateBusinessRules) {
-      await config.validateBusinessRules(entity, params);
+      await config.validateBusinessRules(entity, transformedParams);
     }
 
     // Step 5: Execute the main action
-    await config.executeAction(repository, entity, params);
+    await config.executeAction(repository, entity, transformedParams);
 
     // Step 6: Build and return the response
-    return config.buildResponse(entity, params);
+    return config.buildResponse(entity, transformedParams);
   };
 }
 

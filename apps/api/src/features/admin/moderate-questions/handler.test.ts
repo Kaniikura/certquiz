@@ -216,7 +216,7 @@ describe('moderateQuestionHandler', () => {
         ValidationError
       );
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'Feedback is required for reject action'
+        'feedback: Feedback is required for reject action'
       );
 
       expect(mockQuestionRepo.updateStatus).not.toHaveBeenCalled();
@@ -236,7 +236,7 @@ describe('moderateQuestionHandler', () => {
         ValidationError
       );
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'Feedback must be at least 10 characters long'
+        'feedback: Feedback must be at least 10 characters long'
       );
 
       expect(mockQuestionRepo.updateStatus).not.toHaveBeenCalled();
@@ -293,7 +293,7 @@ describe('moderateQuestionHandler', () => {
         ValidationError
       );
       await expect(moderateQuestionHandler(params, mockUnitOfWork)).rejects.toThrow(
-        'Feedback is required for request_changes action'
+        'feedback: Feedback is required for request_changes action'
       );
 
       expect(mockQuestionRepo.updateStatus).not.toHaveBeenCalled();

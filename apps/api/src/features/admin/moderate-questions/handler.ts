@@ -7,7 +7,6 @@ import type { Question } from '@api/features/question/domain/entities/Question';
 import type { IQuestionRepository } from '@api/features/question/domain/repositories/IQuestionRepository';
 import { QuestionId } from '@api/features/quiz/domain/value-objects/Ids';
 import type { IUnitOfWork } from '@api/infra/db/IUnitOfWork';
-import { ValidationError } from '@api/shared/errors';
 import { createAdminActionHandler } from '@api/shared/handler/admin-handler-utils';
 import { QUESTION_REPO_TOKEN } from '@api/shared/types/RepositoryToken';
 import { escape as escapeHtml } from 'he';
@@ -70,36 +69,15 @@ const moderateQuestionSchema = z
  * @throws {NotFoundError} Question not found
  * @throws {InvalidQuestionDataError} Invalid status transition or missing feedback
  */
-/**
- * Wrapper handler that processes input through the schema transformation
- */
-export const moderateQuestionHandler = async (
-  inputParams: ModerateQuestionInput,
-  unitOfWork: IUnitOfWork
-): Promise<ModerateQuestionResponse> => {
-  // Transform input through schema to get properly typed params
-  const validationResult = moderateQuestionSchema.safeParse(inputParams);
-  if (!validationResult.success) {
-    throw new ValidationError(validationResult.error.errors[0].message);
-  }
-
-  const params = validationResult.data;
-
-  // Use the internal handler with transformed params
-  return internalModerateQuestionHandler(params, unitOfWork);
-};
-
-/**
- * Internal handler with proper types after transformation
- */
-const internalModerateQuestionHandler = createAdminActionHandler<
+export const moderateQuestionHandler = createAdminActionHandler<
+  ModerateQuestionInput,
   ModerateQuestionParams,
   Question,
   IQuestionRepository,
   ModerateQuestionResponse,
   IUnitOfWork
 >({
-  schema: z.custom<ModerateQuestionParams>(() => true), // Skip validation as it's already done
+  schema: moderateQuestionSchema,
 
   getRepository: (unitOfWork) => unitOfWork.getRepository(QUESTION_REPO_TOKEN),
 

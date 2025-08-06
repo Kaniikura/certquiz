@@ -3,7 +3,7 @@
  * @fileoverview Generic validation utilities for Zod schemas
  */
 
-import type { ZodSchema } from 'zod';
+import type { ZodSchema, ZodTypeDef } from 'zod';
 
 /**
  * Validation result type for consistent validation responses
@@ -26,13 +26,15 @@ function formatZodErrors(errors: { path: (string | number)[]; message: string }[
 /**
  * Generic validation function using Zod schemas
  * Provides consistent validation result format across the application
+ * Supports schemas with transformations (different input and output types)
  *
- * @param schema - Zod schema to validate against
+ * @param schema - Zod schema to validate against (may include transformations)
  * @param data - Data to validate
  * @returns Validation result with typed data or error messages
  *
  * @example
  * ```typescript
+ * // Simple validation without transformation
  * const result = validateWithSchema(userSchema, userData);
  * if (result.success) {
  *   // result.data is fully typed
@@ -41,9 +43,19 @@ function formatZodErrors(errors: { path: (string | number)[]; message: string }[
  *   // result.errors contains formatted error messages
  *   console.log(result.errors);
  * }
+ *
+ * // Validation with transformation
+ * const schema = z.object({
+ *   id: z.string().uuid().transform(id => UserId.of(id))
+ * });
+ * const result = validateWithSchema(schema, { id: "123-456" });
+ * // result.data.id is now a UserId instance
  * ```
  */
-export function validateWithSchema<T>(schema: ZodSchema<T>, data: unknown): ValidationResult<T> {
+export function validateWithSchema<TOutput, TInput = unknown>(
+  schema: ZodSchema<TOutput, ZodTypeDef, TInput>,
+  data: unknown
+): ValidationResult<TOutput> {
   const result = schema.safeParse(data);
 
   if (result.success) {

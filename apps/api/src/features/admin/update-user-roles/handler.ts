@@ -25,6 +25,7 @@ import { updateUserRolesSchema } from './validation';
  */
 export const updateUserRolesHandler = createAdminActionHandler<
   UpdateUserRolesParams,
+  UpdateUserRolesParams,
   User,
   IAuthUserRepository,
   UpdateUserRolesResponse,
