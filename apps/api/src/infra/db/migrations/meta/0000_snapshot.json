@@ -897,6 +897,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "correct_answers": {
+          "name": "correct_answers",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -1016,6 +1022,28 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "ix_snapshot_score_analysis": {
+          "name": "ix_snapshot_score_analysis",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "correct_answers",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "state = 'COMPLETED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1040,6 +1068,10 @@
         "ck_question_index_bounds": {
           "name": "ck_question_index_bounds",
           "value": "\"quiz_session_snapshot\".\"current_question_index\" >= 0 AND \"quiz_session_snapshot\".\"current_question_index\" < \"quiz_session_snapshot\".\"question_count\""
+        },
+        "ck_correct_answers_bounds": {
+          "name": "ck_correct_answers_bounds",
+          "value": "\"quiz_session_snapshot\".\"correct_answers\" IS NULL OR (\"quiz_session_snapshot\".\"correct_answers\" >= 0 AND \"quiz_session_snapshot\".\"correct_answers\" <= \"quiz_session_snapshot\".\"question_count\")"
         }
       },
       "isRLSEnabled": false

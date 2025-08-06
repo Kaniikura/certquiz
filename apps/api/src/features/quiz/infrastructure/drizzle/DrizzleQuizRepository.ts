@@ -9,7 +9,6 @@ import type { LoggerPort } from '@api/shared/logger/LoggerPort';
 import { BaseRepository } from '@api/shared/repository/BaseRepository';
 import { and, asc, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import postgres from 'postgres';
-import { z } from 'zod';
 import { QuizState } from '../../domain/value-objects/QuizState';
 import type { QuizStateValue } from './schema/enums';
 import { quizSessionEvent, quizSessionSnapshot } from './schema/quizSession';
@@ -32,36 +31,20 @@ import type {
   QuestionDetails,
 } from '../../domain/value-objects/QuestionDetailsService';
 import type { AnswerResult } from '../../get-results/dto';
-import { buildAnswerResults, calculateScoreSummary } from '../../get-results/scoring-utils';
+import {
+  buildAnswerResultsFromAnswers,
+  calculateScoreSummary,
+} from '../../get-results/scoring-utils';
 import { OptimisticLockError, QuizRepositoryError } from '../../shared/errors';
 import { mapToDomainEvents } from './QuizEventMapper';
 
 /**
- * Zod schema for validating quiz answers JSONB structure
- */
-const quizAnswersSchema = z.record(
-  z.object({
-    answerId: z.string(),
-    questionId: z.string(),
-    selectedOptionIds: z.array(z.string()),
-    answeredAt: z.string(),
-  })
-);
-
-/**
- * Minimal interface for scoring operations
- * Replaces unsafe type assertions to QuizSession
- */
-interface ScoringSession {
-  getAnswers(): ReadonlyMap<QuestionId, Answer>;
-}
-
-/**
- * Creates a type-safe scoring session from raw answer data
+ * Helper to convert raw answer data to domain Answer objects and call scoring utility
  * @param answersMap Raw answer data from database
- * @returns Safe scoring session for use with scoring utilities
+ * @param questionDetailsMap Question details for scoring
+ * @returns Answer results and correct count
  */
-function createScoringSession(
+function buildAnswerResultsFromRawData(
   answersMap: Record<
     string,
     {
@@ -70,41 +53,22 @@ function createScoringSession(
       selectedOptionIds: string[];
       answeredAt: string;
     }
-  >
-): ScoringSession {
-  return {
-    getAnswers: () => {
-      const answerMap = new Map<QuestionId, Answer>();
-      for (const [_, answerData] of Object.entries(answersMap)) {
-        const answer = Answer.fromEventReplay(
-          answerData.answerId as AnswerId,
-          answerData.questionId as QuestionId,
-          answerData.selectedOptionIds as OptionId[],
-          new Date(answerData.answeredAt)
-        );
-        answerMap.set(answerData.questionId as QuestionId, answer);
-      }
-      return answerMap;
-    },
-  };
-}
-
-/**
- * Safely calls buildAnswerResults with a ScoringSession
- * @param scoringSession Minimal scoring session interface
- * @param questionDetailsMap Question details for scoring
- * @returns Answer results and correct count
- */
-function buildAnswerResultsFromScoringSession(
-  scoringSession: ScoringSession,
+  >,
   questionDetailsMap: Map<QuestionId, QuestionDetails>
 ): { answerResults: AnswerResult[]; correctCount: number } {
-  // Create a minimal QuizSession-like object that only implements getAnswers()
-  const mockSession = {
-    getAnswers: scoringSession.getAnswers.bind(scoringSession),
-  } as QuizSession;
+  // Convert raw data to Answer map
+  const answers = new Map<QuestionId, Answer>();
+  for (const [_, answerData] of Object.entries(answersMap)) {
+    const answer = Answer.fromEventReplay(
+      answerData.answerId as AnswerId,
+      answerData.questionId as QuestionId,
+      answerData.selectedOptionIds as OptionId[],
+      new Date(answerData.answeredAt)
+    );
+    answers.set(answerData.questionId as QuestionId, answer);
+  }
 
-  return buildAnswerResults(mockSession, questionDetailsMap);
+  return buildAnswerResultsFromAnswers(answers, questionDetailsMap);
 }
 
 export class DrizzleQuizRepository extends BaseRepository implements IQuizRepository {
@@ -181,6 +145,9 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
       // Insert events - PostgreSQL will automatically detect conflicts
       await this.trx.insert(quizSessionEvent).values(eventInserts);
 
+      // Update snapshot table for performance queries
+      await this.updateSnapshot(session);
+
       // Mark events as committed in aggregate
       session.markChangesAsCommitted();
 
@@ -209,6 +176,137 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
         'save',
         `Failed to save quiz session: ${this.getErrorMessage(error)}`
       );
+    }
+  }
+
+  /**
+   * Updates the quiz session snapshot for performance queries
+   * @param session - Quiz session aggregate with current state
+   */
+  private async updateSnapshot(session: QuizSession): Promise<void> {
+    try {
+      // Convert session answers to JSONB format
+      const answersMap: Record<
+        string,
+        {
+          answerId: string;
+          questionId: string;
+          selectedOptionIds: string[];
+          answeredAt: string;
+        }
+      > = {};
+      const submittedAnswers = session.getAnswers();
+
+      for (const [questionId, answer] of submittedAnswers) {
+        answersMap[answer.id] = {
+          answerId: answer.id,
+          questionId: questionId.toString(),
+          selectedOptionIds: answer.selectedOptionIds.map((id) => id.toString()),
+          answeredAt: answer.answeredAt.toISOString(),
+        };
+      }
+
+      // Calculate correct_answers if quiz is completed
+      let correctAnswers: number | null = null;
+      if (session.state === QuizState.Completed && submittedAnswers.size > 0) {
+        try {
+          const questionIds = session.getQuestionIds();
+          const questionDetailsMap =
+            await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
+          const { correctCount } = buildAnswerResultsFromAnswers(
+            submittedAnswers,
+            questionDetailsMap
+          );
+          correctAnswers = correctCount;
+        } catch (error) {
+          this.logger.warn('Failed to calculate correct answers for snapshot', {
+            sessionId: session.id,
+            error: this.getErrorMessage(error),
+          });
+          // Continue with null correctAnswers - will be calculated later if needed
+        }
+      }
+
+      // Map domain state to database state
+      let dbState: QuizStateValue;
+      switch (session.state) {
+        case QuizState.InProgress:
+          dbState = 'IN_PROGRESS';
+          break;
+        case QuizState.Completed:
+          dbState = 'COMPLETED';
+          break;
+        case QuizState.Expired:
+          dbState = 'EXPIRED';
+          break;
+        default:
+          throw new Error(`Unknown quiz state: ${session.state}`);
+      }
+
+      // Calculate expires_at based on config
+      let expiresAt: Date | null = null;
+      if (session.config.timeLimit) {
+        expiresAt = new Date(session.startedAt.getTime() + session.config.timeLimit * 1000);
+      } else if (session.config.fallbackLimitSeconds) {
+        expiresAt = new Date(
+          session.startedAt.getTime() + session.config.fallbackLimitSeconds * 1000
+        );
+      }
+
+      // Calculate current question index based on answered questions
+      const currentQuestionIndex = submittedAnswers.size;
+
+      // Prepare snapshot data
+      const snapshotData = {
+        sessionId: session.id,
+        ownerId: session.userId,
+        state: dbState,
+        questionCount: session.config.questionCount,
+        currentQuestionIndex,
+        startedAt: session.startedAt,
+        expiresAt,
+        completedAt: session.completedAt,
+        version: session.version,
+        config: session.config as unknown as Record<string, unknown>, // QuizConfig is serializable as JSONB
+        questionOrder: session.getQuestionIds().map((id) => id.toString()),
+        answers: Object.keys(answersMap).length > 0 ? answersMap : null,
+        correctAnswers,
+        updatedAt: new Date(),
+      };
+
+      // Upsert snapshot record (PostgreSQL UPSERT)
+      await this.trx
+        .insert(quizSessionSnapshot)
+        .values(snapshotData)
+        .onConflictDoUpdate({
+          target: quizSessionSnapshot.sessionId,
+          set: {
+            state: snapshotData.state,
+            questionCount: snapshotData.questionCount,
+            currentQuestionIndex: snapshotData.currentQuestionIndex,
+            expiresAt: snapshotData.expiresAt,
+            completedAt: snapshotData.completedAt,
+            version: snapshotData.version,
+            config: snapshotData.config,
+            questionOrder: snapshotData.questionOrder,
+            answers: snapshotData.answers,
+            correctAnswers: snapshotData.correctAnswers,
+            updatedAt: snapshotData.updatedAt,
+          },
+        });
+
+      this.logger.debug('Quiz session snapshot updated', {
+        sessionId: session.id,
+        state: dbState,
+        correctAnswers,
+      });
+    } catch (error) {
+      this.logger.error('Failed to update quiz session snapshot', {
+        sessionId: session.id,
+        error: this.getErrorMessage(error),
+      });
+      // Don't throw error - snapshot update failure shouldn't fail the main operation
+      // The snapshot is for performance only, not critical for consistency
     }
   }
 
@@ -294,80 +392,48 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
 
   async getAverageScore(): Promise<number> {
     try {
-      this.logger.debug('Calculating average quiz score');
+      this.logger.debug('Calculating average quiz score using database aggregation');
 
-      // Get all completed quizzes
-      const completedQuizzes = await this.trx
+      // Use database aggregation with the pre-calculated correct_answers column
+      const result = await this.trx
         .select({
-          sessionId: quizSessionSnapshot.sessionId,
-          questionCount: quizSessionSnapshot.questionCount,
-          answers: quizSessionSnapshot.answers,
+          averagePercentage: sql<number>`
+            ROUND(
+              AVG(
+                CASE 
+                  WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+                  THEN (${quizSessionSnapshot.correctAnswers}::float / ${quizSessionSnapshot.questionCount}::float) * 100
+                  ELSE NULL
+                END
+              )
+            )
+          `,
+          validQuizCount: sql<number>`
+            COUNT(
+              CASE 
+                WHEN ${quizSessionSnapshot.correctAnswers} IS NOT NULL 
+                THEN 1
+                ELSE NULL
+              END
+            )
+          `,
+          totalCompletedQuizzes: sql<number>`COUNT(*)`,
         })
         .from(quizSessionSnapshot)
         .where(eq(quizSessionSnapshot.state, 'COMPLETED' satisfies QuizStateValue));
 
-      if (completedQuizzes.length === 0) {
-        this.logger.debug('No completed quizzes found');
+      const aggregationResult = result[0];
+
+      if (!aggregationResult || aggregationResult.validQuizCount === 0) {
+        this.logger.debug('No completed quizzes with valid scores found');
         return 0;
       }
 
-      let totalScore = 0;
-      let validQuizCount = 0;
+      const averageScore = Math.round(aggregationResult.averagePercentage || 0);
 
-      // Calculate score for each completed quiz
-      for (const quiz of completedQuizzes) {
-        if (!quiz.answers) {
-          continue;
-        }
-
-        try {
-          // Validate answers from JSONB using schema
-          const answersMap = quizAnswersSchema.parse(quiz.answers);
-
-          // Get question IDs from answers
-          const questionIds = Object.values(answersMap).map(
-            (answer) => answer.questionId as QuestionId
-          );
-
-          if (questionIds.length === 0) {
-            continue;
-          }
-
-          // Fetch question details
-          const questionDetailsMap =
-            await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
-
-          // Create type-safe scoring session using helper function
-          const scoringSession = createScoringSession(answersMap);
-
-          // Calculate score using existing utilities with type safety
-          const { correctCount } = buildAnswerResultsFromScoringSession(
-            scoringSession,
-            questionDetailsMap
-          );
-          const scoreSummary = calculateScoreSummary(correctCount, quiz.questionCount);
-
-          totalScore += scoreSummary.percentage;
-          validQuizCount++;
-        } catch (error) {
-          this.logger.warn('Failed to calculate score for quiz in average calculation', {
-            sessionId: quiz.sessionId,
-            error: this.getErrorDetails(error),
-          });
-          // Skip this quiz in the average calculation
-        }
-      }
-
-      if (validQuizCount === 0) {
-        this.logger.debug('No valid quizzes with scores found');
-        return 0;
-      }
-
-      const averageScore = Math.round(totalScore / validQuizCount);
-
-      this.logger.debug('Average score calculated', {
-        totalQuizzes: completedQuizzes.length,
-        validQuizzes: validQuizCount,
+      this.logger.debug('Average score calculated via database aggregation', {
+        totalCompletedQuizzes: aggregationResult.totalCompletedQuizzes,
+        validQuizzes: aggregationResult.validQuizCount,
         averageScore,
       });
 
@@ -479,9 +545,6 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
                 const questionDetailsMap =
                   await this.questionDetailsService.getMultipleQuestionDetails(questionIds);
 
-                // Create type-safe scoring session using helper function
-                const scoringSession = createScoringSession(answersMap);
-
                 // Check if we got details for all questions
                 if (questionDetailsMap.size < questionIds.length) {
                   // Some question details are missing, can't calculate accurate score
@@ -492,9 +555,9 @@ export class DrizzleQuizRepository extends BaseRepository implements IQuizReposi
                   });
                   score = null;
                 } else {
-                  // Calculate score using existing utilities with type safety
-                  const { correctCount } = buildAnswerResultsFromScoringSession(
-                    scoringSession,
+                  // Calculate score using new utility function
+                  const { correctCount } = buildAnswerResultsFromRawData(
+                    answersMap,
                     questionDetailsMap
                   );
                   const scoreSummary = calculateScoreSummary(correctCount, row.questionCount);

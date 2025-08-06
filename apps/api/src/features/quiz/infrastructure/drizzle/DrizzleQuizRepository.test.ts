@@ -41,6 +41,7 @@ interface MockSnapshotRow {
   questionCount?: number;
   startedAt?: Date;
   completedAt?: Date | null;
+  correctAnswers?: number | null;
 }
 
 // Mock question details service implementation
@@ -137,6 +138,46 @@ class MockTransactionContext {
             };
           }
           return [{ count: this.events.length }];
+        },
+      };
+    }
+
+    // Handle aggregation queries for getAverageScore
+    if (fields && typeof fields === 'object' && 'averagePercentage' in fields) {
+      return {
+        from: (table: unknown) => {
+          if (this.isSnapshotTable(table)) {
+            return {
+              where: (_condition: unknown) => {
+                const completedSnapshots = this.snapshots.filter((s) => s.state === 'COMPLETED');
+
+                // Calculate aggregation values
+                const validQuizzes = completedSnapshots.filter(
+                  (s) => s.correctAnswers !== null && s.correctAnswers !== undefined
+                );
+                let averagePercentage = 0;
+
+                if (validQuizzes.length > 0) {
+                  const totalPercentage = validQuizzes.reduce((sum, quiz) => {
+                    const correctAnswers = quiz.correctAnswers ?? 0;
+                    const questionCount = quiz.questionCount ?? 1;
+                    const percentage = (correctAnswers / questionCount) * 100;
+                    return sum + percentage;
+                  }, 0);
+                  averagePercentage = Math.round(totalPercentage / validQuizzes.length);
+                }
+
+                return [
+                  {
+                    averagePercentage,
+                    validQuizCount: validQuizzes.length,
+                    totalCompletedQuizzes: completedSnapshots.length,
+                  },
+                ];
+              },
+            };
+          }
+          return [{ averagePercentage: 0, validQuizCount: 0, totalCompletedQuizzes: 0 }];
         },
       };
     }
@@ -851,7 +892,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       expect(result).toBe(0);
       expect(mockLogger.debugMessages).toContainEqual(
         expect.objectContaining({
-          message: 'No completed quizzes found',
+          message: 'No completed quizzes with valid scores found',
         })
       );
     });
@@ -894,6 +935,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         state: 'COMPLETED',
         expiresAt: new Date(),
         questionCount: 2,
+        correctAnswers: 2, // 2 out of 2 correct = 100%
         answers: {
           answer1: {
             answerId: AnswerId.generate().toString(),
@@ -917,6 +959,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         state: 'COMPLETED',
         expiresAt: new Date(),
         questionCount: 2,
+        correctAnswers: 1, // 1 out of 2 correct = 50%
         answers: {
           answer1: {
             answerId: AnswerId.generate().toString(),
@@ -939,9 +982,9 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       expect(result).toBe(75);
       expect(mockLogger.debugMessages).toContainEqual(
         expect.objectContaining({
-          message: 'Average score calculated',
+          message: 'Average score calculated via database aggregation',
           meta: expect.objectContaining({
-            totalQuizzes: 2,
+            totalCompletedQuizzes: 2,
             validQuizzes: 2,
             averageScore: 75,
           }),
@@ -950,7 +993,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
     });
 
     it('should skip quizzes without answers', async () => {
-      // Add completed quiz without answers
+      // Add completed quiz without answers (no correctAnswers field)
       mockTrx.addSnapshot({
         sessionId: QuizSessionId.generate().toString(),
         ownerId: UserId.generate().toString(),
@@ -958,6 +1001,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         expiresAt: new Date(),
         questionCount: 2,
         answers: undefined,
+        correctAnswers: null, // No correctAnswers calculated
       });
 
       const result = await repository.getAverageScore();
@@ -965,7 +1009,7 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
       expect(result).toBe(0);
       expect(mockLogger.debugMessages).toContainEqual(
         expect.objectContaining({
-          message: 'No valid quizzes with scores found',
+          message: 'No completed quizzes with valid scores found',
         })
       );
     });
@@ -973,13 +1017,14 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
     it('should handle missing question details gracefully', async () => {
       const questionId = QuestionId.generate();
 
-      // Add completed quiz with answers
+      // Add completed quiz with answers but no correctAnswers (failed calculation during save)
       mockTrx.addSnapshot({
         sessionId: QuizSessionId.generate().toString(),
         ownerId: UserId.generate().toString(),
         state: 'COMPLETED',
         expiresAt: new Date(),
         questionCount: 1,
+        correctAnswers: null, // Score calculation failed during snapshot update
         answers: {
           answer1: {
             answerId: AnswerId.generate().toString(),
@@ -990,15 +1035,16 @@ describe('DrizzleQuizRepository (Unit Tests)', () => {
         },
       });
 
-      // Don't add question details - buildAnswerResults will skip this question
-
       const result = await repository.getAverageScore();
 
-      // When question details are missing, the score is calculated as 0
-      // (0 correct out of 1 question = 0%)
+      // When correctAnswers is null (due to missing question details during save),
+      // the quiz is excluded from aggregation
       expect(result).toBe(0);
-      // No warning is logged because buildAnswerResults silently skips missing questions
-      expect(mockLogger.warnMessages).toHaveLength(0);
+      expect(mockLogger.debugMessages).toContainEqual(
+        expect.objectContaining({
+          message: 'No completed quizzes with valid scores found',
+        })
+      );
     });
   });
 

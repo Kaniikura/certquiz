@@ -87,6 +87,7 @@ CREATE TABLE "quiz_session_snapshot" (
 	"config" jsonb NOT NULL,
 	"question_order" uuid[] NOT NULL,
 	"answers" jsonb,
+	"correct_answers" integer,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "ck_session_state_consistency" CHECK (
       CASE 
@@ -96,7 +97,8 @@ CREATE TABLE "quiz_session_snapshot" (
         ELSE true
       END
     ),
-	CONSTRAINT "ck_question_index_bounds" CHECK ("quiz_session_snapshot"."current_question_index" >= 0 AND "quiz_session_snapshot"."current_question_index" < "quiz_session_snapshot"."question_count")
+	CONSTRAINT "ck_question_index_bounds" CHECK ("quiz_session_snapshot"."current_question_index" >= 0 AND "quiz_session_snapshot"."current_question_index" < "quiz_session_snapshot"."question_count"),
+	CONSTRAINT "ck_correct_answers_bounds" CHECK ("quiz_session_snapshot"."correct_answers" IS NULL OR ("quiz_session_snapshot"."correct_answers" >= 0 AND "quiz_session_snapshot"."correct_answers" <= "quiz_session_snapshot"."question_count"))
 );
 --> statement-breakpoint
 CREATE TABLE "subscriptions" (
@@ -194,6 +196,7 @@ CREATE INDEX "ix_snapshot_owner_started" ON "quiz_session_snapshot" USING btree 
 CREATE INDEX "ix_snapshot_state_started" ON "quiz_session_snapshot" USING btree ("state","started_at");--> statement-breakpoint
 CREATE INDEX "ix_snapshot_expired_cleanup" ON "quiz_session_snapshot" USING btree ("completed_at") WHERE state IN ('COMPLETED', 'EXPIRED');--> statement-breakpoint
 CREATE INDEX "ix_snapshot_active_expiry" ON "quiz_session_snapshot" USING btree ("expires_at") WHERE state = 'IN_PROGRESS';--> statement-breakpoint
+CREATE INDEX "ix_snapshot_score_analysis" ON "quiz_session_snapshot" USING btree ("state","correct_answers") WHERE state = 'COMPLETED';--> statement-breakpoint
 CREATE INDEX "ix_subscriptions_status" ON "subscriptions" USING btree ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "unq_bmac_email" ON "subscriptions" USING btree ("buy_me_a_coffee_email");--> statement-breakpoint
 CREATE INDEX "ix_progress_experience_desc" ON "user_progress" USING btree ("experience" DESC);--> statement-breakpoint
