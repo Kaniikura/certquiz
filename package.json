@@ -17,6 +17,9 @@
     "bun": ">=1.1.0"
   },
   "private": true,
+  "overrides": {
+    "cookie": "0.7.0"
+  },
   "scripts": {
     "dev": "concurrently -n \"api,web\" -c \"blue,green\" \"bun run dev:api\" \"bun run dev:web\"",
     "dev:services": "concurrently -n \"db,api,web\" -c \"yellow,blue,green\" \"bun run docker:up\" \"bun run dev:api\" \"bun run dev:web\"",

@@ -96,11 +96,14 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         body.append('client_secret', this.config.clientSecret);
       }
 
-      logger.info('Authenticating with KeyCloak', {
-        url: tokenUrl,
-        clientId: this.config.clientId,
-        emailHash: hashEmail(email),
-      });
+      logger.info(
+        {
+          url: tokenUrl,
+          clientId: this.config.clientId,
+          emailHash: hashEmail(email),
+        },
+        'Authenticating with KeyCloak'
+      );
 
       const response = await fetch(tokenUrl, {
         method: 'POST',
@@ -112,10 +115,13 @@ export class KeyCloakAuthProvider implements IAuthProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('KeyCloak authentication failed', {
-          status: response.status,
-          error: errorText,
-        });
+        logger.error(
+          {
+            status: response.status,
+            error: errorText,
+          },
+          'KeyCloak authentication failed'
+        );
         return Result.fail(new AppError('Invalid credentials', 'INVALID_CREDENTIALS', 401));
       }
 
@@ -129,7 +135,7 @@ export class KeyCloakAuthProvider implements IAuthProvider {
           return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
         }
       } catch (error) {
-        logger.error('Failed to parse KeyCloak response', { error });
+        logger.error({ error }, 'Failed to parse KeyCloak response');
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
       }
 
@@ -140,16 +146,22 @@ export class KeyCloakAuthProvider implements IAuthProvider {
         refreshToken: tokenData.refresh_token,
       };
 
-      logger.info('KeyCloak authentication successful', {
-        tokenType: authToken.tokenType,
-        expiresIn: authToken.expiresIn,
-      });
+      logger.info(
+        {
+          tokenType: authToken.tokenType,
+          expiresIn: authToken.expiresIn,
+        },
+        'KeyCloak authentication successful'
+      );
 
       return Result.ok(authToken);
     } catch (error) {
-      logger.error('KeyCloak authentication error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'KeyCloak authentication error'
+      );
       return Result.fail(
         error instanceof Error ? error : new AppError('Authentication failed', 'AUTH_FAILED', 500)
       );
@@ -173,9 +185,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
       });
 
       if (!response.ok) {
-        logger.error('KeyCloak token validation failed', {
-          status: response.status,
-        });
+        logger.error(
+          {
+            status: response.status,
+          },
+          'KeyCloak token validation failed'
+        );
         return Result.fail(new AppError('Invalid token', 'INVALID_TOKEN', 401));
       }
 
@@ -189,7 +204,7 @@ export class KeyCloakAuthProvider implements IAuthProvider {
           return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
         }
       } catch (error) {
-        logger.error('Failed to parse KeyCloak userinfo response', { error });
+        logger.error({ error }, 'Failed to parse KeyCloak userinfo response');
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
       }
 
@@ -203,9 +218,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
       };
       return Result.ok(authUserInfo);
     } catch (error) {
-      logger.error('KeyCloak token validation error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'KeyCloak token validation error'
+      );
       return Result.fail(
         error instanceof Error
           ? error
@@ -244,10 +262,13 @@ export class KeyCloakAuthProvider implements IAuthProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('KeyCloak token refresh failed', {
-          status: response.status,
-          error: errorText,
-        });
+        logger.error(
+          {
+            status: response.status,
+            error: errorText,
+          },
+          'KeyCloak token refresh failed'
+        );
         return Result.fail(new AppError('Invalid refresh token', 'INVALID_REFRESH_TOKEN', 401));
       }
 
@@ -261,7 +282,7 @@ export class KeyCloakAuthProvider implements IAuthProvider {
           return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
         }
       } catch (error) {
-        logger.error('Failed to parse KeyCloak refresh token response', { error });
+        logger.error({ error }, 'Failed to parse KeyCloak refresh token response');
         return Result.fail(new AppError('Invalid response format', 'INVALID_RESPONSE', 500));
       }
 
@@ -276,9 +297,12 @@ export class KeyCloakAuthProvider implements IAuthProvider {
 
       return Result.ok(authToken);
     } catch (error) {
-      logger.error('KeyCloak token refresh error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'KeyCloak token refresh error'
+      );
       return Result.fail(
         error instanceof Error
           ? error

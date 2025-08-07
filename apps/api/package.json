@@ -32,22 +32,22 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.6.0",
-    "drizzle-orm": "^0.44.2",
-    "hono": "^4.7.0",
-    "jose": "^6.0.11",
-    "pino": "^9.7.0",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^4.8.12",
+    "jose": "^6.0.12",
+    "pino": "^9.8.0",
     "postgres": "^3.4.7",
-    "zod": "^3.25.67"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^11.5.0",
-    "@types/bun": "^1.2.18",
-    "@types/node": "^24.1.0",
-    "drizzle-kit": "^0.31.1",
-    "nanoid": "^5.0.0",
-    "testcontainers": "^11.5.0",
-    "typescript": "^5.8.3",
-    "vite": "^5.0.0",
+    "@testcontainers/postgresql": "^11.5.1",
+    "@types/bun": "^1.2.19",
+    "@types/node": "^24.2.0",
+    "drizzle-kit": "^0.31.4",
+    "nanoid": "^5.1.5",
+    "testcontainers": "^11.5.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   }
