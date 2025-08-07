@@ -3,9 +3,9 @@
  */
 
 import { shutdownDatabase } from '@api/infra/db/client';
+import { PostgresSingleton } from '@api/test-support/db/TestContainerManager';
+import { createTestDatabase } from '@api/test-support/db/TestDatabaseFactory';
 import { afterAll, beforeAll } from 'vitest';
-import { PostgresSingleton } from '../containers/postgres';
-import { createTestDatabase } from './db-core';
 
 /**
  * Sets up a test database for integration tests

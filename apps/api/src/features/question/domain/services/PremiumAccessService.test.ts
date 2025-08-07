@@ -121,8 +121,8 @@ describe('PremiumAccessService', () => {
         const result = service.validateQuestionPremiumAccess(false, true, questionId);
         expect(result.success).toBe(false);
         if (!result.success) {
-          const error = result.error as QuestionAccessDeniedError;
-          expect(error.message).toContain(questionId);
+          expect(result.error).toBeInstanceOf(QuestionAccessDeniedError);
+          expect(result.error.message).toContain(questionId);
         }
       });
     });
