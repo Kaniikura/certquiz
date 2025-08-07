@@ -1,16 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "composite": false
+    "rootDir": "src"
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/test-support",
-    "src/**/*.test.ts",
-    "src/**/*.fake.ts",
-    "src/**/*.stub.ts",
-    "tests/**/*"
-  ],
-  "include": ["src/**/*", "db/**/*.ts", "scripts/**/*", "*.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts", "tests", "scripts"]
 }

@@ -15,9 +15,9 @@
     {
       "includes": [
         "scripts/**/*.ts",
+        "src/test-support/db/TestDatabaseMigrations.ts",
         "tests/containers/index.ts",
-        "tests/integration/migrations.test.ts",
-        "tests/helpers/db-*.ts"
+        "tests/integration/migrations.test.ts"
       ],
       "linter": {
         "rules": {

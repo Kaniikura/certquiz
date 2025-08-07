@@ -1,11 +1,22 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
     "outDir": "./dist",
-    "rootDirs": ["src", "db"],
-    "types": ["node", "@types/bun"]
+    "rootDirs": ["src", "db", "tests", "scripts"],
+    "types": ["node", "@types/bun"],
+    "baseUrl": ".",
+    "paths": {
+      "@certquiz/shared": ["../../packages/shared/src/index.ts"],
+      "@certquiz/shared/*": ["../../packages/shared/src/*"],
+      "@api/*": ["src/*"],
+      "@/test-support": ["src/test-support/index.ts"],
+      "@/test-support/*": ["src/test-support/*"],
+      "@test": ["tests/index.ts"],
+      "@test/*": ["tests/*"]
+    }
   },
-  "exclude": ["node_modules", "dist", "src/**/*.test.{ts,tsx,spec.ts}"],
-  "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "tests/**/*.ts", "scripts/**/*", "*.ts", "package.json"]
+  "include": ["src/**/*", "tests/**/*.ts", "scripts/**/*", "*.ts", "package.json"],
+  "exclude": ["node_modules", "dist"],
+  "references": [{ "path": "../../packages/shared" }]
 }
