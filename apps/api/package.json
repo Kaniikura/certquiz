@@ -7,6 +7,8 @@
     "build": "bun build src/index.ts --target bun --outdir dist",
     "start": "bun dist/index.js",
     "start:dev": "bun src/index.ts",
+    "dev:daemon": "bun src/index.ts > /tmp/api.log 2>&1 & echo $! > /tmp/api.pid",
+    "dev:stop": "kill $(cat /tmp/api.pid) 2>/dev/null || true; rm -f /tmp/api.pid",
     "test": "bun vitest run",
     "test:watch": "bun vitest watch",
     "test:unit": "bun vitest run --exclude '**/*.integration.test.ts' --exclude 'tests/integration/**/*.test.ts' --exclude 'tests/e2e/**/*.test.ts'",
