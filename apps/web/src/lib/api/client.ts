@@ -25,54 +25,101 @@ export interface HealthResponse {
   message?: string;
 }
 
+/**
+ * Creates standardized API request configuration with defaults
+ *
+ * Provides consistent configuration for all API requests including:
+ * - Content-Type: application/json header
+ * - 10-second request timeout via AbortSignal
+ * - Extensible options that can be overridden per request
+ *
+ * @param options - Custom RequestInit options to merge with defaults
+ * @returns RequestInit with merged configuration and timeout
+ *
+ * @example
+ * ```typescript
+ * // POST request with body
+ * fetch(url, createApiConfig({
+ *   method: 'POST',
+ *   body: JSON.stringify(data)
+ * }));
+ *
+ * // Override default headers
+ * fetch(url, createApiConfig({
+ *   headers: { 'Authorization': 'Bearer token' }
+ * }));
+ *
+ * // Custom timeout
+ * fetch(url, createApiConfig({
+ *   signal: AbortSignal.timeout(5000) // 5 seconds
+ * }));
+ * ```
+ */
+const createApiConfig = (options: RequestInit = {}): RequestInit => ({
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  },
+  signal: AbortSignal.timeout(10000),
+  ...options,
+});
+
 // Organized API endpoints
 export const api = {
   // Health endpoint
   health: async (): Promise<Response> => {
-    return fetch(`${API_BASE_URL}/health`);
+    return fetch(`${API_BASE_URL}/health`, createApiConfig());
   },
 
   // Auth endpoints
   auth: {
     login: async (credentials: { email: string; password: string }): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
+      return fetch(
+        `${API_BASE_URL}/api/auth/login`,
+        createApiConfig({
+          method: 'POST',
+          body: JSON.stringify(credentials),
+        })
+      );
     },
   },
 
   // Quiz endpoints
   quiz: {
     start: async (config: { questionCount: number; examType: string }): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/quiz/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
+      return fetch(
+        `${API_BASE_URL}/api/quiz/start`,
+        createApiConfig({
+          method: 'POST',
+          body: JSON.stringify(config),
+        })
+      );
     },
 
     submitAnswer: async (
       sessionId: string,
       answer: { questionId: string; selectedOptions: string[] }
     ): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/quiz/${sessionId}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(answer),
-      });
+      return fetch(
+        `${API_BASE_URL}/api/quiz/${sessionId}/submit`,
+        createApiConfig({
+          method: 'POST',
+          body: JSON.stringify(answer),
+        })
+      );
     },
 
     complete: async (sessionId: string): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/quiz/${sessionId}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return fetch(
+        `${API_BASE_URL}/api/quiz/${sessionId}/complete`,
+        createApiConfig({
+          method: 'POST',
+        })
+      );
     },
 
     getResults: async (sessionId: string): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/quiz/${sessionId}/results`);
+      return fetch(`${API_BASE_URL}/api/quiz/${sessionId}/results`, createApiConfig());
     },
   },
 
@@ -89,11 +136,11 @@ export const api = {
           if (value !== undefined) url.searchParams.set(key, value.toString());
         });
       }
-      return fetch(url.toString());
+      return fetch(url.toString(), createApiConfig());
     },
 
     get: async (id: string): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/questions/${id}`);
+      return fetch(`${API_BASE_URL}/api/questions/${id}`, createApiConfig());
     },
   },
 
@@ -104,15 +151,17 @@ export const api = {
       username: string;
       password: string;
     }): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/users/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
+      return fetch(
+        `${API_BASE_URL}/api/users/register`,
+        createApiConfig({
+          method: 'POST',
+          body: JSON.stringify(userData),
+        })
+      );
     },
 
     profile: async (): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/users/profile`);
+      return fetch(`${API_BASE_URL}/api/users/profile`, createApiConfig());
     },
   },
 } as const;
@@ -200,13 +249,15 @@ export async function handleApiResponse<T>(apiCall: () => Promise<Response>): Pr
 // Authenticated API wrapper (for future auth integration)
 export function createAuthenticatedFetch(token: string) {
   return (url: string, options: RequestInit = {}) => {
-    return fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
+    return fetch(
+      url,
+      createApiConfig({
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+      })
+    );
   };
 }
