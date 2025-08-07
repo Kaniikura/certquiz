@@ -24,6 +24,8 @@ const config: KnipConfig = {
   treatConfigHintsAsErrors: true,
   // Global ignore patterns for development tools
   ignoreBinaries: ['docker-compose'],
+  // Ignore unresolved imports that match SvelteKit virtual modules
+  ignoreUnresolved: ['\\$app/.*'],
   workspaces: {
     '.': {
       entry: [],
@@ -47,6 +49,32 @@ const config: KnipConfig = {
       vitest: {
         config: ['vitest.config.ts', 'tests/vitest.config.integration.ts'],
       },
+    },
+    'apps/web': {
+      entry: ['src/app.html', 'src/routes/**/*.svelte', 'src/lib/index.ts'],
+      project: ['src/**/*.{ts,js,svelte}'],
+      // Note: src/lib/index.ts is now used to re-export API client utilities
+      ignoreDependencies: [
+        '@certquiz/shared', // Will be used for shared types
+        'hono', // Will be used for API client types
+        'tailwindcss', // Peer dependency of @tailwindcss/vite
+      ],
+      // Path mappings for SvelteKit aliases
+      paths: {
+        $lib: ['./src/lib'],
+        '$lib/*': ['./src/lib/*'],
+      },
+      // SvelteKit plugin configuration
+      svelte: {
+        config: 'svelte.config.js',
+      },
+      vite: {
+        config: 'vite.config.ts',
+      },
+    },
+    'packages/shared': {
+      // src/index.ts is automatically detected as entry point
+      project: ['src/**'],
     },
   },
 };
