@@ -1,12 +1,12 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-import { api, handleApiResponse } from '$lib/api/client';
+import { api, type HealthResponse, handleApiResponse } from '$lib/api/client';
 
 let healthStatus = $state('Loading...');
 
 onMount(async () => {
   try {
-    const result = await handleApiResponse(() => api.health());
+    const result = await handleApiResponse<HealthResponse>(() => api.health());
     healthStatus = `API Connected: ${result.status || 'OK'}`;
   } catch (error) {
     healthStatus = `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`;

@@ -45,6 +45,76 @@ This document defines the CI/CD strategy for CertQuiz, integrating best practice
 
 **Hotfix**: Branch from main → Apply fix with tests → Fast-track merge → Auto-deploy
 
+## Local CI Testing with Act
+
+### Overview
+
+Use the `act` tool to test GitHub Actions workflows locally, ensuring CI/CD changes work before pushing to GitHub. This reduces feedback loops and prevents broken CI configurations.
+
+### Installation
+
+```bash
+# macOS
+brew install act
+
+# Linux/WSL
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Alternative: Download binary from https://github.com/nektos/act/releases
+```
+
+### Usage
+
+```bash
+# Run all workflows
+act
+
+# Run specific job
+act -j lint           # Run lint job
+act -j test          # Run test job
+act -j e2e-tests     # Run E2E tests
+
+# Run with specific event
+act pull_request     # Simulate pull request event
+act push            # Simulate push event
+
+# Run with secrets (create .secrets file first)
+act --secret-file .secrets
+
+# Use specific container architecture (for M1 Macs)
+act --container-architecture linux/amd64
+```
+
+### Running E2E Tests Locally
+
+```bash
+# Start required services using Docker Compose
+docker-compose -f docker/docker-compose.e2e.yml up -d postgres-e2e keycloak-e2e
+
+# Run E2E test job with act
+act -j e2e-tests --container-architecture linux/amd64
+
+# Clean up after testing
+docker-compose -f docker/docker-compose.e2e.yml down
+```
+
+### Secrets Configuration
+
+Create a `.secrets` file for local testing (never commit this file):
+
+```
+JWT_SECRET=test-jwt-secret-at-least-32-chars
+BMAC_WEBHOOK_SECRET=test-webhook-secret
+KEYCLOAK_ADMIN_PASSWORD=admin
+```
+
+### Troubleshooting
+
+- **Container Architecture Issues**: Use `--container-architecture linux/amd64` on Apple Silicon
+- **Network Issues**: Ensure Docker services are accessible from act containers
+- **Volume Mounts**: Act may have different volume mount behavior than GitHub Actions
+- **Resource Limits**: Adjust Docker resource limits if workflows fail due to memory/CPU
+
 ## Infrastructure Architecture
 
 ### Component Overview

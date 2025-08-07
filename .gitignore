@@ -73,3 +73,8 @@ temp/
 
 # MCP
 .mcp.json
+
+# Act tool (GitHub Actions local testing)
+.secrets
+.actrc
+act/
