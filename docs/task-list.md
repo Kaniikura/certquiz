@@ -293,7 +293,7 @@ Complete API layer implementation with comprehensive middleware, route compositi
 ✅ Integrated with monorepo TypeScript configuration
 ✅ All quality checks passing (tsc, biome, knip)
 ```
-> 📝 **Details**: [docs/planning/0019-sveltekit-project-setup.md](./planning/0019-sveltekit-project-setup.md)
+> 📝 **Details**: [docs/completed/0019-sveltekit-project-setup.md](./completed/0019-sveltekit-project-setup.md)
 
 ### 10.2 Create Layout Components
 **Time**: 1 hour
