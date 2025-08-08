@@ -251,8 +251,8 @@ jobs:
 
       - name: Wait for services
         run: |
-          chmod +x scripts/wait-for-e2e-services.sh
-          ./scripts/wait-for-e2e-services.sh 60
+          chmod +x scripts/wait-for-services.sh
+          ./scripts/wait-for-services.sh 60
         env:
           CI: true
 
