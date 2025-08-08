@@ -199,11 +199,12 @@ export class ApiError extends Error {
  * Centralized fetch helper with built-in error handling
  *
  * Performs a fetch request with automatic error checking, status validation,
- * and JSON parsing. Throws ApiError for non-2xx responses.
+ * and appropriate response parsing based on content type. Throws ApiError for
+ * non-2xx responses.
  *
  * @param url The URL to fetch
  * @param config Optional fetch configuration
- * @returns Promise<T> Parsed JSON response
+ * @returns Promise<T> Parsed response (JSON for application/json, null for 204, text for others)
  * @throws {ApiError} For HTTP errors (4xx, 5xx) or network errors
  */
 async function apiFetch<T>(url: string, config?: RequestInit): Promise<T> {
@@ -231,7 +232,21 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T> {
       );
     }
 
-    return await response.json();
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    // Check Content-Type to determine how to parse the response
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      return await response.json();
+    }
+
+    // For non-JSON responses, return the text content
+    // This allows the API to return text/plain or text/html if needed
+    const text = await response.text();
+    return text as unknown as T;
   } catch (error) {
     // Re-throw ApiError as-is
     if (error instanceof ApiError) {

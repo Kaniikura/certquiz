@@ -271,7 +271,10 @@ describe('API Client', () => {
 
   describe('api.health', () => {
     it('should call health endpoint with correct URL', async () => {
-      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       await api.health();
@@ -288,7 +291,10 @@ describe('API Client', () => {
 
     it('should handle successful health check', async () => {
       const healthData: HealthResponse = { status: 'healthy', message: 'All systems operational' };
-      const mockResponse = new Response(JSON.stringify(healthData), { status: 200 });
+      const mockResponse = new Response(JSON.stringify(healthData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       const result = await api.health();
@@ -309,13 +315,81 @@ describe('API Client', () => {
         message: 'HTTP 503: Service Unavailable',
       });
     });
+
+    it('should handle 204 No Content response', async () => {
+      const mockResponse = new Response(null, {
+        status: 204,
+        statusText: 'No Content',
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const result = await api.health();
+
+      expect(result).toBeNull();
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('should handle text/plain response', async () => {
+      const textContent = 'Service is healthy';
+      const mockResponse = new Response(textContent, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const result = await api.health();
+
+      expect(result).toBe(textContent);
+    });
+
+    it('should handle text/html response', async () => {
+      const htmlContent = '<html><body>Status Page</body></html>';
+      const mockResponse = new Response(htmlContent, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const result = await api.health();
+
+      expect(result).toBe(htmlContent);
+    });
+
+    it('should handle response without Content-Type header', async () => {
+      const content = 'Response without content type';
+      const mockResponse = new Response(content, {
+        status: 200,
+        // No Content-Type header
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const result = await api.health();
+
+      // Should fall back to text parsing
+      expect(result).toBe(content);
+    });
+
+    it('should handle empty response with 200 status', async () => {
+      const mockResponse = new Response('', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const result = await api.health();
+
+      expect(result).toBe('');
+    });
   });
 
   describe('api.auth', () => {
     describe('login', () => {
       it('should send login credentials to correct endpoint', async () => {
         const credentials = { email: 'test@example.com', password: 'password123' };
-        const mockResponse = new Response(JSON.stringify({ token: 'jwt-token' }), { status: 200 });
+        const mockResponse = new Response(JSON.stringify({ token: 'jwt-token' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.auth.login(credentials);
@@ -335,7 +409,10 @@ describe('API Client', () => {
       it('should handle login success', async () => {
         const credentials = { email: 'test@example.com', password: 'password123' };
         const tokenResponse = { access_token: 'jwt-token', refresh_token: 'refresh-token' };
-        const mockResponse = new Response(JSON.stringify(tokenResponse), { status: 200 });
+        const mockResponse = new Response(JSON.stringify(tokenResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         const result = await api.auth.login(credentials);
@@ -366,6 +443,7 @@ describe('API Client', () => {
         const config = { questionCount: 10, examType: 'CCNA' };
         const mockResponse = new Response(JSON.stringify({ sessionId: 'quiz-123' }), {
           status: 200,
+          headers: { 'Content-Type': 'application/json' },
         });
         fetchMock.mockResolvedValue(mockResponse);
 
@@ -385,7 +463,10 @@ describe('API Client', () => {
       it('should submit answer to correct session', async () => {
         const sessionId = 'quiz-123';
         const answer = { questionId: 'q-1', selectedOptions: ['a', 'b'] };
-        const mockResponse = new Response(JSON.stringify({ correct: true }), { status: 200 });
+        const mockResponse = new Response(JSON.stringify({ correct: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.quiz.submitAnswer(sessionId, answer);
@@ -403,7 +484,10 @@ describe('API Client', () => {
     describe('complete', () => {
       it('should complete quiz session', async () => {
         const sessionId = 'quiz-123';
-        const mockResponse = new Response(JSON.stringify({ score: 80 }), { status: 200 });
+        const mockResponse = new Response(JSON.stringify({ score: 80 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.quiz.complete(sessionId);
@@ -421,7 +505,10 @@ describe('API Client', () => {
       it('should get quiz results', async () => {
         const sessionId = 'quiz-123';
         const results = { score: 80, correct: 8, total: 10 };
-        const mockResponse = new Response(JSON.stringify(results), { status: 200 });
+        const mockResponse = new Response(JSON.stringify(results), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         const data = await api.quiz.getResults(sessionId);
@@ -443,7 +530,10 @@ describe('API Client', () => {
     describe('list', () => {
       it('should list questions without parameters', async () => {
         const questions = [{ id: '1', text: 'Question 1' }];
-        const mockResponse = new Response(JSON.stringify(questions), { status: 200 });
+        const mockResponse = new Response(JSON.stringify(questions), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.questions.list();
@@ -460,7 +550,10 @@ describe('API Client', () => {
 
       it('should list questions with query parameters', async () => {
         const params = { page: 2, limit: 20, examType: 'CCNP' };
-        const mockResponse = new Response(JSON.stringify([]), { status: 200 });
+        const mockResponse = new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.questions.list(params);
@@ -477,7 +570,10 @@ describe('API Client', () => {
 
       it('should handle undefined parameters correctly', async () => {
         const params = { page: undefined, limit: 10, examType: undefined };
-        const mockResponse = new Response(JSON.stringify([]), { status: 200 });
+        const mockResponse = new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.questions.list(params);
@@ -493,7 +589,10 @@ describe('API Client', () => {
       it('should get specific question by ID', async () => {
         const questionId = 'question-123';
         const question = { id: questionId, text: 'What is OSPF?' };
-        const mockResponse = new Response(JSON.stringify(question), { status: 200 });
+        const mockResponse = new Response(JSON.stringify(question), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         const data = await api.questions.get(questionId);
@@ -531,7 +630,10 @@ describe('API Client', () => {
           username: 'newuser',
           password: 'securepass123',
         };
-        const mockResponse = new Response(JSON.stringify({ id: 'user-123' }), { status: 201 });
+        const mockResponse = new Response(JSON.stringify({ id: 'user-123' }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         await api.users.register(userData);
@@ -580,7 +682,10 @@ describe('API Client', () => {
     describe('profile', () => {
       it('should get user profile', async () => {
         const profile = { id: 'user-123', email: 'user@example.com', username: 'testuser' };
-        const mockResponse = new Response(JSON.stringify(profile), { status: 200 });
+        const mockResponse = new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
         const data = await api.users.profile();
@@ -616,7 +721,10 @@ describe('API Client', () => {
     it('should add Bearer token to headers', async () => {
       const token = 'jwt-token-123';
       const authFetch = createAuthenticatedFetch(token);
-      const mockResponse = new Response(JSON.stringify({ data: 'test' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       await authFetch('http://localhost:4000/api/protected');
@@ -634,7 +742,10 @@ describe('API Client', () => {
     it('should merge custom headers with auth header', async () => {
       const token = 'jwt-token-123';
       const authFetch = createAuthenticatedFetch(token);
-      const mockResponse = new Response(JSON.stringify({ data: 'test' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       await authFetch('http://localhost:4000/api/protected', {
@@ -656,7 +767,10 @@ describe('API Client', () => {
     it('should preserve other request options', async () => {
       const token = 'jwt-token-123';
       const authFetch = createAuthenticatedFetch(token);
-      const mockResponse = new Response(JSON.stringify({ data: 'test' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       await authFetch('http://localhost:4000/api/protected', {
@@ -716,7 +830,10 @@ describe('API Client', () => {
   describe('Environment Detection', () => {
     it('should use environment variable for API URL in browser', async () => {
       // Test uses default mock from setup which has browser: true
-      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       await api.health();
@@ -734,7 +851,10 @@ describe('API Client', () => {
         browser: false,
       }));
 
-      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
+      const mockResponse = new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
       // Note: In actual implementation, the module would need to be re-imported
