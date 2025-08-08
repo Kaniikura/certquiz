@@ -168,8 +168,8 @@ describe('QuestionOptions', () => {
         const shuffled = result.data.shuffle();
         expect(shuffled).toHaveLength(3);
         // Should contain all the same options
-        expect(shuffled.map((o: QuestionOption) => o.id).sort()).toEqual(
-          validOptions.map((o: QuestionOption) => o.id).sort()
+        expect(shuffled.map((o: QuestionOption): string => o.id).sort()).toEqual(
+          validOptions.map((o: QuestionOption): string => o.id).sort()
         );
       }
     });
@@ -183,8 +183,8 @@ describe('QuestionOptions', () => {
         const shuffled2 = result.data.shuffle(seed);
 
         // Same seed should produce identical order
-        expect(shuffled1.map((o: QuestionOption) => o.id)).toEqual(
-          shuffled2.map((o: QuestionOption) => o.id)
+        expect(shuffled1.map((o: QuestionOption): string => o.id)).toEqual(
+          shuffled2.map((o: QuestionOption): string => o.id)
         );
         expect(shuffled1).toHaveLength(3);
         expect(shuffled2).toHaveLength(3);
@@ -200,8 +200,8 @@ describe('QuestionOptions', () => {
 
         // Different seeds should likely produce different orders
         // (This could theoretically fail but probability is very low)
-        const order1 = shuffled1.map((o: QuestionOption) => o.id).join(',');
-        const order2 = shuffled2.map((o: QuestionOption) => o.id).join(',');
+        const order1 = shuffled1.map((o: QuestionOption): string => o.id).join(',');
+        const order2 = shuffled2.map((o: QuestionOption): string => o.id).join(',');
         expect(order1).not.toBe(order2);
       }
     });
@@ -221,8 +221,8 @@ describe('QuestionOptions', () => {
 
         // All should contain the same options
         [shuffledZero, shuffledNegative, shuffledFloat].forEach((shuffled) => {
-          expect(shuffled.map((o: QuestionOption) => o.id).sort()).toEqual(
-            validOptions.map((o: QuestionOption) => o.id).sort()
+          expect(shuffled.map((o: QuestionOption): string => o.id).sort()).toEqual(
+            validOptions.map((o: QuestionOption): string => o.id).sort()
           );
         });
       }
@@ -268,8 +268,8 @@ describe('QuestionOptions', () => {
         const shuffled2 = result.data.shuffle(seed);
 
         // Same generated seed should produce identical shuffles
-        expect(shuffled1.map((o: QuestionOption) => o.id)).toEqual(
-          shuffled2.map((o: QuestionOption) => o.id)
+        expect(shuffled1.map((o: QuestionOption): string => o.id)).toEqual(
+          shuffled2.map((o: QuestionOption): string => o.id)
         );
       }
     });
