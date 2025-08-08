@@ -3,12 +3,8 @@
  * Simple fetch-based client for communicating with Hono API
  */
 
-import { browser } from '$app/environment';
-
 // API Base URL configuration
-const API_BASE_URL = browser
-  ? import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'
-  : 'http://localhost:4000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 // Type definitions for API responses
 export interface ApiResponse<T = unknown> {
@@ -55,13 +51,13 @@ export interface HealthResponse {
  * }));
  * ```
  */
-const createApiConfig = (options: RequestInit = {}): RequestInit => ({
+export const createApiConfig = (options: RequestInit = {}): RequestInit => ({
+  ...options,
   headers: {
     'Content-Type': 'application/json',
     ...options.headers,
   },
-  signal: AbortSignal.timeout(10000),
-  ...options,
+  signal: options.signal || AbortSignal.timeout(10000),
 });
 
 // Organized API endpoints
@@ -187,7 +183,7 @@ export class ApiError extends Error {
   }
 
   get isServerError(): boolean {
-    return this.status >= 500;
+    return this.status >= 500 && this.status < 600;
   }
 
   get isNetworkError(): boolean {
@@ -254,8 +250,8 @@ export function createAuthenticatedFetch(token: string) {
       createApiConfig({
         ...options,
         headers: {
-          Authorization: `Bearer ${token}`,
           ...options.headers,
+          Authorization: `Bearer ${token}`,
         },
       })
     );

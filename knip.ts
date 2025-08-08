@@ -24,8 +24,6 @@ const config: KnipConfig = {
   treatConfigHintsAsErrors: true,
   // Global ignore patterns for development tools
   ignoreBinaries: ['docker-compose'],
-  // Ignore unresolved imports that match SvelteKit virtual modules
-  ignoreUnresolved: ['\\$app/.*'],
   workspaces: {
     '.': {
       entry: [],
@@ -51,7 +49,7 @@ const config: KnipConfig = {
       },
     },
     'apps/web': {
-      entry: ['src/app.html', 'src/routes/**/*.svelte', 'src/lib/index.ts'],
+      entry: ['src/app.html', 'src/routes/**/*.svelte', 'src/lib/index.ts', 'src/**/*.test.ts'],
       project: ['src/**/*.{ts,js,svelte}'],
       // Note: src/lib/index.ts is now used to re-export API client utilities
       ignoreDependencies: [
