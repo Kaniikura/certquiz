@@ -291,20 +291,23 @@ describe('API Client', () => {
       const mockResponse = new Response(JSON.stringify(healthData), { status: 200 });
       fetchMock.mockResolvedValue(mockResponse);
 
-      const response = await api.health();
-      const result = await response.json();
+      const result = await api.health();
 
       expect(result).toEqual(healthData);
     });
 
     it('should handle health check failure', async () => {
-      const mockResponse = new Response('Service Unavailable', { status: 503 });
+      const mockResponse = new Response('Service Unavailable', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
-      const response = await api.health();
-
-      expect(response.ok).toBe(false);
-      expect(response.status).toBe(503);
+      await expect(api.health()).rejects.toThrow(ApiError);
+      await expect(api.health()).rejects.toMatchObject({
+        status: 503,
+        message: 'HTTP 503: Service Unavailable',
+      });
     });
   });
 
@@ -335,21 +338,24 @@ describe('API Client', () => {
         const mockResponse = new Response(JSON.stringify(tokenResponse), { status: 200 });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.auth.login(credentials);
-        const result = await response.json();
+        const result = await api.auth.login(credentials);
 
         expect(result).toEqual(tokenResponse);
       });
 
       it('should handle login failure', async () => {
         const credentials = { email: 'test@example.com', password: 'wrong-password' };
-        const mockResponse = new Response('Invalid credentials', { status: 401 });
+        const mockResponse = new Response('Invalid credentials', {
+          status: 401,
+          statusText: 'Unauthorized',
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.auth.login(credentials);
-
-        expect(response.ok).toBe(false);
-        expect(response.status).toBe(401);
+        await expect(api.auth.login(credentials)).rejects.toThrow(ApiError);
+        await expect(api.auth.login(credentials)).rejects.toMatchObject({
+          status: 401,
+          message: 'HTTP 401: Unauthorized',
+        });
       });
     });
   });
@@ -418,8 +424,7 @@ describe('API Client', () => {
         const mockResponse = new Response(JSON.stringify(results), { status: 200 });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.quiz.getResults(sessionId);
-        const data = await response.json();
+        const data = await api.quiz.getResults(sessionId);
 
         expect(fetchMock).toHaveBeenCalledWith(
           `http://localhost:4000/api/quiz/${sessionId}/results`,
@@ -491,8 +496,7 @@ describe('API Client', () => {
         const mockResponse = new Response(JSON.stringify(question), { status: 200 });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.questions.get(questionId);
-        const data = await response.json();
+        const data = await api.questions.get(questionId);
 
         expect(fetchMock).toHaveBeenCalledWith(
           `http://localhost:4000/api/questions/${questionId}`,
@@ -507,13 +511,14 @@ describe('API Client', () => {
 
       it('should handle question not found', async () => {
         const questionId = 'non-existent';
-        const mockResponse = new Response('Not Found', { status: 404 });
+        const mockResponse = new Response('Not Found', { status: 404, statusText: 'Not Found' });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.questions.get(questionId);
-
-        expect(response.ok).toBe(false);
-        expect(response.status).toBe(404);
+        await expect(api.questions.get(questionId)).rejects.toThrow(ApiError);
+        await expect(api.questions.get(questionId)).rejects.toMatchObject({
+          status: 404,
+          message: 'HTTP 404: Not Found',
+        });
       });
     });
   });
@@ -550,15 +555,25 @@ describe('API Client', () => {
           password: '123',
         };
         const errorResponse = { errors: ['Invalid email', 'Username too short'] };
-        const mockResponse = new Response(JSON.stringify(errorResponse), { status: 400 });
+        const mockResponse = new Response(JSON.stringify(errorResponse), {
+          status: 400,
+          statusText: 'Bad Request',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        // Mock the json() method to return the error response
+        mockResponse.json = vi.fn().mockResolvedValue(errorResponse);
+
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.users.register(userData);
-        const data = await response.json();
-
-        expect(response.ok).toBe(false);
-        expect(response.status).toBe(400);
-        expect(data).toEqual(errorResponse);
+        await expect(api.users.register(userData)).rejects.toThrow(ApiError);
+        await expect(api.users.register(userData)).rejects.toMatchObject({
+          status: 400,
+          message: 'HTTP 400: Bad Request',
+          response: errorResponse,
+        });
       });
     });
 
@@ -568,8 +583,7 @@ describe('API Client', () => {
         const mockResponse = new Response(JSON.stringify(profile), { status: 200 });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.users.profile();
-        const data = await response.json();
+        const data = await api.users.profile();
 
         expect(fetchMock).toHaveBeenCalledWith(
           'http://localhost:4000/api/users/profile',
@@ -583,13 +597,17 @@ describe('API Client', () => {
       });
 
       it('should handle unauthorized profile access', async () => {
-        const mockResponse = new Response('Unauthorized', { status: 401 });
+        const mockResponse = new Response('Unauthorized', {
+          status: 401,
+          statusText: 'Unauthorized',
+        });
         fetchMock.mockResolvedValue(mockResponse);
 
-        const response = await api.users.profile();
-
-        expect(response.ok).toBe(false);
-        expect(response.status).toBe(401);
+        await expect(api.users.profile()).rejects.toThrow(ApiError);
+        await expect(api.users.profile()).rejects.toMatchObject({
+          status: 401,
+          message: 'HTTP 401: Unauthorized',
+        });
       });
     });
   });
@@ -664,9 +682,11 @@ describe('API Client', () => {
       const networkError = new Error('Failed to fetch');
       fetchMock.mockRejectedValue(networkError);
 
-      const response = api.health();
-
-      await expect(response).rejects.toThrow('Failed to fetch');
+      await expect(api.health()).rejects.toThrow(ApiError);
+      await expect(api.health()).rejects.toMatchObject({
+        status: 0,
+        message: 'Network error: Failed to fetch',
+      });
     });
 
     it('should handle timeout errors', async () => {
@@ -674,18 +694,22 @@ describe('API Client', () => {
       abortError.name = 'AbortError';
       fetchMock.mockRejectedValue(abortError);
 
-      const response = api.health();
-
-      await expect(response).rejects.toThrow('The operation was aborted');
+      await expect(api.health()).rejects.toThrow(ApiError);
+      await expect(api.health()).rejects.toMatchObject({
+        status: 0,
+        message: 'Network error: The operation was aborted',
+      });
     });
 
     it('should handle CORS errors', async () => {
       const corsError = new TypeError('Failed to fetch');
       fetchMock.mockRejectedValue(corsError);
 
-      const response = api.health();
-
-      await expect(response).rejects.toThrow(TypeError);
+      await expect(api.health()).rejects.toThrow(ApiError);
+      await expect(api.health()).rejects.toMatchObject({
+        status: 0,
+        message: 'Network error: Failed to fetch',
+      });
     });
   });
 
@@ -730,10 +754,16 @@ describe('API Client', () => {
     it('should handle complete login flow with handleApiResponse', async () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       const tokenResponse = { access_token: 'jwt-token', refresh_token: 'refresh-token' };
-      const mockResponse = new Response(JSON.stringify(tokenResponse), { status: 200 });
+      const mockResponse = new Response(JSON.stringify(tokenResponse), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       fetchMock.mockResolvedValue(mockResponse);
 
-      const result = await handleApiResponse(() => api.auth.login(credentials));
+      // Since api.auth.login now returns parsed data directly, we use it directly
+      const result = await api.auth.login(credentials);
 
       expect(result).toEqual(tokenResponse);
       expect(fetchMock).toHaveBeenCalledOnce();
@@ -744,22 +774,20 @@ describe('API Client', () => {
         status: 401,
         statusText: 'Unauthorized',
       });
+
+      // Mock the text() method to return the error body
+      mockResponse.text = vi.fn().mockResolvedValue('Unauthorized');
+
       fetchMock.mockResolvedValue(mockResponse);
 
       const credentials = { email: 'test@example.com', password: 'wrong' };
 
-      try {
-        await handleApiResponse(() => api.auth.login(credentials));
-        // Should not reach here
-        expect(true).toBe(false);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        if (error instanceof ApiError) {
-          expect(error.message).toBe('HTTP 401: Unauthorized');
-          expect(error.status).toBe(401);
-          expect(error.response).toBe('Unauthorized');
-        }
-      }
+      await expect(api.auth.login(credentials)).rejects.toThrow(ApiError);
+      await expect(api.auth.login(credentials)).rejects.toMatchObject({
+        message: 'HTTP 401: Unauthorized',
+        status: 401,
+        response: 'Unauthorized',
+      });
     });
 
     it('should handle paginated question list', async () => {
@@ -767,11 +795,26 @@ describe('API Client', () => {
       const page2 = { data: [{ id: '3' }, { id: '4' }], hasMore: false };
 
       fetchMock
-        .mockResolvedValueOnce(new Response(JSON.stringify(page1), { status: 200 }))
-        .mockResolvedValueOnce(new Response(JSON.stringify(page2), { status: 200 }));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page1), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page2), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+        );
 
-      const result1 = await handleApiResponse(() => api.questions.list({ page: 1, limit: 2 }));
-      const result2 = await handleApiResponse(() => api.questions.list({ page: 2, limit: 2 }));
+      // Use the API directly since it now handles errors internally
+      const result1 = await api.questions.list({ page: 1, limit: 2 });
+      const result2 = await api.questions.list({ page: 2, limit: 2 });
 
       expect(result1).toEqual(page1);
       expect(result2).toEqual(page2);

@@ -60,62 +60,50 @@ export const createApiConfig = (options: RequestInit = {}): RequestInit => ({
   signal: options.signal || AbortSignal.timeout(10000),
 });
 
-// Organized API endpoints
+// Organized API endpoints with built-in error handling
 export const api = {
   // Health endpoint
-  health: async (): Promise<Response> => {
-    return fetch(`${API_BASE_URL}/health`, createApiConfig());
+  health: async (): Promise<HealthResponse> => {
+    return apiFetch<HealthResponse>(`${API_BASE_URL}/health`);
   },
 
   // Auth endpoints
   auth: {
-    login: async (credentials: { email: string; password: string }): Promise<Response> => {
-      return fetch(
-        `${API_BASE_URL}/api/auth/login`,
-        createApiConfig({
-          method: 'POST',
-          body: JSON.stringify(credentials),
-        })
-      );
+    login: async (credentials: { email: string; password: string }): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
     },
   },
 
   // Quiz endpoints
   quiz: {
-    start: async (config: { questionCount: number; examType: string }): Promise<Response> => {
-      return fetch(
-        `${API_BASE_URL}/api/quiz/start`,
-        createApiConfig({
-          method: 'POST',
-          body: JSON.stringify(config),
-        })
-      );
+    start: async (config: { questionCount: number; examType: string }): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/start`, {
+        method: 'POST',
+        body: JSON.stringify(config),
+      });
     },
 
     submitAnswer: async (
       sessionId: string,
       answer: { questionId: string; selectedOptions: string[] }
-    ): Promise<Response> => {
-      return fetch(
-        `${API_BASE_URL}/api/quiz/${sessionId}/submit`,
-        createApiConfig({
-          method: 'POST',
-          body: JSON.stringify(answer),
-        })
-      );
+    ): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify(answer),
+      });
     },
 
-    complete: async (sessionId: string): Promise<Response> => {
-      return fetch(
-        `${API_BASE_URL}/api/quiz/${sessionId}/complete`,
-        createApiConfig({
-          method: 'POST',
-        })
-      );
+    complete: async (sessionId: string): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/complete`, {
+        method: 'POST',
+      });
     },
 
-    getResults: async (sessionId: string): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/quiz/${sessionId}/results`, createApiConfig());
+    getResults: async (sessionId: string): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/results`);
     },
   },
 
@@ -125,18 +113,18 @@ export const api = {
       page?: number;
       limit?: number;
       examType?: string;
-    }): Promise<Response> => {
+    }): Promise<ApiResponse> => {
       const url = new URL(`${API_BASE_URL}/api/questions`);
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined) url.searchParams.set(key, value.toString());
         });
       }
-      return fetch(url.toString(), createApiConfig());
+      return apiFetch<ApiResponse>(url.toString());
     },
 
-    get: async (id: string): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/questions/${id}`, createApiConfig());
+    get: async (id: string): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/questions/${id}`);
     },
   },
 
@@ -146,18 +134,15 @@ export const api = {
       email: string;
       username: string;
       password: string;
-    }): Promise<Response> => {
-      return fetch(
-        `${API_BASE_URL}/api/users/register`,
-        createApiConfig({
-          method: 'POST',
-          body: JSON.stringify(userData),
-        })
-      );
+    }): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/users/register`, {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
     },
 
-    profile: async (): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/users/profile`, createApiConfig());
+    profile: async (): Promise<ApiResponse> => {
+      return apiFetch<ApiResponse>(`${API_BASE_URL}/api/users/profile`);
     },
   },
 } as const;
@@ -188,6 +173,58 @@ export class ApiError extends Error {
 
   get isNetworkError(): boolean {
     return this.status === 0;
+  }
+}
+
+/**
+ * Centralized fetch helper with built-in error handling
+ *
+ * Performs a fetch request with automatic error checking, status validation,
+ * and JSON parsing. Throws ApiError for non-2xx responses.
+ *
+ * @param url The URL to fetch
+ * @param config Optional fetch configuration
+ * @returns Promise<T> Parsed JSON response
+ * @throws {ApiError} For HTTP errors (4xx, 5xx) or network errors
+ */
+async function apiFetch<T>(url: string, config?: RequestInit): Promise<T> {
+  try {
+    const response = await fetch(url, createApiConfig(config));
+
+    if (!response.ok) {
+      // Try to extract error message from response body
+      let errorBody: unknown;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          errorBody = await response.json();
+        } else {
+          errorBody = await response.text();
+        }
+      } catch {
+        errorBody = 'Unable to read error response';
+      }
+
+      throw new ApiError(
+        `HTTP ${response.status}: ${response.statusText}`,
+        response.status,
+        errorBody
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    // Re-throw ApiError as-is
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    // Handle network/other errors
+    if (error instanceof Error) {
+      throw new ApiError(`Network error: ${error.message}`, 0, error);
+    }
+
+    throw new ApiError('Unknown error occurred', 0, error);
   }
 }
 
