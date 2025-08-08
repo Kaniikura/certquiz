@@ -22,11 +22,30 @@ export interface HealthResponse {
 }
 
 /**
+ * Creates an AbortSignal that times out after the specified milliseconds.
+ * Provides a fallback for browsers that don't support AbortSignal.timeout().
+ *
+ * @param milliseconds - The timeout duration in milliseconds
+ * @returns An AbortSignal that will abort after the timeout
+ */
+function createTimeoutSignal(milliseconds: number): AbortSignal {
+  // Check if native AbortSignal.timeout is supported
+  if ('timeout' in AbortSignal && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(milliseconds);
+  }
+
+  // Fallback: Create manual timeout with AbortController for older browsers
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), milliseconds);
+  return controller.signal;
+}
+
+/**
  * Creates standardized API request configuration with defaults
  *
  * Provides consistent configuration for all API requests including:
  * - Content-Type: application/json header
- * - 10-second request timeout via AbortSignal
+ * - 10-second request timeout with browser compatibility fallback
  * - Extensible options that can be overridden per request
  *
  * @param options - Custom RequestInit options to merge with defaults
@@ -45,9 +64,9 @@ export interface HealthResponse {
  *   headers: { 'Authorization': 'Bearer token' }
  * }));
  *
- * // Custom timeout
+ * // Custom timeout with fallback support
  * fetch(url, createApiConfig({
- *   signal: AbortSignal.timeout(5000) // 5 seconds
+ *   signal: createTimeoutSignal(5000) // 5 seconds
  * }));
  * ```
  */
@@ -57,7 +76,7 @@ export const createApiConfig = (options: RequestInit = {}): RequestInit => ({
     'Content-Type': 'application/json',
     ...options.headers,
   },
-  signal: options.signal || AbortSignal.timeout(10000),
+  signal: options.signal || createTimeoutSignal(10000),
 });
 
 // Organized API endpoints with built-in error handling
