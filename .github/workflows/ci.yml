@@ -252,7 +252,7 @@ jobs:
       - name: Start Web UI server
         run: |
           cd apps/web
-          bun run dev &
+          bun run dev --port 5173 --strictPort > /tmp/web.log 2>&1 &
           echo $! > /tmp/web.pid
         env:
           PUBLIC_API_URL: http://localhost:4001
@@ -296,6 +296,16 @@ jobs:
             cat /tmp/api.log
           else
             echo "No API logs found at /tmp/api.log"
+          fi
+          
+      - name: Dump Web UI logs on failure
+        if: failure()
+        run: |
+          echo "=== Web UI Server Logs ==="
+          if [ -f /tmp/web.log ]; then
+            cat /tmp/web.log
+          else
+            echo "No Web UI logs found at /tmp/web.log"
           fi
 
       - name: Stop services
