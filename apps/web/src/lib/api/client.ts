@@ -44,7 +44,8 @@ function createTimeoutSignal(milliseconds: number): AbortSignal {
  * Creates standardized API request configuration with defaults
  *
  * Provides consistent configuration for all API requests including:
- * - Content-Type: application/json header
+ * - Accept: application/json header for all requests
+ * - Content-Type: application/json header only when request has a body
  * - 10-second request timeout with browser compatibility fallback
  * - Extensible options that can be overridden per request
  *
@@ -53,10 +54,15 @@ function createTimeoutSignal(milliseconds: number): AbortSignal {
  *
  * @example
  * ```typescript
- * // POST request with body
+ * // POST request with body (Content-Type added automatically)
  * fetch(url, createApiConfig({
  *   method: 'POST',
  *   body: JSON.stringify(data)
+ * }));
+ *
+ * // GET request (no Content-Type, only Accept header)
+ * fetch(url, createApiConfig({
+ *   method: 'GET'
  * }));
  *
  * // Override default headers
@@ -70,14 +76,35 @@ function createTimeoutSignal(milliseconds: number): AbortSignal {
  * }));
  * ```
  */
-export const createApiConfig = (options: RequestInit = {}): RequestInit => ({
-  ...options,
-  headers: {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  },
-  signal: options.signal || createTimeoutSignal(10000),
-});
+export const createApiConfig = (options: RequestInit = {}): RequestInit => {
+  // Build headers based on request characteristics
+  const headers: Record<string, string> = {
+    // Always accept JSON responses
+    Accept: 'application/json',
+  };
+
+  // Merge with existing headers if they exist
+  if (options.headers) {
+    // Convert headers to a plain object if needed
+    const existingHeaders =
+      options.headers instanceof Headers
+        ? Object.fromEntries(options.headers.entries())
+        : (options.headers as Record<string, string>);
+
+    Object.assign(headers, existingHeaders);
+  }
+
+  // Only set Content-Type for requests with a body (if not already set)
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return {
+    ...options,
+    headers,
+    signal: options.signal || createTimeoutSignal(10000),
+  };
+};
 
 // Organized API endpoints with built-in error handling
 export const api = {

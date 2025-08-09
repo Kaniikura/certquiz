@@ -34,10 +34,23 @@ describe('API Client', () => {
   });
 
   describe('createApiConfig', () => {
-    it('should create default configuration with JSON content type', () => {
+    it('should create default configuration with Accept header only (no body)', () => {
       const config = createApiConfig();
 
       expect(config.headers).toEqual({
+        Accept: 'application/json',
+      });
+      expect((config.headers as Record<string, string>)?.['Content-Type']).toBeUndefined();
+    });
+
+    it('should add Content-Type header when request has a body', () => {
+      const config = createApiConfig({
+        method: 'POST',
+        body: JSON.stringify({ test: 'data' }),
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       });
     });
@@ -58,9 +71,25 @@ describe('API Client', () => {
       });
 
       expect(config.headers).toEqual({
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         Authorization: 'Bearer token123',
         'X-Custom-Header': 'custom-value',
+      });
+    });
+
+    it('should merge custom headers with defaults when body is present', () => {
+      const config = createApiConfig({
+        method: 'POST',
+        body: JSON.stringify({ test: 'data' }),
+        headers: {
+          Authorization: 'Bearer token123',
+        },
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
       });
     });
 
@@ -76,16 +105,40 @@ describe('API Client', () => {
       expect(config.credentials).toBe('include');
     });
 
-    it('should allow overriding Content-Type header', () => {
+    it('should allow overriding Content-Type header when body is present', () => {
       const config = createApiConfig({
+        body: new FormData(),
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
       expect(config.headers).toEqual({
+        Accept: 'application/json',
         'Content-Type': 'multipart/form-data',
       });
+    });
+
+    it('should not add Content-Type for GET requests', () => {
+      const config = createApiConfig({
+        method: 'GET',
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
+      });
+      expect((config.headers as Record<string, string>)?.['Content-Type']).toBeUndefined();
+    });
+
+    it('should not add Content-Type for HEAD requests', () => {
+      const config = createApiConfig({
+        method: 'HEAD',
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
+      });
+      expect((config.headers as Record<string, string>)?.['Content-Type']).toBeUndefined();
     });
   });
 
@@ -283,7 +336,7 @@ describe('API Client', () => {
         'http://localhost:4000/health',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Content-Type': 'application/json',
+            Accept: 'application/json',
           }),
         })
       );
@@ -517,7 +570,7 @@ describe('API Client', () => {
           `http://localhost:4000/api/quiz/${sessionId}/results`,
           expect.objectContaining({
             headers: expect.objectContaining({
-              'Content-Type': 'application/json',
+              Accept: 'application/json',
             }),
           })
         );
@@ -542,7 +595,7 @@ describe('API Client', () => {
           'http://localhost:4000/api/questions',
           expect.objectContaining({
             headers: expect.objectContaining({
-              'Content-Type': 'application/json',
+              Accept: 'application/json',
             }),
           })
         );
@@ -562,7 +615,7 @@ describe('API Client', () => {
           'http://localhost:4000/api/questions?page=2&limit=20&examType=CCNP',
           expect.objectContaining({
             headers: expect.objectContaining({
-              'Content-Type': 'application/json',
+              Accept: 'application/json',
             }),
           })
         );
@@ -601,7 +654,7 @@ describe('API Client', () => {
           `http://localhost:4000/api/questions/${questionId}`,
           expect.objectContaining({
             headers: expect.objectContaining({
-              'Content-Type': 'application/json',
+              Accept: 'application/json',
             }),
           })
         );
@@ -694,7 +747,7 @@ describe('API Client', () => {
           'http://localhost:4000/api/users/profile',
           expect.objectContaining({
             headers: expect.objectContaining({
-              'Content-Type': 'application/json',
+              Accept: 'application/json',
             }),
           })
         );
@@ -734,7 +787,7 @@ describe('API Client', () => {
       expect(url).toBe('http://localhost:4000/api/protected');
       expect(options.headers).toMatchObject({
         Authorization: 'Bearer jwt-token-123',
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
       });
       expect(options.signal).toBeInstanceOf(AbortSignal);
     });
@@ -759,7 +812,7 @@ describe('API Client', () => {
       expect(url).toBe('http://localhost:4000/api/protected');
       expect(options.headers).toMatchObject({
         Authorization: 'Bearer jwt-token-123',
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'X-Custom-Header': 'custom-value',
       });
     });
@@ -785,6 +838,7 @@ describe('API Client', () => {
           body: '{"test":"data"}',
           headers: expect.objectContaining({
             Authorization: 'Bearer jwt-token-123',
+            'Content-Type': 'application/json', // Should have Content-Type when body is present
           }),
         })
       );
