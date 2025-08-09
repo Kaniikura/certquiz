@@ -10,7 +10,7 @@ SERVICES="${1:-api,web}"
 
 # Service endpoints
 declare -A ENDPOINTS=(
-    ["api"]="http://localhost:4000/health/ready"
+    ["api"]="http://localhost:4001/health/ready"
     ["web"]="http://localhost:5173"
 )
 
