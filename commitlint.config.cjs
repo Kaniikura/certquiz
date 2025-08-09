@@ -101,10 +101,11 @@ const typeToEmojis = {
 module.exports = {
   parserPreset: {
     parserOpts: {
-      // Parse format: emoji type(scope): subject
+      // Parse format: emoji type(scope)!: subject
       // Matches: ✨ feat(api): add user authentication
-      headerPattern: /^(.{1,2})\s+(\w+)(?:\(([^)]+)\))?:\s+(.+)$/,
-      headerCorrespondence: ['emoji', 'type', 'scope', 'subject'],
+      // Matches: 💥 feat(api)!: breaking change in auth flow
+      headerPattern: /^(.+?)\s+(\w+)(?:\(([^)]+)\))?(!)?: \s*(.+)$/u,
+      headerCorrespondence: ['emoji', 'type', 'scope', 'breaking', 'subject'],
     },
   },
   rules: {
@@ -117,16 +118,19 @@ module.exports = {
     'subject-max-length': [2, 'always', 50],
     'scope-case': [0], // Disabled to allow flexibility
 
-    // Disable default type rules since we handle it custom
+    // Disable type-enum since we handle it custom, but enforce lowercase
     'type-enum': [0],
-    'type-case': [0],
+    'type-case': [2, 'always', 'lower-case'],
   },
   plugins: [
     {
       rules: {
-        'emoji-type-match': ({ emoji, type }) => {
+        'emoji-type-match': ({ emoji, type, breaking }) => {
+          // Normalize type to lowercase for consistent validation
+          const normalizedType = type ? type.toLowerCase() : type;
+          
           // Check if the commit message follows the basic format
-          if (!emoji || !type) {
+          if (!emoji || !normalizedType) {
             const validEmojis = Object.keys(emojiToTypes).slice(0, 20).join(', ');
             const validTypes = Object.keys(typeToEmojis).join(', ');
             return [
@@ -152,10 +156,10 @@ module.exports = {
 
           // Check if type is valid for this emoji
           const validTypes = emojiToTypes[emoji];
-          if (!validTypes.includes(type)) {
+          if (!validTypes.includes(normalizedType)) {
             return [
               false,
-              `'${emoji}' cannot be used with type '${type}'.\n` +
+              `'${emoji}' cannot be used with type '${normalizedType}'.\n` +
                 `Valid types for ${emoji}: ${validTypes.join(', ')}\n` +
                 `Example: ${emoji} ${validTypes[0]}: your message here`,
             ];
