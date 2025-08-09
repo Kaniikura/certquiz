@@ -57,7 +57,9 @@ class CleanupAbortController extends AbortController {
 function createTimeoutSignal(milliseconds: number): AbortSignal {
   // Check if native AbortSignal.timeout is supported
   if ('timeout' in AbortSignal && typeof AbortSignal.timeout === 'function') {
-    return AbortSignal.timeout(milliseconds);
+    // Use type-narrowed alias for better TypeScript compatibility across environments
+    const timeoutMethod = AbortSignal.timeout as (milliseconds: number) => AbortSignal;
+    return timeoutMethod(milliseconds);
   }
 
   // Fallback: Create manual timeout with proper cleanup for older browsers
