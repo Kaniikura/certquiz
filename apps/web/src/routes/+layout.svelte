@@ -26,7 +26,7 @@ let isMobileMenuOpen = false;
           class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-controls="mobile-menu"
           aria-expanded={isMobileMenuOpen}
-          aria-label={isMobileMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
+          aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
         >
           {#if isMobileMenuOpen}
