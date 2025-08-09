@@ -140,6 +140,53 @@ describe('API Client', () => {
       });
       expect((config.headers as Record<string, string>)?.['Content-Type']).toBeUndefined();
     });
+
+    it('should properly normalize Headers instance', () => {
+      const headers = new Headers();
+      headers.set('X-Custom-Header', 'value1');
+      headers.set('Authorization', 'Bearer token');
+
+      const config = createApiConfig({
+        headers: headers,
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
+        'x-custom-header': 'value1', // Headers normalizes to lowercase
+        authorization: 'Bearer token',
+      });
+    });
+
+    it('should properly normalize array of header tuples', () => {
+      const headers: [string, string][] = [
+        ['X-Custom-Header', 'value1'],
+        ['Authorization', 'Bearer token'],
+        ['X-Custom-Header', 'value2'], // Duplicate key, last value wins
+      ];
+
+      const config = createApiConfig({
+        headers: headers as HeadersInit,
+      });
+
+      expect(config.headers).toEqual({
+        Accept: 'application/json',
+        'X-Custom-Header': 'value2', // Last value wins
+        Authorization: 'Bearer token',
+      });
+    });
+
+    it('should handle empty headers gracefully', () => {
+      const config1 = createApiConfig({ headers: undefined });
+      const config2 = createApiConfig({ headers: new Headers() });
+      const config3 = createApiConfig({ headers: [] });
+      const config4 = createApiConfig({ headers: {} });
+
+      const expected = { Accept: 'application/json' };
+      expect(config1.headers).toEqual(expected);
+      expect(config2.headers).toEqual(expected);
+      expect(config3.headers).toEqual(expected);
+      expect(config4.headers).toEqual(expected);
+    });
   });
 
   describe('ApiError', () => {
@@ -842,6 +889,107 @@ describe('API Client', () => {
           }),
         })
       );
+    });
+
+    it('should not overwrite existing Authorization header', async () => {
+      const token = 'jwt-token-123';
+      const authFetch = createAuthenticatedFetch(token);
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      await authFetch('http://localhost:4000/api/protected', {
+        headers: {
+          Authorization: 'Custom auth-token',
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers).toMatchObject({
+        Authorization: 'Custom auth-token', // User's header preserved
+        Accept: 'application/json',
+      });
+    });
+
+    it('should not overwrite existing authorization header (case-insensitive)', async () => {
+      const token = 'jwt-token-123';
+      const authFetch = createAuthenticatedFetch(token);
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      await authFetch('http://localhost:4000/api/protected', {
+        headers: {
+          authorization: 'Custom auth-token', // lowercase
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers).toMatchObject({
+        authorization: 'Custom auth-token', // User's header preserved
+        Accept: 'application/json',
+      });
+      // Should not have added Authorization with capital A
+      expect(options.headers.Authorization).toBeUndefined();
+    });
+
+    it('should handle Headers instance correctly', async () => {
+      const token = 'jwt-token-123';
+      const authFetch = createAuthenticatedFetch(token);
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const headers = new Headers();
+      headers.set('X-Custom-Header', 'custom-value');
+
+      await authFetch('http://localhost:4000/api/protected', {
+        headers: headers,
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers).toMatchObject({
+        Authorization: 'Bearer jwt-token-123',
+        Accept: 'application/json',
+        'x-custom-header': 'custom-value', // Headers normalizes to lowercase
+      });
+    });
+
+    it('should handle array of header tuples correctly', async () => {
+      const token = 'jwt-token-123';
+      const authFetch = createAuthenticatedFetch(token);
+      const mockResponse = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      fetchMock.mockResolvedValue(mockResponse);
+
+      const headers: [string, string][] = [
+        ['X-Custom-Header', 'value1'],
+        ['X-Another-Header', 'value2'],
+      ];
+
+      await authFetch('http://localhost:4000/api/protected', {
+        headers: headers as HeadersInit,
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers).toMatchObject({
+        Authorization: 'Bearer jwt-token-123',
+        Accept: 'application/json',
+        'X-Custom-Header': 'value1',
+        'X-Another-Header': 'value2',
+      });
     });
   });
 

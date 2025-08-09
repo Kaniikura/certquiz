@@ -41,6 +41,41 @@ function createTimeoutSignal(milliseconds: number): AbortSignal {
 }
 
 /**
+ * Normalize headers from any HeadersInit format to a plain object
+ *
+ * Handles all three possible HeadersInit types:
+ * - Record<string, string> (plain object)
+ * - string[][] (array of tuples)
+ * - Headers instance
+ *
+ * @param headers Headers in any HeadersInit format
+ * @returns Plain object with header key-value pairs
+ */
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+
+  // Handle Headers instance
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  // Handle array of tuples
+  if (Array.isArray(headers)) {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of headers) {
+      // For duplicate keys, the last value wins (standard behavior)
+      normalized[key] = value;
+    }
+    return normalized;
+  }
+
+  // Handle plain object
+  return headers as Record<string, string>;
+}
+
+/**
  * Creates standardized API request configuration with defaults
  *
  * Provides consistent configuration for all API requests including:
@@ -83,16 +118,9 @@ export const createApiConfig = (options: RequestInit = {}): RequestInit => {
     Accept: 'application/json',
   };
 
-  // Merge with existing headers if they exist
-  if (options.headers) {
-    // Convert headers to a plain object if needed
-    const existingHeaders =
-      options.headers instanceof Headers
-        ? Object.fromEntries(options.headers.entries())
-        : (options.headers as Record<string, string>);
-
-    Object.assign(headers, existingHeaders);
-  }
+  // Merge with existing headers if they exist (properly normalized)
+  const existingHeaders = normalizeHeaders(options.headers);
+  Object.assign(headers, existingHeaders);
 
   // Only set Content-Type for requests with a body (if not already set)
   if (options.body && !headers['Content-Type']) {
@@ -351,14 +379,19 @@ export function createAuthenticatedFetch(
   token: string
 ): (url: string, options?: RequestInit) => Promise<Response> {
   return (url: string, options: RequestInit = {}) => {
+    // Normalize headers to plain object first
+    const normalizedHeaders = normalizeHeaders(options.headers);
+
+    // Only add Authorization if not already present
+    if (!normalizedHeaders.Authorization && !normalizedHeaders.authorization) {
+      normalizedHeaders.Authorization = `Bearer ${token}`;
+    }
+
     return fetch(
       url,
       createApiConfig({
         ...options,
-        headers: {
-          ...options.headers,
-          Authorization: `Bearer ${token}`,
-        },
+        headers: normalizedHeaders,
       })
     );
   };
