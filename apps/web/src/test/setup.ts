@@ -1,5 +1,5 @@
 // Vitest test setup file
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 type FetchWithPreconnect = typeof fetch & { preconnect: (url: string) => void };
 
@@ -21,4 +21,11 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
+});
+
+// Global cleanup hook to prevent state leakage between tests
+afterEach(() => {
+  vi.clearAllMocks(); // Clear mock call history
+  vi.restoreAllMocks(); // Restore original implementations
+  vi.unstubAllGlobals(); // Remove all global stubs
 });
