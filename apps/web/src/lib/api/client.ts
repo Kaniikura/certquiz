@@ -314,7 +314,9 @@ export async function handleApiResponse<T>(apiCall: () => Promise<Response>): Pr
 }
 
 // Authenticated API wrapper (for future auth integration)
-export function createAuthenticatedFetch(token: string) {
+export function createAuthenticatedFetch(
+  token: string
+): (url: string, options?: RequestInit) => Promise<Response> {
   return (url: string, options: RequestInit = {}) => {
     return fetch(
       url,
