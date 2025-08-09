@@ -76,6 +76,74 @@ function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
 }
 
 /**
+ * Checks if the content type represents JSON data
+ *
+ * Handles all JSON-based media types including:
+ * - application/json
+ * - application/problem+json
+ * - application/vnd.api+json
+ * - And other +json suffixed types
+ *
+ * @param contentType The content-type header value
+ * @returns true if the content type indicates JSON data
+ */
+function isJsonContentType(contentType: string | null): boolean {
+  if (!contentType) {
+    return false;
+  }
+  return contentType.includes('application/json') || contentType.includes('+json');
+}
+
+/**
+ * Safely reads error response body based on content type
+ *
+ * Attempts to parse JSON for JSON content types, falls back to text
+ * for other content types. Handles parsing errors gracefully.
+ *
+ * @param response The Response object to read from
+ * @returns Promise resolving to the response body or error message
+ */
+async function readErrorResponseBody(response: Response): Promise<unknown> {
+  try {
+    const contentType = response.headers.get('content-type');
+    if (isJsonContentType(contentType)) {
+      return await response.json();
+    }
+    return await response.text();
+  } catch {
+    return 'Unable to read error response';
+  }
+}
+
+/**
+ * Parses successful response body based on content type and status
+ *
+ * Handles different response types appropriately:
+ * - 204 No Content: returns null
+ * - JSON content types: parses as JSON
+ * - Other content types: returns as text (cast to T)
+ *
+ * @param response The successful Response object to parse
+ * @returns Promise resolving to parsed response or null for 204
+ */
+async function parseResponse<T>(response: Response): Promise<T | null> {
+  // Handle 204 No Content responses
+  if (response.status === 204) {
+    return null;
+  }
+
+  // Check Content-Type to determine parsing method
+  const contentType = response.headers.get('content-type');
+  if (isJsonContentType(contentType)) {
+    return await response.json();
+  }
+
+  // For non-JSON responses, return as text (cast to T for flexibility)
+  const text = await response.text();
+  return text as unknown as T;
+}
+
+/**
  * Creates standardized API request configuration with defaults
  *
  * Provides consistent configuration for all API requests including:
@@ -273,19 +341,7 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T | null>
     const response = await fetch(url, createApiConfig(config));
 
     if (!response.ok) {
-      // Try to extract error message from response body
-      let errorBody: unknown;
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          errorBody = await response.json();
-        } else {
-          errorBody = await response.text();
-        }
-      } catch {
-        errorBody = 'Unable to read error response';
-      }
-
+      const errorBody = await readErrorResponseBody(response);
       throw new ApiError(
         `HTTP ${response.status}: ${response.statusText}`,
         response.status,
@@ -293,21 +349,7 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T | null>
       );
     }
 
-    // Handle 204 No Content responses
-    if (response.status === 204) {
-      return null;
-    }
-
-    // Check Content-Type to determine how to parse the response
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
-      return await response.json();
-    }
-
-    // For non-JSON responses, return the text content
-    // This allows the API to return text/plain or text/html if needed
-    const text = await response.text();
-    return text as unknown as T;
+    return await parseResponse<T>(response);
   } catch (error) {
     // Re-throw ApiError as-is
     if (error instanceof ApiError) {
@@ -328,9 +370,10 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T | null>
  *
  * Handles HTTP responses with proper status code checking, error extraction,
  * and JSON parsing. Throws ApiError for HTTP errors with detailed context.
+ * Returns null for non-JSON responses to maintain backward compatibility.
  *
  * @param apiCall Function that returns a Promise<Response>
- * @returns Promise<T> Parsed JSON response data
+ * @returns Promise<T | null> Parsed JSON response data, or null for 204/non-JSON responses
  * @throws {ApiError} For HTTP errors (4xx, 5xx) or network errors
  *
  * @example
@@ -338,19 +381,12 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T | null>
  * const user = await handleApiResponse<User>(() => api.users.profile());
  * ```
  */
-export async function handleApiResponse<T>(apiCall: () => Promise<Response>): Promise<T> {
+export async function handleApiResponse<T>(apiCall: () => Promise<Response>): Promise<T | null> {
   try {
     const response = await apiCall();
 
     if (!response.ok) {
-      // Try to extract error message from response body
-      let errorBody: string;
-      try {
-        errorBody = await response.text();
-      } catch {
-        errorBody = 'Unable to read error response';
-      }
-
+      const errorBody = await readErrorResponseBody(response);
       throw new ApiError(
         `HTTP ${response.status}: ${response.statusText}`,
         response.status,
@@ -358,7 +394,18 @@ export async function handleApiResponse<T>(apiCall: () => Promise<Response>): Pr
       );
     }
 
-    return await response.json();
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return null;
+    }
+
+    // For handleApiResponse, only return JSON content, null for others (backward compatibility)
+    const contentType = response.headers.get('content-type');
+    if (isJsonContentType(contentType)) {
+      return await response.json();
+    }
+
+    return null;
   } catch (error) {
     // Re-throw ApiError as-is
     if (error instanceof ApiError) {
