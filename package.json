@@ -23,7 +23,7 @@
     "cookie": "0.7.0"
   },
   "simple-git-hooks": {
-    "commit-msg": "bunx commitlint --edit $1"
+    "commit-msg": "bunx commitlint --edit \"$1\""
   },
   "scripts": {
     "prepare": "simple-git-hooks",
@@ -46,11 +46,11 @@
     "test:api:watch": "bun run --filter @certquiz/api test:watch",
     "test:api:coverage": "bun run --filter @certquiz/api test:coverage",
     "test:cleanup": "./scripts/cleanup-testcontainers.sh",
-    "dev:api:background": "bun run --filter @certquiz/api dev > /tmp/api.log 2>&1 & echo $! > /tmp/api.pid",
-    "dev:api:stop": "kill $(cat /tmp/api.pid) 2>/dev/null || true; rm -f /tmp/api.pid /tmp/api.log",
+    "dev:api:background": "nohup sh -c 'exec setsid bun run --filter @certquiz/api dev' > /tmp/api.log 2>&1 & echo $! > /tmp/api.pid",
+    "dev:api:stop": "if [ -f /tmp/api.pid ]; then pkill -TERM -P $(cat /tmp/api.pid) 2>/dev/null || true; kill -TERM -$(cat /tmp/api.pid) 2>/dev/null || true; kill -TERM $(cat /tmp/api.pid) 2>/dev/null || true; rm -f /tmp/api.pid /tmp/api.log; fi",
     "wait-for-api": "wait-on http://localhost:4000/health/ready -t 30000",
     "test:api:e2e:ci": "bun run dev:api:background && bun run wait-for-api && bun run test:api:e2e; bun run dev:api:stop",
-    "test:integration:ci": "bun run dev:api:background && bun run wait-for-api && bun run test && bun run dev:api:stop",
+    "test:integration:ci": "bun run dev:api:background && bun run wait-for-api && bun run test:api:integration && bun run dev:api:stop",
     "db:generate": "bun --filter @certquiz/api db:generate",
     "db:migrate": "bun --filter @certquiz/api db:migrate",
     "db:push": "bun --filter @certquiz/api db:push",
@@ -68,7 +68,7 @@
     "typecheck": "tsc -b tsconfig.build.json && bun run typecheck:web",
     "typecheck:build": "tsc -b tsconfig.build.json",
     "typecheck:api": "tsc -b apps/api/tsconfig.build.json",
-    "typecheck:web": "cd apps/web && svelte-check --tsconfig ./tsconfig.json",
+    "typecheck:web": "bun run --filter @certquiz/web check",
     "typecheck:shared": "tsc -b packages/shared",
     "lint": "biome lint --write --unsafe",
     "lint:check": "biome lint",
