@@ -219,10 +219,25 @@ jobs:
             bun run build || true
           fi
 
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5433 -U e2e_user; do
+            echo "Waiting for PostgreSQL..."
+            sleep 1
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Run database migrations
+        run: |
+          cd apps/api
+          bun run db:migrate
+        env:
+          DATABASE_URL: postgresql://e2e_user:e2e_pass@localhost:5433/certquiz_e2e
+
       - name: Start API server
         run: |
           cd apps/api
-          bun run start:dev &
+          bun run start:dev > /tmp/api.log 2>&1 &
           echo $! > /tmp/api.pid
         env:
           NODE_ENV: test
@@ -233,13 +248,6 @@ jobs:
           KEYCLOAK_REALM: certquiz-e2e
           JWT_SECRET: e2e-test-jwt-secret-at-least-32-chars
           BMAC_WEBHOOK_SECRET: e2e-test-webhook-secret
-
-      - name: Run database migrations
-        run: |
-          cd apps/api
-          bun run db:migrate
-        env:
-          DATABASE_URL: postgresql://e2e_user:e2e_pass@localhost:5433/certquiz_e2e
 
       - name: Start Web UI server
         run: |
@@ -279,6 +287,16 @@ jobs:
           name: playwright-traces
           path: apps/web/test-results/
           retention-days: 7
+
+      - name: Dump API logs on failure
+        if: failure()
+        run: |
+          echo "=== API Server Logs ==="
+          if [ -f /tmp/api.log ]; then
+            cat /tmp/api.log
+          else
+            echo "No API logs found at /tmp/api.log"
+          fi
 
       - name: Stop services
         if: always()
