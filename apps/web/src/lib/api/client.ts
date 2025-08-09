@@ -109,13 +109,16 @@ export const createApiConfig = (options: RequestInit = {}): RequestInit => {
 // Organized API endpoints with built-in error handling
 export const api = {
   // Health endpoint
-  health: async (): Promise<HealthResponse> => {
+  health: async (): Promise<HealthResponse | null> => {
     return apiFetch<HealthResponse>(`${API_BASE_URL}/health`);
   },
 
   // Auth endpoints
   auth: {
-    login: async (credentials: { email: string; password: string }): Promise<ApiResponse> => {
+    login: async (credentials: {
+      email: string;
+      password: string;
+    }): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         body: JSON.stringify(credentials),
@@ -125,7 +128,10 @@ export const api = {
 
   // Quiz endpoints
   quiz: {
-    start: async (config: { questionCount: number; examType: string }): Promise<ApiResponse> => {
+    start: async (config: {
+      questionCount: number;
+      examType: string;
+    }): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/start`, {
         method: 'POST',
         body: JSON.stringify(config),
@@ -135,20 +141,20 @@ export const api = {
     submitAnswer: async (
       sessionId: string,
       answer: { questionId: string; selectedOptions: string[] }
-    ): Promise<ApiResponse> => {
+    ): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/submit`, {
         method: 'POST',
         body: JSON.stringify(answer),
       });
     },
 
-    complete: async (sessionId: string): Promise<ApiResponse> => {
+    complete: async (sessionId: string): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/complete`, {
         method: 'POST',
       });
     },
 
-    getResults: async (sessionId: string): Promise<ApiResponse> => {
+    getResults: async (sessionId: string): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/quiz/${sessionId}/results`);
     },
   },
@@ -159,7 +165,7 @@ export const api = {
       page?: number;
       limit?: number;
       examType?: string;
-    }): Promise<ApiResponse> => {
+    }): Promise<ApiResponse | null> => {
       const url = new URL(`${API_BASE_URL}/api/questions`);
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
@@ -169,7 +175,7 @@ export const api = {
       return apiFetch<ApiResponse>(url.toString());
     },
 
-    get: async (id: string): Promise<ApiResponse> => {
+    get: async (id: string): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/questions/${id}`);
     },
   },
@@ -180,14 +186,14 @@ export const api = {
       email: string;
       username: string;
       password: string;
-    }): Promise<ApiResponse> => {
+    }): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/users/register`, {
         method: 'POST',
         body: JSON.stringify(userData),
       });
     },
 
-    profile: async (): Promise<ApiResponse> => {
+    profile: async (): Promise<ApiResponse | null> => {
       return apiFetch<ApiResponse>(`${API_BASE_URL}/api/users/profile`);
     },
   },
@@ -231,10 +237,10 @@ export class ApiError extends Error {
  *
  * @param url The URL to fetch
  * @param config Optional fetch configuration
- * @returns Promise<T> Parsed response (JSON for application/json, null for 204, text for others)
+ * @returns Promise<T | null> Parsed response (JSON for application/json, null for 204 No Content, text for others)
  * @throws {ApiError} For HTTP errors (4xx, 5xx) or network errors
  */
-async function apiFetch<T>(url: string, config?: RequestInit): Promise<T> {
+async function apiFetch<T>(url: string, config?: RequestInit): Promise<T | null> {
   try {
     const response = await fetch(url, createApiConfig(config));
 
@@ -261,7 +267,7 @@ async function apiFetch<T>(url: string, config?: RequestInit): Promise<T> {
 
     // Handle 204 No Content responses
     if (response.status === 204) {
-      return null as T;
+      return null;
     }
 
     // Check Content-Type to determine how to parse the response

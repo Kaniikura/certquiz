@@ -7,7 +7,9 @@ let healthStatus = 'Loading...';
 onMount(async () => {
   try {
     const result = await api.health();
-    healthStatus = `API Connected: ${result.status || 'OK'}`;
+    healthStatus = result
+      ? `API Connected: ${result.status || 'OK'}`
+      : 'API Connected (No Content)';
   } catch (error) {
     if (error instanceof ApiError) {
       healthStatus = `API Error (${error.status}): ${error.message}`;
