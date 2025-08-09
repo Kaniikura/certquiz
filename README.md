@@ -41,16 +41,6 @@ cert-quiz/
 └── docs/            # Documentation
 ```
 
-**Import Pattern**: Direct imports only, no barrel exports
-```typescript
-// ✅ Direct imports
-import { QUIZ_SIZES } from '@certquiz/shared/constants';
-import { Email } from '@api/features/auth/domain/value-objects/Email';
-
-// ❌ Barrel imports (removed)
-import { Email } from '@api/features/auth';
-```
-
 ## 🧪 Development Principles
 
 ### Test-Driven Development (TDD)
@@ -71,8 +61,7 @@ bun run db:generate       # Generate migrations from schema changes
 - [Task List](docs/task-list.md) - Current development tasks
 - [API Specification](docs/api-specification.md) - Endpoint docs
 - [Database Schema](docs/database-schema-v2.md) - Data models
-- [Coding Standards](docs/coding-standards.md) - Code conventions
-- [Commit Convention](.claude/commit-convention.md) - Git commit guidelines
+- [Coding Standards](docs/coding-standards.md) - Code conventions & commit guidelines
 - [GitHub Actions Strategy](docs/github-actions-strategy.md) - CI/CD pipeline design
 
 ## 🔧 Common Commands

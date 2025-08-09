@@ -23,9 +23,9 @@ else
   echo "✅ Dependencies already installed"
 fi
 
-# Check if commitlint.config.js exists
-if [ ! -f "commitlint.config.js" ]; then
-  echo "❌ Error: commitlint.config.js not found in project root"
+# Check if commitlint.config.cjs exists
+if [ ! -f "commitlint.config.cjs" ]; then
+  echo "❌ Error: commitlint.config.cjs not found in project root"
   exit 1
 fi
 
@@ -41,4 +41,4 @@ echo ""
 echo "🎯 Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, wip, security, init, deploy, docker, merge, breaking"
 echo ""
 echo "📚 See https://gitmoji.dev/ for emoji meanings"
-echo "📖 See .claude/commit-convention.md for project conventions"
+echo "📖 See docs/coding-standards.md#commit-message-conventions for project conventions"
