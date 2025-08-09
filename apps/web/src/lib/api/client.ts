@@ -22,8 +22,34 @@ export interface HealthResponse {
 }
 
 /**
+ * Custom AbortController with proper timeout cleanup
+ * Prevents memory leaks by managing setTimeout lifecycle
+ */
+class CleanupAbortController extends AbortController {
+  private timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(milliseconds: number) {
+    super();
+    this.timeoutId = setTimeout(() => {
+      this.abort();
+      this.timeoutId = null;
+    }, milliseconds);
+  }
+
+  override abort(reason?: unknown): void {
+    // Clear timeout to prevent memory leaks
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    super.abort(reason);
+  }
+}
+
+/**
  * Creates an AbortSignal that times out after the specified milliseconds.
  * Provides a fallback for browsers that don't support AbortSignal.timeout().
+ * The fallback implementation includes proper cleanup to prevent memory leaks.
  *
  * @param milliseconds - The timeout duration in milliseconds
  * @returns An AbortSignal that will abort after the timeout
@@ -34,9 +60,8 @@ function createTimeoutSignal(milliseconds: number): AbortSignal {
     return AbortSignal.timeout(milliseconds);
   }
 
-  // Fallback: Create manual timeout with AbortController for older browsers
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), milliseconds);
+  // Fallback: Create manual timeout with proper cleanup for older browsers
+  const controller = new CleanupAbortController(milliseconds);
   return controller.signal;
 }
 
