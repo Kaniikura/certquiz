@@ -1,35 +1,16 @@
 {
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-
-    /* ——-- path mapping ——-- */
-    "baseUrl": ".",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "noEmit": true,
-    "paths": {
-      /* cross-package – point at the *package root*  */
-      "@certquiz/shared": ["packages/shared/src/index.ts"],
-      "@certquiz/shared/*": ["packages/shared/src/*"],
-
-      /* app-local aliases – point at a folder inside the app   */
-      "@api/*": ["apps/api/src/*"] /* Application source code */,
-      /* Test support aliases */
-      "@/test-support": ["apps/api/src/test-support/index.ts"],
-      "@/test-support/*": ["apps/api/src/test-support/*"],
-      "@test": ["apps/api/tests/index.ts"],
-      "@test/*": ["apps/api/tests/*"],
-      "@web/*": ["apps/web/src/*"]
-    },
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
     "strict": true,
-    "target": "ES2022"
-  },
-
-  /* project references for tsc -b */
-  "references": [{ "path": "apps/api" }, { "path": "apps/web" }, { "path": "packages/shared" }]
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "composite": true,
+    "noEmit": true
+  }
 }

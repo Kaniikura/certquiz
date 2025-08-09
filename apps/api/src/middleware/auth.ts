@@ -35,11 +35,11 @@ function getJwtVerifier(): JwtVerifier {
         // Use project standard logger for error reporting
         const logger = getRootLogger().child({ module: 'auth.middleware' });
         logger.error(
-          'Failed to parse ROLE_MAPPING_JSON environment variable. Falling back to default role mapping.',
           {
             error: e instanceof Error ? e.message : String(e),
             envVar: 'ROLE_MAPPING_JSON',
-          }
+          },
+          'Failed to parse ROLE_MAPPING_JSON environment variable. Falling back to default role mapping.'
         );
         return DEFAULT_ROLE_MAPPING;
       }

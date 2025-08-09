@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Sql } from 'postgres';
 import postgres from 'postgres';
-import type { StartedPostgreSqlContainer } from '../containers/postgres';
-import { drizzleMigrate } from './db-migrations';
+import type { StartedPostgreSqlContainer } from './TestContainerManager';
+import { drizzleMigrate } from './TestDatabaseMigrations';
 
 /**
  * Track postgres clients for proper cleanup

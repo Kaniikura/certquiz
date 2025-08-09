@@ -1,5 +1,4 @@
 {
-  "extends": "./tsconfig.base.json",
-  "include": ["apps/*/src/**/*", "packages/*/src/**/*"],
-  "exclude": ["node_modules", "**/dist", "**/build", "**/.svelte-kit"]
+  "files": [],
+  "references": [{ "path": "apps/api" }, { "path": "apps/web" }, { "path": "packages/shared" }]
 }

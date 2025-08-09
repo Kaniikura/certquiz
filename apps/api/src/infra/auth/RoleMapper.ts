@@ -36,7 +36,7 @@ export class RoleMapper implements IRoleMapper {
         domainRoles.add(mappedRole);
       } else if (process.env.NODE_ENV !== 'test') {
         // Log unmapped roles for monitoring
-        logger.warn('Unmapped role encountered', { unmappedRole: role });
+        logger.warn({ unmappedRole: role }, 'Unmapped role encountered');
       }
     }
 

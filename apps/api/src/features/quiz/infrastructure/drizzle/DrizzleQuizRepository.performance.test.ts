@@ -6,8 +6,8 @@
 import { performance } from 'node:perf_hooks';
 import * as schema from '@api/infra/db/schema';
 import { createDomainLogger } from '@api/infra/logger/PinoLoggerAdapter';
-import { PostgresSingleton } from '@test/containers/postgres';
-import { createTestDatabase } from '@test/helpers/db-core';
+import { PostgresSingleton } from '@api/test-support/db/TestContainerManager';
+import { createTestDatabase } from '@api/test-support/db/TestDatabaseFactory';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';

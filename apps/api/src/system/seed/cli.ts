@@ -62,11 +62,14 @@ Example:
   bun run seed.ts reset
 `;
 
-    logger.error('Invalid command provided', {
-      command,
-      validCommands: ['seed', 'clear', 'reset'],
-      help: helpMessage,
-    });
+    logger.error(
+      {
+        command,
+        validCommands: ['seed', 'clear', 'reset'],
+        help: helpMessage,
+      },
+      'Invalid command provided'
+    );
 
     // CLI tools need stderr output for user feedback
     process.stderr.write(helpMessage);
@@ -103,10 +106,13 @@ Example:
 
     logger.info(`Command '${command}' completed successfully`);
   } catch (error) {
-    logger.error(`Command '${command}' failed`, {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      `Command '${command}' failed`
+    );
     throw error;
   } finally {
     await shutdownDatabase();
@@ -116,10 +122,13 @@ Example:
 // Support direct execution for development
 if (import.meta.url === `file://${process.argv[1]}`) {
   cli().catch((err) => {
-    logger.error('Seed CLI error', {
-      error: err.message,
-      stack: err.stack,
-    });
+    logger.error(
+      {
+        error: err.message,
+        stack: err.stack,
+      },
+      'Seed CLI error'
+    );
     process.exit(1);
   });
 }

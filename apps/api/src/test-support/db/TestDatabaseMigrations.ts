@@ -1,14 +1,11 @@
-import { exec } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import postgres from 'postgres';
-import { trackClient, untrackClient } from './db-core';
+import { trackClient, untrackClient } from './TestDatabaseFactory';
 
 // Mutex to prevent concurrent migrations with proper atomic updates
 let migrationMutex: Promise<void> = Promise.resolve();
-
-const execAsync = promisify(exec);
 
 /**
  * Mask sensitive credentials in database URLs for safe logging
@@ -78,7 +75,7 @@ async function withMigrationMutex<T>(fn: () => Promise<T>): Promise<T> {
  * Check if migrations directory has SQL files
  */
 async function hasMigrationsToRun(): Promise<boolean> {
-  const migrationsDir = path.join(__dirname, '../../src/infra/db/migrations');
+  const migrationsDir = path.join(process.cwd(), 'src/infra/db/migrations');
 
   try {
     const files = await fs.readdir(migrationsDir);
@@ -90,37 +87,105 @@ async function hasMigrationsToRun(): Promise<boolean> {
 }
 
 /**
+ * Migration result types for clear state representation
+ */
+type MigrationResult =
+  | { status: 'success'; message: string }
+  | { status: 'already-exists'; message: string }
+  | { status: 'no-changes'; message: string }
+  | { status: 'error'; message: string };
+
+/**
+ * Analyze migration output to determine the result status
+ */
+function analyzeMigrationOutput(exitCode: number | null, output: string): MigrationResult {
+  // Handle successful exit code
+  if (exitCode === 0) {
+    if (output.includes('No migrations to run')) {
+      return {
+        status: 'no-changes',
+        message: 'No migrations to run - database is already up to date',
+      };
+    }
+    if (output.includes('migrations applied successfully')) {
+      return { status: 'success', message: 'Migrations applied successfully' };
+    }
+    return { status: 'success', message: 'Migration completed' };
+  }
+
+  // Handle non-zero exit codes with acceptable errors
+  if (output.includes('already exists') || output.includes('migrations applied successfully')) {
+    return {
+      status: 'already-exists',
+      message: 'Migrations completed (some objects may have already existed)',
+    };
+  }
+
+  // Handle actual errors
+  return { status: 'error', message: `Migration failed with code ${exitCode}: ${output}` };
+}
+
+/**
+ * Log migration result with appropriate formatting
+ */
+function logMigrationResult(result: MigrationResult): void {
+  switch (result.status) {
+    case 'success':
+      console.log(`✅ ${result.message}`);
+      break;
+    case 'no-changes':
+      console.log(`ℹ️ ${result.message}`);
+      break;
+    case 'already-exists':
+      console.log(`ℹ️ ${result.message}`);
+      break;
+    // Error case is handled by throwing, not logging
+  }
+}
+
+/**
  * Execute drizzle-kit migrate with environment isolation
- * Uses child process environment to avoid affecting global process.env
+ * Uses spawn to run migrations with isolated environment
  */
 async function executeMigration(databaseUrl: string): Promise<void> {
-  try {
+  return new Promise<void>((resolve, reject) => {
     // Run migrations using drizzle-kit with isolated environment
-    // This ensures that other concurrent operations in the same process
-    // are not affected by the DATABASE_URL change
-    const { stderr } = await execAsync('bun run db:migrate', {
-      cwd: path.join(__dirname, '../..'),
+    const child = spawn('bun', ['run', 'db:migrate'], {
+      cwd: process.cwd(),
       env: {
         ...process.env,
         DATABASE_URL: databaseUrl,
       },
+      stdio: ['inherit', 'pipe', 'pipe'],
     });
 
-    if (stderr) {
-      if (stderr.includes('No migrations to run')) {
-        console.log('ℹ️ No migrations to run - database is already up to date');
-      } else if (!stderr.includes('already exists')) {
-        // Show actual stderr content for genuine warnings/errors (but ignore "already exists" errors)
-        console.warn('Migration stderr:', stderr);
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout?.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      reject(new Error(`Failed to spawn migration process: ${error.message}`));
+    });
+
+    child.on('close', (code) => {
+      const output = stdout + stderr;
+      const result = analyzeMigrationOutput(code, output);
+
+      if (result.status === 'error') {
+        reject(new Error(result.message));
+      } else {
+        logMigrationResult(result);
+        resolve();
       }
-    }
-  } catch (error) {
-    // Ensure we have proper error information
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(`Migration failed: ${String(error)}`);
-  }
+    });
+  });
 }
 
 /**
@@ -161,7 +226,7 @@ async function handleMigrationError(error: unknown, databaseUrl: string): Promis
 /**
  * Run Drizzle migrations against a database URL
  * This runs migrations inside a fresh database, not during container bootstrap
- * @internal - Use createTestDatabase from core.ts instead
+ * @internal - Use createTestDatabase from TestDatabaseFactory instead
  */
 export async function drizzleMigrate(databaseUrl: string): Promise<void> {
   return withMigrationMutex(async () => {

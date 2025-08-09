@@ -1,0 +1,118 @@
+# Docker Compose configuration for E2E tests
+# Optimized for fast startup and minimal resource usage in CI
+
+services:
+  postgres-e2e:
+    image: postgres:16-alpine
+    container_name: certquiz-postgres-e2e
+    environment:
+      POSTGRES_USER: e2e_user
+      POSTGRES_PASSWORD: e2e_pass
+      POSTGRES_DB: certquiz_e2e
+      # Performance optimizations for test database
+      POSTGRES_INITDB_ARGS: "--data-checksums=off"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    command:
+      - postgres
+      # Disable fsync for speed (test DB only!)
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      # Increase shared buffers for better performance
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - checkpoint_segments=32
+      - -c
+      - checkpoint_completion_target=0.9
+      # Reduce logging for speed
+      - -c
+      - log_statement=none
+      - -c
+      - log_duration=off
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    volumes:
+      - ./postgres/init-e2e.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./postgres/seed-e2e.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e_user -d certquiz_e2e"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
+    tmpfs:
+      - /var/lib/postgresql/data  # Use memory for database storage
+    networks:
+      - e2e-network
+
+  keycloak-e2e:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: certquiz-keycloak-e2e
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-e2e:5432/keycloak_e2e
+      KC_DB_USERNAME: e2e_user
+      KC_DB_PASSWORD: e2e_pass
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "false"
+      KC_LOG_LEVEL: "ERROR"  # Reduce logging
+      # Development mode for faster startup
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_CACHE: "local"  # Local cache for single instance
+    ports:
+      - "8081:8080"  # Different port to avoid conflicts
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/realm-e2e.json:/opt/keycloak/data/import/realm-e2e.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    networks:
+      - e2e-network
+
+  api-e2e:
+    build:
+      context: ../
+      dockerfile: apps/api/Dockerfile
+    container_name: certquiz-api-e2e
+    environment:
+      NODE_ENV: test
+      API_PORT: 4000
+      DATABASE_URL: postgresql://e2e_user:e2e_pass@postgres-e2e:5432/certquiz_e2e
+      CACHE_DRIVER: memory
+      KEYCLOAK_URL: http://keycloak-e2e:8080
+      KEYCLOAK_REALM: certquiz-e2e
+      JWT_SECRET: e2e-test-jwt-secret-at-least-32-chars
+      BMAC_WEBHOOK_SECRET: e2e-test-webhook-secret
+    ports:
+      - "4001:4000"  # Different external port to avoid conflicts
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+      keycloak-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - e2e-network
+
+networks:
+  e2e-network:
+    driver: bridge

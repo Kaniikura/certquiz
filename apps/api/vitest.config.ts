@@ -58,8 +58,10 @@ export default defineConfig(({ mode }) => {
       testTimeout: process.env.CI ? 60_000 : 30_000,
 
       // Force vitest to inline jose module to handle ES Module imports
-      deps: {
-        inline: ['jose'],
+      server: {
+        deps: {
+          inline: ['jose'],
+        },
       },
     },
   };

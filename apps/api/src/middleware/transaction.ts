@@ -26,7 +26,7 @@ export function createDatabaseContextMiddleware(dbContext: IDatabaseContext) {
       await next();
       logger.debug('Request completed');
     } catch (error) {
-      logger.error('Request failed', { error });
+      logger.error({ error }, 'Request failed');
       throw error;
     }
   };

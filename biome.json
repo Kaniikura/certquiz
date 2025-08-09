@@ -151,11 +151,15 @@
       }
     },
     {
-      "includes": ["*.svelte"],
+      "includes": ["**/*.svelte"],
       "linter": {
         "rules": {
           "style": {
             "useConst": "off"
+          },
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
           }
         }
       }
@@ -171,7 +175,7 @@
       }
     },
     {
-      "includes": ["packages/shared/src/index.ts"],
+      "includes": ["packages/shared/src/index.ts", "apps/web/src/lib/index.ts"],
       "linter": {
         "rules": {
           "performance": {

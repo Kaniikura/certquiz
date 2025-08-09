@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the project structure for CertQuiz using **Vertical Slice Architecture (VSA)** with **Domain-Driven Design (DDD)** and a **thin Repository Pattern**. This architecture organizes code by features/use cases with proper persistence isolation.
+This document describes the project structure for CertQuiz monorepo containing **Hono API backend** (VSA + DDD + Repository Pattern) and **SvelteKit frontend** with TypeScript and Tailwind CSS. This architecture organizes code by features/use cases with proper persistence isolation.
 
 **Key Principles**:
 - **Vertical Slice Architecture**: Each feature contains all layers in one folder
@@ -19,9 +19,10 @@ certquiz/
 ├── package.json                 # Root monorepo config
 ├── tsconfig.json               # Root TypeScript config
 ├── biome.json                  # Biome linter/formatter config
+├── knip.ts                     # Unused code detection config
 │
 ├── apps/                       # Application packages
-│   └── api/                    # Hono backend (VSA + DDD + Repository)
+│   ├── api/                    # Hono backend (VSA + DDD + Repository)
 │       ├── src/
 │       │   ├── features/       # Feature slices (vertical slices)
 │       │   │   ├── quiz/
@@ -68,6 +69,7 @@ certquiz/
 │       │   │   └── repository/
 │       │   ├── test-support/   # Domain-specific test utilities
 │       │   │   ├── builders/   # Test data builders
+│       │   │   ├── db/         # Test database utilities
 │       │   │   ├── fakes/      # In-memory implementations
 │       │   │   ├── mocks/      # Mock helpers (JWT, etc.)
 │       │   │   ├── types/      # Test utility types
@@ -78,6 +80,21 @@ certquiz/
 │       │   ├── integration/    # Cross-feature integration tests
 │       │   ├── e2e/           # End-to-end tests
 │       │   └── containers/     # Test container management
+│       └── package.json
+│   │
+│   └── web/                    # SvelteKit frontend
+│       ├── src/
+│       │   ├── lib/            # Reusable utilities & components
+│       │   │   ├── api/        # API client with type-safe endpoints
+│       │   │   └── index.ts    # Library exports
+│       │   ├── routes/         # File-based routing
+│       │   │   ├── +layout.svelte   # Root layout
+│       │   │   └── +page.svelte     # Home page
+│       │   ├── app.html        # HTML template
+│       │   └── app.d.ts        # TypeScript declarations
+│       ├── static/             # Static assets
+│       ├── vite.config.ts      # Vite configuration
+│       ├── svelte.config.js    # SvelteKit configuration
 │       └── package.json
 │
 ├── packages/
@@ -97,18 +114,22 @@ certquiz/
 - Only essential files and all directories are shown for clarity
 
 > 📝 **Key Conventions**:
-> - **Co-located tests**: Unit tests use `.test.ts` suffix next to source files
-> - **Integration tests**: Single-slice tests use `.integration.test.ts` co-located, multi-slice tests in `tests/integration/`
-> - **Repository pattern**: Interface in domain, Drizzle implementation in infrastructure/drizzle/
-> - **Mapper pattern**: Pure data transformation functions in infrastructure/drizzle/
-> - **Use case folders**: Each contains handler, DTO, validation, route
-> - **Domain isolation**: Pure TypeScript, no framework dependencies
-> - **Unified architecture**: DIContainer + AsyncDatabaseContext across all environments
-> - **Application services**: Cross-aggregate operations (e.g., QuizCompletionService) with integrated Unit of Work
-> - **Dependency injection**: DIContainer pattern for all environments (Production/Test/Dev)
-> - **No barrel exports**: Direct imports only, no `index.ts` re-export files for clear API boundaries
-> - **Test infrastructure**: Database/container utilities in `tests/helpers/`, domain utilities in `src/test-support/`
-> - **Test database API**: Always use `createTestDb()` or `withTestDb()`, never raw `drizzle()`
+> - **Backend (api/)**:
+>   - **Co-located tests**: Unit tests use `.test.ts` suffix next to source files
+>   - **Integration tests**: Single-slice tests use `.integration.test.ts` co-located
+>   - **Repository pattern**: Interface in domain, Drizzle implementation in infrastructure/drizzle/
+>   - **Use case folders**: Each contains handler, DTO, validation, route
+>   - **Domain isolation**: Pure TypeScript, no framework dependencies
+>   - **Test infrastructure**: Database utilities in `src/test-support/db/`
+> - **Frontend (web/)**:
+>   - **File-based routing**: SvelteKit convention with `+page.svelte` and `+layout.svelte`
+>   - **Library code**: Reusable components and utilities in `src/lib/`
+>   - **API client**: Type-safe fetch client with error handling
+>   - **Styling**: Tailwind CSS with Vite plugin integration
+> - **Monorepo**:
+>   - **Workspace management**: Bun workspaces with shared TypeScript config
+>   - **Code quality**: Biome for linting/formatting, knip for unused code detection
+>   - **No barrel exports**: Direct imports only, except for `$lib` in SvelteKit
 
 ## Architecture Layers
 
@@ -225,12 +246,12 @@ Start simple, add complexity as needed:
 
 ## Success Criteria
 
-1. **All features rebuilt with VSA + Repository pattern**
-2. **90% test coverage in domain layer**
-3. **No cross-slice imports (enforced by ESLint)**
-4. **Unified architecture with DIContainer + AsyncDatabaseContext**
-5. **Zero downtime migration from legacy**
-6. **Performance equal or better than legacy**
+1. **Backend: All features built with VSA + Repository pattern**
+2. **Frontend: SvelteKit with type-safe API integration**
+3. **90% test coverage in domain layer**
+4. **No cross-slice imports in backend**
+5. **Unified architecture with DIContainer + AsyncDatabaseContext**
+6. **All quality checks passing (TypeScript, Biome, knip)**
 
 ## References
 
@@ -238,3 +259,4 @@ Start simple, add complexity as needed:
 - [Domain-Driven Design](https://martinfowler.com/tags/domain%20driven%20design.html)
 - [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
 - [Unit of Work](https://martinfowler.com/eaaCatalog/unitOfWork.html)
+- [SvelteKit Documentation](https://kit.svelte.dev/docs)

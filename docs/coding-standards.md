@@ -2,6 +2,17 @@
 
 > 📌 **Quick Reference** for CertQuiz development using VSA + DDD + Repository Pattern
 
+## Table of Contents
+- [Core Principles](#core-principles)
+- [Commit Message Conventions](#commit-message-conventions)
+- [Project Structure](#project-structure)
+- [Quick Patterns](#quick-patterns)
+- [Testing Strategy](#testing-strategy)
+- [Error Handling](#error-handling)
+- [Code Review Checklist](#code-review-checklist)
+- [Import Order](#import-order)
+- [Anti-Patterns to Avoid](#anti-patterns-to-avoid)
+
 ## Core Principles
 
 1. **Type Safety First** - No `any` types, explicit return types required
@@ -14,6 +25,129 @@
 8. **Transaction Boundaries** - All handlers use `IUnitOfWork` from middleware (NOT `withTransaction`)
 9. **No Barrel Exports** - Direct imports only, no `index.ts` re-exports
 10. **Co-located Tests** - `.test.ts` files next to source
+
+## Commit Message Conventions
+
+### Format
+
+All commit messages must follow this format:
+```
+emoji type(scope): subject
+
+[optional body]
+```
+
+**Example**: `✨ feat(auth): add user authentication`
+
+### Components
+
+- **emoji**: A gitmoji that visually represents the change (required)
+- **type**: The category of change (required)
+- **scope**: The module or area affected (optional)
+- **subject**: Brief description in imperative mood, max 50 characters (required)
+- **body**: Detailed explanation for complex changes (optional)
+
+### Valid Types
+
+| Type | Description | Common Emojis |
+|------|------------|---------------|
+| `feat` | New feature or functionality | ✨ 🎉 🚀 🎸 ✏️ 🍱 📱 💄 ➕ 💡 |
+| `fix` | Bug fix | 🐛 🚑️ 🩹 🔒 🔊 🔇 🚨 ✏️ |
+| `docs` | Documentation changes | 📝 💡 📄 📚 🌐 |
+| `style` | Code formatting, no logic change | 🎨 💄 |
+| `refactor` | Code restructuring without behavior change | ♻️ 🏗️ 🚚 ✨ 🔨 ⚡️ |
+| `perf` | Performance improvements | ⚡️ 🐎 📈 |
+| `test` | Test additions or modifications | ✅ 🧪 🤡 🚨 |
+| `build` | Build system or dependencies | 📦 🔨 👷 🔧 ➕ ➖ |
+| `ci` | CI/CD configuration | 👷 💚 🎡 🚀 |
+| `chore` | Maintenance tasks | 🔧 📌 ⬆️ ⬇️ 🔥 🗑️ 🚮 ➖ |
+| `revert` | Revert previous changes | ⏪ |
+| `wip` | Work in progress | 🚧 |
+| `security` | Security improvements | 🔒 🔐 |
+
+### Flexible Emoji-Type Mapping
+
+Our system supports **N:N mapping** between emojis and types, allowing flexibility while maintaining consistency:
+
+- **One emoji, multiple types**: `✨` can be used for both `feat` and `refactor`
+- **One type, multiple emojis**: `feat` can use `✨`, `🎉`, `🚀`, `🎸`, and more
+- **Context-aware**: Choose the emoji that best represents your specific change
+
+### Examples
+
+```bash
+# Feature additions
+✨ feat(quiz): add timer functionality
+🚀 feat(api): implement websocket support
+🎉 feat: initial project setup
+
+# Bug fixes
+🐛 fix(auth): resolve token expiration issue
+🚑️ fix: critical production hotfix
+🩹 fix(ui): adjust button alignment
+
+# Documentation
+📝 docs: update API documentation
+💡 docs(code): add inline comments for complex logic
+
+# Performance
+⚡️ perf(db): optimize query performance
+🐎 perf: significant speed improvements to build process
+
+# Testing
+✅ test: add unit tests for auth service
+🧪 test: add failing test for bug reproduction
+
+# Chores and maintenance
+🔧 chore: update build configuration
+⬆️ chore: upgrade dependencies to latest versions
+🔥 chore: remove deprecated code
+```
+
+### Setup Git Hooks
+
+The project uses `simple-git-hooks` with `commitlint` to automatically validate commit messages:
+
+1. **Automatic setup** (runs with `bun install`):
+   ```bash
+   bun run prepare
+   ```
+
+2. **Manual setup** (if needed):
+   ```bash
+   ./scripts/setup-git-hooks.sh
+   ```
+
+3. **Test your setup**:
+   ```bash
+   # This should fail
+   git commit -m "bad commit message"
+   
+   # This should succeed
+   git commit -m "✨ feat: add new feature"
+   ```
+
+### Configuration
+
+The validation rules are defined in `commitlint.config.cjs`. The configuration:
+- Validates emoji-type compatibility
+- Enforces subject length (max 50 characters)
+- Provides helpful error messages in English
+- References [gitmoji.dev](https://gitmoji.dev/) for emoji meanings
+
+### Troubleshooting
+
+If commit validation fails:
+1. Check the error message for the correct format
+2. Ensure your emoji matches the type (see mapping table above)
+3. Keep subject line under 50 characters
+4. Run `git commit --amend` to fix the last commit message
+
+### Resources
+
+- 🎯 [Gitmoji](https://gitmoji.dev/) - Emoji guide for commit messages
+- 📚 [Conventional Commits](https://www.conventionalcommits.org/) - Specification for commit messages
+- 🔧 [Commitlint](https://commitlint.js.org/) - Lint commit messages
 
 ## Project Structure
 

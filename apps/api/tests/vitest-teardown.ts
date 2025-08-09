@@ -4,7 +4,7 @@
  */
 
 import { shutdownDatabase } from '@api/infra/db/client';
-import { closeAllTrackedClients } from '@test/helpers/db-core';
+import { closeAllTrackedClients } from '@api/test-support/db/TestDatabaseFactory';
 import { afterAll } from 'vitest';
 
 // Global teardown to ensure database connections are closed

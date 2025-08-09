@@ -118,7 +118,7 @@ export class AsyncDatabaseContext implements IDatabaseContext {
     // Auto-initialize by default (unless explicitly disabled)
     if (this.options.autoInitialize !== false) {
       this.initPromise = this.initialize().catch((error) => {
-        this.logger.error('Failed to auto-initialize AsyncDatabaseContext', { error });
+        this.logger.error({ error }, 'Failed to auto-initialize AsyncDatabaseContext');
         throw error;
       });
     }
@@ -197,7 +197,7 @@ export class AsyncDatabaseContext implements IDatabaseContext {
 
         return result;
       } catch (error) {
-        this.logger.error('Unit of Work transaction failed, rolling back', { error });
+        this.logger.error({ error }, 'Unit of Work transaction failed, rolling back');
         throw error;
       }
     });

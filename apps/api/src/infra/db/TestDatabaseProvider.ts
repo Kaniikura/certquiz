@@ -1,7 +1,7 @@
 import type { Logger } from '@api/infra/logger/root-logger';
-import { createTestDatabase } from '@test/helpers/db-core';
+import { PostgresSingleton } from '@api/test-support/db/TestContainerManager';
+import { createTestDatabase } from '@api/test-support/db/TestDatabaseFactory';
 import postgres from 'postgres';
-import { PostgresSingleton } from '../../../tests/containers/postgres';
 import type { ConnectionStats, DatabaseOptions, IDatabaseProvider } from './IDatabaseProvider';
 import { createDrizzleInstance, PoolConfigs } from './shared';
 import type { DB } from './types';
