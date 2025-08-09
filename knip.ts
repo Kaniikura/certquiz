@@ -27,6 +27,9 @@ const config: KnipConfig = {
   workspaces: {
     '.': {
       entry: [],
+      ignoreDependencies: [
+        '@commitlint/cli', // Used in git hooks via simple-git-hooks
+      ],
     },
     'apps/api': {
       entry: [
